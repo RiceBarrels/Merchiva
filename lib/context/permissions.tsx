@@ -1,11 +1,10 @@
 "use client";
 
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 import { ownerPermissions } from "@/lib/db/team";
 import { clearCache } from "@/lib/cache";
-import { rootOrgId as computeRootOrgId, shareGroupOrgIds as computeShareGroupOrgIds } from "@/lib/share-group";
 
 export interface PermissionsContextValue {
   role: OrgRole;
@@ -19,22 +18,6 @@ export interface PermissionsContextValue {
   // Soft switch used by /choose: re-scopes the layout's auth state in place
   // (no reload). Falls back to switchOrg when the layout didn't wire it.
   pickOrg: (orgId: string) => void;
-  // ─── Multi-store share group ──────────────────────────────────────────────
-  // The "root" of the current org's parent/child tree. Equals organizationId
-  // when the current org is a root (top-level) store, or the parent id when
-  // it's a sub-store.
-  rootOrgId: string | null;
-  // All org ids in the current share group: root + every sub-store of that
-  // root. Used as the filter set for shared resources (staff, products, chat,
-  // design, sites). Inventory and forecasts ignore this list and stay strictly
-  // per-org.
-  shareGroupOrgIds: string[];
-  // Stores in the share group, materialized as OrgSummary rows from the live
-  // organization subscription. Excludes orgs the user has no membership in —
-  // those are filtered out upstream in layout.tsx.
-  shareGroupOrgs: OrgSummary[];
-  // True when the current org has a parent (is a sub-store).
-  isSubStore: boolean;
 }
 
 const PermissionsContext = createContext<PermissionsContextValue>({
@@ -47,10 +30,6 @@ const PermissionsContext = createContext<PermissionsContextValue>({
   currentOrg: null,
   switchOrg: async () => {},
   pickOrg: () => {},
-  rootOrgId: null,
-  shareGroupOrgIds: [],
-  shareGroupOrgs: [],
-  isSubStore: false,
 });
 
 export function PermissionsProvider({
@@ -108,14 +87,6 @@ export function PermissionsProvider({
     void switchOrg(orgId);
   }
 
-  const { rootOrgId, shareGroupOrgIds, shareGroupOrgs, isSubStore } = useMemo(() => {
-    const root = computeRootOrgId(organizationId, organizations);
-    const ids = computeShareGroupOrgIds(organizationId, organizations);
-    const groupOrgs = organizations.filter((o) => ids.includes(o.id));
-    const sub = !!currentOrg?.parentOrgId;
-    return { rootOrgId: root, shareGroupOrgIds: ids, shareGroupOrgs: groupOrgs, isSubStore: sub };
-  }, [organizationId, organizations, currentOrg]);
-
   return (
     <PermissionsContext.Provider
       value={{
@@ -128,10 +99,6 @@ export function PermissionsProvider({
         currentOrg,
         switchOrg,
         pickOrg,
-        rootOrgId,
-        shareGroupOrgIds,
-        shareGroupOrgs,
-        isSubStore,
       }}
     >
       {children}

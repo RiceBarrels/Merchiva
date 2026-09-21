@@ -1,18 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** Re-renders every `ms` (default 1s) and returns the current Date. */
-export function useNow(ms = 1000): Date {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), ms);
-    return () => clearInterval(id);
-  }, [ms]);
-  return now;
-}
+// Lives in lib/ so manager pages can read a live clock too; re-exported here
+// because every device surface already imports it from this module.
+export { useNow } from "@/lib/use-now";
 
 /** "9:41" (12h, no leading zero) — status strip. */
 export function fmtStatusClock(d: Date): string {

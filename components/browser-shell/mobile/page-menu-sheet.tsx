@@ -6,7 +6,7 @@ import {
   AccountList,
   BackToDeviceLink,
   CreateStoreForm,
-  StoreTreeList,
+  StoreSwitchList,
   SwitchModeLink,
   useWorkspaceActions,
 } from "@/components/browser-shell/shared/workspace-menu";
@@ -130,8 +130,8 @@ export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab
       )}
 
       <SheetSection label={t("browserMobile.store")}>
-        <StoreTreeList
-          tree={workspace.tree}
+        <StoreSwitchList
+          stores={workspace.stores}
           currentOrgId={currentOrg?.id ?? null}
           onSelect={(orgId) => {
             workspace.switchOrg(orgId).catch(() => undefined);
@@ -139,10 +139,8 @@ export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab
         />
         {creating ? (
           <CreateStoreForm
-            eligibleParents={workspace.eligibleParents}
             onCreate={workspace.createStore}
             onCancel={() => setCreating(false)}
-            nativeSelect
           />
         ) : (
           <SheetRow icon={Plus} onClick={() => setCreating(true)}>

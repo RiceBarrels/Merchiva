@@ -11,6 +11,7 @@ import { LOCALE_COOKIE, isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
 import { isOnline, mutationQueue } from "@/lib/offline";
 import { parseDeviceApps } from "@/lib/device-apps";
 import type { RoleTask, ShiftPreset } from "@/lib/types";
+import { bugDateStr, type BugContext, type BugSeverity, type BugStatus } from "@/lib/bugs";
 import { Timestamp } from "spacetimedb";
 
 function currentLocale() {
@@ -1160,11 +1161,8 @@ export async function redeemPoints(data: any): Promise<void> {
 
 // ─── Team / Org ───────────────────────────────────────────────────────────────
 
-export async function createOrg(name: string, parentOrgId?: string | null): Promise<void> {
-  return conn().reducers.createOrg({
-    name,
-    parentOrgId: parentOrgId && parentOrgId.length > 0 ? parentOrgId : undefined,
-  });
+export async function createOrg(name: string): Promise<void> {
+  return conn().reducers.createOrg({ name });
 }
 
 /**
@@ -1178,20 +1176,6 @@ export async function updateOrgLogo(
   return conn().reducers.updateOrgLogo({
     organizationId,
     logoUrl: logoUrl && logoUrl.length > 0 ? logoUrl : undefined,
-  });
-}
-
-/**
- * Attach this org as a sub-store of `parentOrgId`, or detach it (pass null /
- * undefined / "") to make it a root org again. Owner-only on the server side.
- */
-export async function updateOrgParent(
-  organizationId: string,
-  parentOrgId: string | null,
-): Promise<void> {
-  return conn().reducers.updateOrgParent({
-    organizationId,
-    parentOrgId: parentOrgId && parentOrgId.length > 0 ? parentOrgId : undefined,
   });
 }
 
@@ -1265,6 +1249,55 @@ export async function toggleTodo(id: string, completed: boolean): Promise<void> 
 }
 export async function deleteTodo(id: string): Promise<void> {
   return conn().reducers.deleteTodo({ todoId: id });
+}
+
+// ─── Bug reports ─────────────────────────────────────────────────────────────
+
+/**
+ * File a bug report about Merchiva. Open to every active member — the person
+ * who hits a bug is usually the one without permissions — so there is no
+ * permission check here or in the reducer. The context (surface, route, build,
+ * user agent) is captured by the caller via `captureBugContext()`.
+ */
+export async function reportBug(input: {
+  title: string;
+  body: string;
+  severity: BugSeverity;
+  context: BugContext;
+  screenshotUrl?: string | null;
+}): Promise<void> {
+  return conn().reducers.reportBug({
+    organizationId: orgId(),
+    title: input.title,
+    body: input.body,
+    severity: input.severity,
+    surface: input.context.surface,
+    route: input.context.route,
+    appVersion: input.context.appVersion,
+    userAgent: input.context.userAgent,
+    screenshotUrl: input.screenshotUrl ?? "",
+    date: bugDateStr(),
+  });
+}
+
+/** Triage a report: status, severity and the note explaining the outcome.
+ *  Owner / manager only (enforced by the reducer). */
+export async function updateBugReport(
+  bugId: string,
+  input: { status: BugStatus; severity: BugSeverity; resolutionNote?: string },
+): Promise<void> {
+  return conn().reducers.updateBugReport({
+    organizationId: orgId(),
+    bugId,
+    status: input.status,
+    severity: input.severity,
+    resolutionNote: input.resolutionNote ?? "",
+  });
+}
+
+/** Delete a report. The reporter may remove their own; managers, any. */
+export async function deleteBugReport(bugId: string): Promise<void> {
+  return conn().reducers.deleteBugReport({ organizationId: orgId(), bugId });
 }
 
 // ─── Punch Clock ─────────────────────────────────────────────────────────────
@@ -2256,7 +2289,7 @@ export async function verifyManagerPin(code: string): Promise<void> {
 
 /**
  * One-shot backfill for the row-level-security rollout: mirrors the org uuid
- * into `orgIdText`/`rootOrgId`, stamps `site_booking.organizationId`, and moves
+ * into `orgIdText`, stamps `site_booking.organizationId`, and moves
  * password hashes, POS tokens and punch PINs into tables clients cannot read.
  * Idempotent. Owner/service only.
  */

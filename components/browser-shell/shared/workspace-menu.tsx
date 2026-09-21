@@ -19,7 +19,6 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/loaders/geometric";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth, type AuthUser, type StoredAccount } from "@/lib/auth/context";
 import { useTabActions } from "@/lib/browser-shell";
 import { discardShellStateForSignOut } from "@/lib/browser-shell/sign-out";
@@ -35,36 +34,16 @@ export { SwitchModeLink, BackToDeviceLink } from "@/components/sidebar";
 
 /*
  * Account + workspace pieces shared by the desktop profile menu, the mobile page
- * menu and anything else that needs the store tree, account list or store
+ * menu and anything else that needs the store list, account list or store
  * creation. Behaviour copied from components/sidebar.tsx WorkspaceSwitcher /
  * WorkspaceDropdown (:346-422, :589-704).
  */
 
-// ─── Store tree ──────────────────────────────────────────────────────────────
+// ─── Store list ──────────────────────────────────────────────────────────────
 
-export type OrgTreeNode = { org: OrgSummary; children: OrgSummary[] };
-
-/**
- * Parent → children tree. Root orgs sorted by name; sub-stores listed under their
- * parent. An org whose parent isn't in the accessible list renders at the root so
- * it stays reachable.
- */
-export function buildOrgTree(organizations: readonly OrgSummary[]): OrgTreeNode[] {
-  const byId = new Map(organizations.map((org) => [org.id, org] as const));
-  const childrenOf = new Map<string, OrgSummary[]>();
-  for (const org of organizations) {
-    const parent = org.parentOrgId && byId.has(org.parentOrgId) ? org.parentOrgId : null;
-    if (!parent) continue;
-    const list = childrenOf.get(parent) ?? [];
-    list.push(org);
-    childrenOf.set(parent, list);
-  }
-  const roots: OrgTreeNode[] = [];
-  for (const org of organizations) {
-    const isRoot = !org.parentOrgId || !byId.has(org.parentOrgId);
-    if (isRoot) roots.push({ org, children: childrenOf.get(org.id) ?? [] });
-  }
-  return roots.sort((a, b) => a.org.name.localeCompare(b.org.name));
+/** Accessible stores, sorted by name. */
+export function sortOrgs(organizations: readonly OrgSummary[]): OrgSummary[] {
+  return [...organizations].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
@@ -73,16 +52,15 @@ export interface WorkspaceActions {
   user: AuthUser | null;
   accounts: StoredAccount[];
   currentOrg: OrgSummary | null;
-  tree: OrgTreeNode[];
-  eligibleParents: OrgSummary[];
+  stores: OrgSummary[];
   /** No-op for the current org; otherwise flushes tab state and hard-reloads into `orgId`. */
   switchOrg(orgId: string): Promise<void>;
   switchAccount(userId: string): void;
   addAccount(): void;
   /** Purges persisted browser-shell state (also after the tab store's teardown flush), then signs out. */
   signOut(): void;
-  /** Creates a store (optionally as a sub-store). Throws on failure so forms can show the error. */
-  createStore(name: string, parentId: string | null): Promise<void>;
+  /** Creates a store. Throws on failure so forms can show the error. */
+  createStore(name: string): Promise<void>;
 }
 
 export function useWorkspaceActions(opts?: { onDone?: () => void }): WorkspaceActions {
@@ -97,9 +75,7 @@ export function useWorkspaceActions(opts?: { onDone?: () => void }): WorkspaceAc
     onDoneRef.current = onDone;
   });
 
-  const tree = useMemo(() => buildOrgTree(organizations), [organizations]);
-  // Only root orgs can be parents (one-level hierarchy, enforced by the reducer).
-  const eligibleParents = useMemo(() => organizations.filter((org) => !org.parentOrgId), [organizations]);
+  const stores = useMemo(() => sortOrgs(organizations), [organizations]);
   const currentOrgId = currentOrg?.id ?? null;
   const currentUserId = user?.id ?? null;
 
@@ -149,10 +125,10 @@ export function useWorkspaceActions(opts?: { onDone?: () => void }): WorkspaceAc
   }, [authSignOut]);
 
   const createStore = useCallback(
-    async (name: string, parentId: string | null) => {
+    async (name: string) => {
       const trimmed = name.trim();
       if (!trimmed) return;
-      await createOrg(trimmed, parentId);
+      await createOrg(trimmed);
       void hapticSuccess();
       onDoneRef.current?.();
       // Refresh so PermissionsProvider picks up the new membership.
@@ -166,73 +142,47 @@ export function useWorkspaceActions(opts?: { onDone?: () => void }): WorkspaceAc
       user,
       accounts,
       currentOrg,
-      tree,
-      eligibleParents,
+      stores,
       switchOrg,
       switchAccount,
       addAccount,
       signOut,
       createStore,
     }),
-    [user, accounts, currentOrg, tree, eligibleParents, switchOrg, switchAccount, addAccount, signOut, createStore],
+    [user, accounts, currentOrg, stores, switchOrg, switchAccount, addAccount, signOut, createStore],
   );
 }
 
-// ─── Store tree list ─────────────────────────────────────────────────────────
+// ─── Store list ──────────────────────────────────────────────────────────────
 
 const ROW_CLASS =
   "flex w-full items-center gap-2 py-1.5 text-start text-[13px] transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none";
 
-export function StoreTreeList({
-  tree,
+export function StoreSwitchList({
+  stores,
   currentOrgId,
   onSelect,
 }: {
-  tree: OrgTreeNode[];
+  stores: readonly OrgSummary[];
   currentOrgId: string | null;
   onSelect(orgId: string): void;
 }): React.JSX.Element {
-  const t = useT();
   return (
     <div className="py-1">
-      {tree.map((node) => {
-        const rootCurrent = node.org.id === currentOrgId;
+      {stores.map((org) => {
+        const isCurrent = org.id === currentOrgId;
         return (
-          <div key={node.org.id} role="group" aria-label={node.org.name}>
-            <button
-              type="button"
-              onClick={() => onSelect(node.org.id)}
-              aria-current={rootCurrent ? "true" : undefined}
-              className={cn(ROW_CLASS, "px-3")}
-            >
-              <StoreLogo name={node.org.name} logoUrl={node.org.logoUrl} className="h-6 w-6 text-[10px]" />
-              <span className="min-w-0 flex-1 truncate font-medium">{node.org.name}</span>
-              {node.children.length > 0 && (
-                <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{node.children.length}</span>
-              )}
-              {rootCurrent && <Check className="h-3.5 w-3.5 shrink-0 text-foreground" aria-hidden />}
-            </button>
-            {node.children.map((child) => {
-              const childCurrent = child.id === currentOrgId;
-              return (
-                <button
-                  key={child.id}
-                  type="button"
-                  onClick={() => onSelect(child.id)}
-                  aria-current={childCurrent ? "true" : undefined}
-                  className={cn(ROW_CLASS, "ps-7 pe-3")}
-                >
-                  <span aria-hidden className="inline-block text-muted-foreground/70 rtl:-scale-x-100">↳</span>
-                  <StoreLogo name={child.name} logoUrl={child.logoUrl} className="h-6 w-6 text-[10px]" />
-                  <span className="min-w-0 flex-1 truncate">{child.name}</span>
-                  <span className="shrink-0 rounded border border-border px-1 text-[9px] uppercase leading-tight tracking-wide text-muted-foreground">
-                    {t("multiStore.subBadge")}
-                  </span>
-                  {childCurrent && <Check className="h-3.5 w-3.5 shrink-0 text-foreground" aria-hidden />}
-                </button>
-              );
-            })}
-          </div>
+          <button
+            key={org.id}
+            type="button"
+            onClick={() => onSelect(org.id)}
+            aria-current={isCurrent ? "true" : undefined}
+            className={cn(ROW_CLASS, "px-3")}
+          >
+            <StoreLogo name={org.name} logoUrl={org.logoUrl} className="h-6 w-6 text-[10px]" />
+            <span className="min-w-0 flex-1 truncate font-medium">{org.name}</span>
+            {isCurrent && <Check className="h-3.5 w-3.5 shrink-0 text-foreground" aria-hidden />}
+          </button>
         );
       })}
     </div>
@@ -241,37 +191,19 @@ export function StoreTreeList({
 
 // ─── Create store form ───────────────────────────────────────────────────────
 
-const ROOT_PARENT_VALUE = "__root__";
-
 export function CreateStoreForm({
-  eligibleParents,
   onCreate,
   onCancel,
-  nativeSelect = false,
 }: {
-  eligibleParents: readonly { id: string; name: string }[];
-  onCreate(name: string, parentId: string | null): Promise<void>;
+  onCreate(name: string): Promise<void>;
   onCancel(): void;
-  /** Native <select> for the parent picker; required inside shell drawers where Base UI Select's z-50 popup would sit underneath. */
-  nativeSelect?: boolean;
 }): React.JSX.Element {
   const t = useT();
   const nameId = useId();
-  const parentFieldId = useId();
-  const helpId = useId();
   const errorId = useId();
   const [name, setName] = useState("");
-  const [parentId, setParentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const parentItems = useMemo(
-    () => [
-      { value: ROOT_PARENT_VALUE, label: t("multiStore.parentNone") },
-      ...eligibleParents.map((parent) => ({ value: parent.id, label: parent.name })),
-    ],
-    [eligibleParents, t],
-  );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -280,17 +212,14 @@ export function CreateStoreForm({
     setLoading(true);
     setError(null);
     try {
-      await onCreate(trimmed, parentId);
+      await onCreate(trimmed);
       setName("");
-      setParentId(null);
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : t("components.sidebar.failedToCreateStore"));
     } finally {
       setLoading(false);
     }
   };
-
-  const describedBy = [eligibleParents.length > 0 ? helpId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2 px-3 py-2">
@@ -307,49 +236,6 @@ export function CreateStoreForm({
         aria-describedby={error ? errorId : undefined}
         className="h-7 text-[13px] md:text-[13px]"
       />
-      {eligibleParents.length > 0 && (
-        <div className="space-y-1">
-          <label htmlFor={parentFieldId} className="block text-[11px] text-muted-foreground">
-            {t("multiStore.parentLabel")}
-          </label>
-          {nativeSelect ? (
-            <select
-              id={parentFieldId}
-              value={parentId ?? ""}
-              onChange={(event) => setParentId(event.target.value || null)}
-              aria-describedby={describedBy}
-              className="h-7 w-full rounded-lg border border-input bg-background px-2 text-[13px] text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              <option value="">{t("multiStore.parentNone")}</option>
-              {eligibleParents.map((parent) => (
-                <option key={parent.id} value={parent.id}>
-                  {parent.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <Select
-              items={parentItems}
-              value={parentId ?? ROOT_PARENT_VALUE}
-              onValueChange={(value) => setParentId(value && value !== ROOT_PARENT_VALUE ? value : null)}
-            >
-              <SelectTrigger id={parentFieldId} size="sm" aria-describedby={describedBy} className="w-full text-[13px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {parentItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          <p id={helpId} className="text-[10px] leading-relaxed text-muted-foreground">
-            {parentId ? t("multiStore.parentHelpSub") : t("multiStore.parentHelpRoot")}
-          </p>
-        </div>
-      )}
       {error && (
         <p id={errorId} role="alert" className="text-[11px] text-destructive">
           {error}

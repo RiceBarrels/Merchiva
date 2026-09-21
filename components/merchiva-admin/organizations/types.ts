@@ -15,7 +15,6 @@ export interface OrganizationRow {
   subscriptionPriceId: string | null;
   subscriptionInterval: string | null;
   currentPeriodEnd: number | null;
-  parentOrgId: string | null;
   logoUrl: string | null;
 }
 

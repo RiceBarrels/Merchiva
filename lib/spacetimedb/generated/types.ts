@@ -81,6 +81,29 @@ export const BlogPost = __t.object("BlogPost", {
 });
 export type BlogPost = __Infer<typeof BlogPost>;
 
+export const BugReport = __t.object("BugReport", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  reporterId: __t.identity(),
+  reporterMemberId: __t.string(),
+  reporterName: __t.string(),
+  title: __t.string(),
+  body: __t.string(),
+  severity: __t.string(),
+  status: __t.string(),
+  surface: __t.string(),
+  route: __t.string(),
+  appVersion: __t.string(),
+  userAgent: __t.string(),
+  screenshotUrl: __t.string(),
+  date: __t.string(),
+  resolutionNote: __t.string(),
+  resolvedByName: __t.string(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type BugReport = __Infer<typeof BugReport>;
+
 export const ChatConversation = __t.object("ChatConversation", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -485,6 +508,7 @@ export const OrgMember = __t.object("OrgMember", {
   punchInCode: __t.option(__t.string()),
   hourlyRate: __t.option(__t.f64()),
   hourlyRateCents: __t.option(__t.i64()),
+  hasPunchCode: __t.bool(),
 });
 export type OrgMember = __Infer<typeof OrgMember>;
 

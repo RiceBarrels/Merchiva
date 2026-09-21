@@ -3,19 +3,17 @@
 import Link from "next/link";
 import { useState } from "react";
 import { formatTs } from "@/lib/merchiva-admin/client";
-import { Badge, ErrorBanner, Notice, Panel, btnCls, btnGhostCls, inputCls } from "@/components/merchiva-admin/ui";
+import { Badge, ErrorBanner, Notice, Panel, btnCls, inputCls } from "@/components/merchiva-admin/ui";
 import { subscriptionTone, userLabel, type OrganizationRow, type UserRow } from "./types";
 import { fieldCls, labelCls, useAction } from "./use-action";
 
 export function OrgHeader({
   org,
-  allOrgs,
   owner,
   memberCount,
   onChanged,
 }: {
   org: OrganizationRow;
-  allOrgs: OrganizationRow[];
   owner: UserRow | undefined;
   memberCount: number;
   onChanged: () => void;
@@ -23,11 +21,6 @@ export function OrgHeader({
   const { run, busy, error, notice } = useAction(onChanged);
   const [name, setName] = useState(org.name);
   const [logoUrl, setLogoUrl] = useState(org.logoUrl ?? "");
-  const [parentOrgId, setParentOrgId] = useState(org.parentOrgId ?? "");
-
-  const parent = org.parentOrgId ? allOrgs.find((o) => o.id === org.parentOrgId) : undefined;
-  const children = allOrgs.filter((o) => o.parentOrgId === org.id);
-  const parentCandidates = allOrgs.filter((o) => o.id !== org.id && !o.parentOrgId);
 
   async function rename(e: React.FormEvent) {
     e.preventDefault();
@@ -39,15 +32,6 @@ export function OrgHeader({
   async function saveLogo(e: React.FormEvent) {
     e.preventDefault();
     await run("updateOrgLogo", { organizationId: org.id, logoUrl: logoUrl.trim() || null }, logoUrl.trim() ? "Logo updated" : "Logo cleared");
-  }
-
-  async function saveParent(e: React.FormEvent) {
-    e.preventDefault();
-    if ((parentOrgId || "") === (org.parentOrgId ?? "")) return;
-    const target = parentOrgId ? allOrgs.find((o) => o.id === parentOrgId)?.name ?? parentOrgId : null;
-    const msg = target ? `Attach "${org.name}" as a sub-store of "${target}"?` : `Detach "${org.name}" from its parent and make it a root org?`;
-    if (!window.confirm(msg)) return;
-    await run("updateOrgParent", { organizationId: org.id, parentOrgId: parentOrgId || null }, target ? "Parent updated" : "Detached");
   }
 
   return (
@@ -63,8 +47,6 @@ export function OrgHeader({
           )}
           <h1 className="font-sans text-[24px] font-semibold tracking-tight">{org.name}</h1>
           <Badge tone={subscriptionTone(org.subscriptionStatus)}>{org.subscriptionStatus || "no subscription"}</Badge>
-          {org.parentOrgId && <Badge>sub-store</Badge>}
-          {children.length > 0 && <Badge>{children.length} sub-store{children.length === 1 ? "" : "s"}</Badge>}
         </div>
         <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-[12px] text-stone-600 sm:grid-cols-2 lg:grid-cols-4">
           <div>
@@ -83,33 +65,12 @@ export function OrgHeader({
             <dd>{formatTs(org.createdAt)}</dd>
           </div>
           <div>
-            <dt className="font-mono text-[10.5px] uppercase tracking-wider text-stone-400">Members / Parent</dt>
+            <dt className="font-mono text-[10.5px] uppercase tracking-wider text-stone-400">Members</dt>
             <dd>
               {memberCount} member{memberCount === 1 ? "" : "s"}
-              {parent && (
-                <>
-                  {" · parent "}
-                  <Link href={`/merchivaAdmin/organizations/${parent.id}`} className="hover:underline">
-                    {parent.name}
-                  </Link>
-                </>
-              )}
             </dd>
           </div>
         </dl>
-        {children.length > 0 && (
-          <div className="mt-1 text-[12px] text-stone-600">
-            Sub-stores:{" "}
-            {children.map((c, i) => (
-              <span key={c.id}>
-                {i > 0 && ", "}
-                <Link href={`/merchivaAdmin/organizations/${c.id}`} className="hover:underline">
-                  {c.name}
-                </Link>
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
       <Panel title="Organization">
@@ -133,27 +94,6 @@ export function OrgHeader({
                 Save
               </button>
             </div>
-          </form>
-          <form onSubmit={saveParent} className={fieldCls}>
-            <label className={labelCls}>Parent org</label>
-            <div className="flex gap-1.5">
-              <select className={inputCls} value={parentOrgId} onChange={(e) => setParentOrgId(e.target.value)} disabled={children.length > 0}>
-                <option value="">— none (root org) —</option>
-                {parentCandidates.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-              <button type="submit" className={btnGhostCls} disabled={busy || children.length > 0 || (parentOrgId || "") === (org.parentOrgId ?? "")}>
-                Apply
-              </button>
-            </div>
-            <p className="text-[11px] text-stone-500">
-              {children.length > 0
-                ? "Has sub-stores, so it cannot itself become a sub-store."
-                : "Detaching always works. Attaching is accepted by the module only when the caller owns the parent, so it may be rejected for the admin identity."}
-            </p>
           </form>
         </div>
       </Panel>

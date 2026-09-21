@@ -61,7 +61,8 @@
     },
     "usage": "AI 用量",
     "apps": "裝置應用",
-    "docs": "文檔"
+    "docs": "文檔",
+    "bugs": "問題反饋"
   },
   "login": {
     "title": "登錄 Merchiva",
@@ -372,6 +373,14 @@
         "noDescription": "暫無描述。",
         "addToCart": "加入購物車"
       }
+    },
+    "inventoryUsage": {
+      "title": "每次銷售消耗的庫存",
+      "description": "設定售出一件此商品時消耗多少庫存。",
+      "add": "添加項目",
+      "empty": "尚未設定庫存消耗。",
+      "noInventory": "請先添加庫存項目。",
+      "unitFallback": "單位"
     }
   },
   "staffing": {
@@ -969,6 +978,22 @@
           "alreadyMember": "呢位已經係團隊成員。",
           "alreadyInvited": "呢個電郵已經有待接受嘅邀請。"
         }
+      },
+      "punch": {
+        "label": "打卡碼",
+        "set": "已設置",
+        "notSet": "未設置",
+        "set_action": "設置打卡碼",
+        "change": "更改",
+        "clear": "清除打卡碼",
+        "placeholder": "4 位數字",
+        "saved": "打卡碼已保存",
+        "saveFailed": "保存失敗，請重試。",
+        "cleared": "打卡碼已清除",
+        "clearFailed": "清除失敗，請重試。",
+        "mustBeFour": "打卡碼必須是 4 位數字。",
+        "hintSelf": "用來打卡，也用來解鎖門店設備。",
+        "hintOther": "你可以設置，但看不到具體數字——同一組數字能解鎖門店設備。"
       }
     },
     "dialog": {
@@ -1157,6 +1182,9 @@
     "supplierInboxTaken": "這個供應商電郵前綴已被使用。",
     "supplierInboxInvalid": "請使用 3-32 位小寫字母、數字或連字號。",
     "copied": "已複製",
+    "squareConnectedShort": "已連接 Square",
+    "cloverConnectedShort": "已連接 Clover",
+    "connectPOS": "連接收銀系統",
     "connectedIntegrationsCount": "已連接 {count} 個",
     "connectPOSAndSchedule": "連接收銀系統和排班軟件",
     "posSystems": "收銀系統",
@@ -1180,9 +1208,6 @@
     "scheduleErrSaveFailed": "無法保存排班連接。",
     "scheduleErrDefault": "無法連接排班軟件。",
     "comingSoon": "即將推出",
-    "squareConnectedShort": "已連接 Square",
-    "cloverConnectedShort": "已連接 Clover",
-    "connectPOS": "連接收銀系統",
     "desktopNotifications": "桌面通知",
     "desktopEnabled": "已在此設備啓用",
     "desktopDisabled": "應用關閉時也接收推送提醒",
@@ -1468,7 +1493,10 @@
     "storeImageSaved": "店鋪圖片已更新",
     "storeImageFailed": "無法更新店鋪圖片",
     "storeImageRemove": "移除",
-    "storeImageUpload": "上載圖片"
+    "storeImageUpload": "上載圖片",
+    "teamOnTeamPage": "成員、角色與打卡碼",
+    "punchCodeOnTeamPage": "在團隊頁設置",
+    "createStoreHint": "建立一間擁有獨立庫存與預測的新門店。"
   },
   "lock": {
     "title": "設備已鎖定",
@@ -1755,6 +1783,7 @@
       "retailPrice": "零售價",
       "expirationBatches": "過期批次",
       "costPerUnit": "單位成本",
+      "unitContent": "單位規格",
       "lossRate": "損耗率",
       "status": "狀態",
       "supplier": "供應商",
@@ -1801,6 +1830,7 @@
         "retail": "零售"
       },
       "name": "商品名稱 *",
+      "description": "描述",
       "category": "分類",
       "currentStock": "當前庫存",
       "minStock": "最低庫存",
@@ -1810,6 +1840,7 @@
       "supplier": "供應商",
       "lossRate": "損耗率（%）",
       "namePlaceholder": "例如：阿拉比卡咖啡豆",
+      "descriptionPlaceholder": "此商品如何包裝、存放或使用……",
       "categoryPlaceholder": "例如：飲料",
       "unitPlaceholder": "千克、升、件…",
       "supplierPlaceholder": "供應商名稱",
@@ -1817,6 +1848,15 @@
       "minOrderQtyPlaceholder": "例如：24",
       "unitsPerCase": "每箱數量",
       "unitsPerCasePlaceholder": "例如：12",
+      "unitContentAmount": "每單位重量／容量",
+      "unitContentAmountPlaceholder": "例如 946",
+      "unitContentUnit": "單位",
+      "contentPreview": "庫存換算",
+      "contentPreviewEmpty": "填寫重量或容量，商品才能準確扣減庫存。",
+      "contentPreviewValue": "1 {unit} = {amount}",
+      "caseContentPreview": "每箱 {count} 件 = {amount}",
+      "back": "返回",
+      "next": "下一個",
       "cancel": "取消",
       "save": "保存更改",
       "saving": "保存中…",
@@ -3158,64 +3198,6 @@
     "quotaSaved": "配額已儲存",
     "quotaFailed": "儲存配額失敗"
   },
-  "multiStore": {
-    "subBadge": "子店",
-    "parentLabel": "母店鋪",
-    "parentNone": "無（建立為獨立店鋪）",
-    "parentHelpRoot": "建立一個獨立店鋪，擁有自己的庫存與預測。",
-    "parentHelpSub": "子店鋪與母店共用人員、產品、頻道、設計和網站。庫存與預測維持獨立。",
-    "drawerAddHint": "建立新店鋪或關聯為子店鋪",
-    "products": {
-      "filterShowingAll": "所有店鋪",
-      "filterShowingCurrent": "僅本店",
-      "soldAtLabel": "販售店鋪",
-      "allStores": "群組內所有店鋪",
-      "allStoresHint": "預設 — 所有店鋪皆販售",
-      "thisStore": "目前",
-      "soldAtHelp": "取消勾選某店鋪即可在該店鋪隱藏此產品。庫存仍依店鋪獨立管理。",
-      "tableHead": "販售店鋪",
-      "cellAll": "全部",
-      "cellNone": "無",
-      "cellCount": "{count} 家",
-      "savedToast": "已更新此產品的販售店鋪",
-      "saveFailedToast": "更新失敗",
-      "dialogTitle": "此產品在哪些店鋪販售？"
-    },
-    "settings": {
-      "cardTitle": "多店鋪",
-      "cardMetaSolo": "獨立店鋪",
-      "cardMetaParent": "擁有 {count} 個子店鋪",
-      "cardMetaSub": "{parent} 的子店鋪",
-      "title": "多店鋪管理",
-      "description": "將店鋪歸入母店以共用人員、產品、頻道、設計和網站。",
-      "currentRole": "本店鋪",
-      "roleSolo": "獨立 — 不屬於任何母子店鋪群組。",
-      "roleParent": "擁有 {count} 個子店鋪。",
-      "roleSub": "{parent} 的子店鋪。",
-      "groupHeader": "共用群組內的店鋪",
-      "groupEmpty": "無關聯店鋪。",
-      "parentBadge": "母店",
-      "thisStore": "目前",
-      "policyHeader": "共用政策",
-      "policySharedTitle": "店鋪間共用",
-      "policySharedList": "人員、產品、頻道、設計、網站",
-      "policyIsolatedTitle": "各店獨立",
-      "policyIsolatedList": "庫存、銷售預測",
-      "detachHeader": "脫離母店",
-      "detachHelp": "將此子店鋪變回獨立店鋪。共用資源仍留在母店 — 此店鋪只保留自己的資料。",
-      "detachButton": "脫離",
-      "detachConfirm": "確定將此店鋪從母店脫離嗎？共用的人員、產品和網站將不再顯示於此。",
-      "detachSuccess": "已脫離母店",
-      "detachFailed": "脫離失敗",
-      "attachHeader": "關聯至母店鋪",
-      "attachHelp": "將此店鋪設為你擁有的另一個店鋪的子店鋪。關聯後將與母店共用人員、產品、頻道、設計和網站。",
-      "attachPlaceholder": "選擇母店鋪",
-      "attachButton": "關聯",
-      "attachConfirm": "確定將此店鋪關聯為子店鋪嗎？",
-      "attachSuccess": "已關聯為子店鋪",
-      "attachFailed": "關聯失敗"
-    }
-  },
   "landing": {
     "nav": {
       "features": "功能",
@@ -3898,7 +3880,8 @@
     "pageSubtitle": "管理 API 金鑰及 Webhook 整合",
     "tabs": {
       "apiKeys": "API 金鑰",
-      "webhooks": "Webhook"
+      "webhooks": "Webhook",
+      "mcp": "MCP 伺服器"
     },
     "apiKey": {
       "title": "API 金鑰",
@@ -3949,6 +3932,25 @@
     "empty": {
       "title": "尚未設定 Webhook",
       "description": "於上方新增 Webhook 端點，即可接收有關店舖事件的即時通知。"
+    },
+    "mcp": {
+      "addTitle": "連接 MCP 伺服器",
+      "addDescription": "允許 Mr. Merchiva 在對話中使用外部 Model Context Protocol 伺服器的工具。",
+      "label": "名稱",
+      "url": "伺服器網址",
+      "token": "Bearer 權杖",
+      "tokenPlaceholder": "可選權杖",
+      "securityNote": "MCP 權杖僅保存在本瀏覽器，且只隨對話請求傳送。除非設定 MCP_ALLOW_LOCALHOST=true，伺服器會攔截 localhost 與內網網址。",
+      "addSubmit": "添加 MCP 伺服器",
+      "configuredTitle": "已連接的 MCP 伺服器",
+      "configuredDescription": "傳送對話訊息時，已啟用的伺服器會附加給 Mr. Merchiva。",
+      "emptyTitle": "尚未連接 MCP 伺服器",
+      "emptyDescription": "連接一個 HTTPS MCP 端點，讓助手能夠使用外部工具。",
+      "toolsFound": "找到 {count} 個工具",
+      "toastAdded": "已添加 MCP 伺服器",
+      "toastRemoved": "已移除 MCP 伺服器",
+      "toastConnected": "MCP 已連接：找到 {count} 個工具",
+      "toastFailed": "MCP 連接失敗"
     }
   },
   "punchIn": {
@@ -4426,7 +4428,9 @@
       "sales": "銷售",
       "bookings": "預約",
       "channel": "聊天",
-      "settings-org": "分店設定"
+      "docs": "文件",
+      "settings-org": "分店設定",
+      "bugs": "問題反饋"
     },
     "notAvailableHere": "呢部裝置唔支援呢個功能",
     "lite": {
@@ -4603,6 +4607,29 @@
         "requestFailed": "傳送失敗，請再試一次。",
         "completed": "已完成的日數",
         "dayShort": "第 {day} 日"
+      },
+      "bugs": {
+        "report": "反饋問題",
+        "reportHint": "App 有問題？告訴團隊。",
+        "myOpen": "我的待處理",
+        "mine": "我的",
+        "everyone": "全部",
+        "myReports": "我的反饋",
+        "openReports": "待處理反饋",
+        "teamAllClear": "暫無待處理",
+        "none": "還沒有反饋",
+        "noneHint": "App 出問題時，點上面的按鈕。",
+        "what": "出了什麼問題？",
+        "whatPlaceholder": "一句話説明",
+        "details": "具體情況",
+        "detailsPlaceholder": "你做了什麼、出了什麼問題。",
+        "severity": "嚴重程度",
+        "photo": "添加照片",
+        "retake": "重拍照片",
+        "send": "提交",
+        "titleRequired": "請先寫一句話説明。",
+        "uploadFailed": "照片添加失敗。",
+        "failed": "提交失敗，請重試。"
       }
     },
     "catalogDesc": {
@@ -4620,7 +4647,8 @@
       "inventory": "點算庫存、標記缺貨、記錄損耗。",
       "products": "查看產品和價格。",
       "sales": "今日銷售一覽。",
-      "bookings": "今日和聽日的預約。"
+      "bookings": "今日和聽日的預約。",
+      "bugs": "反饋 App 的問題，並跟進處理進度。"
     },
     "appStore": {
       "hint": "選擇這家店使用邊啲功能。新增後的應用程式會同時出現在後台、分店平板和員工手機上；必備應用程式一律開啟。",
@@ -4658,11 +4686,7 @@
     "channel": "頻道",
     "logOut": "登出",
     "logOutSub": "釋放裝置畀下一位使用",
-    "switchToManager": "切換至經理模式",
     "requiresManagerPin": "需要經理 PIN",
-    "managerMode": "經理模式",
-    "managerPinPrompt": "輸入經理 PIN，將此裝置切換至經理模式。",
-    "managerModeOn": "經理模式已開啟",
     "loggedIn": "已登入",
     "loggedOut": "已登出",
     "loggedOutIdle": "已登出 · 無活動",
@@ -4708,7 +4732,6 @@
     "logOutKeepSub": "保持打卡狀態 · 將裝置留畀下一位"
   },
   "personalDevice": {
-    "managerBadge": "經理",
     "leaveBtn": "離開",
     "channelBtn": "頻道",
     "noChannelsTitle": "仲未有頻道",
@@ -4738,8 +4761,6 @@
       "endBreakSub": "繼續你嘅更次",
       "storeLogin": "喺門市裝置登入",
       "storeLoginSub": "掃描門市裝置上嘅 QR 碼",
-      "managerMode": "切換至經理模式",
-      "managerModeSub": "打開經理後台",
       "exitMode": "離開個人模式",
       "exitModeSub": "返回模式選擇頁",
       "leaveWork": "落班",
@@ -5483,6 +5504,29 @@
       "reload": "重新加載",
       "home": "主頁"
     },
+    "contextMenu": {
+      "label": "右鍵選單",
+      "openInNewTab": "在新標籤頁中打開",
+      "openInBackgroundTab": "在背景標籤頁中打開",
+      "openInBrowser": "在瀏覽器中打開",
+      "copyLink": "複製連結",
+      "bookmarkLink": "收藏此連結",
+      "openImage": "在新標籤頁中打開圖片",
+      "copyImageLink": "複製圖片地址",
+      "copy": "複製",
+      "cut": "剪下",
+      "paste": "貼上",
+      "selectAll": "全選",
+      "searchFor": "搜尋「{text}」",
+      "bookmarkPage": "收藏此頁面",
+      "removeBookmark": "取消收藏",
+      "bookmarkRemoved": "已取消收藏",
+      "copyPageLink": "複製頁面連結",
+      "copied": "已複製",
+      "copyFailed": "無法複製到剪貼簿",
+      "pasteDenied": "請允許存取剪貼簿後再貼上",
+      "openFailed": "無法打開該連結"
+    },
     "newTabPage": {
       "searchPlaceholder": "搜索頁面、文檔和標籤頁",
       "apps": "應用",
@@ -5656,5 +5700,63 @@
       "suppliersSub": "供應商與採購訂單",
       "wasteSub": "每日廢棄與處置"
     }
+  },
+  "bugs": {
+    "title": "問題追蹤",
+    "openCount": "{n} 個待處理",
+    "allClear": "暫無待處理",
+    "report": "反饋問題",
+    "reportDesc": "説明出了什麼問題。頁面、版本和設備信息會自動附上。",
+    "search": "搜索反饋",
+    "filterAll": "全部",
+    "status": {
+      "open": "待處理",
+      "in_progress": "處理中",
+      "fixed": "已修復",
+      "wont_fix": "不修復"
+    },
+    "severity": {
+      "low": "輕微",
+      "normal": "一般",
+      "high": "嚴重",
+      "blocker": "無法使用"
+    },
+    "surface": {
+      "manager": "管理端",
+      "store": "門店設備",
+      "personal": "手機"
+    },
+    "empty": "暫無問題反饋",
+    "emptyDesc": "團隊裏任何人都可以反饋問題——在這裏、門店平板或自己的手機上。",
+    "emptyFiltered": "沒有匹配項",
+    "emptyFilteredDesc": "換個篩選條件或關鍵詞試試。",
+    "formTitle": "出了什麼問題？",
+    "formTitlePlaceholder": "一句話説明",
+    "formBody": "具體情況",
+    "formBodyPlaceholder": "你做了什麼、期望看到什麼、實際發生了什麼。",
+    "formSeverity": "嚴重程度",
+    "formScreenshot": "截圖",
+    "formScreenshotAdd": "添加截圖",
+    "submit": "提交反饋",
+    "sending": "提交中…",
+    "sent": "已提交",
+    "sendFailed": "提交失敗，請重試。",
+    "uploadFailed": "截圖上傳失敗。",
+    "titleRequired": "請先寫一句話説明。",
+    "contextHint": "頁面、版本和設備信息會自動附上。",
+    "contextPage": "頁面",
+    "contextBuild": "版本",
+    "contextDevice": "設備",
+    "detailStatus": "狀態",
+    "detailSeverity": "嚴重程度",
+    "resolution": "處理説明",
+    "resolutionPlaceholder": "做了什麼處理，或為什麼不修復。",
+    "resolvedBy": "由 {name} 關閉",
+    "triageHint": "只有店主和店長可以更改狀態。",
+    "saved": "已更新",
+    "saveFailed": "保存失敗，請重試。",
+    "deleteFailed": "刪除失敗，請重試。",
+    "unknownReporter": "某位同事",
+    "unknownVersion": "未知"
   }
 }

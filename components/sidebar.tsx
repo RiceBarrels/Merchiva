@@ -29,7 +29,7 @@ function SidebarTooltip({ label, show, children }: { label: string; show: boolea
 
 import type { StoredAccount } from "@/lib/auth/context";
 import { LogOut, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, UserPlus } from "lucide-react";
-import { APP_MODE_ICONS, AppStoreIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DocsIcon, FinancesIcon, InventoryIcon, ReportsIcon, SalesIcon, ScheduleIcon, SettingsIcon, SuppliersIcon, TasksIcon, TrainingIcon, WasteIcon, type AppIcon } from "@/components/device/app-icons";
+import { APP_MODE_ICONS, AppStoreIcon, BugIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DocsIcon, FinancesIcon, InventoryIcon, ReportsIcon, SalesIcon, ScheduleIcon, SettingsIcon, SuppliersIcon, TasksIcon, TrainingIcon, WasteIcon, type AppIcon } from "@/components/device/app-icons";
 import { useTabActions } from "@/lib/browser-shell/hooks";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
@@ -49,7 +49,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { clearCache } from "@/lib/cache";
 import { createOrg } from "@/lib/spacetimedb/actions";
 import { useStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
-import { useAppMode, PERSONAL_MODE_HREFS, clearManagerOverride } from "@/lib/app-mode";
+import { useAppMode, PERSONAL_MODE_HREFS } from "@/lib/app-mode";
 import { StoreDeviceLock } from "@/components/store-device-lock";
 import { useCurrentOperator, setCurrentOperator } from "@/lib/store-device-lock";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
@@ -104,6 +104,7 @@ const navItems: NavItemExt[] = [
     ] },
   { labelKey: "nav.chat",      href: "/manager/channel",        icon: ChannelIcon,     permissionKey: "staffing"  },
   { labelKey: "nav.docs", href: "/manager/docs", icon: DocsIcon, permissionKey: "dashboard" },
+  { labelKey: "nav.bugs", href: "/manager/bugs", icon: BugIcon, permissionKey: "dashboard" },
   { labelKey: "nav.apps",      href: "/manager/apps",        icon: AppStoreIcon,    permissionKey: "settings" },
 ];
 
@@ -115,7 +116,6 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
   const [creating, setCreating] = useState(false);
   const [newStoreName, setNewStoreName] = useState("");
   // null = create as a root store; an org id = create as a sub-store of that org
-  const [newParentId, setNewParentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -132,38 +132,8 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  // Build a parent → children tree from the flat org list. Only top-level
-  // (no parentOrgId) orgs become roots; everything else is rendered indented
-  // under its parent. Orgs whose parent isn't in the user's accessible list
-  // (rare — happens when membership doesn't extend to the root) fall back to
-  // rendering at the root for visibility.
-  type TreeNode = { org: typeof organizations[number]; children: typeof organizations };
-  const tree: TreeNode[] = (() => {
-    const byId = new Map(organizations.map((o) => [o.id, o] as const));
-    const roots: TreeNode[] = [];
-    const childrenOf = new Map<string, typeof organizations>();
-    for (const org of organizations) {
-      const parent = org.parentOrgId && byId.has(org.parentOrgId) ? org.parentOrgId : null;
-      if (parent) {
-        const arr = childrenOf.get(parent) ?? [];
-        arr.push(org);
-        childrenOf.set(parent, arr);
-      }
-    }
-    for (const org of organizations) {
-      const isRoot = !org.parentOrgId || !byId.has(org.parentOrgId);
-      if (isRoot) {
-        roots.push({ org, children: childrenOf.get(org.id) ?? [] });
-      }
-    }
-    return roots.sort((a, b) => a.org.name.localeCompare(b.org.name));
-  })();
-
-  // Only root orgs can be parents (we enforce one-level hierarchy on the
-  // server) and only the owner can attach a sub-store — but we don't know who
-  // owns each org client-side, so we show every root and let the reducer
-  // reject if the caller doesn't own the chosen parent.
-  const eligibleParents = organizations.filter((o) => !o.parentOrgId);
+  // Stores the user can reach, sorted by name.
+  const sortedOrgs = [...organizations].sort((a, b) => a.name.localeCompare(b.name));
 
   const handleSwitch = async (orgId: string) => {
     if (orgId === currentOrg?.id) { setOpen(false); return; }
@@ -180,12 +150,11 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      await createOrg(name, newParentId);
+      await createOrg(name);
       hapticSuccess();
       setOpen(false);
       setCreating(false);
       setNewStoreName("");
-      setNewParentId(null);
       onClose?.();
       // Refresh so PermissionsProvider picks up the new org membership
       // and switches the active org.
@@ -205,48 +174,22 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
       >
         <StoreLogo name={currentOrg?.name ?? ""} logoUrl={currentOrg?.logoUrl} className="h-5 w-5 text-[10px]" />
         <span className="flex-1 truncate text-left">{currentOrg?.name ?? t("nav.selectStore")}</span>
-        {currentOrg?.parentOrgId && (
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px shrink-0">
-            {t("multiStore.subBadge")}
-          </span>
-        )}
         <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
 
       {open && (
         <div className="absolute left-3 right-3 top-full mt-1 z-50 rounded border border-border bg-card shadow-md max-h-[70vh] overflow-y-auto">
           <div className="py-1">
-            {tree.map((node) => (
-              <div key={node.org.id}>
-                <button
-                  onClick={() => handleSwitch(node.org.id)}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
-                >
-                  <StoreLogo name={node.org.name} logoUrl={node.org.logoUrl} className="h-6 w-6 text-[10px]" />
-                  <span className="flex-1 truncate font-medium">{node.org.name}</span>
-                  {node.children.length > 0 && (
-                    <span className="text-[10px] text-muted-foreground tabular-nums">
-                      {node.children.length}
-                    </span>
-                  )}
-                  {node.org.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
-                </button>
-                {node.children.map((child) => (
-                  <button
-                    key={child.id}
-                    onClick={() => handleSwitch(child.id)}
-                    className="flex w-full items-center gap-2 pl-7 pr-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
-                  >
-                    <span className="text-muted-foreground/70">↳</span>
-                    <StoreLogo name={child.name} logoUrl={child.logoUrl} className="h-6 w-6 text-[10px]" />
-                    <span className="flex-1 truncate">{child.name}</span>
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px shrink-0">
-                      {t("multiStore.subBadge")}
-                    </span>
-                    {child.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
-                  </button>
-                ))}
-              </div>
+            {sortedOrgs.map((org) => (
+              <button
+                key={org.id}
+                onClick={() => handleSwitch(org.id)}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
+              >
+                <StoreLogo name={org.name} logoUrl={org.logoUrl} className="h-6 w-6 text-[10px]" />
+                <span className="flex-1 truncate font-medium">{org.name}</span>
+                {org.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
+              </button>
             ))}
           </div>
 
@@ -268,26 +211,6 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
                   placeholder={t("nav.storeName")}
                   className="w-full rounded border border-border bg-background px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-foreground/20"
                 />
-                {eligibleParents.length > 0 && (
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-muted-foreground">
-                      {t("multiStore.parentLabel")}
-                    </label>
-                    <select
-                      value={newParentId ?? ""}
-                      onChange={(e) => setNewParentId(e.target.value || null)}
-                      className="w-full rounded border border-border bg-background px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-foreground/20"
-                    >
-                      <option value="">{t("multiStore.parentNone")}</option>
-                      {eligibleParents.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      {newParentId ? t("multiStore.parentHelpSub") : t("multiStore.parentHelpRoot")}
-                    </p>
-                  </div>
-                )}
                 {error && <p className="text-xs text-destructive">{error}</p>}
                 <div className="flex gap-1.5">
                   <button
@@ -299,7 +222,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setCreating(false); setError(null); setNewStoreName(""); setNewParentId(null); }}
+                    onClick={() => { setCreating(false); setError(null); setNewStoreName(""); }}
                     className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
                   >
                     {t("common.cancel")}
@@ -318,7 +241,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
  * Combined store + account switcher for desktop. Replaces the separate
  * StoreSwitcher (top) and AccountSwitcher (bottom) mounts so the desktop UI
  * matches the mobile drawer: one trigger shows current org + signed-in email,
- * and one dropdown lists both stores (as a parent/child tree) and accounts
+ * and one dropdown lists both stores and accounts
  * with the create flows + sign out.
  */
 function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; collapsed?: boolean }) {
@@ -329,7 +252,6 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newStoreName, setNewStoreName] = useState("");
-  const [newParentId, setNewParentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -346,32 +268,8 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  // Parent → children tree for the store list. Root orgs first, sub-stores
-  // indented underneath; an org whose parent isn't in the user's accessible
-  // list still renders at the root so it's reachable.
-  type TreeNode = { org: typeof organizations[number]; children: typeof organizations };
-  const tree: TreeNode[] = (() => {
-    const byId = new Map(organizations.map((o) => [o.id, o] as const));
-    const roots: TreeNode[] = [];
-    const childrenOf = new Map<string, typeof organizations>();
-    for (const org of organizations) {
-      const parent = org.parentOrgId && byId.has(org.parentOrgId) ? org.parentOrgId : null;
-      if (parent) {
-        const arr = childrenOf.get(parent) ?? [];
-        arr.push(org);
-        childrenOf.set(parent, arr);
-      }
-    }
-    for (const org of organizations) {
-      const isRoot = !org.parentOrgId || !byId.has(org.parentOrgId);
-      if (isRoot) {
-        roots.push({ org, children: childrenOf.get(org.id) ?? [] });
-      }
-    }
-    return roots.sort((a, b) => a.org.name.localeCompare(b.org.name));
-  })();
-
-  const eligibleParents = organizations.filter((o) => !o.parentOrgId);
+  // Stores the user can reach, sorted by name.
+  const sortedOrgs = [...organizations].sort((a, b) => a.name.localeCompare(b.name));
 
   const handleSwitchOrg = async (orgId: string) => {
     if (orgId === currentOrg?.id) { setOpen(false); return; }
@@ -396,12 +294,11 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
     setLoading(true);
     setError(null);
     try {
-      await createOrg(name, newParentId);
+      await createOrg(name);
       hapticSuccess();
       setOpen(false);
       setCreating(false);
       setNewStoreName("");
-      setNewParentId(null);
       onClose?.();
       router.refresh();
     } catch (err) {
@@ -442,15 +339,12 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
           <WorkspaceDropdown
             currentOrg={currentOrg}
             user={user}
-            tree={tree}
+            stores={sortedOrgs}
             accounts={accounts}
-            eligibleParents={eligibleParents}
             creating={creating}
             setCreating={setCreating}
             newStoreName={newStoreName}
             setNewStoreName={setNewStoreName}
-            newParentId={newParentId}
-            setNewParentId={setNewParentId}
             error={error}
             loading={loading}
             onSwitchOrg={handleSwitchOrg}
@@ -458,7 +352,7 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
             onCreateStore={handleCreateStore}
             onAddAccount={handleAddAccount}
             onLogout={handleLogout}
-            onCancelCreate={() => { setCreating(false); setError(null); setNewStoreName(""); setNewParentId(null); }}
+            onCancelCreate={() => { setCreating(false); setError(null); setNewStoreName(""); }}
             // Anchored to a tile in the bottom rail, so position above-right.
             placement="up-right"
           />
@@ -480,11 +374,6 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
             <span className="text-[13px] font-medium text-foreground truncate">
               {currentOrg?.name ?? t("nav.selectStore")}
             </span>
-            {currentOrg?.parentOrgId && (
-              <span className="text-[9px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 leading-tight shrink-0">
-                {t("multiStore.subBadge")}
-              </span>
-            )}
           </div>
           <p className="text-[11px] text-muted-foreground truncate font-mono">{user?.email ?? ""}</p>
         </div>
@@ -494,15 +383,12 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
         <WorkspaceDropdown
           currentOrg={currentOrg}
           user={user}
-          tree={tree}
+          stores={sortedOrgs}
           accounts={accounts}
-          eligibleParents={eligibleParents}
           creating={creating}
           setCreating={setCreating}
           newStoreName={newStoreName}
           setNewStoreName={setNewStoreName}
-          newParentId={newParentId}
-          setNewParentId={setNewParentId}
           error={error}
           loading={loading}
           onSwitchOrg={handleSwitchOrg}
@@ -510,7 +396,7 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
           onCreateStore={handleCreateStore}
           onAddAccount={handleAddAccount}
           onLogout={handleLogout}
-          onCancelCreate={() => { setCreating(false); setError(null); setNewStoreName(""); setNewParentId(null); }}
+          onCancelCreate={() => { setCreating(false); setError(null); setNewStoreName(""); }}
           placement="down"
         />
       )}
@@ -521,20 +407,17 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
 /**
  * Shared dropdown panel for the workspace switcher — rendered the same way in
  * both collapsed and expanded modes so we get one source of truth for the
- * store tree, accounts list, and create-store form.
+ * store list, accounts list, and create-store form.
  */
 function WorkspaceDropdown({
   currentOrg,
   user,
-  tree,
+  stores,
   accounts,
-  eligibleParents,
   creating,
   setCreating,
   newStoreName,
   setNewStoreName,
-  newParentId,
-  setNewParentId,
   error,
   loading,
   onSwitchOrg,
@@ -545,17 +428,14 @@ function WorkspaceDropdown({
   onCancelCreate,
   placement,
 }: {
-  currentOrg: { id: string; name: string; parentOrgId?: string | null; logoUrl?: string | null } | null;
+  currentOrg: { id: string; name: string; logoUrl?: string | null } | null;
   user: { id: string; email: string } | null;
-  tree: { org: { id: string; name: string; parentOrgId?: string | null; logoUrl?: string | null }; children: { id: string; name: string; parentOrgId?: string | null; logoUrl?: string | null }[] }[];
+  stores: { id: string; name: string; logoUrl?: string | null }[];
   accounts: StoredAccount[];
-  eligibleParents: { id: string; name: string }[];
   creating: boolean;
   setCreating: (v: boolean) => void;
   newStoreName: string;
   setNewStoreName: (v: string) => void;
-  newParentId: string | null;
-  setNewParentId: (v: string | null) => void;
   error: string | null;
   loading: boolean;
   onSwitchOrg: (id: string) => void;
@@ -590,37 +470,16 @@ function WorkspaceDropdown({
         </p>
       </div>
       <div className="py-1">
-        {tree.map((node) => (
-          <div key={node.org.id}>
-            <button
-              onClick={() => onSwitchOrg(node.org.id)}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] hover:bg-muted transition-colors text-left"
-            >
-              <StoreLogo name={node.org.name} logoUrl={node.org.logoUrl} className="h-6 w-6 text-[10px]" />
-              <span className="flex-1 truncate font-medium">{node.org.name}</span>
-              {node.children.length > 0 && (
-                <span className="text-[10px] text-muted-foreground tabular-nums">
-                  {node.children.length}
-                </span>
-              )}
-              {node.org.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
-            </button>
-            {node.children.map((child) => (
-              <button
-                key={child.id}
-                onClick={() => onSwitchOrg(child.id)}
-                className="flex w-full items-center gap-2 pl-7 pr-3 py-1.5 text-[13px] hover:bg-muted transition-colors text-left"
-              >
-                <span className="text-muted-foreground/70">↳</span>
-                <StoreLogo name={child.name} logoUrl={child.logoUrl} className="h-6 w-6 text-[10px]" />
-                <span className="flex-1 truncate">{child.name}</span>
-                <span className="text-[9px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 leading-tight shrink-0">
-                  {t("multiStore.subBadge")}
-                </span>
-                {child.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
-              </button>
-            ))}
-          </div>
+        {stores.map((store) => (
+          <button
+            key={store.id}
+            onClick={() => onSwitchOrg(store.id)}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] hover:bg-muted transition-colors text-left"
+          >
+            <StoreLogo name={store.name} logoUrl={store.logoUrl} className="h-6 w-6 text-[10px]" />
+            <span className="flex-1 truncate font-medium">{store.name}</span>
+            {store.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
+          </button>
         ))}
       </div>
 
@@ -643,26 +502,6 @@ function WorkspaceDropdown({
               placeholder={t("nav.storeName")}
               className="w-full rounded border border-border bg-background px-2 py-1 text-[13px] outline-none focus:ring-1 focus:ring-foreground/20"
             />
-            {eligibleParents.length > 0 && (
-              <div className="space-y-1">
-                <label className="text-[11px] text-muted-foreground">
-                  {t("multiStore.parentLabel")}
-                </label>
-                <select
-                  value={newParentId ?? ""}
-                  onChange={(e) => setNewParentId(e.target.value || null)}
-                  className="w-full rounded border border-border bg-background px-2 py-1 text-[13px] outline-none focus:ring-1 focus:ring-foreground/20"
-                >
-                  <option value="">{t("multiStore.parentNone")}</option>
-                  {eligibleParents.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  {newParentId ? t("multiStore.parentHelpSub") : t("multiStore.parentHelpRoot")}
-                </p>
-              </div>
-            )}
             {error && <p className="text-[11px] text-destructive">{error}</p>}
             <div className="flex gap-1.5">
               <button
@@ -1162,10 +1001,7 @@ export function BackToDeviceLink({ onClick }: { onClick?: () => void }) {
   return (
     <Link
       href={isStore ? "/store" : "/personal"}
-      onClick={() => {
-        clearManagerOverride();
-        onClick?.();
-      }}
+      onClick={onClick}
       className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
     >
       <Icon className="h-4 w-4 shrink-0" />

@@ -12,5 +12,8 @@ import {
 
 export default {
   organizationId: __t.string(),
-  parentOrgId: __t.option(__t.string()),
+  bugId: __t.string(),
+  status: __t.string(),
+  severity: __t.string(),
+  resolutionNote: __t.string(),
 };

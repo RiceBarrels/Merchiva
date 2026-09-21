@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/loaders/geometric";
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { useNow } from "@/lib/use-now";
 import { useOrganizations } from "@/lib/spacetimedb/hooks";
 import { evaluateSubscription } from "@/lib/billing/subscription";
 import type { OrgSummary } from "@/lib/types";
@@ -45,29 +46,29 @@ export function StoreLogo({
 }
 
 // ─── StorePlanBadge ───────────────────────────────────────────────────────────
-// Plan chip for a store. Subscriptions live on the ROOT org — sub-stores
-// inherit the parent's plan, so we resolve parentOrgId ?? id before looking up
-// the org row.
+// Plan chip for a store. Each store carries its own subscription.
 
 export function StorePlanBadge({
   store,
   className,
 }: {
-  store: Pick<OrgSummary, "id" | "parentOrgId">;
+  store: Pick<OrgSummary, "id">;
   className?: string;
 }) {
   const t = useT();
   const [orgRows] = useOrganizations();
+  // A trial that lapses while the picker is open must re-render the badge, and
+  // reading the clock during render is impure — so the clock ticks in a hook.
+  const now = useNow(60_000);
 
-  const rootId = store.parentOrgId ?? store.id;
   const row = useMemo(
-    () => orgRows.find((o) => o.id.toString() === rootId) ?? null,
-    [orgRows, rootId],
+    () => orgRows.find((o) => o.id.toString() === store.id) ?? null,
+    [orgRows, store.id],
   );
 
   if (!row) return null;
 
-  const access = evaluateSubscription(row, Date.now());
+  const access = evaluateSubscription(row, now.getTime());
 
   let label: string;
   let tone: StatusTone;
@@ -101,8 +102,7 @@ export function StorePlanBadge({
 }
 
 // ─── StoreList ────────────────────────────────────────────────────────────────
-// Flat list of stores rendered as a one-level tree: root stores sorted by
-// name, each followed by its indented sub-stores.
+// Flat list of stores, sorted by name.
 
 export function StoreList({
   stores,
@@ -117,37 +117,14 @@ export function StoreList({
 }) {
   const t = useT();
 
-  // Root stores (no parent, or parent not in the accessible list) sorted by
-  // name, each immediately followed by its sub-stores.
-  const ordered = useMemo(() => {
-    const byId = new Map(stores.map((s) => [s.id, s] as const));
-    const childrenOf = new Map<string, OrgSummary[]>();
-    const roots: OrgSummary[] = [];
-    for (const s of stores) {
-      const parent = s.parentOrgId && byId.has(s.parentOrgId) ? s.parentOrgId : null;
-      if (parent) {
-        const arr = childrenOf.get(parent) ?? [];
-        arr.push(s);
-        childrenOf.set(parent, arr);
-      } else {
-        roots.push(s);
-      }
-    }
-    roots.sort((a, b) => a.name.localeCompare(b.name));
-    const out: { store: OrgSummary; isChild: boolean }[] = [];
-    for (const root of roots) {
-      out.push({ store: root, isChild: false });
-      const children = (childrenOf.get(root.id) ?? []).sort((a, b) =>
-        a.name.localeCompare(b.name),
-      );
-      for (const child of children) out.push({ store: child, isChild: true });
-    }
-    return out;
-  }, [stores]);
+  const ordered = useMemo(
+    () => [...stores].sort((a, b) => a.name.localeCompare(b.name)),
+    [stores],
+  );
 
   return (
     <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-      {ordered.map(({ store: s, isChild }) => {
+      {ordered.map((s) => {
         const isCurrent = currentOrgId != null && s.id === currentOrgId;
         const isBusy = busyOrgId === s.id;
         const disabled = isCurrent || busyOrgId != null;
@@ -161,19 +138,14 @@ export function StoreList({
             }}
             className={cn(
               "flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors",
-              isChild && "pl-6",
               !disabled && "hover:bg-muted/50",
               disabled && !isCurrent && "opacity-50",
             )}
           >
-            {isChild && <span className="shrink-0 text-muted-foreground/70">↳</span>}
             <StoreLogo name={s.name} logoUrl={s.logoUrl} />
             <span className="min-w-0 flex-1 truncate text-sm font-medium">
               {s.name}
             </span>
-            {s.parentOrgId && (
-              <StatusBadge size="xs">{t("multiStore.subBadge")}</StatusBadge>
-            )}
             <StorePlanBadge store={s} />
             {isCurrent ? (
               <span className="flex shrink-0 items-center gap-1.5">

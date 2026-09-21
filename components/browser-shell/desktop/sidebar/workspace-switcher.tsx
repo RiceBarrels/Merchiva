@@ -7,7 +7,7 @@ import {
   BackToDeviceLink,
   CreateStoreForm,
   MenuRow,
-  StoreTreeList,
+  StoreSwitchList,
   SwitchModeLink,
   useWorkspaceActions,
 } from "@/components/browser-shell/shared/workspace-menu";
@@ -24,7 +24,7 @@ import { useOverlayBackHandler } from "../chrome-context";
 /*
  * Combined store + account switcher at the top of the desktop sidebar (legacy sidebar.tsx
  * WorkspaceSwitcher / WorkspaceDropdown). It carries everything the toolbar profile menu had:
- * identity, the store tree with create-store, accounts with add-account, Settings, back to the
+ * identity, the store list with create-store, accounts with add-account, Settings, back to the
  * store / personal device, switch mode, sign out and the version line. Every action closes the
  * popover first; store and account switches reload the page.
  *
@@ -83,11 +83,6 @@ export function SidebarWorkspaceSwitcher({ collapsed }: { collapsed: boolean }) 
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="min-w-0 truncate text-[13px] font-medium text-foreground">{orgName}</span>
-          {org?.parentOrgId ? (
-            <span className="shrink-0 rounded border border-border px-1 text-[9px] uppercase leading-tight tracking-wide text-muted-foreground">
-              {t("multiStore.subBadge")}
-            </span>
-          ) : null}
         </span>
         <span className="block truncate font-mono text-[11px] text-muted-foreground">{user?.email ?? ""}</span>
       </span>
@@ -125,8 +120,8 @@ export function SidebarWorkspaceSwitcher({ collapsed }: { collapsed: boolean }) 
           <Eyebrow size="xs" className="px-3 pb-1">
             {t("nav.selectStore")}
           </Eyebrow>
-          <StoreTreeList
-            tree={workspace.tree}
+          <StoreSwitchList
+            stores={workspace.stores}
             currentOrgId={org?.id ?? null}
             onSelect={(orgId) => {
               workspace
@@ -138,11 +133,8 @@ export function SidebarWorkspaceSwitcher({ collapsed }: { collapsed: boolean }) 
         <div className="border-t border-border py-1">
           {creating ? (
             <CreateStoreForm
-              eligibleParents={workspace.eligibleParents}
               onCreate={workspace.createStore}
               onCancel={() => setCreating(false)}
-              // Base UI Select's z-50 popup would render under this z-[100] popover.
-              nativeSelect
             />
           ) : (
             <MenuRow icon={Plus} onClick={() => setCreating(true)}>

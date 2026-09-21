@@ -51,7 +51,7 @@ describe("toolbar composition", () => {
     // Every row of the old menu now lives in the sidebar's workspace switcher.
     const switcher = source("sidebar", "workspace-switcher.tsx");
     for (const needle of [
-      "StoreTreeList", // store tree
+      "StoreSwitchList", // store list
       "CreateStoreForm", // create store
       "AccountList", // accounts
       "workspace.addAccount", // add account

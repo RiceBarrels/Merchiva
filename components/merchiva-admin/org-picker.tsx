@@ -8,7 +8,6 @@ export interface OrgRow {
   id: string;
   name: string;
   ownerId: string;
-  parentOrgId: string | null;
   subscriptionStatus: string | null;
   createdAt: number;
 }
@@ -92,7 +91,6 @@ export function OrgPicker({ orgId, onChange }: { orgId: string | null; onChange:
         {sorted.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
-            {o.parentOrgId ? " (sub-store)" : ""}
           </option>
         ))}
       </select>

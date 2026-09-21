@@ -91,8 +91,7 @@ export default function ChatPage() {
   const t = useT();
   const { locale } = useI18n();
   const { getToken } = useAuth();
-  const { organizationId, role, currentOrg, isOwner, shareGroupOrgIds } = usePermissions();
-  const groupKey = shareGroupOrgIds.join("|");
+  const { organizationId, role, currentOrg, isOwner } = usePermissions();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [team, setTeam] = useState<OrgMember[]>([]);
   const [activeConv, setActiveConv] = useState<ChatConversation | null>(null);
@@ -169,9 +168,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!organizationId) return;
-    // Chat conversations + teammates are shared across the share group, so
-    // load both from every org in the parent/child tree.
-    const ids = shareGroupOrgIds.length ? shareGroupOrgIds : [organizationId];
+    const ids = [organizationId];
     // Cache is per-user — on store devices a different operator must NOT see
     // the previous operator's conversations from cache.
     const cacheKey = `conversations_${ids.join("|")}_${userId ?? "anon"}`;
@@ -206,8 +203,7 @@ export default function ChatPage() {
         setAvatars(avMap);
       })
       .catch((err) => console.error("Chat load failed:", err));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId, groupKey, userId]);
+  }, [organizationId, userId]);
 
   // Subscribe to the chat_message table. The hook fires a re-render whenever
   // a row is inserted/updated/deleted in the local cache — covers our own

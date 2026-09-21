@@ -61,7 +61,8 @@
     },
     "usage": "استخدام الذكاء الاصطناعي",
     "apps": "تطبيقات الأجهزة",
-    "docs": "المستندات"
+    "docs": "المستندات",
+    "bugs": "الأعطال"
   },
   "login": {
     "title": "تسجيل الدخول إلى Merchiva",
@@ -372,6 +373,14 @@
         "noDescription": "لا يوجد وصف متاح.",
         "addToCart": "أضف إلى السلة"
       }
+    },
+    "inventoryUsage": {
+      "title": "المخزون المستهلك لكل عملية بيع",
+      "description": "حدّد كمية المخزون التي يستهلكها هذا المنتج عند بيع وحدة واحدة.",
+      "add": "إضافة عنصر",
+      "empty": "لم يتم تحديد أي استهلاك للمخزون بعد.",
+      "noInventory": "أضف عناصر المخزون أولًا.",
+      "unitFallback": "وحدة"
     }
   },
   "staffing": {
@@ -969,6 +978,22 @@
           "alreadyMember": "هذا الشخص عضو في الفريق بالفعل.",
           "alreadyInvited": "هناك دعوة معلّقة لهذا البريد الإلكتروني بالفعل."
         }
+      },
+      "punch": {
+        "label": "رمز الحضور",
+        "set": "محدد",
+        "notSet": "غير محدد",
+        "set_action": "تعيين الرمز",
+        "change": "تغيير",
+        "clear": "مسح الرمز",
+        "placeholder": "٤ أرقام",
+        "saved": "تم حفظ الرمز",
+        "saveFailed": "تعذّر الحفظ. حاول مرة أخرى.",
+        "cleared": "تم مسح الرمز",
+        "clearFailed": "تعذّر المسح. حاول مرة أخرى.",
+        "mustBeFour": "يجب أن يتكوّن الرمز من ٤ أرقام بالضبط.",
+        "hintSelf": "يسجّل حضورك ويفتح قفل جهاز المتجر.",
+        "hintOther": "يمكنك تعيين رمز دون رؤيته أبدًا — الأرقام نفسها تفتح قفل جهاز المتجر."
       }
     },
     "dialog": {
@@ -1157,6 +1182,9 @@
     "supplierInboxTaken": "بادئة صندوق الموردين هذه مستخدمة بالفعل.",
     "supplierInboxInvalid": "استخدم 3-32 حرفًا صغيرًا أو رقمًا أو شرطة.",
     "copied": "تم النسخ",
+    "squareConnectedShort": "تم الاتصال بـ Square",
+    "cloverConnectedShort": "تم الاتصال بـ Clover",
+    "connectPOS": "ربط نقطة البيع",
     "connectedIntegrationsCount": "{count} متصل",
     "connectPOSAndSchedule": "ربط نظام نقاط البيع وبرنامج الجدولة",
     "posSystems": "أنظمة نقاط البيع",
@@ -1180,9 +1208,6 @@
     "scheduleErrSaveFailed": "تعذر حفظ اتصال الجدولة.",
     "scheduleErrDefault": "تعذر ربط برنامج الجدولة.",
     "comingSoon": "قريبًا",
-    "squareConnectedShort": "تم الاتصال بـ Square",
-    "cloverConnectedShort": "تم الاتصال بـ Clover",
-    "connectPOS": "ربط نقطة البيع",
     "desktopNotifications": "إشعارات سطح المكتب",
     "desktopEnabled": "مفعّل على هذا الجهاز",
     "desktopDisabled": "تنبيهات فورية عند إغلاق التطبيق",
@@ -1468,7 +1493,10 @@
     "storeImageSaved": "تم تحديث صورة المتجر",
     "storeImageFailed": "تعذّر تحديث صورة المتجر",
     "storeImageRemove": "إزالة",
-    "storeImageUpload": "رفع صورة"
+    "storeImageUpload": "رفع صورة",
+    "teamOnTeamPage": "الأعضاء والأدوار ورموز الحضور",
+    "punchCodeOnTeamPage": "يُضبط من صفحة الفريق",
+    "createStoreHint": "ينشئ متجرًا جديدًا بمخزونه وتوقعاته الخاصة."
   },
   "lock": {
     "title": "الجهاز مقفل",
@@ -1755,6 +1783,7 @@
       "retailPrice": "سعر retail",
       "expirationBatches": "دفعات الانتهاء",
       "costPerUnit": "تكلفة الوحدة",
+      "unitContent": "مواصفات الوحدة",
       "lossRate": "نسبة الفاقد",
       "status": "الحالة",
       "supplier": "المورد",
@@ -1801,6 +1830,7 @@
         "retail": "بيع بالتجزئة"
       },
       "name": "اسم العنصر *",
+      "description": "الوصف",
       "category": "الفئة",
       "currentStock": "المخزون الحالي",
       "minStock": "الحد الأدنى للمخزون",
@@ -1810,6 +1840,7 @@
       "supplier": "المورد",
       "lossRate": "نسبة الفاقد (%)",
       "namePlaceholder": "مثلاً: حبوب قهوة أرابيكا",
+      "descriptionPlaceholder": "كيف يتم تعبئة العنصر أو تخزينه أو استخدامه...",
       "categoryPlaceholder": "مثلاً: مشروبات",
       "unitPlaceholder": "كجم، لتر، وحدة…",
       "supplierPlaceholder": "اسم المورد",
@@ -1817,6 +1848,15 @@
       "minOrderQtyPlaceholder": "مثال: 24",
       "unitsPerCase": "وحدات لكل صندوق",
       "unitsPerCasePlaceholder": "مثال: 12",
+      "unitContentAmount": "الوزن / الحجم لكل وحدة",
+      "unitContentAmountPlaceholder": "مثال: 946",
+      "unitContentUnit": "الوحدة",
+      "contentPreview": "حساب المخزون",
+      "contentPreviewEmpty": "أضف وزنًا أو حجمًا لمساعدة المنتجات على استهلاك المخزون بدقة.",
+      "contentPreviewValue": "1 {unit} = {amount}",
+      "caseContentPreview": "{count} لكل صندوق = {amount}",
+      "back": "رجوع",
+      "next": "التالي",
       "cancel": "إلغاء",
       "save": "حفظ التغييرات",
       "saving": "جارٍ الحفظ…",
@@ -3158,64 +3198,6 @@
     "quotaSaved": "تم حفظ الحصة",
     "quotaFailed": "فشل حفظ الحصة"
   },
-  "multiStore": {
-    "subBadge": "فرع",
-    "parentLabel": "المتجر الأم",
-    "parentNone": "لا يوجد (إنشاء كمتجر مستقل)",
-    "parentHelpRoot": "ينشئ متجرًا مستقلًا له مخزون وتنبؤات خاصة به.",
-    "parentHelpSub": "الفروع تشارك الموظفين والمنتجات والقنوات والتصاميم والمواقع مع المتجر الأم. المخزون والتنبؤات تبقى منفصلة.",
-    "drawerAddHint": "أنشئ متجرًا جديدًا أو اربطه كفرع",
-    "products": {
-      "filterShowingAll": "كل المتاجر",
-      "filterShowingCurrent": "هذا المتجر فقط",
-      "soldAtLabel": "يُباع في",
-      "allStores": "كل المتاجر في المجموعة",
-      "allStoresHint": "افتراضي — يُباع في كل مكان",
-      "thisStore": "حالي",
-      "soldAtHelp": "ألغ تحديد متجر لإخفاء المنتج من واجهته. المخزون يبقى لكل متجر على حدة.",
-      "tableHead": "يُباع في",
-      "cellAll": "الكل",
-      "cellNone": "لا شيء",
-      "cellCount": "{count} متجر",
-      "savedToast": "تم تحديث أماكن بيع المنتج",
-      "saveFailedToast": "فشل تحديث الرؤية",
-      "dialogTitle": "أين يُباع هذا المنتج؟"
-    },
-    "settings": {
-      "cardTitle": "إدارة المتاجر المتعددة",
-      "cardMetaSolo": "متجر مستقل",
-      "cardMetaParent": "أم لـ {count} فرع/فروع",
-      "cardMetaSub": "فرع من {parent}",
-      "title": "إدارة المتاجر المتعددة",
-      "description": "اجمع المتاجر تحت متجر أم لمشاركة الموظفين والمنتجات والقنوات والتصاميم والمواقع.",
-      "currentRole": "هذا المتجر",
-      "roleSolo": "مستقل — ليس ضمن مجموعة أم/فروع.",
-      "roleParent": "أم لـ {count} فرع/فروع.",
-      "roleSub": "فرع من {parent}.",
-      "groupHeader": "المتاجر في مجموعة المشاركة",
-      "groupEmpty": "لا توجد متاجر مرتبطة.",
-      "parentBadge": "أم",
-      "thisStore": "حالي",
-      "policyHeader": "سياسة المشاركة",
-      "policySharedTitle": "تتم مشاركتها بين المتاجر",
-      "policySharedList": "الموظفون، المنتجات، القنوات، التصاميم، المواقع",
-      "policyIsolatedTitle": "خاصة بكل متجر",
-      "policyIsolatedList": "المخزون، تنبؤات المبيعات",
-      "detachHeader": "فصل عن المتجر الأم",
-      "detachHelp": "يعيد هذا الفرع متجرًا مستقلًا. الموارد المشتركة تبقى مع المتجر الأم — تبقى بيانات هذا المتجر فقط.",
-      "detachButton": "فصل",
-      "detachConfirm": "هل تريد فصل هذا المتجر عن المتجر الأم؟ الموظفون والمنتجات والمواقع المشتركة لن تظهر هنا بعد الآن.",
-      "detachSuccess": "تم الفصل عن المتجر الأم",
-      "detachFailed": "فشل الفصل",
-      "attachHeader": "ربط بمتجر أم",
-      "attachHelp": "اجعل هذا المتجر فرعًا لمتجر تملكه. بعد الربط سيشارك الموظفين والمنتجات والقنوات والتصاميم والمواقع.",
-      "attachPlaceholder": "اختر المتجر الأم",
-      "attachButton": "ربط",
-      "attachConfirm": "هل تريد ربط هذا المتجر كفرع؟",
-      "attachSuccess": "تم الربط كفرع",
-      "attachFailed": "فشل الربط"
-    }
-  },
   "landing": {
     "nav": {
       "features": "الميزات",
@@ -3898,7 +3880,8 @@
     "pageSubtitle": "إدارة مفاتيح API وتكاملات Webhook",
     "tabs": {
       "apiKeys": "مفاتيح API",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "mcp": "خوادم MCP"
     },
     "apiKey": {
       "title": "مفتاح API",
@@ -3949,6 +3932,25 @@
     "empty": {
       "title": "لا توجد Webhooks مُهيّأة",
       "description": "أضِف نقطة نهاية Webhook أعلاه لتلقّي إشعارات فورية حول أحداث المتجر."
+    },
+    "mcp": {
+      "addTitle": "ربط خادم MCP",
+      "addDescription": "اسمح لـ Mr. Merchiva باستخدام أدوات من خادم Model Context Protocol خارجي أثناء المحادثة.",
+      "label": "التسمية",
+      "url": "عنوان الخادم",
+      "token": "رمز Bearer",
+      "tokenPlaceholder": "رمز اختياري",
+      "securityNote": "تُخزَّن رموز MCP في هذا المتصفح وتُرسل مع طلبات المحادثة فقط. يحظر الخادم عناوين localhost والشبكات الخاصة ما لم يتم ضبط MCP_ALLOW_LOCALHOST=true.",
+      "addSubmit": "إضافة خادم MCP",
+      "configuredTitle": "خوادم MCP المتصلة",
+      "configuredDescription": "تُرفق الخوادم المفعّلة مع Mr. Merchiva عند إرسال رسالة محادثة.",
+      "emptyTitle": "لا توجد خوادم MCP متصلة",
+      "emptyDescription": "اربط نقطة نهاية MCP عبر HTTPS لمنح المساعد إمكانية استخدام أدوات خارجية.",
+      "toolsFound": "تم العثور على {count} أداة",
+      "toastAdded": "تمت إضافة خادم MCP",
+      "toastRemoved": "تمت إزالة خادم MCP",
+      "toastConnected": "تم الاتصال بـ MCP: تم العثور على {count} أداة",
+      "toastFailed": "فشل الاتصال بـ MCP"
     }
   },
   "punchIn": {
@@ -4426,7 +4428,9 @@
       "sales": "المبيعات",
       "bookings": "الحجوزات",
       "channel": "الدردشة",
-      "settings-org": "إعدادات المتجر"
+      "docs": "المستندات",
+      "settings-org": "إعدادات المتجر",
+      "bugs": "الإبلاغ عن عطل"
     },
     "notAvailableHere": "غير متاح على هذا الجهاز",
     "lite": {
@@ -4603,6 +4607,29 @@
         "requestFailed": "تعذّر الإرسال. حاول مرة أخرى.",
         "completed": "الأيام المكتملة",
         "dayShort": "اليوم {day}"
+      },
+      "bugs": {
+        "report": "الإبلاغ عن مشكلة",
+        "reportHint": "هل في التطبيق خلل؟ أخبر الفريق.",
+        "myOpen": "بلاغاتي المفتوحة",
+        "mine": "بلاغاتي",
+        "everyone": "الجميع",
+        "myReports": "بلاغاتي",
+        "openReports": "البلاغات المفتوحة",
+        "teamAllClear": "لا شيء معلّق",
+        "none": "لا توجد بلاغات بعد",
+        "noneHint": "اضغط الزر بالأعلى عند حدوث خلل في التطبيق.",
+        "what": "ما الذي حدث؟",
+        "whatPlaceholder": "ملخص قصير",
+        "details": "تفاصيل ما حدث",
+        "detailsPlaceholder": "ما الذي فعلته وما الذي أخفق.",
+        "severity": "ما مدى خطورته؟",
+        "photo": "إضافة صورة",
+        "retake": "تغيير الصورة",
+        "send": "إرسال",
+        "titleRequired": "اكتب ملخصًا قصيرًا أولًا.",
+        "uploadFailed": "تعذّرت إضافة الصورة.",
+        "failed": "تعذّر الإرسال. حاول مرة أخرى."
       }
     },
     "catalogDesc": {
@@ -4620,7 +4647,8 @@
       "inventory": "جرد المخزون وتحديد النواقص وتسجيل الهدر.",
       "products": "ابحث عن المنتجات والأسعار.",
       "sales": "مبيعات اليوم بنظرة سريعة.",
-      "bookings": "حجوزات اليوم والغد."
+      "bookings": "حجوزات اليوم والغد.",
+      "bugs": "أبلغ عن مشكلة في التطبيق وتابع ما يحدث لها."
     },
     "appStore": {
       "hint": "اختر الميزات التي يستخدمها هذا المتجر. يظهر التطبيق المثبّت في لوحة الإدارة وعلى جهاز المتجر اللوحي وهواتف الموظفين؛ التطبيقات الأساسية مفعّلة دائمًا.",
@@ -4658,11 +4686,7 @@
     "channel": "القناة",
     "logOut": "تسجيل الخروج",
     "logOutSub": "تحرير الجهاز للشخص التالي",
-    "switchToManager": "التبديل إلى وضع المدير",
     "requiresManagerPin": "يتطلب رمز PIN الخاص بالمدير",
-    "managerMode": "وضع المدير",
-    "managerPinPrompt": "أدخل رمز PIN الخاص بالمدير لتحويل هذا الجهاز إلى وضع المدير.",
-    "managerModeOn": "وضع المدير مفعّل",
     "loggedIn": "تم تسجيل الدخول",
     "loggedOut": "تم تسجيل الخروج",
     "loggedOutIdle": "تم تسجيل الخروج · لا يوجد نشاط",
@@ -4708,7 +4732,6 @@
     "logOutKeepSub": "البقاء مسجّل الحضور · تحرير الجهاز للشخص التالي"
   },
   "personalDevice": {
-    "managerBadge": "مدير",
     "leaveBtn": "مغادرة",
     "channelBtn": "القناة",
     "noChannelsTitle": "لا توجد قنوات بعد",
@@ -4738,8 +4761,6 @@
       "endBreakSub": "استئناف دوامك",
       "storeLogin": "تسجيل الدخول على جهاز المتجر",
       "storeLoginSub": "امسح رمز QR على جهاز المتجر",
-      "managerMode": "التبديل إلى وضع المدير",
-      "managerModeSub": "فتح لوحة إدارة المدير",
       "exitMode": "الخروج من الوضع الشخصي",
       "exitModeSub": "العودة إلى شاشة اختيار الوضع",
       "leaveWork": "مغادرة العمل",
@@ -5483,6 +5504,29 @@
       "reload": "إعادة التحميل",
       "home": "الرئيسية"
     },
+    "contextMenu": {
+      "label": "قائمة السياق",
+      "openInNewTab": "فتح في علامة تبويب جديدة",
+      "openInBackgroundTab": "فتح في علامة تبويب في الخلفية",
+      "openInBrowser": "فتح في المتصفح",
+      "copyLink": "نسخ الرابط",
+      "bookmarkLink": "إضافة الرابط إلى الإشارات المرجعية",
+      "openImage": "فتح الصورة في علامة تبويب جديدة",
+      "copyImageLink": "نسخ عنوان الصورة",
+      "copy": "نسخ",
+      "cut": "قص",
+      "paste": "لصق",
+      "selectAll": "تحديد الكل",
+      "searchFor": "البحث عن «{text}»",
+      "bookmarkPage": "إضافة هذه الصفحة إلى الإشارات المرجعية",
+      "removeBookmark": "إزالة الإشارة المرجعية",
+      "bookmarkRemoved": "تمت إزالة الإشارة المرجعية",
+      "copyPageLink": "نسخ رابط الصفحة",
+      "copied": "تم النسخ",
+      "copyFailed": "تعذّر النسخ إلى الحافظة",
+      "pasteDenied": "اسمح بالوصول إلى الحافظة للصق هنا",
+      "openFailed": "تعذّر فتح هذا الرابط"
+    },
     "newTabPage": {
       "searchPlaceholder": "ابحث في الصفحات والمستندات وعلامات التبويب",
       "apps": "التطبيقات",
@@ -5656,5 +5700,63 @@
       "suppliersSub": "المورّدون وأوامر الشراء",
       "wasteSub": "الهدر والتخلص اليومي"
     }
+  },
+  "bugs": {
+    "title": "متتبع الأعطال",
+    "openCount": "{n} قيد المعالجة",
+    "allClear": "لا شيء معلّق",
+    "report": "الإبلاغ عن عطل",
+    "reportDesc": "اشرح ما الذي حدث. تُرفق الصفحة والإصدار والجهاز تلقائيًا.",
+    "search": "ابحث في البلاغات",
+    "filterAll": "الكل",
+    "status": {
+      "open": "مفتوح",
+      "in_progress": "قيد المعالجة",
+      "fixed": "تم الإصلاح",
+      "wont_fix": "لن يُصلح"
+    },
+    "severity": {
+      "low": "بسيط",
+      "normal": "عادي",
+      "high": "خطير",
+      "blocker": "يمنع العمل"
+    },
+    "surface": {
+      "manager": "الإدارة",
+      "store": "جهاز المتجر",
+      "personal": "الهاتف"
+    },
+    "empty": "لا توجد بلاغات",
+    "emptyDesc": "يمكن لأي فرد في الفريق الإبلاغ عن عطل — من هنا أو من جهاز المتجر أو من هاتفه.",
+    "emptyFiltered": "لا نتائج",
+    "emptyFilteredDesc": "جرّب تصفية أو بحثًا آخر.",
+    "formTitle": "ما الذي حدث؟",
+    "formTitlePlaceholder": "ملخص قصير",
+    "formBody": "تفاصيل ما حدث",
+    "formBodyPlaceholder": "ما الذي فعلته، وما كنت تتوقعه، وما الذي حدث فعلًا.",
+    "formSeverity": "ما مدى خطورته؟",
+    "formScreenshot": "لقطة شاشة",
+    "formScreenshotAdd": "إضافة لقطة شاشة",
+    "submit": "إرسال البلاغ",
+    "sending": "جارٍ الإرسال…",
+    "sent": "تم إرسال البلاغ",
+    "sendFailed": "تعذّر الإرسال. حاول مرة أخرى.",
+    "uploadFailed": "تعذّر رفع لقطة الشاشة.",
+    "titleRequired": "اكتب ملخصًا قصيرًا أولًا.",
+    "contextHint": "تُرفق الصفحة والإصدار والجهاز تلقائيًا.",
+    "contextPage": "الصفحة",
+    "contextBuild": "الإصدار",
+    "contextDevice": "الجهاز",
+    "detailStatus": "الحالة",
+    "detailSeverity": "الخطورة",
+    "resolution": "المعالجة",
+    "resolutionPlaceholder": "ما الذي تم عمله، أو لماذا لن يُصلح.",
+    "resolvedBy": "أغلقه {name}",
+    "triageHint": "المالك والمدير وحدهما يغيّران الحالة.",
+    "saved": "تم تحديث البلاغ",
+    "saveFailed": "تعذّر الحفظ. حاول مرة أخرى.",
+    "deleteFailed": "تعذّر الحذف. حاول مرة أخرى.",
+    "unknownReporter": "أحد الزملاء",
+    "unknownVersion": "غير معروف"
   }
 }

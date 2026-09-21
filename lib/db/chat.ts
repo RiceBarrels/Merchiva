@@ -71,7 +71,7 @@ export async function getConversations(
       .map((m: any) => m.conversationId)
   );
 
-  // Get conversations for any share-group org that the user is a member of
+  // Get conversations for any org that the user is a member of
   const allConversations = Array.from(c.db.chatConversation.iter());
   const filtered = allConversations.filter(
     (r: any) => orgIds.includes(r.organizationId) && myConvIds.has(r.id.toString())

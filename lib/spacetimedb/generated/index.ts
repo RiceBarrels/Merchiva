@@ -91,6 +91,7 @@ import CreateTimeOffRequestReducer from "./create_time_off_request_reducer";
 import CreateUserReducer from "./create_user_reducer";
 import DeleteAiJobReducer from "./delete_ai_job_reducer";
 import DeleteBlogPostReducer from "./delete_blog_post_reducer";
+import DeleteBugReportReducer from "./delete_bug_report_reducer";
 import DeleteComponentReducer from "./delete_component_reducer";
 import DeleteCouponReducer from "./delete_coupon_reducer";
 import DeleteDesignReducer from "./delete_design_reducer";
@@ -136,6 +137,8 @@ import ManagerSetPunchWindowReducer from "./manager_set_punch_window_reducer";
 import MarkAllNotificationsReadReducer from "./mark_all_notifications_read_reducer";
 import MarkNotificationReadReducer from "./mark_notification_read_reducer";
 import MigrateMoneyV1Reducer from "./migrate_money_v_1_reducer";
+import MigrateOwnerPermissionsV1Reducer from "./migrate_owner_permissions_v_1_reducer";
+import MigratePunchCodeFlagsV1Reducer from "./migrate_punch_code_flags_v_1_reducer";
 import MigrateSecurityV1Reducer from "./migrate_security_v_1_reducer";
 import PlatformAdminAddReducer from "./platform_admin_add_reducer";
 import PlatformAdminRemoveReducer from "./platform_admin_remove_reducer";
@@ -158,6 +161,7 @@ import RemoveStoreDeviceReducer from "./remove_store_device_reducer";
 import RenameDocumentReducer from "./rename_document_reducer";
 import RenameDocumentVersionReducer from "./rename_document_version_reducer";
 import ReplyDocumentCommentReducer from "./reply_document_comment_reducer";
+import ReportBugReducer from "./report_bug_reducer";
 import RequestTrainingReviewReducer from "./request_training_review_reducer";
 import ResolveDeviceOperatorReducer from "./resolve_device_operator_reducer";
 import ResolveDocumentCommentReducer from "./resolve_document_comment_reducer";
@@ -195,6 +199,7 @@ import ToggleTodoReducer from "./toggle_todo_reducer";
 import TrashDocumentReducer from "./trash_document_reducer";
 import UpdateBlogPostReducer from "./update_blog_post_reducer";
 import UpdateBookingStatusReducer from "./update_booking_status_reducer";
+import UpdateBugReportReducer from "./update_bug_report_reducer";
 import UpdateCouponReducer from "./update_coupon_reducer";
 import UpdateDesignReducer from "./update_design_reducer";
 import UpdateDisplayNameReducer from "./update_display_name_reducer";
@@ -207,7 +212,6 @@ import UpdateOpeningHoursReducer from "./update_opening_hours_reducer";
 import UpdateOrderStatusReducer from "./update_order_status_reducer";
 import UpdateOrgReducer from "./update_org_reducer";
 import UpdateOrgLogoReducer from "./update_org_logo_reducer";
-import UpdateOrgParentReducer from "./update_org_parent_reducer";
 import UpdateOrgSubscriptionReducer from "./update_org_subscription_reducer";
 import UpdatePageReducer from "./update_page_reducer";
 import UpdatePerkReducer from "./update_perk_reducer";
@@ -240,6 +244,7 @@ import AiJobRow from "./ai_job_table";
 import AiUsageRow from "./ai_usage_table";
 import AiUsageQuotaRow from "./ai_usage_quota_table";
 import BlogPostRow from "./blog_post_table";
+import BugReportRow from "./bug_report_table";
 import ChatConversationRow from "./chat_conversation_table";
 import ChatMemberRow from "./chat_member_table";
 import ChatMembershipIndexRow from "./chat_membership_index_table";
@@ -389,6 +394,23 @@ const tablesSchema = __schema({
       { name: 'blog_post_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, BlogPostRow),
+  bugReport: __table({
+    name: 'bug_report',
+    indexes: [
+      { accessor: 'id', name: 'bug_report_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'bug_report_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byReporterId', name: 'bug_report_reporter_id_idx_btree', algorithm: 'btree', columns: [
+        'reporterId',
+      ] },
+    ],
+    constraints: [
+      { name: 'bug_report_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, BugReportRow),
   chatConversation: __table({
     name: 'chat_conversation',
     indexes: [
@@ -1570,6 +1592,7 @@ const reducersSchema = __reducers(
   __reducerSchema("create_user", CreateUserReducer),
   __reducerSchema("delete_ai_job", DeleteAiJobReducer),
   __reducerSchema("delete_blog_post", DeleteBlogPostReducer),
+  __reducerSchema("delete_bug_report", DeleteBugReportReducer),
   __reducerSchema("delete_component", DeleteComponentReducer),
   __reducerSchema("delete_coupon", DeleteCouponReducer),
   __reducerSchema("delete_design", DeleteDesignReducer),
@@ -1615,6 +1638,8 @@ const reducersSchema = __reducers(
   __reducerSchema("mark_all_notifications_read", MarkAllNotificationsReadReducer),
   __reducerSchema("mark_notification_read", MarkNotificationReadReducer),
   __reducerSchema("migrate_money_v_1", MigrateMoneyV1Reducer),
+  __reducerSchema("migrate_owner_permissions_v_1", MigrateOwnerPermissionsV1Reducer),
+  __reducerSchema("migrate_punch_code_flags_v_1", MigratePunchCodeFlagsV1Reducer),
   __reducerSchema("migrate_security_v_1", MigrateSecurityV1Reducer),
   __reducerSchema("platform_admin_add", PlatformAdminAddReducer),
   __reducerSchema("platform_admin_remove", PlatformAdminRemoveReducer),
@@ -1637,6 +1662,7 @@ const reducersSchema = __reducers(
   __reducerSchema("rename_document", RenameDocumentReducer),
   __reducerSchema("rename_document_version", RenameDocumentVersionReducer),
   __reducerSchema("reply_document_comment", ReplyDocumentCommentReducer),
+  __reducerSchema("report_bug", ReportBugReducer),
   __reducerSchema("request_training_review", RequestTrainingReviewReducer),
   __reducerSchema("resolve_device_operator", ResolveDeviceOperatorReducer),
   __reducerSchema("resolve_document_comment", ResolveDocumentCommentReducer),
@@ -1674,6 +1700,7 @@ const reducersSchema = __reducers(
   __reducerSchema("trash_document", TrashDocumentReducer),
   __reducerSchema("update_blog_post", UpdateBlogPostReducer),
   __reducerSchema("update_booking_status", UpdateBookingStatusReducer),
+  __reducerSchema("update_bug_report", UpdateBugReportReducer),
   __reducerSchema("update_coupon", UpdateCouponReducer),
   __reducerSchema("update_design", UpdateDesignReducer),
   __reducerSchema("update_display_name", UpdateDisplayNameReducer),
@@ -1686,7 +1713,6 @@ const reducersSchema = __reducers(
   __reducerSchema("update_order_status", UpdateOrderStatusReducer),
   __reducerSchema("update_org", UpdateOrgReducer),
   __reducerSchema("update_org_logo", UpdateOrgLogoReducer),
-  __reducerSchema("update_org_parent", UpdateOrgParentReducer),
   __reducerSchema("update_org_subscription", UpdateOrgSubscriptionReducer),
   __reducerSchema("update_page", UpdatePageReducer),
   __reducerSchema("update_perk", UpdatePerkReducer),

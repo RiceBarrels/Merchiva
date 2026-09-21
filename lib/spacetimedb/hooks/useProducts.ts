@@ -43,7 +43,6 @@ function inventoryRowToProduct(row: any): Product {
       unit: row.unit,
     }],
     organizationId: String(row.organizationId ?? ""),
-    availableStoreIds: null,
   };
 }
 

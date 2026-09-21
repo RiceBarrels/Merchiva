@@ -43,7 +43,7 @@ export type OmniboxItem =
   | { kind: "tab"; id: string; tabId: string; title: string; url: TabUrl; icon: AppIcon }
   | { kind: "page"; id: string; title: string; parentTitle?: string; url: TabUrl; icon: AppIcon }
   | { kind: "doc"; id: string; title: string; url: TabUrl; updatedAtMs: number }
-  | { kind: "store"; id: string; orgId: string; title: string; logoUrl: string | null; isSub: boolean }
+  | { kind: "store"; id: string; orgId: string; title: string; logoUrl: string | null }
   | { kind: "action"; id: OmniboxActionId; title: string; icon: LucideIcon; shortcut?: string }
   | { kind: "closed"; id: string; closedId: string; title: string; url: TabUrl; icon: AppIcon }
   | { kind: "path"; id: "typed-path"; title: string; url: TabUrl };
@@ -246,7 +246,7 @@ export function buildOmniboxGroups(query: string, sources: OmniboxSources, text:
     const score = scoreMatch(q, { primary: org.name });
     if (score > 0) {
       scored.push({
-        item: { kind: "store", id: `store:${org.id}`, orgId: org.id, title: org.name, logoUrl: org.logoUrl ?? null, isSub: !!org.parentOrgId },
+        item: { kind: "store", id: `store:${org.id}`, orgId: org.id, title: org.name, logoUrl: org.logoUrl ?? null },
         score,
         group: "stores",
         url: null,

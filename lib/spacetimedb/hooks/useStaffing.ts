@@ -16,19 +16,14 @@ export function useStaffing(
   _userId: string | null,
   isStaff: boolean
 ) {
-  const { organizationId, shareGroupOrgIds } = usePermissions();
-  // Staff data is shared across the parent/child share group — every row in
-  // an org belonging to that group is visible. Falls back to a single-org
-  // filter when share-group info hasn't loaded yet so behavior degrades
-  // gracefully on the initial render.
-  const inGroup = useCallback((orgId: string) => {
-    const groupIds = shareGroupOrgIds.length
-      ? shareGroupOrgIds
-      : organizationId
-        ? [organizationId]
-        : [];
-    return groupIds.includes(orgId);
-  }, [organizationId, shareGroupOrgIds]);
+  const { organizationId } = usePermissions();
+  // Staffing rows belong to exactly one organization. Returns false until the
+  // active org resolves, so the hook degrades to "no rows" rather than leaking
+  // another tenant's data on the first render.
+  const inOrg = useCallback(
+    (orgId: string) => organizationId != null && orgId === organizationId,
+    [organizationId],
+  );
 
   const [rawMembers,  membersReady]  = useTable(tables.orgMember);
   const [rawUsers,    usersReady]    = useTable(tables.user);
@@ -57,7 +52,7 @@ export function useStaffing(
   const team = useMemo<OrgMember[]>(() => {
     if (!organizationId) return [];
     return rawMembers
-      .filter((r) => inGroup(r.organizationId) && r.status === "active")
+      .filter((r) => inOrg(r.organizationId) && r.status === "active")
       .map((r) => ({
         id:             r.id.toString(),
         organizationId: r.organizationId,
@@ -74,12 +69,12 @@ export function useStaffing(
         status:         r.status as OrgMember["status"],
         punchInCode:    r.punchInCode ?? null,
       }));
-  }, [rawMembers, organizationId, inGroup, avatarByUserId]);
+  }, [rawMembers, organizationId, inOrg, avatarByUserId]);
 
   const shifts = useMemo<Shift[]>(() => {
     if (!organizationId) return [];
     return rawShifts
-      .filter((r) => inGroup(r.organizationId))
+      .filter((r) => inOrg(r.organizationId))
       .map((r) => ({
         id:              r.id.toString(),
         memberId:        r.memberId ?? null,
@@ -95,12 +90,12 @@ export function useStaffing(
         endTime:         r.endTime,
         predictedDemand: r.predictedDemand as Shift["predictedDemand"],
       }));
-  }, [rawShifts, organizationId, inGroup]);
+  }, [rawShifts, organizationId, inOrg]);
 
   const roles = useMemo<StaffRole[]>(() => {
     if (!organizationId) return [];
     return rawRoles
-      .filter((r) => inGroup(r.organizationId))
+      .filter((r) => inOrg(r.organizationId))
       .map((r) => ({
         id:          r.id.toString(),
         name:        r.name,
@@ -112,12 +107,12 @@ export function useStaffing(
           catch { return {}; }
         })(),
       }));
-  }, [rawRoles, organizationId, inGroup]);
+  }, [rawRoles, organizationId, inOrg]);
 
   const presets = useMemo<ShiftPreset[]>(() => {
     if (!organizationId) return [];
     return rawPresets
-      .filter((r) => inGroup(r.organizationId))
+      .filter((r) => inOrg(r.organizationId))
       .map((r) => ({
         id:             r.id.toString(),
         organizationId: r.organizationId,
@@ -127,12 +122,12 @@ export function useStaffing(
         color:          r.color,
         sortOrder:      r.sortOrder,
       }));
-  }, [rawPresets, organizationId, inGroup]);
+  }, [rawPresets, organizationId, inOrg]);
 
   const chatOptions = useMemo<ChatConversation[]>(() => {
     if (!organizationId) return [];
     return rawConvos
-      .filter((r) => inGroup(r.organizationId))
+      .filter((r) => inOrg(r.organizationId))
       .map((r) => ({
         id:             r.id.toString(),
         organizationId: r.organizationId,
@@ -141,12 +136,12 @@ export function useStaffing(
         createdBy:      r.createdBy ?? null,
         createdAt:      r.createdAt.toDate().toISOString(),
       }));
-  }, [rawConvos, organizationId, inGroup]);
+  }, [rawConvos, organizationId, inOrg]);
 
   const allAvailability = useMemo<StaffAvailability[]>(() => {
     if (!organizationId) return [];
     return rawAvail
-      .filter((r) => inGroup(r.organizationId))
+      .filter((r) => inOrg(r.organizationId))
       .map((row) => ({
         id:             row.id.toString(),
         userId:         row.userId.toHexString(),
@@ -168,7 +163,7 @@ export function useStaffing(
         endTime:        row.endTime ?? null,
         comments:       row.comments,
       }));
-  }, [rawAvail, organizationId, inGroup]);
+  }, [rawAvail, organizationId, inOrg]);
 
   const myAvailability = useMemo<StaffAvailability | null>(() => {
     return allAvailability[0] ?? null;
@@ -177,7 +172,7 @@ export function useStaffing(
   const myTimeOffRequests = useMemo<TimeOffRequest[]>(() => {
     if (!organizationId) return [];
     return rawTimeOff
-      .filter((r) => inGroup(r.organizationId))
+      .filter((r) => inOrg(r.organizationId))
       .map((r) => ({
         id:             r.id.toString(),
         userId:         r.userId.toHexString(),
@@ -192,14 +187,14 @@ export function useStaffing(
         reviewedBy:     r.reviewedBy ?? null,
         reviewedAt:     r.reviewedAt ? r.reviewedAt.toDate().toISOString() : null,
       }));
-  }, [rawTimeOff, organizationId, inGroup]);
+  }, [rawTimeOff, organizationId, inOrg]);
 
   const orgTimeOffRequests = myTimeOffRequests;
 
   const orgShiftTrades = useMemo<ShiftTrade[]>(() => {
     if (!organizationId) return [];
     return rawTrades
-      .filter((r) => inGroup(r.organizationId))
+      .filter((r) => inOrg(r.organizationId))
       .map((r) => ({
         id:              r.id.toString(),
         organizationId:  r.organizationId,
@@ -216,7 +211,7 @@ export function useStaffing(
         comments:        r.comments,
         createdAt:       (r as Record<string, unknown>).createdAt ? String((r as Record<string, unknown>).createdAt) : new Date().toISOString(),
       }));
-  }, [rawTrades, organizationId, inGroup]);
+  }, [rawTrades, organizationId, inOrg]);
 
   return {
     team,

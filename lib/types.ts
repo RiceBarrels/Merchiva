@@ -10,10 +10,6 @@ export interface UserProfile {
 export interface OrgSummary {
   id: string;
   name: string;
-  // When set, this org is a sub-store of the given parent org id. Sub-stores
-  // share staff, products, chat, design, and sites with their parent + sibling
-  // sub-stores. Inventory and sales forecasts stay strictly per-org.
-  parentOrgId?: string | null;
   // Store image (UploadThing URL) — shown wherever the user picks a store.
   logoUrl?: string | null;
 }
@@ -449,13 +445,8 @@ export interface Product {
   inventoryUsage?: ProductInventoryUsage[];
   nameI18n?: Record<string, string>;
   images?: string[];
-  // The org id this product was created under. Surfaced to the UI so multi-
-  // store pages can label which store owns each row.
+  // The org id this product was created under.
   organizationId?: string;
-  // When set, only the listed store ids may sell this product. undefined =
-  // sold at every store in the share group (default). Empty array = sold
-  // nowhere right now (hidden from all storefronts but still in the catalog).
-  availableStoreIds?: string[] | null;
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────

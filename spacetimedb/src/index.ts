@@ -168,6 +168,8 @@ const organizationTable = table(
     indexes: [
       { accessor: 'byOwnerId', algorithm: 'btree', columns: ['ownerId'] },
       { accessor: 'byOrgIdText', algorithm: 'btree', columns: ['orgIdText'] },
+      // RETIRED with the parent/sub-store feature. Dropping an index is a
+      // destructive migration, so it stays declared and unused.
       { accessor: 'byRootOrgId', algorithm: 'btree', columns: ['rootOrgId'] },
     ],
   },
@@ -185,26 +187,27 @@ const organizationTable = table(
     subscriptionPriceId: t.option(t.string()).default(undefined),     // Stripe price id, identifies plan + interval
     subscriptionInterval: t.option(t.string()).default(undefined),    // 'month' | 'year' (derived from price)
     currentPeriodEnd: t.option(t.timestamp()).default(undefined),
-    // Multi-store hierarchy — when set, this org is a sub-store of the given
-    // parent org id. Sub-stores share staff/products/chat/design/sites with
-    // their parent + sibling sub-stores. Inventory and sales forecasts stay
-    // strictly per-org. Two-level only — sub-stores cannot themselves have
-    // children.
+    // RETIRED — the parent/sub-store ("multi-store") feature was removed.
+    // Every organization is now standalone. SpacetimeDB cannot drop a column
+    // without a destructive migration, so this stays declared, is never
+    // written, and must not be read.
     parentOrgId: t.option(t.string()).default(undefined),
     // Store image (UploadThing URL) — shown wherever the user picks a store.
     logoUrl: t.option(t.string()).default(undefined),
     // ── RLS / query support (appended; keep at the END) ──────────────────────
     // `id` is a uuid, but every other table references an org by a STRING
     // column. SpacetimeDB SQL refuses to join uuid against string, and refuses
-    // to compare `option` columns AT ALL — so neither `id` nor `parentOrgId`
-    // can appear in a row-level-security rule or in a subscription WHERE.
-    // These two plain-string mirrors exist so they can:
+    // to compare `option` columns AT ALL — so `id` itself can never appear in
+    // a row-level-security rule or in a subscription WHERE. `orgIdText` is the
+    // plain-string mirror that can:
     //   orgIdText  = id.toString()
-    //   rootOrgId  = parentOrgId ?? id.toString()   (share-group root)
     // Backfilled by the `migrateSecurityV1` reducer and maintained by
-    // createOrganization / updateOrgParent. Also lets reducers replace
-    // `[...organization.iter()].find(...)` full scans with an index lookup.
+    // createOrg. Also lets reducers replace `[...organization.iter()].find(...)`
+    // full scans with an index lookup.
     orgIdText: t.string().default(''),
+    // RETIRED with the parent/sub-store feature — was `parentOrgId ?? id`.
+    // Kept declared (dropping it is destructive) and written as `orgIdText`
+    // so the retired `byRootOrgId` index stays self-consistent.
     rootOrgId: t.string().default(''),
   }
 );
@@ -241,6 +244,14 @@ const orgMemberTable = table(
     // value lives alongside as an integer count of minor units and the f64 is
     // kept only as a legacy mirror. Backfilled by `migrateMoneyV1`.
     hourlyRateCents: t.option(t.i64()).default(undefined),
+    // Whether this member has a punch-in code — NOT the code itself, which
+    // lives in `member_punch_code` and is RLS'd to its owner because the same
+    // 4 digits unlock the store tablet. RLS is row level, so it cannot hide one
+    // column of a row a colleague may otherwise read; this flag is the
+    // colleague-visible half of the answer, and it is all the team page needs
+    // ("who still has no code?"). Written by `setPunchInCode`, backfilled by
+    // `migratePunchCodeFlagsV1`. Appended last — see the migration rules.
+    hasPunchCode: t.bool().default(false),
   }
 );
 
@@ -2293,6 +2304,49 @@ const documentAccessTable = table(
   }
 );
 
+// ─── Bug Reports ─────────────────────────────────────────────────────────────
+//
+// Reports about Merchiva itself, filed from /manager, /store or /personal.
+// Anyone on the team may file one — there is deliberately no permission gate,
+// because the person who runs into a bug is usually the one without
+// permissions. Triage (status, severity, resolution note) is owner + manager.
+//
+// Every column is a plain, non-option type on purpose: `status`, `severity`
+// and `date` are filtered, and an option column can never appear in a WHERE,
+// a join or an RLS rule (see the dialect notes under ROW-LEVEL SECURITY).
+
+const bugReportTable = table(
+  {
+    name: 'bug_report',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byReporterId', algorithm: 'btree', columns: ['reporterId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    reporterId: t.identity(),
+    reporterMemberId: t.string(),
+    reporterName: t.string(),
+    title: t.string(),
+    body: t.string(),
+    severity: t.string(),        // 'low' | 'normal' | 'high' | 'blocker'
+    status: t.string(),          // 'open' | 'in_progress' | 'fixed' | 'wont_fix'
+    surface: t.string(),         // 'manager' | 'store' | 'personal'
+    route: t.string(),           // page the reporter was on, e.g. '/manager/inventory'
+    appVersion: t.string(),      // build the report came from
+    userAgent: t.string(),
+    screenshotUrl: t.string(),   // '' when none
+    date: t.string(),            // YYYY-MM-DD, so the table can be time-windowed
+    resolutionNote: t.string(),
+    resolvedByName: t.string(),
+    createdAt: t.timestamp(),
+    updatedAt: t.timestamp(),
+  }
+);
+
 // SCHEMA
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -2374,6 +2428,7 @@ const spacetimedb = schema({
   documentVersion: documentVersionTable,
   documentStar: documentStarTable,
   documentAccess: documentAccessTable,
+  bugReport: bugReportTable,
 });
 
 export default spacetimedb;
@@ -2410,8 +2465,7 @@ export default spacetimedb;
 // ---------------------------------------------------------------------------
 //   * `option` columns cannot be compared or joined AT ALL:
 //         Unexpected type: (expected) String != (some: String | none: ())
-//     So no rule may reference an `t.option(...)` column. This is also why
-//     `organization.parentOrgId` cannot drive share-group visibility.
+//     So no rule may reference an `t.option(...)` column.
 //   * uuid cannot be joined against string:
 //         Unexpected type: (expected) String != (__uuid__: U128)
 //     Every table keys its parent by a STRING column while primary keys are
@@ -2461,7 +2515,7 @@ export default spacetimedb;
  */
 const RLS_ORG_SCOPED: Array<string | [table: string, column: string]> = [
   'ai_chat_session', 'ai_job', 'ai_usage', 'ai_usage_quota',
-  'chat_conversation', 'coupon', 'daily_briefing', 'design',
+  'bug_report', 'chat_conversation', 'coupon', 'daily_briefing', 'design',
   'device_login_request', 'document', 'document_access', 'document_comment',
   'document_presence', 'document_snapshot', 'document_star', 'document_update',
   'document_version', 'expense', 'inventory_item', 'inventory_transaction',
@@ -2747,6 +2801,12 @@ export const loginWithPassword = spacetimedb.reducer(
       ctx.db.todo.id.update({ ...td, userId: newIdentity });
     }
 
+    // Migrate bug reports — `reporterId` is what makes "my reports" work on
+    // the device surfaces, so a report filed before a re-login must follow.
+    for (const b of [...ctx.db.bugReport.byReporterId.filter(oldIdentity)]) {
+      ctx.db.bugReport.id.update({ ...b, reporterId: newIdentity });
+    }
+
     // ── Identity-keyed rows that were previously left behind ────────────────
     // These were never migrated before. It did not show because every client
     // subscribed to every row of these tables and filtered in JavaScript; now
@@ -2792,32 +2852,39 @@ export const updateProfile = spacetimedb.reducer(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
+ * The permissions JSON written onto a new org's owner row. Mirrors
+ * lib/db/team.ts ownerPermissions() — every section the client knows about
+ * must appear here, because an editor that renders the stored row (the team
+ * graph inspector) falls back to the staff default for a missing section and
+ * then shows an owner lacking permissions `can()` actually grants them.
+ *
+ * `pos` and `website` are retired features whose keys the client's
+ * ownerPermissions() still carries; they stay so the two sides match.
+ */
+const OWNER_FULL_PERMISSIONS = {
+  dashboard: { view: true },
+  inventory: { view: true, edit: true },
+  sales: { view: true },
+  staffing: { view: true, edit: true },
+  products: { view: true, edit: true },
+  settings: { view: true },
+  pos: { view: true, edit: true },
+  team: { view: true, invite: true, edit: true },
+  website: { view: true, edit: true },
+  training_grading: { view: true, edit: true },
+  merchiva: { view: true },
+} as const;
+
+/**
  * Create a new organization and make the caller its owner.
  *
- * Optional `parentOrgId` makes this a sub-store of an existing org. Validated:
- * caller must own the parent, and the parent itself must be a root org (no
- * grandparenting — sub-store hierarchy is one level deep on purpose to keep
- * sharing semantics obvious).
+ * Organizations are standalone — the parent/sub-store hierarchy was removed.
  */
 export const createOrg = spacetimedb.reducer(
-  { name: t.string(), parentOrgId: t.option(t.string()) },
-  (ctx, { name, parentOrgId }) => {
+  { name: t.string() },
+  (ctx, { name }) => {
     const user = ctx.db.user.identity.find(ctx.sender);
     if (!user) unauthorized('Must be logged in');
-
-    // Validate parent if provided.
-    let resolvedParentId: string | undefined = undefined;
-    if (parentOrgId && parentOrgId.length > 0) {
-      const parent = [...ctx.db.organization.byOrgIdText.filter(parentOrgId)][0];
-      if (!parent) throw new SenderError('Parent organization not found');
-      if (parent.ownerId.toString() !== ctx.sender.toString() && !isServiceCaller(ctx)) {
-        unauthorized('Only the parent organization owner can add a sub-store');
-      }
-      if (parent.parentOrgId) {
-        throw new SenderError('Sub-stores cannot themselves have sub-stores');
-      }
-      resolvedParentId = parentOrgId;
-    }
 
     const orgId = ctx.newUuidV4();
     const orgIdText = orgId.toString();
@@ -2831,26 +2898,13 @@ export const createOrg = spacetimedb.reducer(
       subscriptionPriceId: undefined,
       subscriptionInterval: undefined,
       currentPeriodEnd: undefined,
-      parentOrgId: resolvedParentId,
+      parentOrgId: undefined,   // retired column — never written
       logoUrl: undefined,
-      // Mirrors of `id` / `parentOrgId` as plain strings. RLS and subscription
-      // WHERE clauses cannot touch a uuid or an option column, so these are the
-      // only way this row is reachable by a filter. Keep them in sync on every
-      // write that changes id or parent.
+      // Plain-string mirror of `id`. RLS and subscription WHERE clauses cannot
+      // touch a uuid or an option column, so this is the only way this row is
+      // reachable by a filter.
       orgIdText,
-      rootOrgId: resolvedParentId ?? orgIdText,
-    });
-
-    const defaultPermissions = JSON.stringify({
-      dashboard: { view: true },
-      inventory: { view: true, edit: true },
-      sales: { view: true },
-      staffing: { view: true, edit: true },
-      products: { view: true, edit: true },
-      settings: { view: true },
-      pos: { view: true, edit: true },
-      team: { view: true, invite: true, edit: true },
-      website: { view: true, edit: true },
+      rootOrgId: orgIdText,     // retired column — mirrors orgIdText
     });
 
     const ownerMemberId = ctx.newUuidV4();
@@ -2861,12 +2915,13 @@ export const createOrg = spacetimedb.reducer(
       role: 'owner',
       displayName: user.displayName ?? user.email,
       email: user.email,
-      permissions: defaultPermissions,
+      permissions: JSON.stringify(OWNER_FULL_PERMISSIONS),
       status: 'active',
       joinedAt: ctx.timestamp,
       punchInCode: undefined,
       hourlyRate: undefined,
       hourlyRateCents: undefined,
+      hasPunchCode: false,
     });
     syncOrgMembershipIndex(ctx, {
       id: ownerMemberId, organizationId: orgId.toString(), userId: ctx.sender, status: 'active',
@@ -2941,54 +2996,6 @@ export const updateOrgLogo = spacetimedb.reducer(
       ...org,
       logoUrl: logoUrl && logoUrl.length > 0 ? logoUrl : undefined,
     });
-  }
-);
-
-/**
- * Change the parent-store relationship for an org. Owner only.
- *
- * Pass `parentOrgId = undefined` (or empty string) to detach an org from its
- * parent and turn it into a root org. Pass an org id to attach as a sub-store.
- * Same validation as createOrg: caller must own the parent, parent must itself
- * be a root org, target cannot be its own parent.
- */
-export const updateOrgParent = spacetimedb.reducer(
-  { organizationId: t.string(), parentOrgId: t.option(t.string()) },
-  (ctx, { organizationId, parentOrgId }) => {
-    const member = findActiveMember(ctx, organizationId);
-    if (member.role !== 'owner') unauthorized('Owner only');
-
-    const org = [...ctx.db.organization.byOrgIdText.filter(organizationId)][0];
-    if (!org) throw new SenderError('Organization not found');
-
-    // Detach branch — accept null/undefined/"" to clear parent.
-    if (!parentOrgId || parentOrgId.length === 0) {
-      ctx.db.organization.delete(org);
-      ctx.db.organization.insert({
-        ...org, parentOrgId: undefined, rootOrgId: org.id.toString(),
-      });
-      return;
-    }
-
-    if (parentOrgId === organizationId) throw new SenderError('Org cannot be its own parent');
-
-    const parent = [...ctx.db.organization.byOrgIdText.filter(parentOrgId)][0];
-    if (!parent) throw new SenderError('Parent organization not found');
-    if (parent.ownerId.toString() !== ctx.sender.toString() && !isServiceCaller(ctx)) {
-      unauthorized('Only the parent organization owner can attach a sub-store');
-    }
-    if (parent.parentOrgId) {
-      throw new SenderError('Sub-stores cannot themselves have sub-stores');
-    }
-    // If this org is currently a parent of others, we can't make it a child too.
-    const hasChildren = [...ctx.db.organization.byRootOrgId.filter(organizationId)]
-      .some(o => o.orgIdText !== organizationId);
-    if (hasChildren) {
-      throw new SenderError('Cannot attach an org that already has sub-stores');
-    }
-
-    ctx.db.organization.delete(org);
-    ctx.db.organization.insert({ ...org, parentOrgId, rootOrgId: parentOrgId });
   }
 );
 
@@ -3113,6 +3120,7 @@ export const acceptInvitation = spacetimedb.reducer(
       punchInCode: undefined,
       hourlyRate: undefined,
       hourlyRateCents: undefined,
+      hasPunchCode: false,
     });
     syncOrgMembershipIndex(ctx, {
       id: joinedMemberId, organizationId: invite.organizationId, userId: ctx.sender, status: 'active',
@@ -3252,9 +3260,12 @@ export const setPunchInCode = spacetimedb.reducer(
       });
     }
 
-    if (target.punchInCode !== undefined) {
-      ctx.db.orgMember.delete(target);
-      ctx.db.orgMember.insert({ ...target, punchInCode: undefined });
+    // `hasPunchCode` says only whether a code exists; the digits stay in
+    // `member_punch_code`. The legacy column is cleared on every write so it
+    // can never become readable again.
+    const hasPunchCode = code !== undefined;
+    if (target.punchInCode !== undefined || target.hasPunchCode !== hasPunchCode) {
+      ctx.db.orgMember.id.update({ ...target, punchInCode: undefined, hasPunchCode });
     }
   }
 );
@@ -6978,51 +6989,6 @@ function findActiveMember(ctx: any, organizationId: string) {
   };
 }
 
-/**
- * Compute the share-group org ids for a given org. Sub-stores share certain
- * resources (staff, products, chat, design, sites) with their parent + sibling
- * sub-stores. The share group is: root org + every org whose parentOrgId is
- * that root. For a root org, the group is { root, ...children }. For a sub-
- * store, the group is { root, ...all siblings (including self) }.
- *
- * Inventory and forecasts are NOT shared — they stay strictly per-org.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function shareGroupOrgIds(ctx: any, organizationId: string): string[] {
-  const org = [...ctx.db.organization.byOrgIdText.filter(organizationId)][0];
-  if (!org) return [organizationId];
-  // `rootOrgId` is maintained as (parentOrgId ?? own id), so one indexed lookup
-  // returns the whole share group instead of scanning every organization twice.
-  const rootId: string = (org.rootOrgId as string) || organizationId;
-  const ids = new Set<string>([rootId]);
-  for (const o of ctx.db.organization.byRootOrgId.filter(rootId)) {
-    ids.add((o as { orgIdText: string }).orgIdText);
-  }
-  return [...ids];
-}
-
-/**
- * Like findActiveMember, but accepts membership in ANY org in the share group.
- * Used by reducers for resources that are shared across the parent/child tree
- * (products, chat messages). Returns the membership row found.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function findShareGroupMember(ctx: any, organizationId: string) {
-  if (isServiceCaller(ctx)) return serviceMember(ctx, organizationId);
-  const groupIds = shareGroupOrgIds(ctx, organizationId);
-  const member = [...ctx.db.orgMember.byUserId.filter(ctx.sender)]
-    .find((m: { organizationId: string; status: string }) =>
-      groupIds.includes(m.organizationId) && m.status === 'active'
-    );
-  if (!member) unauthorized('Not an active member of this organization or its share group');
-  return member as {
-    id: { toString(): string };
-    organizationId: string;
-    role: string;
-    permissions: string;
-    status: string;
-  };
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AI CHAT HISTORY REDUCERS
@@ -9302,6 +9268,123 @@ export const deleteDocumentComment = spacetimedb.reducer(
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// BUG REPORT REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Filing is open to every active member — no permission check, on purpose.
+// Triage is owner/manager; a reporter may delete their own report.
+
+const BUG_SEVERITIES = ['low', 'normal', 'high', 'blocker'];
+const BUG_STATUSES = ['open', 'in_progress', 'fixed', 'wont_fix'];
+
+/** Free text is capped: the whole database is resident in memory. */
+const BUG_TITLE_MAX = 140;
+const BUG_BODY_MAX = 4000;
+
+/** Trim + cap, so a paste of a whole log file cannot land in a row. */
+function bugText(value: string, max: number): string {
+  return value.trim().slice(0, max);
+}
+
+export const reportBug = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    title: t.string(),
+    body: t.string(),
+    severity: t.string(),
+    surface: t.string(),
+    route: t.string(),
+    appVersion: t.string(),
+    userAgent: t.string(),
+    screenshotUrl: t.string(),
+    date: t.string(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+
+    const title = bugText(args.title, BUG_TITLE_MAX);
+    if (!title) throw new SenderError('A bug report needs a title');
+
+    ctx.db.bugReport.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      reporterId: ctx.sender,
+      reporterMemberId: member.id.toString(),
+      reporterName: (member as { displayName?: string }).displayName ?? '',
+      title,
+      body: bugText(args.body, BUG_BODY_MAX),
+      severity: BUG_SEVERITIES.includes(args.severity) ? args.severity : 'normal',
+      status: 'open',
+      surface: args.surface,
+      route: args.route.slice(0, 200),
+      appVersion: args.appVersion.slice(0, 40),
+      userAgent: args.userAgent.slice(0, 400),
+      screenshotUrl: args.screenshotUrl,
+      date: args.date,
+      resolutionNote: '',
+      resolvedByName: '',
+      createdAt: ctx.timestamp,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updateBugReport = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    bugId: t.string(),
+    status: t.string(),
+    severity: t.string(),
+    resolutionNote: t.string(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const bug = findById(ctx.db.bugReport, args.bugId);
+    if (!bug || bug.organizationId !== args.organizationId) {
+      throw new SenderError('Bug report not found');
+    }
+
+    const status = BUG_STATUSES.includes(args.status) ? args.status : bug.status;
+    const severity = BUG_SEVERITIES.includes(args.severity) ? args.severity : bug.severity;
+    // Who closed it is recorded once, when it is closed — not overwritten by a
+    // later edit of the note.
+    const closing = status !== bug.status && (status === 'fixed' || status === 'wont_fix');
+
+    ctx.db.bugReport.id.update({
+      ...bug,
+      status,
+      severity,
+      resolutionNote: bugText(args.resolutionNote, BUG_BODY_MAX),
+      resolvedByName: closing
+        ? ((member as { displayName?: string }).displayName ?? '')
+        : bug.resolvedByName,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const deleteBugReport = spacetimedb.reducer(
+  { organizationId: t.string(), bugId: t.string() },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+
+    const bug = findById(ctx.db.bugReport, args.bugId);
+    if (!bug || bug.organizationId !== args.organizationId) {
+      throw new SenderError('Bug report not found');
+    }
+
+    const mine = bug.reporterId.toString() === ctx.sender.toString();
+    if (!mine && member.role === 'staff') {
+      unauthorized('Only the reporter or a manager may delete a report');
+    }
+
+    ctx.db.bugReport.delete(bug);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // ONE-SHOT DATA MIGRATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -9320,7 +9403,8 @@ export const deleteDocumentComment = spacetimedb.reducer(
  * Steps:
  *   1. organization.orgIdText / rootOrgId  — plain-string mirrors of the uuid
  *      primary key, required by the RLS joins and by the index lookups that
- *      replaced `[...organization.iter()].find(...)`.
+ *      replaced `[...organization.iter()].find(...)`. `rootOrgId` is retired
+ *      with the sub-store feature and is now just a second copy of the id.
  *   2. site_booking.organizationId         — bookings carry customer PII and
  *      previously could not be scoped to a tenant at all.
  *   3. user.passwordHash        → user_secret         (private table)
@@ -9342,9 +9426,8 @@ export const migrateSecurityV1 = spacetimedb.reducer(
     // ── 1. organization.orgIdText / rootOrgId ────────────────────────────────
     for (const org of [...ctx.db.organization.iter()]) {
       const idText = org.id.toString();
-      const root = (org.parentOrgId as string | undefined) ?? idText;
-      if (org.orgIdText === idText && org.rootOrgId === root) continue;
-      ctx.db.organization.id.update({ ...org, orgIdText: idText, rootOrgId: root });
+      if (org.orgIdText === idText && org.rootOrgId === idText) continue;
+      ctx.db.organization.id.update({ ...org, orgIdText: idText, rootOrgId: idText });
       orgs++;
     }
 
@@ -9465,6 +9548,100 @@ export const migrateSecurityV1 = spacetimedb.reducer(
     const prev = ctx.db.migrationState.name.find('security_v1');
     if (prev) ctx.db.migrationState.name.update({ ...prev, appliedAt: ctx.timestamp, note });
     else ctx.db.migrationState.insert({ name: 'security_v1', appliedAt: ctx.timestamp, note });
+  }
+);
+
+/**
+ * Backfill owner rows written before OWNER_FULL_PERMISSIONS covered every
+ * section. Orgs created up to this migration stored a JSON that predated
+ * `training_grading` and `merchiva`, so the team graph inspector rendered
+ * their owner with those boxes unticked.
+ *
+ * Purely additive: it grants the sections OWNER_FULL_PERMISSIONS lists and
+ * leaves every other key the row carries untouched, so a re-run is a no-op and
+ * nothing a human granted by hand is ever revoked. `dryRun` counts without
+ * writing.
+ */
+/**
+ * Backfills `org_member.hasPunchCode` from `member_punch_code`.
+ *
+ * The column ships defaulting to false, so every member who set a code before
+ * it existed would read as "no code" on the team page. Idempotent — run once
+ * after publishing, as the service identity or a site admin:
+ *
+ *   spacetime call merchiva migratePunchCodeFlagsV1 true    # dry run
+ *   spacetime call merchiva migratePunchCodeFlagsV1 false
+ */
+export const migratePunchCodeFlagsV1 = spacetimedb.reducer(
+  { dryRun: t.bool() },
+  (ctx, { dryRun }) => {
+    if (!isServiceCaller(ctx)) requireAdmin(ctx);
+
+    let scanned = 0, patched = 0;
+    for (const m of [...ctx.db.orgMember.iter()]) {
+      scanned++;
+      // Truthiness, not `!== undefined`: a missing primary-key row comes back
+      // null, which `!== undefined` would read as "has a code" for everyone.
+      const has = !!ctx.db.memberPunchCode.memberId.find(m.id.toString());
+      if (m.hasPunchCode === has) continue;
+      if (!dryRun) ctx.db.orgMember.id.update({ ...m, hasPunchCode: has });
+      patched++;
+    }
+
+    const note = `${dryRun ? 'dryRun ' : ''}scanned=${scanned} patched=${patched}`;
+    const key = 'punch_code_flags_v1';
+    const prev = ctx.db.migrationState.name.find(key);
+    if (prev) ctx.db.migrationState.name.update({ ...prev, appliedAt: ctx.timestamp, note });
+    else ctx.db.migrationState.insert({ name: key, appliedAt: ctx.timestamp, note });
+  }
+);
+
+export const migrateOwnerPermissionsV1 = spacetimedb.reducer(
+  { dryRun: t.bool() },
+  (ctx, { dryRun }) => {
+    if (!isServiceCaller(ctx)) requireAdmin(ctx);
+
+    let scanned = 0, patched = 0, unparsable = 0;
+
+    for (const m of [...ctx.db.orgMember.iter()]) {
+      if (m.role !== 'owner') continue;
+      scanned++;
+
+      let stored: Record<string, Record<string, boolean>>;
+      try {
+        const parsed = JSON.parse(m.permissions);
+        stored = parsed && typeof parsed === 'object' ? parsed : {};
+      } catch {
+        // A row whose JSON no longer parses is rewritten from scratch — an
+        // owner with unreadable permissions is the case this fixes.
+        stored = {};
+        unparsable++;
+      }
+
+      const next: Record<string, Record<string, boolean>> = { ...stored };
+      let changed = false;
+      for (const [section, actions] of Object.entries(OWNER_FULL_PERMISSIONS)) {
+        const target = { ...(next[section] ?? {}) };
+        for (const action of Object.keys(actions)) {
+          if (target[action] === true) continue;
+          target[action] = true;
+          changed = true;
+        }
+        next[section] = target;
+      }
+      if (!changed) continue;
+
+      patched++;
+      if (dryRun) continue;
+      ctx.db.orgMember.delete(m);
+      ctx.db.orgMember.insert({ ...m, permissions: JSON.stringify(next) });
+    }
+
+    const note = `${dryRun ? 'dryRun ' : ''}owners=${scanned} patched=${patched} unparsable=${unparsable}`;
+    const key = 'owner_permissions_v1';
+    const prev = ctx.db.migrationState.name.find(key);
+    if (prev) ctx.db.migrationState.name.update({ ...prev, appliedAt: ctx.timestamp, note });
+    else ctx.db.migrationState.insert({ name: key, appliedAt: ctx.timestamp, note });
   }
 );
 
