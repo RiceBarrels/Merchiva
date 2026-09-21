@@ -63,7 +63,8 @@
     "usage": "Uso de IA",
     "apps": "Apps de dispositivo",
     "docs": "Documentos",
-    "bugs": "Errores"
+    "bugs": "Errores",
+    "notifications": "Notificaciones"
   },
   "login": {
     "title": "Inicia sesión en Merchiva",

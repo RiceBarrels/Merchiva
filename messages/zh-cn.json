@@ -63,7 +63,8 @@
     "usage": "AI 用量",
     "apps": "设备应用",
     "docs": "文档",
-    "bugs": "问题反馈"
+    "bugs": "问题反馈",
+    "notifications": "通知"
   },
   "login": {
     "title": "登录 Merchiva",

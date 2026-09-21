@@ -63,7 +63,8 @@
     "usage": "AI Usage",
     "apps": "Device apps",
     "docs": "Docs",
-    "bugs": "Bugs"
+    "bugs": "Bugs",
+    "notifications": "Notifications"
   },
   "login": {
     "title": "Sign in to Merchiva",

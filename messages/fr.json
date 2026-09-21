@@ -63,7 +63,8 @@
     "usage": "Utilisation IA",
     "apps": "Apps appareil",
     "docs": "Documents",
-    "bugs": "Bugs"
+    "bugs": "Bugs",
+    "notifications": "Notifications"
   },
   "login": {
     "title": "Connexion à Merchiva",

@@ -63,7 +63,8 @@
     "usage": "AI 用量",
     "apps": "裝置應用",
     "docs": "文件",
-    "bugs": "問題反饋"
+    "bugs": "問題反饋",
+    "notifications": "通知"
   },
   "login": {
     "title": "登入 Merchiva",
