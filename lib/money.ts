@@ -16,8 +16,18 @@
  * list is exact; `list.reduce((a, r) => a + r.amount, 0)` is not.
  */
 
-/** A row carrying both representations of one amount. */
-type MoneyRow = Record<string, unknown>;
+/**
+ * A row carrying both representations of one amount.
+ *
+ * Deliberately `object` and not `Record<string, unknown>`: a declared interface
+ * has no index signature, so the stricter type rejected every mapped row type
+ * in the app and the helpers went unused. Field access is narrowed in `field`.
+ */
+type MoneyRow = object;
+
+function field(row: MoneyRow, name: string): unknown {
+  return (row as Record<string, unknown>)[name];
+}
 
 /**
  * Exact minor units for `field` on `row`.
@@ -26,31 +36,31 @@ type MoneyRow = Record<string, unknown>;
  * the legacy float when the row predates the backfill. Returns 0 for a missing
  * or unset amount, so callers can sum without null checks.
  */
-export function centsOf(row: MoneyRow | null | undefined, field: string): number {
+export function centsOf(row: MoneyRow | null | undefined, name: string): number {
   if (!row) return 0;
-  const exact = row[`${field}Cents`];
+  const exact = field(row, `${name}Cents`);
   if (typeof exact === "bigint") return Number(exact);
   if (typeof exact === "number") return exact;
-  const legacy = row[field];
+  const legacy = field(row, name);
   if (typeof legacy === "number") return toCents(legacy);
   return 0;
 }
 
 /** Same as `centsOf`, but distinguishes "not set" from "zero". */
-export function centsOrNull(row: MoneyRow | null | undefined, field: string): number | null {
+export function centsOrNull(row: MoneyRow | null | undefined, name: string): number | null {
   if (!row) return null;
-  const exact = row[`${field}Cents`];
+  const exact = field(row, `${name}Cents`);
   if (typeof exact === "bigint") return Number(exact);
   if (typeof exact === "number") return exact;
-  const legacy = row[field];
+  const legacy = field(row, name);
   if (typeof legacy === "number" && Number.isFinite(legacy)) return toCents(legacy);
   return null;
 }
 
 /** Sum one money field across rows, exactly. Stays in integers throughout. */
-export function sumCents(rows: readonly MoneyRow[] | null | undefined, field: string): number {
+export function sumCents(rows: readonly MoneyRow[] | null | undefined, name: string): number {
   let total = 0;
-  for (const row of rows ?? []) total += centsOf(row, field);
+  for (const row of rows ?? []) total += centsOf(row, name);
   return total;
 }
 

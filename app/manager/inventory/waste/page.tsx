@@ -44,6 +44,7 @@ import { PageHeader } from "@/components/page-header";
 import { usePermissions } from "@/lib/context/permissions";
 import { useWasteLogs, useInventoryItems } from "@/lib/spacetimedb/hooks";
 import { addWasteLog, deleteWasteLog } from "@/lib/spacetimedb/actions";
+import { centsOf, sumCents, toMajor } from "@/lib/money";
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
@@ -67,6 +68,8 @@ interface WasteLogEntry {
   reason: WasteReason;
   costPerUnit: number;
   totalCost: number;
+  /** Exact minor units from the `totalCostCents` column; see lib/money.ts. */
+  totalCostCents: number;
   date: string;
   notes: string | null;
   createdBy: string | null;
@@ -133,6 +136,7 @@ function WasteLogPage() {
         reason: r.reason as WasteReason,
         costPerUnit: r.costPerUnit,
         totalCost: r.totalCost,
+        totalCostCents: centsOf(r, "totalCost"),
         date: r.date,
         notes: r.notes ?? null,
         createdBy: r.createdBy ?? null,
@@ -211,19 +215,21 @@ function WasteLogPage() {
 
   // ── Summary cards ──────────────────────────────────────────────────────────
 
+  // Added in cents and converted once — a float sum over a few hundred entries
+  // drifts by a cent, and these numbers are the page's headline figures.
   const todayCost = useMemo(() => {
     const today = todayStr();
-    return logs.filter((l) => l.date === today).reduce((sum, l) => sum + l.totalCost, 0);
+    return toMajor(sumCents(logs.filter((l) => l.date === today), "totalCost"));
   }, [logs]);
 
   const weekCost = useMemo(() => {
     const start = startOfWeek();
-    return logs.filter((l) => l.date >= start).reduce((sum, l) => sum + l.totalCost, 0);
+    return toMajor(sumCents(logs.filter((l) => l.date >= start), "totalCost"));
   }, [logs]);
 
   const monthCost = useMemo(() => {
     const start = startOfMonth();
-    return logs.filter((l) => l.date >= start).reduce((sum, l) => sum + l.totalCost, 0);
+    return toMajor(sumCents(logs.filter((l) => l.date >= start), "totalCost"));
   }, [logs]);
 
   const mostWastedItem = useMemo(() => {
@@ -251,19 +257,21 @@ function WasteLogPage() {
   const reasonBreakdown = useMemo(() => {
     const start = startOfMonth();
     const monthLogs = logs.filter((l) => l.date >= start);
-    const breakdown: Record<WasteReason, { count: number; cost: number }> = {
-      expired: { count: 0, cost: 0 },
-      damaged: { count: 0, cost: 0 },
-      overproduction: { count: 0, cost: 0 },
-      other: { count: 0, cost: 0 },
+    // `cents` accumulates; `cost` is the once-converted value the cards render.
+    const breakdown: Record<WasteReason, { count: number; cents: number; cost: number }> = {
+      expired: { count: 0, cents: 0, cost: 0 },
+      damaged: { count: 0, cents: 0, cost: 0 },
+      overproduction: { count: 0, cents: 0, cost: 0 },
+      other: { count: 0, cents: 0, cost: 0 },
     };
     for (const l of monthLogs) {
       const r = breakdown[l.reason];
       if (r) {
         r.count += 1;
-        r.cost += l.totalCost;
+        r.cents += l.totalCostCents;
       }
     }
+    for (const r of Object.values(breakdown)) r.cost = toMajor(r.cents);
     return breakdown;
   }, [logs]);
 
@@ -357,7 +365,7 @@ function WasteLogPage() {
       l.unit,
       l.reason,
       l.costPerUnit.toFixed(2),
-      l.totalCost.toFixed(2),
+      toMajor(l.totalCostCents).toFixed(2),
       l.notes ?? "",
       l.createdBy ?? "",
     ]);
@@ -373,7 +381,7 @@ function WasteLogPage() {
       l.unit,
       l.reason,
       format(l.costPerUnit),
-      format(l.totalCost),
+      format(toMajor(l.totalCostCents)),
     ]);
     downloadPDF("Waste Log Report", headers, rows, {
       subtitle: `Filter: ${dateFilter}`,
@@ -510,7 +518,7 @@ function WasteLogPage() {
                             {badge.label}
                           </StatusBadge>
                         </TableCell>
-                        <NumCell className="text-sm">{format(log.totalCost)}</NumCell>
+                        <NumCell className="text-sm">{format(toMajor(log.totalCostCents))}</NumCell>
                         <TableCell className="text-xs text-muted-foreground hidden lg:table-cell max-w-[200px] truncate">
                           {log.notes ?? "--"}
                         </TableCell>
@@ -540,7 +548,7 @@ function WasteLogPage() {
           </div>
           {filteredLogs.length > 0 && (
             <div className="border-t px-4 py-2 text-xs text-muted-foreground font-mono tabular-nums">
-              {filteredLogs.length} {t("wasteLog.entries")} &middot; {t("wasteLog.totalCostLabel")} {format(filteredLogs.reduce((s, l) => s + l.totalCost, 0))}
+              {filteredLogs.length} {t("wasteLog.entries")} &middot; {t("wasteLog.totalCostLabel")} {format(toMajor(sumCents(filteredLogs, "totalCost")))}
             </div>
           )}
         </Card>

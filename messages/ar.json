@@ -728,7 +728,15 @@
       "coverSent": "تم إرسال طلب التغطية",
       "failedCover": "فشل إرسال طلب التغطية",
       "failedAvailability": "فشل حفظ التوفر",
-      "failedTimeOff": "فشل إرسال طلب الإجازة"
+      "failedTimeOff": "فشل إرسال طلب الإجازة",
+      "shiftAddedToCoverPool": "تمت إضافة الوردية إلى طلبات التغطية",
+      "noActiveMember": "لم يتم العثور على عضو نشط في الفريق",
+      "coverAcceptedPending": "تم قبول طلب التغطية — بانتظار موافقة المدير",
+      "shiftPersonUpdated": "تم تحديث الشخص المكلّف بالوردية",
+      "tradeAcceptedPending": "تم قبول التبادل — بانتظار موافقة المدير",
+      "tradeDenied": "تم رفض التبادل",
+      "failedUpdateTrade": "تعذّر تحديث التبادل",
+      "failedAcceptTrade": "تعذّر قبول التبادل"
     },
     "coverPool": {
       "title": "طلبات التغطية",
@@ -3898,7 +3906,12 @@
     "toastUpdateStatusFailed": "فشل تحديث الحالة",
     "title": "الموردون",
     "subtitle": "جهات اتصال المورّدين وأوامر الشراء",
-    "contactNamePlaceholder": "اسم جهة الاتصال"
+    "contactNamePlaceholder": "اسم جهة الاتصال",
+    "toastSupplierAdded": "تمت إضافة المورد",
+    "toastSupplierUpdated": "تم تحديث المورد",
+    "toastSupplierDeleted": "تم حذف المورد",
+    "toastPOCreated": "تم إنشاء أمر الشراء",
+    "toastStatusUpdated": "تم تحديث الحالة"
   },
   "apiSettings": {
     "toast": {

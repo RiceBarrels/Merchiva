@@ -502,7 +502,7 @@ export function MobileSchedule({
         type: "cover",
         comments: "",
       });
-      toast.success("Shift added to the cover pool");
+      toast.success(t("staffing.toasts.shiftAddedToCoverPool"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not request cover");
     } finally {
@@ -512,13 +512,13 @@ export function MobileSchedule({
 
   async function acceptCoverPoolTrade(tradeId: string) {
     if (!myMemberId) {
-      toast.error("No active team member found");
+      toast.error(t("staffing.toasts.noActiveMember"));
       return;
     }
     setPoolBusyId(tradeId);
     try {
       await updateTradeStatus(tradeId, "accepted");
-      toast.success("Cover request accepted — waiting for manager approval");
+      toast.success(t("staffing.toasts.coverAcceptedPending"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not accept cover request");
     } finally {
@@ -534,7 +534,7 @@ export function MobileSchedule({
         memberId: member.id,
         staffName: member.displayName,
       });
-      toast.success("Shift person updated");
+      toast.success(t("staffing.toasts.shiftPersonUpdated"));
       setShowPeoplePicker(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not update shift person");

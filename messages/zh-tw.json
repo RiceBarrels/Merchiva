@@ -728,7 +728,15 @@
       "coverSent": "代班申請已傳送",
       "failedCover": "傳送代班申請失敗",
       "failedAvailability": "儲存可用時間失敗",
-      "failedTimeOff": "提交請假申請失敗"
+      "failedTimeOff": "提交請假申請失敗",
+      "shiftAddedToCoverPool": "已將班次加入代班池",
+      "noActiveMember": "找不到在職的團隊成員",
+      "coverAcceptedPending": "已接受代班請求 —— 等待主管審核",
+      "shiftPersonUpdated": "已更新該班次的人員",
+      "tradeAcceptedPending": "已接受換班 —— 等待主管審核",
+      "tradeDenied": "已拒絕換班",
+      "failedUpdateTrade": "更新換班失敗",
+      "failedAcceptTrade": "接受換班失敗"
     },
     "coverPool": {
       "title": "代班池",
@@ -3898,7 +3906,12 @@
     "toastUpdateStatusFailed": "更新狀態失敗",
     "title": "供應商",
     "subtitle": "供應商聯絡方式與採購訂單",
-    "contactNamePlaceholder": "聯絡人姓名"
+    "contactNamePlaceholder": "聯絡人姓名",
+    "toastSupplierAdded": "已新增供應商",
+    "toastSupplierUpdated": "已更新供應商",
+    "toastSupplierDeleted": "已刪除供應商",
+    "toastPOCreated": "已建立採購單",
+    "toastStatusUpdated": "狀態已更新"
   },
   "apiSettings": {
     "toast": {

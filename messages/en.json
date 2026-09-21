@@ -728,7 +728,15 @@
       "coverSent": "Cover request sent",
       "failedCover": "Failed to send cover request",
       "failedAvailability": "Failed to save availability",
-      "failedTimeOff": "Failed to submit time-off request"
+      "failedTimeOff": "Failed to submit time-off request",
+      "shiftAddedToCoverPool": "Shift added to the cover pool",
+      "noActiveMember": "No active team member found",
+      "coverAcceptedPending": "Cover request accepted — waiting for manager approval",
+      "shiftPersonUpdated": "Shift person updated",
+      "tradeAcceptedPending": "Trade accepted — awaiting manager approval",
+      "tradeDenied": "Trade denied",
+      "failedUpdateTrade": "Failed to update trade",
+      "failedAcceptTrade": "Failed to accept trade"
     },
     "coverPool": {
       "title": "Cover pool",
@@ -3898,7 +3906,12 @@
     "toastUpdateStatusFailed": "Failed to update status",
     "title": "Suppliers",
     "subtitle": "Vendor contacts and purchase orders",
-    "contactNamePlaceholder": "Contact name"
+    "contactNamePlaceholder": "Contact name",
+    "toastSupplierAdded": "Supplier added",
+    "toastSupplierUpdated": "Supplier updated",
+    "toastSupplierDeleted": "Supplier deleted",
+    "toastPOCreated": "Purchase order created",
+    "toastStatusUpdated": "Status updated"
   },
   "apiSettings": {
     "toast": {

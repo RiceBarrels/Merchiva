@@ -728,7 +728,15 @@
       "coverSent": "कवर अनुरोध भेजा गया",
       "failedCover": "कवर अनुरोध भेजने में विफल",
       "failedAvailability": "उपलब्धता सहेजने में विफल",
-      "failedTimeOff": "छुट्टी अनुरोध भेजने में विफल"
+      "failedTimeOff": "छुट्टी अनुरोध भेजने में विफल",
+      "shiftAddedToCoverPool": "शिफ़्ट कवर पूल में जोड़ी गई",
+      "noActiveMember": "कोई सक्रिय टीम सदस्य नहीं मिला",
+      "coverAcceptedPending": "कवर अनुरोध स्वीकार किया गया — मैनेजर की मंज़ूरी बाकी है",
+      "shiftPersonUpdated": "शिफ़्ट का व्यक्ति अपडेट किया गया",
+      "tradeAcceptedPending": "अदला-बदली स्वीकार — मैनेजर की मंज़ूरी बाकी",
+      "tradeDenied": "अदला-बदली अस्वीकृत",
+      "failedUpdateTrade": "अदला-बदली अपडेट करने में विफल",
+      "failedAcceptTrade": "अदला-बदली स्वीकार करने में विफल"
     },
     "coverPool": {
       "title": "कवर पूल",
@@ -3898,7 +3906,12 @@
     "toastUpdateStatusFailed": "स्थिति अपडेट करने में विफल",
     "title": "आपूर्तिकर्ता",
     "subtitle": "आपूर्तिकर्ता संपर्क और खरीद आदेश",
-    "contactNamePlaceholder": "संपर्क का नाम"
+    "contactNamePlaceholder": "संपर्क का नाम",
+    "toastSupplierAdded": "आपूर्तिकर्ता जोड़ा गया",
+    "toastSupplierUpdated": "आपूर्तिकर्ता अपडेट किया गया",
+    "toastSupplierDeleted": "आपूर्तिकर्ता हटाया गया",
+    "toastPOCreated": "खरीद आदेश बनाया गया",
+    "toastStatusUpdated": "स्थिति अपडेट की गई"
   },
   "apiSettings": {
     "toast": {

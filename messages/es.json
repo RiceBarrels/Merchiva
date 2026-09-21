@@ -728,7 +728,15 @@
       "coverSent": "Solicitud de cobertura enviada",
       "failedCover": "No se pudo enviar la solicitud de cobertura",
       "failedAvailability": "No se pudo guardar la disponibilidad",
-      "failedTimeOff": "No se pudo enviar la solicitud de tiempo libre"
+      "failedTimeOff": "No se pudo enviar la solicitud de tiempo libre",
+      "shiftAddedToCoverPool": "Turno añadido a los turnos por cubrir",
+      "noActiveMember": "No se encontró ningún miembro activo del equipo",
+      "coverAcceptedPending": "Solicitud de cobertura aceptada: falta la aprobación del responsable",
+      "shiftPersonUpdated": "Persona del turno actualizada",
+      "tradeAcceptedPending": "Cambio aceptado: pendiente de aprobación del responsable",
+      "tradeDenied": "Cambio rechazado",
+      "failedUpdateTrade": "No se pudo actualizar el cambio",
+      "failedAcceptTrade": "No se pudo aceptar el cambio"
     },
     "coverPool": {
       "title": "Turnos por cubrir",
@@ -3898,7 +3906,12 @@
     "toastUpdateStatusFailed": "No se pudo actualizar el estado",
     "title": "Proveedores",
     "subtitle": "Contactos de proveedores y órdenes de compra",
-    "contactNamePlaceholder": "Nombre del contacto"
+    "contactNamePlaceholder": "Nombre del contacto",
+    "toastSupplierAdded": "Proveedor añadido",
+    "toastSupplierUpdated": "Proveedor actualizado",
+    "toastSupplierDeleted": "Proveedor eliminado",
+    "toastPOCreated": "Orden de compra creada",
+    "toastStatusUpdated": "Estado actualizado"
   },
   "apiSettings": {
     "toast": {

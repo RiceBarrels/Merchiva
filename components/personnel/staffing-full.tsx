@@ -1910,14 +1910,14 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       await updateTradeStatus(id, status, userId ?? undefined);
       hapticSuccess();
       if (status === "accepted") {
-        toast.success("Trade accepted — awaiting manager approval");
+        toast.success(t("staffing.toasts.tradeAcceptedPending"));
         setOrgShiftTrades((prev) => prev.map((t) => t.id === id ? { ...t, status: "accepted" as const, acceptedById: myMemberId, targetId: myMemberId } : t));
       } else {
-        toast.success("Trade denied");
+        toast.success(t("staffing.toasts.tradeDenied"));
         setOrgShiftTrades((prev) => prev.filter((t) => t.id !== id));
       }
     } catch {
-      toast.error("Failed to update trade");
+      toast.error(t("staffing.toasts.failedUpdateTrade"));
     }
   };
 
@@ -1926,9 +1926,9 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
     try {
       await updateTradeStatus(tradeId, "accepted");
       hapticSuccess();
-      toast.success("Trade accepted — awaiting manager approval");
+      toast.success(t("staffing.toasts.tradeAcceptedPending"));
       setOrgShiftTrades((prev) => prev.map((t) => t.id === tradeId ? { ...t, status: "accepted" as const, acceptedById: myMemberId, targetId: myMemberId } : t));
-    } catch { toast.error("Failed to accept trade"); }
+    } catch { toast.error(t("staffing.toasts.failedAcceptTrade")); }
   };
 
   const handleManagerApproveTrade = async (tradeId: string, approved: boolean) => {
@@ -1938,7 +1938,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       hapticSuccess();
       toast.success(approved ? "Trade approved" : "Trade denied");
       setOrgShiftTrades((prev) => prev.map((t) => t.id === tradeId ? { ...t, managerApproved: approved, managerId: userId, status: approved ? "accepted" as const : "denied" as const } : t));
-    } catch { toast.error("Failed to update trade"); }
+    } catch { toast.error(t("staffing.toasts.failedUpdateTrade")); }
   };
 
   const todayStr = isoDate(new Date());
