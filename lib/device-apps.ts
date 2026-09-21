@@ -83,10 +83,7 @@ export const MANAGER_ROUTE_APPS: Record<string, string> = {
   "/manager/personnel/pay": "pay",
   "/manager/docs": "docs",
   "/manager/bookings": "bookings",
-  "/manager/membership": "bookings",
   "/manager/reviews": "bookings",
-  "/manager/pos": "pos",
-  "/manager/display": "display",
 };
 
 /** App id owning a manager route, or null when the route is always on. */
