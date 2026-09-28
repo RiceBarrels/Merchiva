@@ -87,3 +87,24 @@ describe("the main prompt, tools off", () => {
     expect(text).toContain("ASKING AND PREREQUISITES (CRITICAL)");
   });
 });
+
+describe("the main prompt's role tasks", () => {
+  // The report: a closing task flagged for photo proof unasked, stuck on a store with no group
+  // channel. The few-shot taught it (日结对账 had requiresEvidence:true).
+  test("photo proof only when the user asks, and never a question about channels", () => {
+    const text = prompt(ALL);
+    expect(text).toContain("requiresEvidence (photo proof) on addRoleTask / updateRoleTask: set it true ONLY when the user asks");
+    expect(text).toContain("never ask about channels yourself");
+    expect(text).not.toContain('"requiresEvidence":true');
+    expect(text).not.toContain("好的，我来为收银员添加日常任务");
+  });
+
+  // "写一下staff的任务" was answered with "请提供任务标题", and "是一家咖啡店 你安排一下" with a shift schedule.
+  test("writes a role's tasks itself, reads 安排 in a tasks chat as the tasks, and never copies a placeholder id", () => {
+    const text = prompt(ALL);
+    expect(text).toContain("Never ask the user to list the tasks");
+    expect(text).toContain("\"安排\" means those tasks, not the shift schedule");
+    expect(text).toContain("stand for real ids you look up as IDS says, never text to copy");
+    expect(text).toContain("Never write such a line yourself; write action blocks.");
+  });
+});

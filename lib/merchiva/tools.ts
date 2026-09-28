@@ -25,7 +25,7 @@
 
 import "server-only";
 
-import { tool, type ToolSet } from "ai";
+import { tool, type Tool, type ToolSet } from "ai";
 import { z } from "zod";
 import { productsFromInventoryRows } from "@/lib/products/from-inventory";
 import type { MerchivaToolName } from "@/lib/merchiva/tools/names";
@@ -56,6 +56,7 @@ import { viewFinanceTool } from "@/lib/merchiva/tools/view-finance";
 import { viewForecastTool } from "@/lib/merchiva/tools/view-forecast";
 import { viewRestockSuggestionsTool } from "@/lib/merchiva/tools/view-restock-suggestions";
 import { proposeScheduleTool } from "@/lib/merchiva/tools/propose-schedule";
+import { nullsAsMissing } from "@/lib/merchiva/tools/null-args";
 
 /**
  * Tools read as the caller, so all they need is the caller's token — the one
@@ -370,7 +371,12 @@ export function buildMerchivaTools(opts: {
   } satisfies Record<MerchivaToolName, unknown>;
 
   const allowed = new Set<string>(opts.allowed);
-  return Object.fromEntries(Object.entries(tools).filter(([name]) => allowed.has(name))) as ToolSet;
+  // A null argument reads as a missing one (tools/null-args.ts).
+  return Object.fromEntries(
+    Object.entries(tools)
+      .filter(([name]) => allowed.has(name))
+      .map(([name, def]) => [name, nullsAsMissing(def as Tool)]),
+  ) as ToolSet;
 }
 
 // The read-tool guide for the system prompt is built per caller from the tools

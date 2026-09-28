@@ -2764,7 +2764,14 @@
       "replaceBuilderHtml": "Reemplazar elemento",
       "deleteBuilderHtml": "Eliminar elemento",
       "updateBuilderPage": "Actualizar página",
-      "updateBuilderSite": "Actualizar sitio"
+      "updateBuilderSite": "Actualizar sitio",
+      "setPunchInCode": "Definir código de fichaje",
+      "addTrainingDay": "Añadir día de formación",
+      "updateTrainingDay": "Editar día de formación",
+      "deleteTrainingDay": "Eliminar día de formación",
+      "addTrainingObjective": "Añadir objetivo",
+      "updateTrainingObjective": "Editar objetivo",
+      "deleteTrainingObjective": "Eliminar objetivo"
     },
     "fields": {
       "staffName": "Empleado",
@@ -2843,7 +2850,13 @@
       "published": "Publicado",
       "plugins": "Plugins",
       "subtotal": "Subtotal",
-      "tax": "Impuesto"
+      "tax": "Impuesto",
+      "memberId": "Miembro",
+      "dayId": "Día de formación",
+      "dayNumber": "Día",
+      "objectiveId": "Objetivo",
+      "text": "Texto",
+      "orgName": "Nombre de la tienda"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "Borrar historial",
@@ -2913,7 +2926,9 @@
       "adding": "Agregando...",
       "deleting": "Eliminando...",
       "added": "Agregado",
-      "deleted": "Eliminado"
+      "deleted": "Eliminado",
+      "notAdded": "No agregado",
+      "cancelled": "Cancelado"
     },
     "tasks": {
       "loading": "Cargando tareas...",
@@ -2929,7 +2944,9 @@
       "evidencePrompt": "Esta tarea requiere evidencia; elige el canal de grupo donde debe subirse:",
       "noGroupChats": "Aún no hay canales de grupo; crea uno primero desde la página de Canales.",
       "add": "Agregar",
-      "skip": "Omitir"
+      "skip": "Omitir",
+      "addWithoutEvidence": "Agregar sin evidencia",
+      "createChannel": "Crear un canal de grupo"
     },
     "command": {
       "deleteRoleFailed": "No se pudo eliminar el puesto",
@@ -3132,6 +3149,22 @@
         "partial": "Parcialmente automático",
         "full": "Totalmente automático"
       }
+    },
+    "refs": {
+      "unknown": "No encontrado",
+      "unknownRole": "Puesto desconocido",
+      "unknownTask": "Tarea desconocida",
+      "day": "Día {n}"
+    },
+    "toast": {
+      "done": "Hecho: {action}",
+      "doneWithTarget": "Hecho: {action} · {target}",
+      "orderEmailed": "Pedido enviado por correo al proveedor",
+      "orderDraft": "Pedido guardado como borrador; se avisó al gerente",
+      "failed": "La acción falló: {reason}",
+      "unknownAction": "Mr. Merchiva pidió una acción que esta aplicación no tiene.",
+      "targetMissing": "No se encontró el registro de esta acción; puede que se haya cambiado o eliminado.",
+      "evidenceNeedsChannel": "La prueba con foto necesita un canal de grupo. Elige uno en el editor de la tarea, en la página de Personal."
     }
   },
   "admins": {

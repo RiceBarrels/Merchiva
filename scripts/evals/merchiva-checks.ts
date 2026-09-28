@@ -11,8 +11,9 @@
 import { ACK_CLOSE, ACK_OPEN } from "@/lib/ai/reply-text";
 import { getAction } from "@/lib/merchiva/action-registry";
 import { extractActionBlocks } from "@/lib/merchiva/skills/actions";
-import { parseAllSkills } from "@/lib/merchiva/skills/registry";
+import { parseAllSkills, type RoleAddCmd, type TaskAddCmd, type TaskDeleteCmd } from "@/lib/merchiva/skills/registry";
 import { extractBalancedArray } from "@/lib/merchiva/skills/utils";
+import { resolveRoleRefs, roleRefLabel, type RoleLike } from "@/lib/merchiva/role-ref";
 import { splitToolEvents, type ToolEvent } from "@/lib/merchiva/tool-events";
 
 export type ActionBlock = Record<string, unknown>;
@@ -34,6 +35,12 @@ export interface ParsedReply {
   questions: Array<{ q: string; a: string[] }>;
   /** /ask questions with fewer than two options — the card the user saw with only "其他…". */
   emptyAsks: string[];
+  /** The task cards parseAllSkills makes of the addRoleTask blocks (CommandGroup's input). */
+  tasksAdd: TaskAddCmd[];
+  /** The role cards it makes of the addRole blocks. */
+  rolesAdd: RoleAddCmd[];
+  /** The delete cards it makes of the deleteRoleTask blocks. */
+  tasksDelete: TaskDeleteCmd[];
 }
 
 /** The chat client's splitAck (components/merchiva-chat-dashboard.tsx). */
@@ -90,6 +97,9 @@ export function parseReply(raw: string): ParsedReply {
     actionFences: (text.match(/```action\b/g) ?? []).length,
     questions: parsed.questions,
     emptyAsks: optionlessAsks(text),
+    tasksAdd: parsed.tasksAdd,
+    rolesAdd: parsed.rolesAdd,
+    tasksDelete: parsed.tasksDelete,
   };
 }
 
@@ -122,6 +132,25 @@ export function asksForAvailability(text: string): string[] {
 
 export function mentionsPunchCode(text: string): boolean {
   return CODE_WORD.test(text);
+}
+
+const CHANNEL_WORD = /频道|群组|群聊|\bchannels?\b/i;
+
+/** Sentences that ask which channel gets a task's photo proof: the task card asks that, never the model. */
+export function asksAboutChannels(text: string): string[] {
+  return sentences(text).filter((s) => CHANNEL_WORD.test(s) && (ASK_CUE.test(s) || /[？?]$/.test(s)));
+}
+
+const PROOF_WORD = /拍照|照片|凭证|证明|photo|picture|proof|evidence/i;
+
+/** The user asked for photo proof, the one case requiresEvidence is for. */
+export function asksForProof(message: string): boolean {
+  return PROOF_WORD.test(message);
+}
+
+/** Sentences that ask the user whether a task needs photo proof. */
+export function asksForProofChoice(text: string): string[] {
+  return sentences(text).filter((s) => PROOF_WORD.test(s) && (ASK_CUE.test(s) || /[？?]$/.test(s)));
 }
 
 const PREREQUISITE_CUE = /(?:需要|必须|得|要)先|(?:排班|安排)?之前|才能(?:排班|安排|生成)|before (?:I|we) can|first (?:need|have) to|must first/i;
@@ -168,6 +197,42 @@ export function registryProblems(block: ActionBlock, ids: Readonly<Record<string
     }
   }
   return problems;
+}
+
+// ── Task cards ──────────────────────────────────────────────────────────────
+
+/** CommandGroup's header when a task's role resolves to nothing (merchiva.refs.unknownRole). */
+export const UNKNOWN_ROLE = "unknown role";
+
+export interface TaskCardView {
+  task: TaskAddCmd;
+  /** The role CommandGroup adds the task to; none means the card fails with "role not found". */
+  role: RoleLike | undefined;
+  /** What the card's "→ <role>" header shows. */
+  label: string;
+}
+
+/**
+ * The task cards of a reply as CommandGroup (components/merchiva-dock/command-group.tsx) resolves
+ * them against the store's `roles`: by roleId, then by role, through lib/merchiva/role-ref.ts.
+ */
+export function taskCards(tasks: readonly TaskAddCmd[], roles: readonly RoleLike[]): TaskCardView[] {
+  return tasks.map((task) => ({
+    task,
+    role: resolveRoleRefs(roles, [task.roleId, task.role]),
+    label: roleRefLabel(roles, task) ?? UNKNOWN_ROLE,
+  }));
+}
+
+/** A uuid hyphenated or as 32 bare hex digits, anywhere in a string. */
+const ANY_UUID = /\b[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}\b/i;
+
+/** The fields of a task card a person reads that hold an id — the reported "→ 95c5ca9c-…" header. */
+export function idsShownOnCard(card: TaskCardView): string[] {
+  const shown: Record<string, string> = { header: card.label, role: card.task.role, title: card.task.title, description: card.task.des };
+  return Object.entries(shown)
+    .filter(([, v]) => ANY_UUID.test(v))
+    .map(([field, v]) => `${field}=${v}`);
 }
 
 // ── Numbers and dates in prose ──────────────────────────────────────────────

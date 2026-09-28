@@ -2764,7 +2764,14 @@
       "replaceBuilderHtml": "Remplacer élément",
       "deleteBuilderHtml": "Supprimer élément",
       "updateBuilderPage": "Mettre à jour page",
-      "updateBuilderSite": "Mettre à jour site"
+      "updateBuilderSite": "Mettre à jour site",
+      "setPunchInCode": "Définir le code de pointage",
+      "addTrainingDay": "Ajouter un jour de formation",
+      "updateTrainingDay": "Modifier le jour de formation",
+      "deleteTrainingDay": "Supprimer le jour de formation",
+      "addTrainingObjective": "Ajouter un objectif",
+      "updateTrainingObjective": "Modifier l'objectif",
+      "deleteTrainingObjective": "Supprimer l'objectif"
     },
     "fields": {
       "staffName": "Employé",
@@ -2843,7 +2850,13 @@
       "published": "Publié",
       "plugins": "Plugins",
       "subtotal": "Sous-total",
-      "tax": "Taxe"
+      "tax": "Taxe",
+      "memberId": "Membre",
+      "dayId": "Jour de formation",
+      "dayNumber": "Jour",
+      "objectiveId": "Objectif",
+      "text": "Texte",
+      "orgName": "Nom du magasin"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "Effacer l'historique",
@@ -2913,7 +2926,9 @@
       "adding": "Ajout...",
       "deleting": "Suppression...",
       "added": "Ajouté",
-      "deleted": "Supprimé"
+      "deleted": "Supprimé",
+      "notAdded": "Non ajouté",
+      "cancelled": "Annulé"
     },
     "tasks": {
       "loading": "Chargement des tâches...",
@@ -2929,7 +2944,9 @@
       "evidencePrompt": "Cette tâche nécessite un justificatif — choisissez le canal de groupe où il doit être téléversé :",
       "noGroupChats": "Aucun canal de groupe pour le moment — créez-en un depuis la page Canaux d'abord.",
       "add": "Ajouter",
-      "skip": "Ignorer"
+      "skip": "Ignorer",
+      "addWithoutEvidence": "Ajouter sans justificatif",
+      "createChannel": "Créer un canal de groupe"
     },
     "command": {
       "deleteRoleFailed": "Échec de la suppression du poste",
@@ -3132,6 +3149,22 @@
         "partial": "Partiellement automatique",
         "full": "Entièrement automatique"
       }
+    },
+    "refs": {
+      "unknown": "Introuvable",
+      "unknownRole": "Poste inconnu",
+      "unknownTask": "Tâche inconnue",
+      "day": "Jour {n}"
+    },
+    "toast": {
+      "done": "Terminé : {action}",
+      "doneWithTarget": "Terminé : {action} · {target}",
+      "orderEmailed": "Commande envoyée par e-mail au fournisseur",
+      "orderDraft": "Commande enregistrée en brouillon — responsable prévenu",
+      "failed": "Échec de l'action : {reason}",
+      "unknownAction": "Mr. Merchiva a demandé une action que cette application ne propose pas.",
+      "targetMissing": "Impossible de trouver l'élément visé par cette action — il a peut-être été modifié ou supprimé.",
+      "evidenceNeedsChannel": "Un justificatif photo nécessite un canal de groupe. Choisissez-en un dans l'éditeur de la tâche, page Personnel."
     }
   },
   "admins": {

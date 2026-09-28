@@ -2764,7 +2764,14 @@
       "replaceBuilderHtml": "استبدال عنصر",
       "deleteBuilderHtml": "حذف عنصر",
       "updateBuilderPage": "تحديث الصفحة",
-      "updateBuilderSite": "تحديث الموقع"
+      "updateBuilderSite": "تحديث الموقع",
+      "setPunchInCode": "تعيين رمز تسجيل الحضور",
+      "addTrainingDay": "إضافة يوم تدريب",
+      "updateTrainingDay": "تعديل يوم التدريب",
+      "deleteTrainingDay": "حذف يوم التدريب",
+      "addTrainingObjective": "إضافة هدف",
+      "updateTrainingObjective": "تعديل الهدف",
+      "deleteTrainingObjective": "حذف الهدف"
     },
     "fields": {
       "staffName": "الموظف",
@@ -2843,7 +2850,13 @@
       "published": "منشور",
       "plugins": "الإضافات",
       "subtotal": "المجموع الفرعي",
-      "tax": "الضريبة"
+      "tax": "الضريبة",
+      "memberId": "العضو",
+      "dayId": "يوم التدريب",
+      "dayNumber": "اليوم",
+      "objectiveId": "الهدف",
+      "text": "النص",
+      "orgName": "اسم المتجر"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "مسح السجل",
@@ -2913,7 +2926,9 @@
       "adding": "جارٍ الإضافة...",
       "deleting": "جارٍ الحذف...",
       "added": "تمت الإضافة",
-      "deleted": "تم الحذف"
+      "deleted": "تم الحذف",
+      "notAdded": "لم تتم الإضافة",
+      "cancelled": "أُلغي"
     },
     "tasks": {
       "loading": "جارٍ تحميل المهام...",
@@ -2929,7 +2944,9 @@
       "evidencePrompt": "تتطلب هذه المهمة أدلة — اختر القناة الجماعية التي ينبغي رفعها إليها:",
       "noGroupChats": "لا توجد قنوات جماعية بعد — أنشئ واحدة من صفحة القنوات أولًا.",
       "add": "إضافة",
-      "skip": "تخطٍّ"
+      "skip": "تخطٍّ",
+      "addWithoutEvidence": "إضافة بدون أدلة",
+      "createChannel": "إنشاء قناة جماعية"
     },
     "command": {
       "deleteRoleFailed": "فشل حذف الدور",
@@ -3132,6 +3149,22 @@
         "partial": "تلقائي جزئيًا",
         "full": "تلقائي بالكامل"
       }
+    },
+    "refs": {
+      "unknown": "غير موجود",
+      "unknownRole": "دور غير معروف",
+      "unknownTask": "مهمة غير معروفة",
+      "day": "اليوم {n}"
+    },
+    "toast": {
+      "done": "تم: {action}",
+      "doneWithTarget": "تم: {action} · {target}",
+      "orderEmailed": "أُرسل الطلب إلى المورّد بالبريد الإلكتروني",
+      "orderDraft": "حُفظ الطلب كمسودة — تم إخطار المدير",
+      "failed": "فشل الإجراء: {reason}",
+      "unknownAction": "طلب السيد ميرشيفا إجراءً غير موجود في هذا التطبيق.",
+      "targetMissing": "تعذّر العثور على ما يخصه هذا الإجراء — ربما تم تغييره أو حذفه.",
+      "evidenceNeedsChannel": "يتطلب الإثبات بالصور قناة جماعية. اختر واحدة من محرر المهمة في صفحة الموظفين."
     }
   },
   "admins": {

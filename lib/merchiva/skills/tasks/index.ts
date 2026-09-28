@@ -1,5 +1,6 @@
 import type { MerchivaSkill, TaskAddCmd, TaskDeleteCmd } from "../types";
 import { extractBalancedObject } from "../utils";
+import { boolParam } from "@/lib/merchiva/action-ids";
 
 interface TasksData {
   tasksAdd: TaskAddCmd[];
@@ -31,7 +32,7 @@ function parseTasksCommands(text: string): { cleanText: string; data: TasksData 
           des: String(parsed.des ?? parsed.description ?? ""),
           startTime: parsed.startTime ? String(parsed.startTime) : null,
           endTime: parsed.endTime ? String(parsed.endTime) : null,
-          requiresEvidence: !!parsed.requiresEvidence,
+          requiresEvidence: boolParam(parsed.requiresEvidence),
         });
         removals.push({ start: m.index, end });
       }

@@ -4,6 +4,9 @@
  * availability and no punch-in code, one placeholder staff member without a login, no job roles,
  * opening hours set, a few weeks of shifts, a little sales and inventory data.
  *
+ * A second store, COFFEE_ORG, is the same shop at the time of the "岗位的id是有问题的" report: its
+ * one job role, "Staff", with no tasks yet.
+ *
  * Nothing here reaches a real database. `installFakeStore` replaces the global fetch: requests to
  * SpacetimeDB's HTTP SQL endpoint are answered from these rows, encoded exactly as the endpoint
  * encodes them (scripts/tests/merchiva-tools/sql-fixtures.ts), so the read tools run their real
@@ -260,6 +263,54 @@ export function storeContext(upcomingHolidays: unknown[]): Record<string, unknow
   };
 }
 
+// ── The coffee shop of the "岗位的id是有问题的" report ─────────────────────
+
+export const COFFEE_ORG = "0199a001-0000-7000-8000-00000000c0ff";
+
+/**
+ * Its only job role. `id` is hyphenated, the form a staff_role id reaches the model in (viewRoles)
+ * and the form role_task.roleId stores; `uuid` is the SDK value the client cache holds.
+ */
+export const STAFF_ROLE = {
+  uuid: sdkUuid(70),
+  id: sdkUuid(70).toString(),
+  name: "Staff",
+  color: "#44403c",
+  icon: "user",
+  description: "General shift work",
+} as const;
+
+/** The same shop's rows under COFFEE_ORG, plus the Staff role; no role has a task yet. */
+const COFFEE_DATA: Partial<Record<ToolTable, FixtureRow[]>> = {
+  ...Object.fromEntries(
+    Object.entries(DATA).map(([table, rows]) => [table, (rows ?? []).map((r) => ({ ...r, organizationId: COFFEE_ORG }))]),
+  ),
+  staffRole: [
+    row("staffRole", {
+      id: STAFF_ROLE.uuid, organizationId: COFFEE_ORG, name: STAFF_ROLE.name, color: STAFF_ROLE.color, icon: STAFF_ROLE.icon,
+      description: STAFF_ROLE.description, permissions: "[]", createdAt: MADE, updatedAt: MADE,
+    }),
+  ],
+  roleTask: [],
+};
+
+export const COFFEE_IDS: Readonly<Record<string, readonly string[]>> = { ...FIXTURE_IDS, roleId: [STAFF_ROLE.id] };
+
+/** storeContext for the coffee shop: its roles[] as the dashboard sends them. */
+export function coffeeStoreContext(upcomingHolidays: unknown[]): Record<string, unknown> {
+  return {
+    ...storeContext(upcomingHolidays),
+    roles: [
+      { id: STAFF_ROLE.id, name: STAFF_ROLE.name, color: STAFF_ROLE.color, icon: STAFF_ROLE.icon, description: STAFF_ROLE.description, tasks: [] },
+    ],
+  };
+}
+
+const STORES: ReadonlyMap<string, Partial<Record<ToolTable, FixtureRow[]>>> = new Map([
+  [ORG, DATA],
+  [COFFEE_ORG, COFFEE_DATA],
+]);
+
 // ── The fake network ────────────────────────────────────────────────────────
 
 export interface FakeStoreLog {
@@ -288,9 +339,10 @@ export function installFakeStore(): FakeStoreLog {
       if (new Headers(init?.headers).get("authorization") !== `Bearer ${TOKEN}`) return new Response("", { status: 401 });
       const m = /^SELECT (.+) FROM (\w+) WHERE (\w+) = '([^']+)'/.exec(sql);
       const table = m ? tableForSql(m[2]) : undefined;
-      if (!m || !table || m[4] !== ORG) return new Response(`eval: unexpected query ${sql}`, { status: 400 });
+      const store = m ? STORES.get(m[4]) : undefined;
+      if (!m || !table || !store) return new Response(`eval: unexpected query ${sql}`, { status: 400 });
       const columns = m[1] === "*" ? undefined : m[1].split(", ");
-      return new Response(sqlResponseText(table, DATA[table] ?? [], columns));
+      return new Response(sqlResponseText(table, store[table] ?? [], columns));
     }
     if (url.hostname === "openrouter.ai") return realFetch(input, init);
     log.blocked.push(url.origin);
@@ -310,5 +362,6 @@ export function installFakeStore(): FakeStoreLog {
 
 /** The published table names the fixture serves (for the run header). */
 export function servedTables(): string[] {
-  return (Object.keys(DATA) as ToolTable[]).map((t) => TOOL_TABLES[t].sql);
+  const tables = new Set([...STORES.values()].flatMap((data) => Object.keys(data) as ToolTable[]));
+  return [...tables].map((t) => TOOL_TABLES[t].sql);
 }

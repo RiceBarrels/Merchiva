@@ -41,6 +41,9 @@ import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import { todayKey } from "@/lib/date-key";
 import { computeOrderTotalsStrict, orderAmounts } from "@/lib/merchiva/order-totals";
 import { idParamDescription } from "@/lib/merchiva/tools/id-sources";
+import { boolParam, sameId, storedId } from "@/lib/merchiva/action-ids";
+import { ActionError } from "@/lib/merchiva/action-error";
+import { EVIDENCE_PARAM, EVIDENCE_RULE, cachedRow, findInventoryItem, jsonStringCount } from "@/lib/merchiva/action-helpers";
 
 export type RiskLevel = "low" | "medium" | "high";
 
@@ -70,7 +73,6 @@ export interface ActionDefinition {
   requiredPermission?: { section: string; action: "view" | "edit" };
   riskLevel: RiskLevel;
   execute: (params: Record<string, unknown>) => Promise<void>;
-  toastMessage: (params: Record<string, unknown>) => string;
 }
 
 export interface ActionCatalogItem {
@@ -140,7 +142,6 @@ register({
       predictedDemand: "medium",
     });
   },
-  toastMessage: (p) => `Shift added: ${p.staffName} on ${p.date}`,
 });
 
 register({
@@ -160,11 +161,9 @@ register({
     // updateShift replaces the whole row, so a patch has to start from the
     // existing one — sending only the changed fields blanked date, shiftType,
     // startTime, endTime and staffRoles.
-    const conn = getConnection();
-    const shiftId = String(p.shiftId);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const current = conn ? [...(conn.db as any).shift.iter()].find((r: any) => String(r.id) === shiftId) : null;
-    if (!current) throw new Error(`Shift ${shiftId} not found`);
+    const current = cachedRow("shift", p.shiftId) as any;
+    if (!current) throw new ActionError("targetMissing", "Shift not found");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const row = current as any;
@@ -187,9 +186,8 @@ register({
     if (p.endTime) data.endTime = String(p.endTime);
     if (p.shiftType) data.shiftType = String(p.shiftType);
     if (p.staffRoles) data.staffRoles = p.staffRoles;
-    await updateShift(shiftId, data);
+    await updateShift(storedId(current.id), data);
   },
-  toastMessage: (p) => `Shift ${p.shiftId} updated`,
 });
 
 register({
@@ -204,7 +202,6 @@ register({
   execute: async (p) => {
     await deleteShift(String(p.shiftId));
   },
-  toastMessage: () => "Shift deleted",
 });
 
 register({
@@ -221,7 +218,6 @@ register({
   execute: async (p) => {
     await updateTimeOffStatus(String(p.requestId), p.approved ? "approved" : "rejected");
   },
-  toastMessage: (p) => `Time-off request ${p.approved ? "approved" : "rejected"}`,
 });
 
 register({
@@ -237,7 +233,6 @@ register({
   execute: async (p) => {
     await managerApproveShiftTrade(String(p.tradeId), Boolean(p.approved));
   },
-  toastMessage: (p) => `Shift trade ${p.approved ? "approved" : "rejected"}`,
 });
 
 // ─── Staff Members ─────────────────────────────────────────────────────────────
@@ -261,7 +256,6 @@ register({
       availability: "[]",
     });
   },
-  toastMessage: (p) => `Staff added: ${p.name}`,
 });
 
 // Invite a person by email to join the org. Goes through the same flow the
@@ -350,7 +344,6 @@ register({
       throw new Error(`Email send failed: ${detail.slice(0, 200)}`);
     }
   },
-  toastMessage: (p) => `Invite sent to ${String(p.email ?? "")}`,
 });
 
 register({
@@ -372,7 +365,6 @@ register({
     if (p.hourlyRate !== undefined) data.hourlyRate = Number(p.hourlyRate);
     await updateStaffMember(String(p.staffMemberId), data);
   },
-  toastMessage: (p) => `Staff updated: ${p.name ?? p.staffMemberId}`,
 });
 
 register({
@@ -387,7 +379,6 @@ register({
   execute: async (p) => {
     await deleteStaffMember(String(p.staffMemberId));
   },
-  toastMessage: () => "Staff member removed",
 });
 
 // Set a 4-digit punch-in code for an org member — the PIN they clock in with
@@ -419,7 +410,6 @@ register({
     }
     await setPunchInCode(String(p.memberId ?? ""), code);
   },
-  toastMessage: (p) => `Punch-in code set for member ${String(p.memberId ?? "")}`,
 });
 
 // ─── Roles ─────────────────────────────────────────────────────────────────────
@@ -446,7 +436,6 @@ register({
       permissions: p.permissions ? String(p.permissions) : "{}",
     });
   },
-  toastMessage: (p) => `Role created: ${p.name ?? p.title}`,
 });
 
 register({
@@ -464,15 +453,20 @@ register({
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "medium",
   execute: async (p) => {
-    const data: Record<string, unknown> = {};
-    if (p.name) data.name = String(p.name);
-    if (p.description) data.description = String(p.description);
-    if (p.color) data.color = String(p.color);
-    if (p.icon) data.icon = String(p.icon);
-    if (p.permissions) data.permissions = String(p.permissions);
-    await updateStaffRole(String(p.roleId), data);
+    // updateStaffRole replaces the whole row: sent alone, a recolor failed with
+    // "Role name is required", and a rename blanked color, icon and description
+    // and reset permissions to "{}". Start from the current role.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const current = cachedRow("staffRole", p.roleId) as any;
+    if (!current) throw new ActionError("targetMissing", "Role not found");
+    await updateStaffRole(storedId(current.id), {
+      name: p.name ? String(p.name) : String(current.name ?? ""),
+      description: p.description != null ? String(p.description) : String(current.description ?? ""),
+      color: p.color ? String(p.color) : String(current.color ?? "#44403c"),
+      icon: p.icon ? String(p.icon) : String(current.icon ?? "user"),
+      permissions: p.permissions ? String(p.permissions) : String(current.permissions ?? "{}"),
+    });
   },
-  toastMessage: (p) => `Role updated: ${p.name ?? p.roleId}`,
 });
 
 register({
@@ -487,14 +481,13 @@ register({
   execute: async (p) => {
     await deleteStaffRole(String(p.roleId));
   },
-  toastMessage: () => "Role deleted",
 });
 
 // ─── Role Tasks ────────────────────────────────────────────────────────────────
 
 register({
   name: "addRoleTask",
-  description: "Add a task/duty to a role",
+  description: `Add a task/duty to a role. ${EVIDENCE_RULE}`,
   category: "roles",
   parameters: {
     roleId: { type: "string", required: true, description: idParamDescription("roleId", "The role") },
@@ -502,26 +495,33 @@ register({
     description: { type: "string", required: false, description: "Task description" },
     startTime: { type: "string", required: false, description: "Start time HH:MM" },
     endTime: { type: "string", required: false, description: "End time HH:MM" },
-    requiresEvidence: { type: "boolean", required: false, description: "Requires photo proof" },
+    requiresEvidence: { type: "boolean", required: false, description: EVIDENCE_PARAM },
   },
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "low",
   execute: async (p) => {
+    // The chat turns this block into a task card (skills/registry.ts), which asks
+    // the manager for the evidence channel; this path has no channel to give.
+    if (boolParam(p.requiresEvidence)) {
+      throw new ActionError("evidenceNeedsChannel", "Photo proof needs a group channel");
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const role = cachedRow("staffRole", p.roleId) as any;
+    if (!role) throw new ActionError("targetMissing", "Role not found");
     await addRoleTask({
-      roleId: String(p.roleId),
+      roleId: storedId(role.id),
       title: String(p.title),
       description: String(p.description ?? p.des ?? ""),
       startTime: p.startTime ? String(p.startTime) : null,
       endTime: p.endTime ? String(p.endTime) : null,
-      requiresEvidence: Boolean(p.requiresEvidence ?? false),
+      requiresEvidence: false,
     });
   },
-  toastMessage: (p) => `Task added: ${p.title}`,
 });
 
 register({
   name: "updateRoleTask",
-  description: "Edit an existing role task",
+  description: `Edit an existing role task. ${EVIDENCE_RULE}`,
   category: "roles",
   parameters: {
     taskId: { type: "string", required: true, description: idParamDescription("taskId", "The role task") },
@@ -529,20 +529,32 @@ register({
     description: { type: "string", required: false, description: "New description" },
     startTime: { type: "string", required: false, description: "New start time" },
     endTime: { type: "string", required: false, description: "New end time" },
-    requiresEvidence: { type: "boolean", required: false, description: "Requires photo proof" },
+    requiresEvidence: { type: "boolean", required: false, description: EVIDENCE_PARAM },
   },
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "low",
   execute: async (p) => {
-    const data: Record<string, unknown> = {};
-    if (p.title) data.title = String(p.title);
-    if (p.description) data.description = String(p.description);
-    if (p.startTime !== undefined) data.startTime = p.startTime ? String(p.startTime) : null;
-    if (p.endTime !== undefined) data.endTime = p.endTime ? String(p.endTime) : null;
-    if (p.requiresEvidence !== undefined) data.requiresEvidence = Boolean(p.requiresEvidence);
-    await updateRoleTask(String(p.taskId), data);
+    // updateRoleTask replaces the whole row: an omitted title or description was
+    // blanked, and sortOrder, notifyChats and requiresEvidence reset. Start from
+    // the current task.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const current = cachedRow("roleTask", p.taskId) as any;
+    if (!current) throw new ActionError("targetMissing", "Role task not found");
+    const notifyChats = typeof current.notifyChats === "string" ? current.notifyChats : "[]";
+    // Every task editor requires a group channel for photo proof; this action can't pick one.
+    if (boolParam(p.requiresEvidence) && !current.requiresEvidence && jsonStringCount(notifyChats) === 0) {
+      throw new ActionError("evidenceNeedsChannel", "Photo proof needs a group channel");
+    }
+    await updateRoleTask(storedId(current.id), {
+      title: p.title ? String(p.title) : String(current.title ?? ""),
+      description: p.description != null ? String(p.description) : String(current.description ?? ""),
+      startTime: p.startTime !== undefined ? (p.startTime ? String(p.startTime) : null) : current.startTime ?? null,
+      endTime: p.endTime !== undefined ? (p.endTime ? String(p.endTime) : null) : current.endTime ?? null,
+      sortOrder: Number(current.sortOrder ?? 0),
+      requiresEvidence: p.requiresEvidence !== undefined ? boolParam(p.requiresEvidence) : Boolean(current.requiresEvidence),
+      notifyChats,
+    });
   },
-  toastMessage: (p) => `Task updated: ${p.title ?? p.taskId}`,
 });
 
 register({
@@ -557,7 +569,6 @@ register({
   execute: async (p) => {
     await deleteRoleTask(String(p.taskId));
   },
-  toastMessage: () => "Task deleted",
 });
 
 // ─── Products ──────────────────────────────────────────────────────────────────
@@ -605,7 +616,6 @@ register({
       inventoryUsage: Array.isArray(p.inventoryUsage) ? p.inventoryUsage : [],
     });
   },
-  toastMessage: (p) => `Product added: ${p.name ?? p.productName}`,
 });
 
 register({
@@ -633,7 +643,6 @@ register({
     if (Array.isArray(p.inventoryUsage)) data.inventoryUsage = p.inventoryUsage;
     await updateProduct(String(p.productId), data);
   },
-  toastMessage: (p) => `Product updated: ${p.name ?? p.productId}`,
 });
 
 register({
@@ -648,7 +657,6 @@ register({
   execute: async (p) => {
     await deleteProduct(String(p.productId));
   },
-  toastMessage: () => "Product deleted",
 });
 
 // ─── Inventory ─────────────────────────────────────────────────────────────────
@@ -692,15 +700,15 @@ register({
       unitContentUnit: p.unitContentUnit ? String(p.unitContentUnit) : null,
     });
   },
-  toastMessage: (p) => `Inventory item added: ${p.name ?? p.itemName}`,
 });
 
 register({
   name: "updateInventory",
-  description: "Log an inventory transaction (stock in/out/adjustment)",
+  description: "Log an inventory transaction (stock in/out/adjustment). Name the item by itemId, or by itemName when you don't have the id.",
   category: "inventory",
   parameters: {
-    itemName: { type: "string", required: true, description: "Item name" },
+    itemId: { type: "string", required: false, description: idParamDescription("itemId", "The inventory item") },
+    itemName: { type: "string", required: false, description: "Item name, when itemId is not known" },
     type: { type: "string", required: true, description: "Transaction type", enum: ["in", "out", "adjustment"] },
     quantity: { type: "number", required: true, description: "Quantity" },
     notes: { type: "string", required: false, description: "Reason/notes" },
@@ -708,15 +716,20 @@ register({
   requiredPermission: { section: "inventory", action: "edit" },
   riskLevel: "medium",
   execute: async (p) => {
+    // The transaction row references its item by id: rows with only a name were
+    // left out of usage rates (lib/restock.ts) and showed "—" in the admin view.
+    const item = findInventoryItem(p.itemId, p.itemName ?? p.name);
+    if (!item) throw new ActionError("targetMissing", "Inventory item not found");
     await addInventoryTransaction({
-      itemName: String(p.itemName ?? p.name ?? ""),
+      itemId: storedId(item.id),
+      itemName: String(item.name ?? ""),
       type: String(p.type ?? "adjustment"),
       quantity: Number(p.quantity ?? 0),
       date: todayKey(),
-      notes: String(p.notes ?? p.reason ?? "Via Mr. Merchiva"),
+      // The reducer's argument is `note`; `notes` was dropped.
+      note: String(p.notes ?? p.note ?? p.reason ?? "Via Mr. Merchiva"),
     });
   },
-  toastMessage: (p) => `Inventory updated: ${p.itemName ?? p.name}`,
 });
 
 register({
@@ -758,7 +771,6 @@ register({
     if (p.unitContentUnit !== undefined) data.unitContentUnit = p.unitContentUnit ? String(p.unitContentUnit) : null;
     await updateInventoryItem(String(p.itemId), data);
   },
-  toastMessage: (p) => `Inventory item updated: ${p.name ?? p.itemId}`,
 });
 
 register({
@@ -773,7 +785,6 @@ register({
   execute: async (p) => {
     await deleteInventoryItem(String(p.itemId));
   },
-  toastMessage: () => "Inventory item deleted",
 });
 
 // ─── Pricing / Coupons ─────────────────────────────────────────────────────────
@@ -794,7 +805,6 @@ register({
       await updateProduct(String(p.productId), { price: Number(p.newPrice ?? p.price ?? 0) });
     }
   },
-  toastMessage: (p) => `Price updated: ${p.productName ?? p.name ?? p.productId}`,
 });
 
 register({
@@ -821,7 +831,6 @@ register({
       minPurchase: p.minPurchase ? Number(p.minPurchase) : null,
     });
   },
-  toastMessage: (p) => `Coupon created: ${p.code}`,
 });
 
 register({
@@ -845,7 +854,6 @@ register({
     if (p.active !== undefined) data.active = Boolean(p.active);
     await updateCoupon(String(p.couponId), data);
   },
-  toastMessage: (p) => `Coupon updated: ${p.code ?? p.couponId}`,
 });
 
 register({
@@ -860,7 +868,6 @@ register({
   execute: async (p) => {
     await deleteCoupon(String(p.couponId));
   },
-  toastMessage: () => "Coupon deleted",
 });
 
 // ─── Suppliers ─────────────────────────────────────────────────────────────────
@@ -893,7 +900,6 @@ register({
       language: normalizeSupplierLanguage(p.language),
     });
   },
-  toastMessage: (p) => `Supplier added: ${p.name ?? p.supplierName}`,
 });
 
 register({
@@ -915,15 +921,10 @@ register({
   requiredPermission: { section: "inventory", action: "edit" },
   riskLevel: "medium",
   execute: async (p) => {
-    const conn = getConnection();
-    if (!conn) throw new Error("Not connected to SpacetimeDB");
-    const supplierId = String(p.supplierId ?? "");
+    if (!getConnection()) throw new Error("Not connected to SpacetimeDB");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const existing = [...(conn.db as any).supplier.iter()].find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (s: any) => s.id?.toString?.() === supplierId,
-    );
-    if (!existing) throw new Error("Supplier not found");
+    const existing = cachedRow("supplier", p.supplierId) as any;
+    if (!existing) throw new ActionError("targetMissing", "Supplier not found");
 
     const data: Record<string, unknown> = {
       name: p.name ? String(p.name) : String(existing.name ?? ""),
@@ -936,9 +937,8 @@ register({
       rating: Number(p.rating ?? existing.rating ?? 5),
       language: p.language ? normalizeSupplierLanguage(p.language) : normalizeSupplierLanguage(existing.language),
     };
-    await updateSupplier(String(p.supplierId), data);
+    await updateSupplier(storedId(existing.id), data);
   },
-  toastMessage: (p) => `Supplier updated: ${p.name ?? p.supplierId}`,
 });
 
 register({
@@ -953,7 +953,6 @@ register({
   execute: async (p) => {
     await deleteSupplier(String(p.supplierId));
   },
-  toastMessage: () => "Supplier deleted",
 });
 
 register({
@@ -970,10 +969,15 @@ register({
   requiredPermission: { section: "inventory", action: "edit" },
   riskLevel: "medium",
   execute: async (p) => {
+    // purchase_order.supplierId is read by the supplier views in the stored
+    // (hyphenated) form; an unknown or differently written id orphaned the PO.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supplier = cachedRow("supplier", p.supplierId) as any;
+    if (!supplier) throw new ActionError("targetMissing", "Supplier not found — add the supplier first.");
     // Priced from the lines, whatever subtotal/total the model sent.
     const { subtotal, tax, total } = orderAmounts(computeOrderTotalsStrict(p.items, p.tax));
     await createPurchaseOrder({
-      supplierId: String(p.supplierId ?? ""),
+      supplierId: storedId(supplier.id),
       items: JSON.stringify(p.items ?? []),
       subtotal,
       tax,
@@ -981,7 +985,6 @@ register({
       notes: p.notes ? String(p.notes) : null,
     });
   },
-  toastMessage: () => "Purchase order created",
 });
 
 register({
@@ -1008,13 +1011,11 @@ register({
     if (!conn) throw new Error("Not connected to SpacetimeDB");
     const organizationId = getActiveOrgId();
 
-    const supplierId = String(p.supplierId ?? "");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supplier = [...(conn.db as any).supplier.iter()].find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (s: any) => s.id?.toString?.() === supplierId,
-    );
-    if (!supplier) throw new Error("Supplier not found — add the supplier first.");
+    const supplier = cachedRow("supplier", p.supplierId) as any;
+    if (!supplier) throw new ActionError("targetMissing", "Supplier not found — add the supplier first.");
+    // The stored form, for the email route and the purchase_order row.
+    const supplierId = storedId(supplier.id);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const org = [...(conn.db as any).organization.iter()].find(
@@ -1109,13 +1110,9 @@ register({
       emailed,
     });
 
-    // Stash for toastMessage (executeAction passes the same object to both).
+    // Stash for the success toast (executeAction hands it the same object).
     (p as Record<string, unknown>).__emailed = emailed;
   },
-  toastMessage: (p) =>
-    (p as Record<string, unknown>).__emailed
-      ? "Order emailed to supplier"
-      : "Order saved as draft — manager notified",
 });
 
 // ─── Notifications ─────────────────────────────────────────────────────────────
@@ -1138,7 +1135,6 @@ register({
       body: String(p.body ?? ""),
     });
   },
-  toastMessage: () => "Notification sent",
 });
 
 // ─── Training Curriculum ──────────────────────────────────────────────────────
@@ -1215,18 +1211,18 @@ function resolveDay(p: Record<string, unknown>): CachedTrainingDay {
   const num = p.dayNumber != null ? Number(p.dayNumber) : null;
   const days = readTrainingDays();
   if (id) {
-    const hit = days.find((d) => d.id === id);
+    const hit = days.find((d) => sameId(d.id, id));
     if (hit) return hit;
   }
   if (num != null && !Number.isNaN(num)) {
     const hit = days.find((d) => d.dayNumber === num);
     if (hit) return hit;
   }
-  throw new Error("Day not found — provide a valid dayId or dayNumber");
+  throw new ActionError("targetMissing", "Day not found — provide a valid dayId or dayNumber");
 }
 
 function nextObjectiveSort(dayId: string): number {
-  const list = readTrainingObjectives().filter((o) => o.dayId === dayId);
+  const list = readTrainingObjectives().filter((o) => sameId(o.dayId, dayId));
   return list.length === 0
     ? 0
     : Math.max(...list.map((o) => o.sortOrder)) + 1;
@@ -1262,7 +1258,6 @@ register({
         p.sortOrder != null ? Math.max(0, Number(p.sortOrder)) : fallback,
     });
   },
-  toastMessage: (p) => `Training day added: ${p.title ?? "Untitled day"}`,
 });
 
 register({
@@ -1302,7 +1297,6 @@ register({
       sortOrder: nextSort,
     });
   },
-  toastMessage: (p) => `Training day updated${p.dayId ?? p.dayNumber ? `: ${p.dayId ?? `Day ${p.dayNumber}`}` : ""}`,
 });
 
 register({
@@ -1320,7 +1314,6 @@ register({
     const day = resolveDay(p);
     await deleteTrainingDay(day.id);
   },
-  toastMessage: (p) => `Training day deleted${p.dayNumber ? ` (Day ${p.dayNumber})` : ""}`,
 });
 
 register({
@@ -1355,7 +1348,6 @@ register({
       sortOrder: p.sortOrder != null ? Math.max(0, Number(p.sortOrder)) : nextObjectiveSort(day.id),
     });
   },
-  toastMessage: (p) => `Objective added to ${p.dayId ?? `Day ${p.dayNumber ?? "?"}`}`,
 });
 
 register({
@@ -1380,8 +1372,8 @@ register({
   execute: async (p) => {
     const objId = String(p.objectiveId ?? "");
     if (!objId) throw new Error("objectiveId is required");
-    const current = readTrainingObjectives().find((o) => o.id === objId);
-    if (!current) throw new Error(`Objective not found: ${objId}`);
+    const current = readTrainingObjectives().find((o) => sameId(o.id, objId));
+    if (!current) throw new ActionError("targetMissing", "Objective not found");
     const nextText = p.text != null ? String(p.text) : current.text;
     const nextMediaUrl =
       "mediaUrl" in p ? (p.mediaUrl ? String(p.mediaUrl) : null) : undefined;
@@ -1391,7 +1383,7 @@ register({
           ? (p.mediaType as "image" | "video")
           : null
         : undefined;
-    await updateTrainingObjective(objId, {
+    await updateTrainingObjective(storedId(current.id), {
       text: nextText,
       ...(nextMediaUrl !== undefined ? { mediaUrl: nextMediaUrl } : {}),
       ...(nextMediaType !== undefined ? { mediaType: nextMediaType } : {}),
@@ -1399,7 +1391,6 @@ register({
         p.sortOrder != null ? Math.max(0, Number(p.sortOrder)) : current.sortOrder,
     });
   },
-  toastMessage: () => "Objective updated",
 });
 
 register({
@@ -1414,7 +1405,6 @@ register({
   execute: async (p) => {
     await deleteTrainingObjective(String(p.objectiveId ?? ""));
   },
-  toastMessage: () => "Objective deleted",
 });
 
 /* eslint-enable @typescript-eslint/no-explicit-any */

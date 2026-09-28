@@ -2764,7 +2764,14 @@
       "replaceBuilderHtml": "替換元素",
       "deleteBuilderHtml": "刪除元素",
       "updateBuilderPage": "更新頁面屬性",
-      "updateBuilderSite": "更新站點屬性"
+      "updateBuilderSite": "更新站點屬性",
+      "setPunchInCode": "設定打卡碼",
+      "addTrainingDay": "新增培訓日",
+      "updateTrainingDay": "編輯培訓日",
+      "deleteTrainingDay": "刪除培訓日",
+      "addTrainingObjective": "新增培訓目標",
+      "updateTrainingObjective": "編輯培訓目標",
+      "deleteTrainingObjective": "刪除培訓目標"
     },
     "fields": {
       "staffName": "員工",
@@ -2843,7 +2850,13 @@
       "published": "已釋出",
       "plugins": "外掛",
       "subtotal": "小計",
-      "tax": "稅金"
+      "tax": "稅金",
+      "memberId": "成員",
+      "dayId": "培訓日",
+      "dayNumber": "第幾天",
+      "objectiveId": "培訓目標",
+      "text": "內容",
+      "orgName": "店鋪名稱"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "清空記錄",
@@ -2913,7 +2926,9 @@
       "adding": "新增中...",
       "deleting": "刪除中...",
       "added": "已新增",
-      "deleted": "已刪除"
+      "deleted": "已刪除",
+      "notAdded": "未新增",
+      "cancelled": "已取消"
     },
     "tasks": {
       "loading": "載入任務中...",
@@ -2929,7 +2944,9 @@
       "evidencePrompt": "此任務需要佐證 —— 請選擇應上傳佐證的群組頻道：",
       "noGroupChats": "尚無群組頻道 —— 請先從頻道頁面建立一個。",
       "add": "新增",
-      "skip": "略過"
+      "skip": "略過",
+      "addWithoutEvidence": "不要憑證，直接新增",
+      "createChannel": "去建立群組頻道"
     },
     "command": {
       "deleteRoleFailed": "刪除角色失敗",
@@ -3132,6 +3149,22 @@
         "partial": "部分自動",
         "full": "完全自動"
       }
+    },
+    "refs": {
+      "unknown": "未找到",
+      "unknownRole": "未知崗位",
+      "unknownTask": "未知任務",
+      "day": "第 {n} 天"
+    },
+    "toast": {
+      "done": "已完成：{action}",
+      "doneWithTarget": "已完成：{action} · {target}",
+      "orderEmailed": "訂單已通過郵件發給供應商",
+      "orderDraft": "訂單已存為草稿，已通知經理",
+      "failed": "操作失敗：{reason}",
+      "unknownAction": "Mr. Merchiva 請求了一個本應用程式沒有的操作。",
+      "targetMissing": "找不到此操作針對的記錄，它可能已被修改或刪除。",
+      "evidenceNeedsChannel": "拍照憑證需要一個群組頻道，請在人員頁面的任務編輯器中選擇。"
     }
   },
   "admins": {

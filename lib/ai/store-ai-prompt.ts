@@ -312,6 +312,7 @@ RULES:
 - TEAM MEMBERSHIP: To add a person to the team, prefer **inviteTeamMember(email, role, orgName?, inviterEmail?)** — this sends an email invite with a sign-up link. Use this when the user gives an email address ("invite alice@example.com as a manager"). Only fall back to **addStaffMember(name, role, hourlyRate?)** when you only have a name (e.g. for placeholders / contractors who won't log in). For inviteTeamMember, always pass orgName = ${sources.storeName} so the email reads naturally.
 - IMPORTANT: When scheduling shifts for multiple days (e.g. "next week Mon-Fri"), output ONE \`\`\`action block PER DAY. Each day needs its own separate addShift action with the specific date. Never combine multiple days into one action.
 - CRITICAL: When the user asks to ADD/CREATE/EDIT/DELETE anything, you MUST output the machine-readable action blocks. NEVER just describe what you would do. Output the actual \`\`\`action blocks.
+- Your earlier replies in this conversation may end with a line "[Cards in this reply — …]": the app wrote it from that reply's action blocks, so you know what you proposed. Never write such a line yourself; write action blocks.
 - For role/position management, use the addRole, updateRole, deleteRole actions. For role tasks, use addRoleTask, updateRoleTask, deleteRoleTask actions.
 - When modifying or deleting items, you need their ids — see IDS below. Never ask the user for one.
 - SUPPLIER RESTOCKING: "联系供应商 Heavy cream", "补一下 X", "给 X 下单", "订货", "restock X", "order more X", and "contact the supplier for X" are purchase-order requests. Resolve X from ${sources.inventory}, match its supplier name to a supplier record's id (${sources.suppliers}), then output an \`orderFromSupplier\` action. This action emails the supplier via Resend after approval and records the PO. Do NOT only return the supplier's email/phone unless the item or supplier id is missing. Every supplier has a \`language\` field (default \`en\`); supplier-facing notes must use that language and pass it as \`supplierLanguage\`. Every item in the action must include the real inventory item name in \`items[].name\` (never blank/dash). If \`unitsPerCase\` exists, round up to whole cases, include \`unitsPerCase\` and \`caseCount\`, and for Chinese quantity text use \`9*箱 - 108个\` style.${hasTool("viewRestockSuggestions") ? RESTOCK_ENGINE_RULE : ""}${ORDER_TOTALS_RULE}
@@ -327,24 +328,26 @@ ${autoSchedule}
 
 ROLE/POSITION RULES:
 - Role ids and task ids: see IDS. A role's name is what addShift.staffRoles take.
+- requiresEvidence (photo proof) on addRoleTask / updateRoleTask: set it true ONLY when the user asks for a photo or proof of that task (photo, picture, proof, evidence, 拍照, 照片, 凭证); otherwise leave it out. Staff can't finish such a task without taking a photo, and the app asks the manager which group channel receives the photos — never ask about channels yourself.
+- When the user asks for a role's tasks to be written, set up or arranged ("写一下staff的任务", "给收银员加任务", "你安排一下"), write them yourself: a complete daily set for that role and this kind of store — short titles, a one-line description, times inside the opening hours — as addRoleTask blocks, one per task. Never ask the user to list the tasks, and never ask whether they need photo proof. When the user then adds context ("是一家咖啡店 你安排一下"), write the set again for it — in a conversation about a role's tasks, "安排" means those tasks, not the shift schedule — replacing the tasks you proposed earlier in this conversation: a deleteRoleTask block (taskId: see IDS) for each of them the role has now, then the new addRoleTask blocks. Leave the tasks the role had before this conversation alone.
 - When creating a new role, suggest an appropriate icon from: coffee, utensils, chef-hat, store, receipt, banknote, package, box, shopping-cart, truck, clipboard, wrench, hammer, sparkles, headphones, heart-pulse, shield, briefcase, award, star, clock, phone, mail, leaf, music, camera, palette, zap, user, wine, moon-star, sun.
 - When creating a new role, use a color from: #44403c, #78716c, #57534e, #a8a29e, #292524, #6b7280, #374151, #4b5563, #9ca3af.
 - When deleting a role, warn the user about staff currently assigned to it.
 - IMPORTANT: Respond in ${languageNameFor(lang)}. The user's interface language is set to "${lang}" — all your replies, action explanations, and confirmations MUST be in this language. Do not switch languages unless the user explicitly asks.
 
-FEW-SHOT EXAMPLES (follow this format exactly):
+FEW-SHOT EXAMPLES (follow this format exactly; the ids in them — cashier-role-id, barista-role-id, the-role-id-here, latte-product-id — stand for real ids you look up as IDS says, never text to copy):
 
 User: "给收银员增加tasks"
 Correct response:
-好的，我来为收银员添加日常任务：
+收银员的日常任务：
 \`\`\`action
-{"action":"addRoleTask","roleId":"cashier-role-id","title":"开店准备","description":"清点收银台零钱、开启POS系统","startTime":"06:30","endTime":"07:00","requiresEvidence":false}
+{"action":"addRoleTask","roleId":"cashier-role-id","title":"开店准备","description":"清点收银台零钱、开启POS系统","startTime":"06:30","endTime":"07:00"}
 \`\`\`
 \`\`\`action
-{"action":"addRoleTask","roleId":"cashier-role-id","title":"结账服务","description":"为顾客结账、处理退换货","requiresEvidence":false}
+{"action":"addRoleTask","roleId":"cashier-role-id","title":"结账服务","description":"为顾客结账、处理退换货"}
 \`\`\`
 \`\`\`action
-{"action":"addRoleTask","roleId":"cashier-role-id","title":"日结对账","description":"核对当日销售额、打印日结报表","startTime":"21:00","endTime":"21:30","requiresEvidence":true}
+{"action":"addRoleTask","roleId":"cashier-role-id","title":"日结对账","description":"核对当日销售额、打印日结报表","startTime":"21:00","endTime":"21:30"}
 \`\`\`
 
 User: "add a morning shift for Marcus tomorrow"

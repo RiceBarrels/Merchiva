@@ -2764,7 +2764,14 @@
       "replaceBuilderHtml": "Replace element",
       "deleteBuilderHtml": "Delete element",
       "updateBuilderPage": "Update page",
-      "updateBuilderSite": "Update site"
+      "updateBuilderSite": "Update site",
+      "setPunchInCode": "Set punch-in code",
+      "addTrainingDay": "Add training day",
+      "updateTrainingDay": "Edit training day",
+      "deleteTrainingDay": "Delete training day",
+      "addTrainingObjective": "Add objective",
+      "updateTrainingObjective": "Edit objective",
+      "deleteTrainingObjective": "Delete objective"
     },
     "fields": {
       "staffName": "Staff",
@@ -2843,7 +2850,13 @@
       "published": "Published",
       "plugins": "Plugins",
       "subtotal": "Subtotal",
-      "tax": "Tax"
+      "tax": "Tax",
+      "memberId": "Member",
+      "dayId": "Training day",
+      "dayNumber": "Day",
+      "objectiveId": "Objective",
+      "text": "Text",
+      "orgName": "Store name"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "Clear history",
@@ -2913,7 +2926,9 @@
       "adding": "Adding...",
       "deleting": "Deleting...",
       "added": "Added",
-      "deleted": "Deleted"
+      "deleted": "Deleted",
+      "notAdded": "Not added",
+      "cancelled": "Cancelled"
     },
     "tasks": {
       "loading": "Loading tasks...",
@@ -2929,7 +2944,9 @@
       "evidencePrompt": "This task requires evidence — pick the group channel where it should be uploaded:",
       "noGroupChats": "No group channels yet — create one from the Channel page first.",
       "add": "Add",
-      "skip": "Skip"
+      "skip": "Skip",
+      "addWithoutEvidence": "Add without evidence",
+      "createChannel": "Create a group channel"
     },
     "command": {
       "deleteRoleFailed": "Failed to delete role",
@@ -3132,6 +3149,22 @@
         "partial": "Partially automatic",
         "full": "Fully automatic"
       }
+    },
+    "refs": {
+      "unknown": "Not found",
+      "unknownRole": "Unknown role",
+      "unknownTask": "Unknown task",
+      "day": "Day {n}"
+    },
+    "toast": {
+      "done": "Done: {action}",
+      "doneWithTarget": "Done: {action} · {target}",
+      "orderEmailed": "Order emailed to supplier",
+      "orderDraft": "Order saved as draft — manager notified",
+      "failed": "Action failed: {reason}",
+      "unknownAction": "Mr. Merchiva asked for an action this app doesn't have.",
+      "targetMissing": "Couldn't find what this action is about — it may have been changed or deleted.",
+      "evidenceNeedsChannel": "Photo proof needs a group channel. Pick one in the task's editor on the Personnel page."
     }
   },
   "admins": {

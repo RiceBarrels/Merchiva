@@ -86,7 +86,7 @@ export const ID_SOURCES: readonly IdSource[] = [
   },
   {
     param: "itemId",
-    actions: ["updateInventoryItem", "deleteInventoryItem"],
+    actions: ["updateInventory", "updateInventoryItem", "deleteInventoryItem"],
     from: [
       { tool: "viewInventory", field: "items[].id" },
       { tool: "viewRestockSuggestions", field: "suggestions[].itemId" },

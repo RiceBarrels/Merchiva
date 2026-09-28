@@ -21,9 +21,9 @@
  */
 
 import { getConnection } from "@/lib/spacetimedb/client";
+import { sameId } from "@/lib/merchiva/action-ids";
 import {
   deleteRoleTask,
-  deleteProduct,
   deleteInventoryItem,
   deleteShift,
   deleteStaffMember,
@@ -32,7 +32,6 @@ import {
   deleteCoupon,
   deleteTrainingDay,
   deleteTrainingObjective,
-  updateProduct,
   updateInventoryItem,
   updateShift,
   updateStaffMember,
@@ -68,12 +67,17 @@ type Entity = AddEntity | UpdateEntity;
 /**
  * Map of reversible action name → how to invert it. Anything absent is treated
  * as non-undoable. `updatePrice` and `addRole`/`updateRole` are aliases that map
- * onto the product / staff-role entities.
+ * onto the inventory-item / staff-role entities.
+ *
+ * Products are inventory_item rows (retailEnabled); there is no product table in
+ * the client cache, so the product entries point at `inventoryItem` and restore
+ * its retail columns. Every update reducer replaces the whole row, so `fields`
+ * lists every column the inverse must carry, not only the ones the action changed.
  */
 const ENTITY: Record<string, Entity> = {
   // ── add → delete ──
   addRoleTask: { kind: "add", table: "roleTask", del: deleteRoleTask },
-  addProduct: { kind: "add", table: "product", del: deleteProduct },
+  addProduct: { kind: "add", table: "inventoryItem", del: deleteInventoryItem },
   addInventoryItem: { kind: "add", table: "inventoryItem", del: deleteInventoryItem },
   addShift: { kind: "add", table: "shift", del: deleteShift },
   addStaffMember: { kind: "add", table: "staffMember", del: deleteStaffMember },
@@ -91,17 +95,17 @@ const ENTITY: Record<string, Entity> = {
   // ── update → restore prior fields ──
   updateProduct: {
     kind: "update",
-    table: "product",
+    table: "inventoryItem",
     idParam: "productId",
-    upd: updateProduct,
-    fields: ["name", "category", "price", "cost", "description"],
+    upd: updateInventoryItem,
+    fields: ["name", "category", "retailEnabled", "retailPrice", "retailDescription", "retailImageUrl", "retailUsageQty"],
   },
   updatePrice: {
     kind: "update",
-    table: "product",
+    table: "inventoryItem",
     idParam: "productId",
-    upd: updateProduct,
-    fields: ["price"],
+    upd: updateInventoryItem,
+    fields: ["retailEnabled", "retailPrice"],
   },
   updateInventoryItem: {
     kind: "update",
@@ -115,7 +119,7 @@ const ENTITY: Record<string, Entity> = {
     table: "shift",
     idParam: "shiftId",
     upd: updateShift,
-    fields: ["date", "startTime", "endTime", "shiftType"],
+    fields: ["memberId", "staffName", "staffRole", "staffRoles", "date", "startTime", "endTime", "shiftType", "predictedDemand"],
   },
   updateStaffMember: {
     kind: "update",
@@ -129,28 +133,28 @@ const ENTITY: Record<string, Entity> = {
     table: "staffRole",
     idParam: "roleId",
     upd: updateStaffRole,
-    fields: ["name", "description", "color", "icon"],
+    fields: ["name", "description", "color", "icon", "permissions"],
   },
   updateRole: {
     kind: "update",
     table: "staffRole",
     idParam: "roleId",
     upd: updateStaffRole,
-    fields: ["name", "description", "color", "icon"],
+    fields: ["name", "description", "color", "icon", "permissions"],
   },
   updateRoleTask: {
     kind: "update",
     table: "roleTask",
     idParam: "taskId",
     upd: updateRoleTask,
-    fields: ["title", "description", "startTime", "endTime", "requiresEvidence"],
+    fields: ["title", "description", "startTime", "endTime", "sortOrder", "requiresEvidence", "notifyChats"],
   },
   updateSupplier: {
     kind: "update",
     table: "supplier",
     idParam: "supplierId",
     upd: updateSupplier,
-    fields: ["name", "contactName", "email", "phone"],
+    fields: ["name", "contactName", "email", "phone", "address", "paymentTerms", "notes", "rating", "language"],
   },
   updateCoupon: {
     kind: "update",
@@ -210,13 +214,14 @@ export function captureUndoSnapshot(
   }
 
   // update: capture the target row's prior values for the fields we may restore.
+  // The id may be in either form; the inverse gets the row's own (hyphenated) id.
   const id = String(params[entity.idParam] ?? "");
   if (!id) return null;
-  const row = tableRows(entity.table).find((r) => rowIdStr(r) === id);
+  const row = tableRows(entity.table).find((r) => sameId(r?.id, id));
   if (!row) return null;
   const priorFields: Record<string, unknown> = {};
   for (const f of entity.fields) priorFields[f] = (row as any)[f];
-  return { actionName, rowId: id, priorFields };
+  return { actionName, rowId: rowIdStr(row), priorFields };
 }
 
 /**

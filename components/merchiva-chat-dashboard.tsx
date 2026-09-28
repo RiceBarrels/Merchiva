@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback, isValidElement, cloneElement, Children, type ReactNode, type ReactElement } from "react";
-import { Package, Users, Eye, ChevronRight, ChevronDown, ChevronUp, Bell, Paperclip, Mic, AtSign, ArrowUp, ArrowRight, Check, Calendar, Sparkles, ArrowLeftRight, CalendarX, Truck, Trash2, Plus, User, Coffee, Utensils, ChefHat, Clipboard, Wrench, Headphones, Store, Banknote, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera, Palette, Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, Wine, Shield, MoonStar, Sun, ReceiptText, HandPlatter, Pencil, UserPlus, UserMinus, ListChecks, Tag, Ticket, X, CheckCircle2, AlertTriangle, Copy, RotateCcw } from "lucide-react";
+import { Package, Users, Eye, ChevronRight, ChevronDown, ChevronUp, Bell, Paperclip, Mic, AtSign, ArrowUp, ArrowRight, Check, Calendar, Sparkles, ArrowLeftRight, CalendarX, Truck, Trash2, Plus, ShoppingCart, Phone, Pencil, UserPlus, UserMinus, ListChecks, Tag, Ticket, X, CheckCircle2, AlertTriangle, Copy, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -15,11 +15,6 @@ import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
 import { generateInsights, generateGreeting, type MerchivaInsight } from "@/lib/merchiva-insights";
 import {
-  addStaffRole as execAddStaffRole,
-  addRoleTask as execAddRoleTask,
-  deleteStaffRole as execDeleteStaffRole,
-  deleteRoleTask as execDeleteRoleTask,
-  getRoleTasks,
   createAiChatSession as execCreateSession,
   saveAiChatSession as execSaveSession,
 } from "@/lib/spacetimedb/actions";
@@ -30,22 +25,34 @@ import { getUpcomingHolidays, inferCountryFromLocale, parseOpeningHours } from "
 import { toast } from "sonner";
 import { parseAllSkills, executeAction, getActionCatalog } from "@/lib/merchiva/skills/registry";
 import { extractActionBlocks } from "@/lib/merchiva/skills/actions";
-import { gateAction, type GateDecision } from "@/lib/merchiva/autonomy";
+import { gateAction } from "@/lib/merchiva/autonomy";
 import { useAssistantConfig } from "@/lib/spacetimedb/hooks/useSettings";
 import { useTabChatSession } from "@/components/merchiva-dock/tab-sessions";
 import { ToolSteps, ToolStepsAnnouncer } from "@/components/merchiva-dock/tool-steps";
-import { GateReasonNote } from "@/components/merchiva-dock/gate-reason-note";
+import { ActionApprovalCard } from "@/components/merchiva-dock/action-card";
+import { CommandGroup } from "@/components/merchiva-dock/command-group";
+import { TaskDeleteGroup } from "@/components/merchiva-dock/task-delete-group";
+import { RolesListCard } from "@/components/merchiva-dock/task-cards";
+import { TasksListInline } from "@/components/merchiva-dock/tasks-list-card";
+import { ROLE_ICON_MAP } from "@/components/merchiva-dock/role-icon";
+import { useRefIndex } from "@/components/merchiva-dock/use-ref-index";
+import { sameId, storedId } from "@/lib/merchiva/action-ids";
+import { pinTaskDeletes, resolveRoleRef, roleRefLabel, tasksOfRole } from "@/lib/merchiva/role-ref";
+import { expandHistoryFromMessages } from "@/lib/merchiva/chat-history";
+import { actionTarget, captureRefLabels } from "@/lib/merchiva/ref-labels";
+import { actionFailureText, actionSuccessText } from "@/lib/merchiva/action-toasts";
+import { resolveShiftRoles, resolveShiftStaff } from "@/lib/merchiva/shift-refs";
 import { splitToolEvents } from "@/lib/merchiva/tool-events";
 import { applyToolEvents, restoreSteps, settleSteps, withSettledSteps, withToolEvents } from "@/lib/merchiva/tool-steps";
 import { aiFocusScope, finishAiFocus, finishReplyFocus, focusAction, focusToolStarts, followJobFrames, jobStaleInMs, releaseJobs } from "@/lib/merchiva/tool-focus";
 import { currentPagePayload } from "@/lib/merchiva/current-page";
 import { useServerClockOffset } from "@/lib/presence/store";
-import { captureUndoSnapshot, buildInverse, isUndoable, type UndoSnapshot } from "@/lib/merchiva/undo";
+import { captureUndoSnapshot, buildInverse, type UndoSnapshot } from "@/lib/merchiva/undo";
 import { useAiJobs } from "@/lib/spacetimedb/hooks";
 import { consumeAiJob, deleteAiJob, markNotificationRead } from "@/lib/spacetimedb/actions";
 import { getStoredToken } from "@/lib/spacetimedb/client";
 import { useAuth } from "@/lib/auth/context";
-import type { ChatMessage, TaskDeleteCmd, PendingAction } from "@/lib/merchiva/skills/types";
+import type { ChatMessage, PendingAction, TaskDeleteCmd } from "@/lib/merchiva/skills/types";
 import { loadMemory, saveMemoryField } from "@/lib/merchiva/memory";
 import { loadStoredMcpServers, redactMcpServers } from "@/lib/merchiva/mcp/config";
 import { useI18n, useT } from "@/lib/i18n/context";
@@ -74,14 +81,6 @@ const M_ACC_BD = "var(--m-acc-bd)";
 
 type RowIdLike = unknown;
 type TimestampLike = { microsSinceUnixEpoch?: bigint | number | string } | null | undefined;
-type RoleCacheRow = { id?: RowIdLike; name?: string; color?: string; icon?: string; description?: string };
-type TaskCacheRow = { id?: RowIdLike; roleId?: RowIdLike; title?: string };
-type RoleTaskConnection = {
-  db?: {
-    staffRole?: { iter?: () => Iterable<RoleCacheRow> };
-    roleTask?: { iter?: () => Iterable<TaskCacheRow> };
-  };
-};
 type AiChatSessionRow = {
   id?: RowIdLike;
   organizationId?: string;
@@ -186,26 +185,6 @@ function splitAck(raw: string): { ack: string; rest: string } {
     ack: raw.slice(ACK_OPEN.length, closeIdx),
     rest: raw.slice(closeIdx + ACK_CLOSE.length),
   };
-}
-
-// ── Role icon map (mirrors staffing page) ──────────────────────────────────
-
-const ROLE_ICON_MAP: Record<string, LucideIcon> = {
-  "user": User, "coffee": Coffee, "utensils": Utensils, "chef-hat": ChefHat,
-  "truck": Truck, "package": Package, "clipboard": Clipboard, "wrench": Wrench,
-  "headphones": Headphones, "store": Store, "banknote": Banknote,
-  "sparkles": Sparkles, "box": Box, "shopping-cart": ShoppingCart,
-  "receipt": Receipt, "heart-pulse": HeartPulse, "baby": Baby, "dog": Dog,
-  "leaf": Leaf, "music": Music, "camera": Camera, "palette": Palette,
-  "hammer": Hammer, "zap": Zap, "star": Star, "award": Award,
-  "briefcase": Briefcase, "phone": Phone, "mail": Mail, "clock": Clock,
-  "shield": Shield, "wine": Wine, "moon-star": MoonStar, "sun": Sun,
-  "receipt-text": ReceiptText, "hand-platter": HandPlatter,
-};
-
-function RoleIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
-  const Comp = ROLE_ICON_MAP[name] ?? User;
-  return <Comp className={className} style={style} />;
 }
 
 // ── Notch M (agent mark) ────────────────────────────────────────────────────
@@ -754,466 +733,6 @@ function InsightEmbed({ insight }: { insight: MerchivaInsight }) {
   return null;
 }
 
-// ── Action approval UI ─────────────────────────────────────────────────────
-
-// Action-meta entries reference a translation key under `merchiva.actions.*` —
-// the visible label is resolved at render time via useT().
-const ACTION_META: Record<string, { icon: React.ReactNode; fields: string[]; risk?: "low" | "medium" | "high" }> = {
-  // Scheduling
-  addShift:            { icon: <Calendar className="h-3 w-3" />, fields: ["staffName", "date", "startTime", "endTime", "shiftType", "staffRoles"] },
-  updateShift:         { icon: <Pencil className="h-3 w-3" />, fields: ["shiftId", "date", "startTime", "endTime", "shiftType"] },
-  deleteShift:         { icon: <CalendarX className="h-3 w-3" />, fields: ["shiftId"], risk: "high" },
-  approveTimeOff:      { icon: <CheckCircle2 className="h-3 w-3" />, fields: ["requestId", "approved", "reason"] },
-  approveShiftTrade:   { icon: <ArrowLeftRight className="h-3 w-3" />, fields: ["tradeId", "approved"] },
-  // Staff
-  addStaffMember:      { icon: <UserPlus className="h-3 w-3" />, fields: ["name", "role", "hourlyRate"] },
-  inviteTeamMember:    { icon: <Mail className="h-3 w-3" />, fields: ["email", "role", "orgName"] },
-  updateStaffMember:   { icon: <Pencil className="h-3 w-3" />, fields: ["staffMemberId", "name", "role", "hourlyRate"] },
-  deleteStaffMember:   { icon: <UserMinus className="h-3 w-3" />, fields: ["staffMemberId"], risk: "high" },
-  // Roles
-  addRole:             { icon: <Plus className="h-3 w-3" />, fields: ["name", "description", "icon", "color"] },
-  updateRole:          { icon: <Pencil className="h-3 w-3" />, fields: ["roleId", "name", "description", "icon", "color"] },
-  deleteRole:          { icon: <Trash2 className="h-3 w-3" />, fields: ["roleId"], risk: "high" },
-  // Role Tasks
-  addRoleTask:         { icon: <ListChecks className="h-3 w-3" />, fields: ["roleId", "title", "description", "startTime", "endTime", "requiresEvidence"] },
-  updateRoleTask:      { icon: <Pencil className="h-3 w-3" />, fields: ["taskId", "title", "description"] },
-  deleteRoleTask:      { icon: <Trash2 className="h-3 w-3" />, fields: ["taskId"], risk: "high" },
-  // Products
-  addProduct:          { icon: <Plus className="h-3 w-3" />, fields: ["name", "category", "price", "cost", "description"] },
-  createProduct:       { icon: <Plus className="h-3 w-3" />, fields: ["name", "category", "price", "cost", "description"] },
-  updateProduct:       { icon: <Pencil className="h-3 w-3" />, fields: ["productId", "name", "category", "price"] },
-  deleteProduct:       { icon: <Trash2 className="h-3 w-3" />, fields: ["productId"], risk: "high" },
-  // Inventory
-  addInventoryItem:    { icon: <Package className="h-3 w-3" />, fields: ["name", "category", "currentStock", "unit", "supplier"] },
-  createInventoryItem: { icon: <Package className="h-3 w-3" />, fields: ["name", "category", "currentStock", "unit", "supplier"] },
-  updateInventory:     { icon: <Package className="h-3 w-3" />, fields: ["itemName", "quantity", "type"] },
-  updateInventoryItem: { icon: <Pencil className="h-3 w-3" />, fields: ["itemId", "name", "minStock", "maxStock"] },
-  deleteInventoryItem: { icon: <Trash2 className="h-3 w-3" />, fields: ["itemId"], risk: "high" },
-  // Pricing
-  updatePrice:         { icon: <Tag className="h-3 w-3" />, fields: ["productName", "newPrice"] },
-  addCoupon:           { icon: <Ticket className="h-3 w-3" />, fields: ["code", "discountType", "discountValue", "expiresAt"] },
-  updateCoupon:        { icon: <Pencil className="h-3 w-3" />, fields: ["couponId", "code", "discountValue"] },
-  deleteCoupon:        { icon: <Trash2 className="h-3 w-3" />, fields: ["couponId"], risk: "high" },
-  // Suppliers
-  addSupplier:         { icon: <Truck className="h-3 w-3" />, fields: ["name", "contactName", "email", "phone"] },
-  createSupplier:      { icon: <Truck className="h-3 w-3" />, fields: ["name", "contactName", "email", "phone"] },
-  updateSupplier:      { icon: <Pencil className="h-3 w-3" />, fields: ["supplierId", "name", "contactName"] },
-  deleteSupplier:      { icon: <Trash2 className="h-3 w-3" />, fields: ["supplierId"], risk: "high" },
-  createPurchaseOrder: { icon: <Truck className="h-3 w-3" />, fields: ["supplierId", "items", "total"] },
-  orderFromSupplier:   { icon: <Mail className="h-3 w-3" />, fields: ["supplierId", "items", "total", "notes"], risk: "high" },
-  // Notifications
-  createNotification:  { icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
-  sendNotification:    { icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
-};
-
-function formatActionValue(val: unknown, depth = 0): string {
-  if (val == null) return "";
-  if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") return String(val);
-  if (depth > 3) return "…";
-  if (Array.isArray(val)) {
-    return val.map((v) => formatActionValue(v, depth + 1)).join(" · ");
-  }
-  if (typeof val === "object") {
-    return Object.entries(val as Record<string, unknown>)
-      .map(([k, fv]) => `${k}: ${formatActionValue(fv, depth + 1)}`)
-      .join(", ");
-  }
-  return String(val);
-}
-
-function ShiftPreviewStrip({ action, validRoleNamesLower }: {
-  action: Record<string, unknown>;
-  // Lowercase set of role names that actually exist in staff_role for this org.
-  // When the AI proposes a name that's NOT in here we render the badge red so
-  // the user can spot the bad card without clicking approve and reading the
-  // toast. If undefined (caller didn't thread it through), we skip validation
-  // and render every role neutral — same as before.
-  validRoleNamesLower?: Set<string>;
-}) {
-  const t = useT();
-  const name = String(action.staffName ?? "");
-  const date = String(action.date ?? "");
-  const start = String(action.startTime ?? "");
-  const end = String(action.endTime ?? "");
-  const type = String(action.shiftType ?? "");
-  // staffRoles can arrive as an array (registry-shaped) or a JSON string
-  // (raw reducer args), so accept both. Empty arrays are fine — the validator
-  // catches that path before this card ever fires the action.
-  const rawRoles: unknown = action.staffRoles;
-  let roles: string[] = [];
-  if (Array.isArray(rawRoles)) {
-    roles = rawRoles.map((r) => String(r ?? "").trim()).filter(Boolean);
-  } else if (typeof rawRoles === "string" && rawRoles.length > 0) {
-    try {
-      const parsed = JSON.parse(rawRoles);
-      if (Array.isArray(parsed)) roles = parsed.map((r) => String(r ?? "").trim()).filter(Boolean);
-      else roles = [rawRoles.trim()].filter(Boolean);
-    } catch {
-      roles = [rawRoles.trim()].filter(Boolean);
-    }
-  }
-  const typeColors: Record<string, string> = {
-    morning: STATUS_TONE_CLASSES.warning,
-    afternoon: STATUS_TONE_CLASSES.info,
-    evening: STATUS_TONE_CLASSES.neutral,
-    closing: STATUS_TONE_CLASSES.neutral,
-  };
-  const d = date ? new Date(date + "T00:00:00") : null;
-  const dayLabel = d ? d.toLocaleDateString("zh-CN", { weekday: "short", month: "numeric", day: "numeric" }) : date;
-  return (
-    <div className="flex items-center gap-2 mt-1 mb-1 flex-wrap">
-      <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <span className="text-[12.5px] font-medium">{name}</span>
-      <span className="text-[11px] text-muted-foreground font-mono">{dayLabel}</span>
-      <span className="text-[11px] font-mono tabular-nums text-muted-foreground">{start}–{end}</span>
-      {type && (
-        <span className={cn("text-[9.5px] font-mono uppercase px-1.5 py-0.5 rounded border", typeColors[type] ?? STATUS_TONE_CLASSES.neutral)}>
-          {type}
-        </span>
-      )}
-      {roles.map((roleName) => {
-        const isInvalid = validRoleNamesLower && !validRoleNamesLower.has(roleName.toLowerCase());
-        return (
-          <span
-            key={roleName}
-            className={cn(
-              "text-[10px] px-1.5 py-0.5 rounded border",
-              isInvalid
-                ? cn(STATUS_TONE_CLASSES.danger, "line-through")
-                : STATUS_TONE_CLASSES.neutral,
-            )}
-            title={isInvalid ? t("merchiva.shift.invalidRole") : t("merchiva.shift.jobRole")}
-          >
-            {roleName}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-function RolePreviewStrip({ action }: { action: Record<string, unknown> }) {
-  const name = String(action.name ?? action.title ?? "");
-  const icon = String(action.icon ?? "user");
-  const color = String(action.color ?? "#44403c");
-  const desc = String(action.description ?? action.des ?? "");
-  return (
-    <div className="flex items-center gap-2.5 mt-1 mb-1">
-      <span className="w-7 h-7 rounded flex items-center justify-center shrink-0" style={{ background: color }}>
-        <RoleIcon name={icon} className="h-3.5 w-3.5 text-white" />
-      </span>
-      <div className="min-w-0">
-        <div className="text-[12.5px] font-semibold">{name}</div>
-        {desc && <div className="text-[10.5px] text-muted-foreground truncate">{desc}</div>}
-      </div>
-    </div>
-  );
-}
-
-// Rich preview for orderFromSupplier / createPurchaseOrder cards. The generic
-// field grid truncated the `items` array to one cut-off line; this lays the
-// order out line-by-line (item × qty, unit cost) with a resolved supplier name
-// and totals so the user can actually review what they're approving.
-function numOrNull(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-function supplierOrderItemName(it: Record<string, unknown>, notes = ""): string {
-  const direct = [it.name, it.itemName, it.productName, it.inventoryItemName, it.item]
-    .map((v) => (v == null ? "" : String(v).trim()))
-    .find((v) => v && v !== "—");
-  if (direct) return direct;
-
-  const fromZhNote = notes.match(/^([^，,。.\n]+?)\s*(?:补货|補貨|restock|reorder|order)/i)?.[1]?.trim();
-  if (fromZhNote) return fromZhNote;
-  return "—";
-}
-
-function supplierOrderQuantityLabel(it: Record<string, unknown>): string | null {
-  const qty = numOrNull(it.quantity ?? it.qty);
-  if (qty == null) return null;
-  const unitsPerCase = numOrNull(it.unitsPerCase);
-  const caseCount = numOrNull(it.caseCount) ?? (unitsPerCase && unitsPerCase > 0 ? Math.ceil(qty / unitsPerCase) : null);
-  if (caseCount && unitsPerCase && unitsPerCase > 0) {
-    return `${caseCount}*箱 - ${qty}个`;
-  }
-  const unit = it.unit ? String(it.unit) : "";
-  return `× ${qty}${unit && ` ${unit}`}`;
-}
-
-function SupplierOrderPreview({ action, supplierNameById }: {
-  action: Record<string, unknown>;
-  supplierNameById?: Map<string, string>;
-}) {
-  const t = useT();
-  const supplierId = String(action.supplierId ?? "");
-  const supplierName =
-    (action.supplierName as string | undefined) ||
-    supplierNameById?.get(supplierId) ||
-    (supplierId ? supplierId : t("merchiva.ui.unknownSupplier"));
-  const items = Array.isArray(action.items)
-    ? (action.items as Array<Record<string, unknown>>)
-    : [];
-  const subtotal = numOrNull(action.subtotal);
-  const tax = numOrNull(action.tax);
-  // Fall back to summing unitCost × quantity when no explicit total was given.
-  const computed = items.reduce((s, it) => {
-    const q = numOrNull(it.quantity) ?? 0;
-    const c = numOrNull(it.unitCost) ?? 0;
-    return s + q * c;
-  }, 0);
-  const total = numOrNull(action.total) ?? (subtotal != null ? subtotal + (tax ?? 0) : computed || null);
-  const notes = action.notes ? String(action.notes) : "";
-  const money = (n: number) => `$${n.toFixed(2)}`;
-
-  return (
-    <div className="mt-1 mb-2 rounded border border-border bg-background/60">
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border">
-        <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <span className="text-[12px] font-semibold truncate">{supplierName}</span>
-        <span className="text-[10px] font-mono text-muted-foreground ml-auto shrink-0">
-          {(items.length === 1 ? t("merchiva.order.itemCount") : t("merchiva.order.itemCountPlural")).replace("{count}", String(items.length))}
-        </span>
-      </div>
-      {items.length > 0 ? (
-        <div className="divide-y divide-border/60">
-          {items.map((it, i) => {
-            const name = supplierOrderItemName(it, notes);
-            const qtyLabel = supplierOrderQuantityLabel(it);
-            const unitCost = numOrNull(it.unitCost);
-            return (
-              <div key={i} className="flex items-baseline gap-2 px-2.5 py-1.5">
-                <span className="text-[12.5px] font-medium truncate flex-1">{name}</span>
-                {qtyLabel && (
-                  <span className="text-[12px] font-mono tabular-nums text-muted-foreground shrink-0">
-                    {qtyLabel}
-                  </span>
-                )}
-                {unitCost != null && (
-                  <span className="text-[11px] font-mono text-muted-foreground shrink-0 w-16 text-right">
-                    {money(unitCost)}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="px-2.5 py-1.5 text-[11px] text-muted-foreground italic">
-          {t("merchiva.ui.noItems")}
-        </div>
-      )}
-      {(subtotal != null || tax != null || total != null) && (
-        <div className="flex flex-col gap-0.5 px-2.5 py-1.5 border-t border-border">
-          {subtotal != null && (
-            <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
-              <span>{t("merchiva.fields.subtotal")}</span>
-              <span>{money(subtotal)}</span>
-            </div>
-          )}
-          {tax != null && (
-            <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
-              <span>{t("merchiva.fields.tax")}</span>
-              <span>{money(tax)}</span>
-            </div>
-          )}
-          {total != null && (
-            <div className="flex justify-between text-[12.5px] font-semibold font-mono">
-              <span>{t("merchiva.fields.total").startsWith("merchiva.") ? "Total" : t("merchiva.fields.total")}</span>
-              <span>{money(total)}</span>
-            </div>
-          )}
-        </div>
-      )}
-      {notes && (
-        <div className="px-2.5 py-1.5 border-t border-border text-[11.5px] text-muted-foreground">
-          {notes}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecuted, decision, reason, why, validRoleNamesLower, supplierNameById }: {
-  action: Record<string, unknown>;
-  onApprove: () => void;
-  onReject: () => void;
-  status: "pending" | "approved" | "rejected";
-  alreadyExecuted?: boolean;
-  // Autonomy gate decision. Absent ⇒ "auto" (legacy persisted actions).
-  decision?: GateDecision;
-  // Why the action was proposed/denied: `why` translated, else legacy English `reason`.
-  reason?: string;
-  why?: PendingAction["why"];
-  // Passed through to ShiftPreviewStrip so addShift cards can flag invalid
-  // staffRoles before the user clicks approve and trips the validator.
-  validRoleNamesLower?: Set<string>;
-  // supplierId → name, so the order card shows a readable supplier instead of a raw id.
-  supplierNameById?: Map<string, string>;
-}) {
-  const t = useT();
-  const actionName = String(action.action ?? "unknown");
-  const meta = ACTION_META[actionName];
-  const actionLabel = t(`merchiva.actions.${actionName}`);
-  // When the lookup returns the path itself (missing key), fall back to the
-  // raw action identifier so users see something readable.
-  const displayLabel = actionLabel.startsWith("merchiva.actions.") ? actionName : actionLabel;
-  const [executing, setExecuting] = useState(false);
-  const autoRan = useRef(!!alreadyExecuted);
-  const dec: GateDecision = decision ?? "auto";
-  const isHighRisk = meta?.risk === "high";
-  const needsApproval = dec === "propose";
-  const denied = dec === "deny";
-  const canUndo = isUndoable(actionName);
-  const isShiftAction = actionName === "addShift" || actionName === "updateShift";
-  const isRoleAction = actionName === "addRole" || actionName === "updateRole";
-  const isSupplierOrder = actionName === "orderFromSupplier" || actionName === "createPurchaseOrder";
-
-  useEffect(() => {
-    // Only "auto" decisions self-execute. "propose" waits for a click; "deny"
-    // never runs.
-    if (status !== "pending" || autoRan.current || dec !== "auto") return;
-    autoRan.current = true;
-    queueMicrotask(() => {
-      setExecuting(true);
-      Promise.resolve(onApprove()).finally(() => setExecuting(false));
-    });
-  }, [status, onApprove, dec]);
-
-  const displayFields = (meta?.fields ?? Object.keys(action).filter((k) => k !== "action"))
-    .filter((k) => action[k] != null);
-
-  const borderColor = status === "approved"
-    ? "border-emerald-200 bg-emerald-50/50"
-    : status === "rejected"
-    ? "border-destructive/30 bg-destructive/5"
-    : denied
-    ? "border-border bg-muted/60 opacity-75"
-    : isHighRisk
-    ? "border-amber-200 bg-amber-50/30"
-    : "border-border bg-muted/40";
-
-  // Graceful i18n fallback for the autonomy strings: a missing merchiva.* key
-  // resolves to the path itself (starts with "merchiva."), so fall back to English.
-  const tx = (key: string, fallback: string) => {
-    const v = t(key);
-    return v.startsWith("merchiva.") ? fallback : v;
-  };
-
-  return (
-    <div className={cn("rounded-lg border p-3 mt-2", borderColor)}>
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-2">
-        <span className={cn(
-          "h-6 px-2 rounded inline-flex items-center gap-1.5",
-          "border",
-          status === "approved" ? STATUS_TONE_CLASSES.success :
-          status === "rejected" ? STATUS_TONE_CLASSES.danger :
-          denied ? cn(STATUS_TONE_CLASSES.neutral, "opacity-60") :
-          isHighRisk ? STATUS_TONE_CLASSES.warning :
-          STATUS_TONE_CLASSES.neutral
-        )}>
-          {meta?.icon ?? <ArrowRight className="h-3 w-3" />}
-          <span className="font-mono text-[10px] tracking-[0.06em] uppercase font-semibold">
-            {displayLabel}
-          </span>
-        </span>
-        {denied && (
-          <span className="text-[10px] font-mono text-muted-foreground inline-flex items-center gap-1">
-            <X className="h-3 w-3" /> {tx("merchiva.ui.noPermission", "No permission")}
-          </span>
-        )}
-        {needsApproval && status === "pending" && (
-          <span className={cn("text-[10px] font-mono inline-flex items-center gap-1", isHighRisk ? "text-amber-600" : "text-muted-foreground")}>
-            <AlertTriangle className="h-3 w-3" /> {tx("merchiva.ui.needsApproval", "Needs your OK")}
-          </span>
-        )}
-        {executing && (
-          <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
-            <Spinner size={12} /> {t("merchiva.ui.executing")}
-          </span>
-        )}
-        {status === "approved" && !executing && (
-          <span className="text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1 ml-auto">
-            <Check className="h-3 w-3" /> {t("merchiva.ui.executed")}
-          </span>
-        )}
-        {status === "rejected" && (
-          <span className="text-[10.5px] font-mono text-destructive inline-flex items-center gap-1 ml-auto">
-            <X className="h-3 w-3" /> {t("merchiva.ui.undone")}
-          </span>
-        )}
-      </div>
-
-      {/* Rich preview for specific action types */}
-      {isShiftAction && status !== "rejected" && <ShiftPreviewStrip action={action} validRoleNamesLower={validRoleNamesLower} />}
-      {isRoleAction && status !== "rejected" && <RolePreviewStrip action={action} />}
-      {isSupplierOrder && status !== "rejected" && <SupplierOrderPreview action={action} supplierNameById={supplierNameById} />}
-
-      {/* Field grid (skip fields already shown in rich preview) */}
-      {!isShiftAction && !isRoleAction && !isSupplierOrder && (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-2">
-          {displayFields.map((key) => {
-            const val = action[key];
-            const display = formatActionValue(val);
-            return (
-              <div key={key} className={cn("flex items-baseline gap-1.5", Array.isArray(val) && typeof val[0] === "object" && "col-span-2")}>
-                <span className="text-[10.5px] text-muted-foreground font-mono shrink-0">
-                  {(() => {
-                    const fl = t(`merchiva.fields.${key}`);
-                    return fl.startsWith("merchiva.fields.") ? key : fl;
-                  })()}
-                </span>
-                <span className="text-[12.5px] font-medium truncate">{display}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Why this needs approval (reason from the autonomy gate) */}
-      {needsApproval && status === "pending" && <GateReasonNote why={why} reason={reason} />}
-
-      {/* Approve / Reject buttons — shown for any "propose" decision (medium or
-          high risk), not just high-risk as before. */}
-      {status === "pending" && !executing && needsApproval && (
-        <div className="flex items-center gap-2 mt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { setExecuting(true); Promise.resolve(onApprove()).finally(() => setExecuting(false)); }}
-            className={cn(STATUS_TONE_CLASSES.success, "px-3 font-semibold hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900")}
-          >
-            <Check className="h-3 w-3" /> {t("merchiva.ui.confirmExecute")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onReject}
-            className="px-3 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          >
-            <X className="h-3 w-3" /> {t("merchiva.ui.cancel")}
-          </Button>
-        </div>
-      )}
-      {/* Executed: real Undo when the action is reversible, otherwise a note. */}
-      {status === "approved" && !executing && (
-        canUndo ? (
-          <Button variant="outline" size="sm" onClick={onReject}
-            className="px-3 mt-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
-            {t("merchiva.ui.undo")}
-          </Button>
-        ) : (
-          <p className="text-[10.5px] text-muted-foreground/70 mt-1 italic">
-            {tx("merchiva.ui.cannotUndo", "Can't be undone")}
-          </p>
-        )
-      )}
-    </div>
-  );
-}
-
 // Category and risk labels are now resolved via i18n at the use site
 // (see `merchiva.categories.*` and `merchiva.risk.*`).
 
@@ -1452,709 +971,11 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
   );
 }
 
-// ── Roles & Tasks UI ──────────────────────────────────────────────────────
+// ── Roles & Tasks UI (components/merchiva-dock/task-cards.tsx, command-group.tsx, task-delete-group.tsx) ──
 
-import type { QAItem, RoleAddCmd, TaskAddCmd } from "@/lib/merchiva/skills/types";
+import type { QAItem } from "@/lib/merchiva/skills/types";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { todayKey } from "@/lib/date-key";
-
-function RolesListCard({ roles }: { roles: Array<{ id: string; name: string; color: string; icon: string; description: string }> }) {
-  const t = useT();
-  return (
-    <div className="rounded-lg border border-border bg-background overflow-hidden mt-2">
-      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
-        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1 bg-muted border border-border text-muted-foreground">
-          <Users className="h-[10px] w-[10px]" />
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.rolesList.tag")}</span>
-        </span>
-        <span className="text-[11px] text-muted-foreground font-mono">{t("merchiva.rolesList.count").replace("{count}", String(roles.length))}</span>
-      </div>
-      {roles.length === 0 ? (
-        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">{t("merchiva.rolesList.empty")}</div>
-      ) : (
-        <div className="divide-y divide-border">
-          {roles.map((role) => (
-            <div key={role.id} className="px-3 py-2.5 flex items-center gap-3">
-              <div className="h-8 w-8 shrink-0 flex items-center justify-center border rounded-lg"
-                style={{ borderColor: role.color, color: role.color }}>
-                <RoleIcon name={role.icon} className="h-4 w-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[12.5px] font-medium leading-tight">{role.name}</div>
-                {role.description && (
-                  <div className="text-[10.5px] text-muted-foreground leading-tight mt-0.5 truncate">{role.description}</div>
-                )}
-              </div>
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: role.color }} />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RoleAddCard({ role, status, onDelete }: {
-  role: RoleAddCmd;
-  status: "pending" | "adding" | "added" | "rejected" | "deleting";
-  onDelete: () => void;
-}) {
-  const t = useT();
-  return (
-    <div className={cn(
-      "rounded-lg border p-3 mt-2",
-      status === "added" ? "border-emerald-200 bg-emerald-50/50" :
-      status === "rejected" ? "border-destructive/30 bg-destructive/5" :
-      "border-border bg-muted/40"
-    )}>
-      <div className="flex items-center gap-2 mb-2.5">
-        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1 bg-muted border border-border text-muted-foreground">
-          <Users className="h-[10px] w-[10px]" />
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.roleAdd.tag")}</span>
-        </span>
-        {status === "adding" && (
-          <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
-            <Spinner size={12} /> {t("merchiva.status.adding")}
-          </span>
-        )}
-        {status === "deleting" && (
-          <span className="text-[10.5px] font-mono text-destructive inline-flex items-center gap-1 ml-auto">
-            <Spinner size={12} /> {t("merchiva.status.deleting")}
-          </span>
-        )}
-        {status === "added" && (
-          <span className="text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1 ml-auto">
-            <Check className="h-3 w-3" /> {t("merchiva.status.added")}
-          </span>
-        )}
-        {status === "rejected" && (
-          <span className="text-[10.5px] font-mono text-destructive ml-auto">{t("merchiva.status.deleted")}</span>
-        )}
-      </div>
-      <div className="flex items-center gap-3 mb-2">
-        <div className="h-10 w-10 shrink-0 flex items-center justify-center border rounded-lg"
-          style={{ borderColor: role.color, color: role.color }}>
-          <RoleIcon name={role.icon} className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-[14px] font-semibold leading-tight">{role.title}</div>
-          {role.des && <div className="text-[11.5px] text-muted-foreground mt-0.5">{role.des}</div>}
-        </div>
-      </div>
-      {role.tasks && (
-        <div className="mb-2.5">
-          <Eyebrow as="span" size="xs">{t("merchiva.roleAdd.responsibilities")}</Eyebrow>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {role.tasks.split(",").map((t) => t.trim()).filter(Boolean).map((task) => (
-              <span key={task} className="inline-flex items-center px-2 py-0.5 rounded border border-border bg-background text-[11px]">
-                {task}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-      <div className="flex items-center gap-2">
-        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: role.color }} />
-        <span className="text-[11px] font-mono text-muted-foreground">{role.color}</span>
-      </div>
-      {status === "added" && (
-        <Button variant="outline" size="sm" onClick={onDelete}
-          className="px-3 mt-2.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
-          <Trash2 className="h-3 w-3" /> {t("common.delete")}
-        </Button>
-      )}
-    </div>
-  );
-}
-
-// ── Task command UI ────────────────────────────────────────────────────────
-
-function TasksListInline({ roleId, roleName }: { roleId: string; roleName: string }) {
-  const t = useT();
-  const [tasks, setTasks] = useState<Array<{ id: string; title: string; description: string; startTime: string | null; endTime: string | null; requiresEvidence: boolean }>>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getRoleTasks(roleId)
-      .then((t) => setTasks(t.map((tk) => ({
-        id: tk.id, title: tk.title, description: tk.description,
-        startTime: tk.startTime, endTime: tk.endTime,
-        requiresEvidence: tk.requiresEvidence,
-      }))))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [roleId]);
-
-  if (loading) {
-    return (
-      <div className="rounded-lg border border-border bg-muted/40 p-3 mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
-        <Spinner size={12} /> {t("merchiva.tasks.loading")}
-      </div>
-    );
-  }
-
-  return <TasksListCard roleName={roleName} tasks={tasks} />;
-}
-
-function TasksListCard({ roleName, tasks: initialTasks }: {
-  roleName: string;
-  tasks: Array<{ id: string; title: string; description: string; startTime: string | null; endTime: string | null; requiresEvidence: boolean }>;
-}) {
-  const t = useT();
-  const [tasks, setTasks] = useState(initialTasks);
-  const [deleting, setDeleting] = useState<Set<string>>(new Set());
-
-  const handleDelete = async (id: string) => {
-    setDeleting((prev) => new Set(prev).add(id));
-    try {
-      await execDeleteRoleTask(id);
-      setTasks((prev) => prev.filter((task) => task.id !== id));
-    } catch (err) {
-      console.error(`[TasksListCard] Failed to delete task:`, err);
-      toast.error(t("merchiva.tasks.deleteFailed"));
-    } finally {
-      setDeleting((prev) => { const s = new Set(prev); s.delete(id); return s; });
-    }
-  };
-
-  return (
-    <div className="rounded-lg border border-border bg-background overflow-hidden mt-2">
-      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
-        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1 bg-muted border border-border text-muted-foreground">
-          <Clipboard className="h-[10px] w-[10px]" />
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.tasks.tag")}</span>
-        </span>
-        <span className="text-[12px] font-medium">{roleName}</span>
-        <span className="text-[10.5px] text-muted-foreground font-mono ml-auto">{tasks.length}</span>
-      </div>
-      {tasks.length === 0 ? (
-        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">{t("merchiva.tasks.empty")}</div>
-      ) : (
-        <div className="divide-y divide-border">
-          {tasks.map((task) => (
-            <div key={task.id} className="px-3 py-2.5 flex items-center gap-3 group">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <div className="text-[12.5px] font-medium leading-tight">{task.title}</div>
-                  {task.requiresEvidence && (
-                    <span className="h-4 px-1 rounded bg-amber-50 border border-amber-200 text-amber-700 text-[8px] font-mono uppercase inline-flex items-center">
-                      {t("merchiva.tasks.evidence")}
-                    </span>
-                  )}
-                </div>
-                {task.description && (
-                  <div className="text-[10.5px] text-muted-foreground leading-tight mt-0.5 truncate">{task.description}</div>
-                )}
-              </div>
-              {task.startTime && (
-                <span className="text-[10.5px] font-mono text-muted-foreground tabular-nums shrink-0">
-                  {task.startTime}–{task.endTime ?? ""}
-                </span>
-              )}
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => handleDelete(task.id)}
-                disabled={deleting.has(task.id)}
-                className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
-              >
-                {deleting.has(task.id) ? <Spinner size={12} /> : <Trash2 className="h-3 w-3" />}
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onToggleChat, onConfirm, onDelete }: {
-  task: TaskAddCmd;
-  roleColor: string;
-  status: "pending" | "adding" | "added" | "rejected" | "deleting" | "needs-chat";
-  groupChats: Array<{ id: string; name: string }>;
-  selectedChats: string[];
-  onToggleChat: (chatId: string) => void;
-  onConfirm: () => void;
-  onDelete: () => void;
-}) {
-  const t = useT();
-  return (
-    <div className={cn(
-      "rounded-lg border p-3 mt-2",
-      status === "added" ? "border-emerald-200 bg-emerald-50/50" :
-      status === "rejected" ? "border-destructive/30 bg-destructive/5" :
-      status === "needs-chat" ? "border-amber-300 bg-amber-50/40 dark:bg-amber-950/20" :
-      "border-border bg-muted/40"
-    )}>
-      <div className="flex items-center gap-2 mb-2.5">
-        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1 bg-muted border border-border text-muted-foreground">
-          <Clipboard className="h-[10px] w-[10px]" />
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.taskAdd.tag")}</span>
-        </span>
-        <span className="text-[11px] text-muted-foreground">→ {task.role}</span>
-        {status === "adding" && (
-          <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
-            <Spinner size={12} /> {t("merchiva.status.adding")}
-          </span>
-        )}
-        {status === "deleting" && (
-          <span className="text-[10.5px] font-mono text-destructive inline-flex items-center gap-1 ml-auto">
-            <Spinner size={12} /> {t("merchiva.status.deleting")}
-          </span>
-        )}
-        {status === "added" && (
-          <span className="text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1 ml-auto">
-            <Check className="h-3 w-3" /> {t("merchiva.status.added")}
-          </span>
-        )}
-        {status === "rejected" && (
-          <span className="text-[10.5px] font-mono text-destructive ml-auto">{t("merchiva.status.deleted")}</span>
-        )}
-        {status === "needs-chat" && (
-          <span className="text-[10.5px] font-mono text-amber-700 ml-auto">{t("merchiva.taskAdd.chooseChat")}</span>
-        )}
-      </div>
-      <div className="flex items-start gap-3 mb-2">
-        <span className="h-1.5 w-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: roleColor }} />
-        <div className="flex-1 min-w-0">
-          <div className="text-[13.5px] font-semibold leading-tight">{task.title}</div>
-          {task.des && <div className="text-[11.5px] text-muted-foreground mt-0.5">{task.des}</div>}
-        </div>
-      </div>
-      <div className="flex items-center gap-3 mb-2.5 text-[11px]">
-        {task.startTime && (
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-3 w-3 text-muted-foreground" />
-            <span className="font-mono tabular-nums">{task.startTime}–{task.endTime ?? ""}</span>
-          </div>
-        )}
-        {task.requiresEvidence && (
-          <span className="h-5 px-1.5 rounded bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-mono uppercase inline-flex items-center gap-1">
-            <Camera className="h-[10px] w-[10px]" /> {t("merchiva.taskAdd.evidenceRequired")}
-          </span>
-        )}
-      </div>
-      {status === "needs-chat" && (
-        <div className="mt-2 pt-2.5 border-t border-amber-200/60 dark:border-amber-800/60">
-          <div className="text-[10.5px] text-amber-800 dark:text-amber-200 mb-1.5">
-            {t("merchiva.taskAdd.evidencePrompt")}
-          </div>
-          {groupChats.length === 0 ? (
-            <div className="text-[10.5px] text-muted-foreground italic">
-              {t("merchiva.taskAdd.noGroupChats")}
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {groupChats.map((c) => {
-                const isSel = selectedChats.includes(c.id);
-                return (
-                  <Button
-                    key={c.id}
-                    variant="outline"
-                    size="xs"
-                    onClick={() => onToggleChat(c.id)}
-                    className={cn(
-                      isSel
-                        ? "border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {c.name}
-                  </Button>
-                );
-              })}
-            </div>
-          )}
-          <div className="flex items-center gap-2 mt-2.5">
-            <Button
-              size="sm"
-              onClick={onConfirm}
-              disabled={selectedChats.length === 0}
-              className="px-3 disabled:opacity-40"
-            >
-              <Check className="h-3 w-3" /> {t("merchiva.taskAdd.add")}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onDelete}
-              className="px-3 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Trash2 className="h-3 w-3" /> {t("merchiva.taskAdd.skip")}
-            </Button>
-          </div>
-        </div>
-      )}
-      {status === "added" && (
-        <Button variant="outline" size="sm" onClick={onDelete}
-          className="px-3 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
-          <Trash2 className="h-3 w-3" /> {t("common.delete")}
-        </Button>
-      )}
-    </div>
-  );
-}
-
-function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted, rejectedRoles, rejectedTasks, onRejectRole, onRejectTask }: {
-  roles?: RoleAddCmd[];
-  tasks?: TaskAddCmd[];
-  staffRolesRef: React.RefObject<Array<{ id: unknown; name: string; color: string; icon: string; description: string }>>;
-  groupChats: Array<{ id: string; name: string }>;
-  alreadyExecuted?: boolean;
-  rejectedRoles?: number[];
-  rejectedTasks?: number[];
-  onRejectRole?: (index: number) => void;
-  onRejectTask?: (index: number) => void;
-}) {
-  const t = useT();
-  const rejRoles = new Set(rejectedRoles ?? []);
-  const rejTasks = new Set(rejectedTasks ?? []);
-  const safeRoles = useMemo(() => roles ?? [], [roles]);
-  const safeTasks = useMemo(() => tasks ?? [], [tasks]);
-
-  type RoleStatus = "pending" | "adding" | "added" | "rejected" | "deleting";
-  type TaskStatus = RoleStatus | "needs-chat";
-  const [roleStatuses, setRoleStatuses] = useState<Record<number, RoleStatus>>(
-    () => Object.fromEntries(safeRoles.map((_, i) => [i, rejRoles.has(i) ? "rejected" : alreadyExecuted ? "added" : "pending"]))
-  );
-  const [taskStatuses, setTaskStatuses] = useState<Record<number, TaskStatus>>(
-    () => Object.fromEntries(safeTasks.map((_, i) => [i, rejTasks.has(i) ? "rejected" : alreadyExecuted ? "added" : "pending"]))
-  );
-  const [taskChats, setTaskChats] = useState<Record<number, string[]>>({});
-  const autoRan = useRef(!!alreadyExecuted);
-
-  const getDbRoles = useCallback((): RoleCacheRow[] => {
-    try {
-      const c = getConnection() as RoleTaskConnection | null;
-      const rows = c?.db?.staffRole?.iter?.();
-      if (!rows) return staffRolesRef.current;
-      return Array.from(rows);
-    } catch { return staffRolesRef.current; }
-  }, [staffRolesRef]);
-
-  const findRoleByName = useCallback((name: string) => {
-    const lower = name.toLowerCase();
-    return getDbRoles().find((r) => String(r?.name ?? "").toLowerCase() === lower);
-  }, [getDbRoles]);
-
-  const getDbTasks = useCallback((): TaskCacheRow[] => {
-    try {
-      const c = getConnection() as RoleTaskConnection | null;
-      const rows = c?.db?.roleTask?.iter?.();
-      return rows ? Array.from(rows) : [];
-    } catch { return []; }
-  }, []);
-
-  const handleDeleteRole = useCallback(async (i: number) => {
-    const role = safeRoles[i];
-    if (!role) return;
-    setRoleStatuses((prev) => ({ ...prev, [i]: "deleting" }));
-    try {
-      const found = findRoleByName(role.title);
-      if (found) await execDeleteStaffRole(rowIdString(found.id));
-      setRoleStatuses((prev) => ({ ...prev, [i]: "rejected" }));
-      onRejectRole?.(i);
-    } catch (err) {
-      console.error(`[CommandGroup] Failed to delete role "${role.title}":`, err);
-      toast.error(t("merchiva.command.deleteRoleFailed"));
-      setRoleStatuses((prev) => ({ ...prev, [i]: "added" }));
-    }
-  }, [safeRoles, findRoleByName, onRejectRole, t]);
-
-  const handleDeleteTask = useCallback(async (i: number) => {
-    const task = safeTasks[i];
-    if (!task) return;
-    setTaskStatuses((prev) => ({ ...prev, [i]: "deleting" }));
-    try {
-      const role = findRoleByName(task.role);
-      const roleId = role ? rowIdString(role.id) : null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const dbTask = getDbTasks().find((t: any) =>
-        t?.title === task.title && (roleId ? String(t?.roleId) === roleId : true)
-      );
-      if (dbTask) await execDeleteRoleTask(rowIdString(dbTask.id));
-      setTaskStatuses((prev) => ({ ...prev, [i]: "rejected" }));
-      onRejectTask?.(i);
-    } catch (err) {
-      console.error(`[CommandGroup] Failed to delete task "${task.title}":`, err);
-      toast.error(t("merchiva.tasks.deleteFailed"));
-      setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
-    }
-  }, [safeTasks, findRoleByName, getDbTasks, onRejectTask, t]);
-
-  useEffect(() => {
-    if (autoRan.current) return;
-    autoRan.current = true;
-
-    (async () => {
-      // Step 1: create roles sequentially
-      for (let i = 0; i < safeRoles.length; i++) {
-        if (rejRoles.has(i)) continue;
-        const role = safeRoles[i];
-        setRoleStatuses((prev) => ({ ...prev, [i]: "adding" }));
-        try {
-          if (!findRoleByName(role.title)) {
-            await execAddStaffRole({
-              name: role.title,
-              color: role.color,
-              icon: role.icon,
-              description: role.des,
-              permissions: JSON.stringify([]),
-            });
-          }
-          for (let attempt = 0; attempt < 15; attempt++) {
-            if (findRoleByName(role.title)) break;
-            await new Promise((r) => setTimeout(r, 400));
-          }
-          setRoleStatuses((prev) => ({ ...prev, [i]: "added" }));
-        } catch (err) {
-          console.error(`[CommandGroup] Failed to create role "${role.title}":`, err);
-          setRoleStatuses((prev) => ({ ...prev, [i]: "pending" }));
-        }
-      }
-
-      // Step 2: add tasks — resolve role by exact name, skip duplicates.
-      // Tasks that require evidence are gated on a group-chat selection
-      // (parked in "needs-chat") and committed via handleConfirmTask once
-      // the user picks at least one chat.
-      for (let i = 0; i < safeTasks.length; i++) {
-        if (rejTasks.has(i)) continue;
-        const task = safeTasks[i];
-        if (task.requiresEvidence) {
-          setTaskStatuses((prev) => ({ ...prev, [i]: "needs-chat" }));
-          continue;
-        }
-        setTaskStatuses((prev) => ({ ...prev, [i]: "adding" }));
-        try {
-          let found = findRoleByName(task.role);
-          if (!found) {
-            for (let attempt = 0; attempt < 15; attempt++) {
-              await new Promise((r) => setTimeout(r, 400));
-              found = findRoleByName(task.role);
-              if (found) break;
-            }
-          }
-          if (!found) {
-            console.error(`[CommandGroup] Role not found for task "${task.title}": "${task.role}"`);
-            toast.error(t("merchiva.command.roleNotFound").replace("{role}", task.role));
-            setTaskStatuses((prev) => ({ ...prev, [i]: "pending" }));
-            continue;
-          }
-          const roleId = rowIdString(found.id);
-          const titleLower = task.title.toLowerCase();
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const duplicate = getDbTasks().find((t: any) =>
-            t?.title?.toLowerCase() === titleLower && String(t?.roleId) === roleId
-          );
-          if (duplicate) {
-            setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
-            continue;
-          }
-          await execAddRoleTask({
-            roleId,
-            title: task.title,
-            description: task.des,
-            startTime: task.startTime,
-            endTime: task.endTime,
-            sortOrder: i,
-            requiresEvidence: task.requiresEvidence,
-            notifyChats: [],
-          });
-          setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
-        } catch (err) {
-          console.error(`[CommandGroup] Failed to add task "${task.title}":`, err);
-          setTaskStatuses((prev) => ({ ...prev, [i]: "pending" }));
-        }
-      }
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleConfirmTask = useCallback(async (i: number) => {
-    const task = safeTasks[i];
-    if (!task) return;
-    const selected = taskChats[i] ?? [];
-    if (task.requiresEvidence && selected.length === 0) return;
-    setTaskStatuses((prev) => ({ ...prev, [i]: "adding" }));
-    try {
-      let found = findRoleByName(task.role);
-      if (!found) {
-        for (let attempt = 0; attempt < 15; attempt++) {
-          await new Promise((r) => setTimeout(r, 400));
-          found = findRoleByName(task.role);
-          if (found) break;
-        }
-      }
-      if (!found) {
-        toast.error(t("merchiva.command.roleNotFound").replace("{role}", task.role));
-        setTaskStatuses((prev) => ({ ...prev, [i]: "needs-chat" }));
-        return;
-      }
-      const roleId = rowIdString(found.id);
-      const titleLower = task.title.toLowerCase();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const duplicate = getDbTasks().find((t: any) =>
-        t?.title?.toLowerCase() === titleLower && String(t?.roleId) === roleId
-      );
-      if (duplicate) {
-        setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
-        return;
-      }
-      await execAddRoleTask({
-        roleId,
-        title: task.title,
-        description: task.des,
-        startTime: task.startTime,
-        endTime: task.endTime,
-        sortOrder: i,
-        requiresEvidence: task.requiresEvidence,
-        notifyChats: selected,
-      });
-      setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
-    } catch (err) {
-      console.error(`[CommandGroup] Failed to confirm task "${task.title}":`, err);
-      toast.error(t("merchiva.command.addTaskFailed"));
-      setTaskStatuses((prev) => ({ ...prev, [i]: "needs-chat" }));
-    }
-  }, [safeTasks, taskChats, findRoleByName, getDbTasks, t]);
-
-  const toggleTaskChat = useCallback((i: number, chatId: string) => {
-    setTaskChats((prev) => {
-      const current = prev[i] ?? [];
-      const next = current.includes(chatId)
-        ? current.filter((id) => id !== chatId)
-        : [...current, chatId];
-      return { ...prev, [i]: next };
-    });
-  }, []);
-
-  return (
-    <>
-      {safeRoles.map((role, i) => (
-        <RoleAddCard
-          key={`r-${i}`}
-          role={role}
-          status={roleStatuses[i] ?? "pending"}
-          onDelete={() => handleDeleteRole(i)}
-        />
-      ))}
-      {safeTasks.map((task, i) => {
-        const matchedRole = findRoleByName(task.role);
-        return (
-          <TaskAddCard
-            key={`t-${i}`}
-            task={task}
-            roleColor={matchedRole?.color ?? "#44403c"}
-            status={taskStatuses[i] ?? "pending"}
-            groupChats={groupChats}
-            selectedChats={taskChats[i] ?? []}
-            onToggleChat={(chatId) => toggleTaskChat(i, chatId)}
-            onConfirm={() => handleConfirmTask(i)}
-            onDelete={() => handleDeleteTask(i)}
-          />
-        );
-      })}
-    </>
-  );
-}
-
-// ── Task delete group ─────────────────────────────────────────────────────
-
-function TaskDeleteGroup({ deletes, alreadyExecuted }: {
-  deletes: TaskDeleteCmd[];
-  alreadyExecuted?: boolean;
-}) {
-  const t = useT();
-  type Status = "pending" | "deleting" | "deleted" | "failed";
-  const [statuses, setStatuses] = useState<Record<number, Status>>(
-    () => Object.fromEntries(deletes.map((_, i) => [i, alreadyExecuted ? "deleted" : "pending"]))
-  );
-  const autoRan = useRef(!!alreadyExecuted);
-
-  const getDbRoles = (): RoleCacheRow[] => {
-    try {
-      const c = getConnection() as RoleTaskConnection | null;
-      const rows = c?.db?.staffRole?.iter?.();
-      return rows ? Array.from(rows) : [];
-    } catch { return []; }
-  };
-
-  const getDbTasks = (): TaskCacheRow[] => {
-    try {
-      const c = getConnection() as RoleTaskConnection | null;
-      const rows = c?.db?.roleTask?.iter?.();
-      return rows ? Array.from(rows) : [];
-    } catch { return []; }
-  };
-
-  useEffect(() => {
-    if (autoRan.current) return;
-    autoRan.current = true;
-
-    (async () => {
-      for (let i = 0; i < deletes.length; i++) {
-        const del = deletes[i];
-        setStatuses((prev) => ({ ...prev, [i]: "deleting" }));
-        try {
-          const roleLower = del.role.toLowerCase();
-          const role = getDbRoles().find((r) => String(r?.name ?? "").toLowerCase() === roleLower);
-          const roleId = role ? rowIdString(role.id) : null;
-          const titleLower = del.title.toLowerCase();
-          const dbTask = getDbTasks().find((task) =>
-            String(task?.title ?? "").toLowerCase() === titleLower && (roleId ? rowIdString(task?.roleId) === roleId : true)
-          );
-          if (dbTask) {
-            await execDeleteRoleTask(rowIdString(dbTask.id));
-            setStatuses((prev) => ({ ...prev, [i]: "deleted" }));
-          } else {
-            console.warn(`[TaskDeleteGroup] Task not found: "${del.title}" in role "${del.role}"`);
-            setStatuses((prev) => ({ ...prev, [i]: "deleted" }));
-          }
-        } catch (err) {
-          console.error(`[TaskDeleteGroup] Failed to delete "${del.title}":`, err);
-          setStatuses((prev) => ({ ...prev, [i]: "failed" }));
-        }
-      }
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <>
-      {deletes.map((del, i) => (
-        <div key={`del-${i}`} className={cn(
-          "rounded-lg border p-3 mt-2",
-          statuses[i] === "deleted" ? "border-destructive/30 bg-destructive/5" :
-          statuses[i] === "failed" ? "border-amber-200 bg-amber-50/50" :
-          "border-border bg-muted/40"
-        )}>
-          <div className="flex items-center gap-2">
-            <span className={cn("h-5 px-1.5 rounded inline-flex items-center gap-1 border", STATUS_TONE_CLASSES.danger)}>
-              <Trash2 className="h-[10px] w-[10px]" />
-              <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.taskDelete.tag")}</span>
-            </span>
-            <span className="text-[12px] font-medium truncate">{del.title}</span>
-            <span className="text-[11px] text-muted-foreground">← {del.role}</span>
-            {statuses[i] === "deleting" && (
-              <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
-                <Spinner size={12} /> {t("merchiva.status.deleting")}
-              </span>
-            )}
-            {statuses[i] === "deleted" && (
-              <span className="text-[10.5px] font-mono text-destructive inline-flex items-center gap-1 ml-auto">
-                <Check className="h-3 w-3" /> {t("merchiva.status.deleted")}
-              </span>
-            )}
-            {statuses[i] === "failed" && (
-              <span className="text-[10.5px] font-mono text-amber-600 ml-auto">{t("merchiva.taskDelete.failed")}</span>
-            )}
-          </div>
-        </div>
-      ))}
-    </>
-  );
-}
 
 // ── Markdown renderer ──────────────────────────────────────────────────────
 
@@ -2416,28 +1237,6 @@ function buildSupplierRestockFallbackAction(
   return action;
 }
 
-function expandHistoryFromMessages(
-  messages: ChatMessage[],
-): Array<{ role: "user" | "assistant"; content: string }> {
-  const out: Array<{ role: "user" | "assistant"; content: string }> = [];
-  for (const m of messages) {
-    if (m.from === "system") continue;
-    if (m.from === "voice-call") {
-      for (const turn of m.voiceCall?.turns ?? []) {
-        if (turn.user) out.push({ role: "user", content: turn.user });
-        if (turn.ai) out.push({ role: "assistant", content: turn.ai });
-      }
-      continue;
-    }
-    if (!m.text) continue;
-    out.push({
-      role: m.from === "user" ? "user" : "assistant",
-      content: m.text,
-    });
-  }
-  return out;
-}
-
 // ── Data mention categories ─────────────────────────────────────────────────
 
 const DATA_CATEGORIES = [
@@ -2544,18 +1343,43 @@ function MerchivaChatInner({
     [can],
   );
 
+  // The store's rows every card, toast and gate check names an id by (ref-labels.ts).
+  const refs = useRefIndex(organizationId);
+  const refsRef = useRef(refs);
+  useEffect(() => { refsRef.current = refs; }, [refs]);
+
   // Stamp each parsed action with its autonomy gate decision (auto/propose/deny)
   // using the org's config + the current actor's permissions. The card uses this
   // instead of the old hardcoded "auto unless high-risk" rule.
   const decorateActions = useCallback(
     (actions: PendingAction[]): PendingAction[] =>
       actions.map((a) => {
-        const name = String((a.action as Record<string, unknown>).action ?? "");
-        const g = gateAction(name, a.action as Record<string, unknown>, autonomyConfig, canForGate);
-        return { ...a, decision: g.decision, reason: g.reason, why: g.why };
+        const params = a.action as Record<string, unknown>;
+        const name = String(params.action ?? "");
+        // The price cap needs the product's current price; the model sends only the new one.
+        const oldPrice = name === "updatePrice" || name === "updateProduct"
+          ? refsRef.current.retailPrice(params.productId)
+          : null;
+        const g = gateAction(name, params, autonomyConfig, canForGate, { oldPrice });
+        // What its ids name now: a delete removes the row, the card keeps the name.
+        const refLabels = captureRefLabels(params, refsRef.current, { day: (n) => t("merchiva.refs.day").replace("{n}", String(n)) });
+        return {
+          ...a, decision: g.decision, reason: g.reason, why: g.why,
+          ...(Object.keys(refLabels).length > 0 ? { refLabels } : {}),
+        };
       }),
-    [autonomyConfig, canForGate],
+    [autonomyConfig, canForGate, t],
   );
+  // Each delete of a reply is pinned to the task it names now, before anything
+  // in the reply runs (a same-titled task it adds is never the one deleted).
+  const pinDeletes = useCallback(
+    (deletes: TaskDeleteCmd[]): TaskDeleteCmd[] | undefined =>
+      deletes.length > 0 ? pinTaskDeletes(deletes, refsRef.current.rows.tasks ?? [], refsRef.current.rows.roles ?? []) : undefined,
+    [],
+  );
+  // Deleting a role task is medium risk: the org's autonomy config decides
+  // whether Mr. Merchiva's task-delete cards run at once or wait for a click.
+  const confirmTaskDeletes = gateAction("deleteRoleTask", {}, autonomyConfig, () => true).decision !== "auto";
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [thinkingPhase, setThinkingPhase] = useState("");
@@ -2698,20 +1522,6 @@ function MerchivaChatInner({
   const [rawStaffRoleRows] = useStaffRoles() as [unknown[], boolean];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const staffRoles = (rawStaffRoleRows ?? []).filter((r: any) => r && typeof r === "object" && r.name) as Array<{ id: any; name: string; color: string; icon: string; description: string; permissions: string }>;
-  // Lowercase set of role names — fed to ShiftPreviewStrip so it can flag
-  // invalid addShift.staffRoles in red the moment the card renders, instead
-  // of waiting for handleApprove to fail.
-  const validRoleNamesLower = useMemo(
-    () => new Set(staffRoles.map((r) => String(r.name).trim().toLowerCase())),
-    [staffRoles],
-  );
-  // supplierId → name, so orderFromSupplier cards render a readable supplier.
-  const supplierNameById = useMemo(
-    () => new Map(suppliers.map((s) => [s.id, s.name])),
-    [suppliers],
-  );
-  const staffRolesRef = useRef(staffRoles);
-  staffRolesRef.current = staffRoles;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawRoleTasksResult = useRoleTasks() as any;
   const roleTasks = useMemo(() => {
@@ -2830,8 +1640,9 @@ function MerchivaChatInner({
       // Roles with IDs and tasks
       roles: staffRoles.map((r) => ({
         id: String(r.id), name: r.name, color: r.color, icon: r.icon, description: r.description,
+        // A task's roleId may be stored hyphenated or as 32 hex digits: compare canonically.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tasks: roleTasks.filter((t: any) => t.roleId === String(r.id)).map((t: any) => ({
+        tasks: tasksOfRole(roleTasks as any[], r.id).map((t: any) => ({
           id: String(t.id), title: t.title, description: t.description,
           startTime: t.startTime ?? null, endTime: t.endTime ?? null,
           requiresEvidence: t.requiresEvidence ?? false,
@@ -2869,7 +1680,7 @@ function MerchivaChatInner({
           title: d.title,
           excerpt: d.excerpt,
           objectives: trainingObjectives
-            .filter((o) => o.dayId === d.id)
+            .filter((o) => sameId(o.dayId, d.id))
             .map((o) => ({ id: o.id, text: o.text, mediaType: o.mediaType })),
         })),
       },
@@ -3209,7 +2020,7 @@ function MerchivaChatInner({
               rolesAdd: parsed.rolesAdd.length > 0 ? parsed.rolesAdd : undefined,
               rolesList: parsed.rolesList || undefined,
               tasksAdd: parsed.tasksAdd.length > 0 ? parsed.tasksAdd : undefined,
-              tasksDelete: parsed.tasksDelete.length > 0 ? parsed.tasksDelete : undefined,
+              tasksDelete: pinDeletes(parsed.tasksDelete),
               tasksList: parsed.tasksList || undefined,
               steps: settleSteps(applyToolEvents(m.steps, finalEvents)),
             }
@@ -3225,7 +2036,7 @@ function MerchivaChatInner({
     if (recheckInMs === Number.POSITIVE_INFINITY) return;
     const recheck = setTimeout(() => setJobClock((tick) => tick + 1), recheckInMs + 1000);
     return () => clearTimeout(recheck);
-  }, [aiJobRows, organizationId, activeSessionId, locale, t, tx, invItems, suppliers, decorateActions, focusScope, serverClockOffset, jobClock]);
+  }, [aiJobRows, organizationId, activeSessionId, locale, t, tx, invItems, suppliers, decorateActions, pinDeletes, focusScope, serverClockOffset, jobClock]);
 
   // Suppress the "Mr. Merchiva replied" bell entry while the user is actively
   // looking at this chat. Those notifications are fired server-side on every
@@ -3280,7 +2091,8 @@ function MerchivaChatInner({
         from: "merchiva",
         text: parsed.cleanText || "",
         time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
-        tasksDelete: parsed.tasksDelete,
+        tasksDelete: pinDeletes(parsed.tasksDelete),
+        fromCommand: true,
       };
       setMessages((prev) => [...prev, userMsg, aiMsg]);
       setDraft("");
@@ -3318,7 +2130,7 @@ function MerchivaChatInner({
     setThinkingPhase(getThinkingLabel(text, "analyze", t));
 
     try {
-      const last10 = expandHistoryFromMessages(messages).slice(-10);
+      const last10 = expandHistoryFromMessages(messages, refsRef.current.rows.roles ?? []).slice(-10);
 
       const mem = organizationId ? loadMemory(organizationId) : { summary: "", storeOverview: "", userPreferences: "" };
       const mcpServers = organizationId
@@ -3641,7 +2453,7 @@ function MerchivaChatInner({
           rolesAdd: parsed.rolesAdd.length > 0 ? parsed.rolesAdd : undefined,
           rolesList: parsed.rolesList || undefined,
           tasksAdd: parsed.tasksAdd.length > 0 ? parsed.tasksAdd : undefined,
-          tasksDelete: parsed.tasksDelete.length > 0 ? parsed.tasksDelete : undefined,
+          tasksDelete: pinDeletes(parsed.tasksDelete),
           tasksList: parsed.tasksList || undefined,
         } : m
       ));
@@ -3665,7 +2477,7 @@ function MerchivaChatInner({
       setSending(false);
       setThinkingPhase("");
     }
-  }, [sending, messages, storeContext, organizationId, bufferAndMaybeSummarize, attachedData, attachedFiles, isOwner, orgRole, userPermissions, locale, t, tx, activeSessionId, invItems, suppliers, decorateActions, getToken, focusScope]);
+  }, [sending, messages, storeContext, organizationId, bufferAndMaybeSummarize, attachedData, attachedFiles, isOwner, orgRole, userPermissions, locale, t, tx, activeSessionId, invItems, suppliers, decorateActions, pinDeletes, getToken, focusScope]);
 
   const handleApprove = useCallback(async (msgId: string, actionId: string) => {
     // Read action data from current messages state BEFORE updating
@@ -3679,52 +2491,42 @@ function MerchivaChatInner({
 
     console.log("[Approve] Executing:", actionData);
 
+    const refNow = refsRef.current;
     if (actionData.action === "addShift") {
-      // Match by displayName case-insensitively — the AI sometimes mis-cases
-      // names ("muheng fan" vs "Muheng Fan") and the reducer requires an exact
-      // roster hit, so a strict === would needlessly reject valid proposals.
-      const wantedName = String(actionData.staffName ?? "").trim().toLowerCase();
-      const member = team.find((m) => (m.displayName ?? "").trim().toLowerCase() === wantedName);
-      if (!member) {
-        const validNames = team.map((m) => m.displayName);
+      // The person: the model's memberId first (team, then placeholder staff,
+      // which the reducer also takes), else the display name, case-insensitively.
+      const activeTeam = (refNow.rows.members ?? []).filter((m) => m.status === "active");
+      const staff = resolveShiftStaff(actionData, activeTeam, refNow.rows.placeholders ?? []);
+      if (!staff) {
+        const validNames = activeTeam.map((m) => String(m.displayName ?? ""));
         toast.error(
           t("merchiva.approve.notTeamMember")
-            .replace("{name}", String(actionData.staffName))
+            .replace("{name}", String(actionData.staffName ?? "") || t("merchiva.refs.unknown"))
             .replace("{names}", validNames.join(", ") || t("merchiva.approve.noTeamMembers")),
         );
         return;
       }
-      actionData.memberId = member.id;
-      actionData.staffName = member.displayName;
+      actionData.memberId = staff.memberId;
+      actionData.staffName = staff.name;
 
       // Validate staffRoles against the live staff_role table. The AI often
       // emits the shift TYPE ("morning") or the permission role ("manager") in
       // staffRoles, which the addShift reducer rejects — surfacing to the user
       // as the opaque "InternalError: instance encountered a fatal error" from
       // SpacetimeDB. Catch it here with a real message so the user knows what
-      // to fix, and snap any case-variant role names to their canonical form.
-      const rawRoles = Array.isArray(actionData.staffRoles)
-        ? (actionData.staffRoles as unknown[])
-        : typeof actionData.staffRoles === "string"
-          ? [actionData.staffRoles]
-          : [];
-      const roleNames = rawRoles.map((r) => String(r ?? "").trim()).filter(Boolean);
-      const validRoleByLower = new Map<string, string>(
-        staffRoles.map((r) => [String(r.name).trim().toLowerCase(), String(r.name)]),
-      );
-      const canonicalRoles = roleNames
-        .map((r) => validRoleByLower.get(r.toLowerCase()))
-        .filter((r): r is string => Boolean(r));
-      if (canonicalRoles.length === 0) {
-        const validList = [...validRoleByLower.values()].join(", ") || t("merchiva.approve.noRolesDefined");
+      // to fix. Each entry may be a role name or a role id; the shift stores names.
+      const storeRoles = refNow.rows.roles ?? [];
+      const { entries, names } = resolveShiftRoles(actionData.staffRoles, storeRoles);
+      if (names.length === 0) {
+        const validList = storeRoles.map((r) => String(r.name ?? "")).filter(Boolean).join(", ") || t("merchiva.approve.noRolesDefined");
         toast.error(
           t("merchiva.approve.noValidRole")
-            .replace("{got}", JSON.stringify(roleNames))
+            .replace("{got}", JSON.stringify(entries.map((e) => e.shown ?? t("merchiva.refs.unknownRole"))))
             .replace("{roles}", validList),
         );
         return;
       }
-      actionData.staffRoles = canonicalRoles;
+      actionData.staffRoles = names;
     }
 
     // Mark as approved optimistically
@@ -3742,10 +2544,15 @@ function MerchivaChatInner({
     // Stored in a ref (not message state) so the later Undo can reverse it.
     const actionName = String(actionData.action ?? "");
     const snapshot = captureUndoSnapshot(actionName, actionData as Record<string, unknown>);
+    // Named before it runs: a delete removes the row its id names.
+    const target = actionTarget(actionData, refNow, { day: (n) => t("merchiva.refs.day").replace("{n}", String(n)) });
 
     try {
       focusAction(focusScope, actionName);
-      await executeAction(actionData);
+      await executeAction(actionData, {
+        success: (params) => actionSuccessText(t, params, target),
+        failure: (err) => actionFailureText(t, err),
+      });
       console.log("[Approve] Success:", actionData.action);
       if (snapshot) undoSnapshots.current.set(actionId, snapshot);
     } catch (err) {
@@ -3763,7 +2570,7 @@ function MerchivaChatInner({
       }));
     }
     finishAiFocus(focusScope);
-  }, [messages, team, staffRoles, t, focusScope]);
+  }, [messages, t, focusScope]);
 
   // Reject serves two roles:
   //   • declining a still-pending proposal → just mark it rejected (no write ran)
@@ -4053,8 +2860,8 @@ function MerchivaChatInner({
                         alreadyExecuted={msg.executed}
                         onApprove={() => handleApprove(msg.id, act.id)}
                         onReject={() => handleReject(msg.id, act.id)}
-                        validRoleNamesLower={validRoleNamesLower}
-                        supplierNameById={supplierNameById}
+                        refs={refs}
+                        savedLabels={act.refLabels}
                       />
                     ))}
                   </>
@@ -4075,14 +2882,14 @@ function MerchivaChatInner({
                   }))} />
                 )}
                 {msg.tasksList && (() => {
-                  const matchedRole = staffRoles.find((r) =>
-                    r.name.toLowerCase() === msg.tasksList!.toLowerCase()
-                  );
+                  // `/tasks list <role>` names the role by name or id; tasks store its hyphenated id.
+                  const storeRoles = refs.rows.roles ?? [];
+                  const matchedRole = resolveRoleRef(storeRoles, msg.tasksList);
                   return matchedRole ? (
-                    <TasksListInline roleId={matchedRole.id} roleName={matchedRole.name} />
+                    <TasksListInline roleId={storedId(matchedRole.id)} roleName={String(matchedRole.name ?? "")} />
                   ) : (
                     <div className="rounded-lg border border-border bg-muted/40 p-3 mt-2 text-[12px] text-muted-foreground">
-                      {t("merchiva.command.roleNotFound").replace("{role}", msg.tasksList ?? "")}
+                      {t("merchiva.command.roleNotFound").replace("{role}", roleRefLabel(storeRoles, { role: msg.tasksList }) ?? t("merchiva.refs.unknownRole"))}
                     </div>
                   );
                 })()}
@@ -4090,7 +2897,9 @@ function MerchivaChatInner({
                   <CommandGroup
                     roles={msg.rolesAdd}
                     tasks={msg.tasksAdd}
-                    staffRolesRef={staffRolesRef}
+                    deletes={msg.tasksDelete}
+                    storeRoles={refs.rows.roles ?? []}
+                    storeTasks={refs.rows.tasks ?? []}
                     groupChats={groupChats}
                     alreadyExecuted={msg.executed}
                     rejectedRoles={msg.rejectedRoles}
@@ -4110,7 +2919,16 @@ function MerchivaChatInner({
                 {msg.tasksDelete && msg.tasksDelete.length > 0 && (
                   <TaskDeleteGroup
                     deletes={msg.tasksDelete}
+                    storeRoles={refs.rows.roles ?? []}
+                    storeTasks={refs.rows.tasks ?? []}
                     alreadyExecuted={msg.executed}
+                    confirm={confirmTaskDeletes && !msg.fromCommand}
+                    cancelled={msg.cancelledDeletes}
+                    onCancel={(idx) => {
+                      setMessages((prev) => prev.map((m) =>
+                        m.id === msg.id ? { ...m, cancelledDeletes: [...(m.cancelledDeletes ?? []), idx] } : m
+                      ));
+                    }}
                   />
                 )}
               </Bubble>
@@ -4255,7 +3073,7 @@ function MerchivaChatInner({
         open={callOpen}
         onClose={() => setCallOpen(false)}
         getContext={() => ({
-          history: expandHistoryFromMessages(messages).slice(-10),
+          history: expandHistoryFromMessages(messages, refs.rows.roles ?? []).slice(-10),
           storeContext,
           page: currentPagePayload(focusScope, t),
           memory: organizationId

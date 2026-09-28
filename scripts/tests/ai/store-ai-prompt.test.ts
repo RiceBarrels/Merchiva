@@ -21,7 +21,7 @@ test(
     if (proc.exitCode !== 0) console.error(output);
     expect(proc.exitCode).toBe(0);
     expect(output).toContain(" 0 fail");
-    expect(output).toMatch(/\b7 pass\b/);
+    expect(output).toMatch(/\b9 pass\b/);
   },
   60_000,
 );

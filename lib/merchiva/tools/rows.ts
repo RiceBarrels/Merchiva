@@ -43,10 +43,11 @@ export interface ToolContext {
 
 /**
  * A uuid in the hyphenated form the whole client uses: hooks map `id` with
- * `toString()`, reference columns (`shift.memberId`, `punch_event.memberId`,
- * `inventory_transaction.itemId`) hold that form, and client-side actions look
- * rows up by it (`String(r.id) === shiftId` in updateShift, `s.id.toString()`
- * in orderFromSupplier / updateSupplier). The module's reducers accept it too.
+ * `toString()`, reference columns (`shift.memberId`, `role_task.roleId`,
+ * `inventory_transaction.itemId`) hold that form, and most of the module's
+ * reducers look a row up with `row.id.toString() === arg`, which accepts
+ * nothing else. Client code compares ids with canonicalUuid (either form) and
+ * writes them in this one (lib/merchiva/action-ids.ts storedId).
  */
 export function uuidText(v: unknown): string {
   return v == null ? "" : String(v);
@@ -54,9 +55,10 @@ export function uuidText(v: unknown): string {
 
 /**
  * Primary key as the model sees it and hands back in action blocks. It was
- * `toHexString()` (32 bare hex chars), which every reducer accepted but the
- * client-side lookups above did not — updateShift / orderFromSupplier with a
- * tool-provided id failed with "not found".
+ * `toHexString()` (32 bare hex chars), which only findById-based reducers and
+ * none of the client-side lookups accepted — updateShift / orderFromSupplier
+ * with a tool-provided id failed with "not found". Chat history from then can
+ * still carry that form; action-ids.ts normalizeActionIds rewrites it.
  */
 export function rowId(r: Row): string {
   return uuidText(r?.id);

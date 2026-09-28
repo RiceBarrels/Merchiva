@@ -1,5 +1,6 @@
 import type { MerchivaSkill, PendingAction } from "../types";
 import { getAction, generateActionsPrompt } from "@/lib/merchiva/action-registry";
+import { normalizeActionIds } from "@/lib/merchiva/action-ids";
 import { toast } from "sonner";
 
 interface ActionsData {
@@ -123,21 +124,33 @@ function parseActions(text: string): { cleanText: string; data: ActionsData | nu
   return { cleanText, data: actions.length > 0 || listAll ? { actions, listAll } : null };
 }
 
-export async function executeAction(act: Record<string, unknown>): Promise<void> {
+/**
+ * The toasts an executed action shows, in the viewer's language and naming the
+ * row by its name (the chat builds them; the registry has no translator).
+ */
+export interface ActionToasts {
+  /** Gets the params the action ran with — orderFromSupplier sets `__emailed` on them. */
+  success: (params: Record<string, unknown>) => string;
+  failure: (err: unknown) => string;
+}
+
+export async function executeAction(act: Record<string, unknown>, toasts: ActionToasts): Promise<void> {
   const actionName = String(act.action ?? "unknown");
   const def = getAction(actionName);
 
   if (!def) {
-    toast.error(`Action "${actionName}" not recognized`);
-    throw new Error(`Action not recognized: ${actionName}`);
+    const err = new Error(`Action not recognized: ${actionName}`);
+    toast.error(toasts.failure(err));
+    throw err;
   }
 
+  // Restored history can still carry 32-hex ids; run with the stored form.
+  const params = normalizeActionIds(act);
   try {
-    await def.execute(act);
-    toast.success(def.toastMessage(act));
+    await def.execute(params);
+    toast.success(toasts.success(params));
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    toast.error(`Action failed: ${msg}`);
+    toast.error(toasts.failure(err));
     throw err;
   }
 }
@@ -145,7 +158,8 @@ export async function executeAction(act: Record<string, unknown>): Promise<void>
 export function toPendingActions(actions: Record<string, unknown>[]): PendingAction[] {
   return actions.map((a, i) => ({
     id: `act-${Date.now()}-${i}`,
-    action: a,
+    // One id form from here on: the gate, the card, the undo snapshot and execute all see it.
+    action: normalizeActionIds(a),
     status: "pending" as const,
   }));
 }

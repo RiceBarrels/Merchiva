@@ -2764,7 +2764,14 @@
       "replaceBuilderHtml": "替换元素",
       "deleteBuilderHtml": "删除元素",
       "updateBuilderPage": "更新页面属性",
-      "updateBuilderSite": "更新站点属性"
+      "updateBuilderSite": "更新站点属性",
+      "setPunchInCode": "设置打卡码",
+      "addTrainingDay": "添加培训日",
+      "updateTrainingDay": "编辑培训日",
+      "deleteTrainingDay": "删除培训日",
+      "addTrainingObjective": "添加培训目标",
+      "updateTrainingObjective": "编辑培训目标",
+      "deleteTrainingObjective": "删除培训目标"
     },
     "fields": {
       "staffName": "员工",
@@ -2843,7 +2850,13 @@
       "published": "已发布",
       "plugins": "插件",
       "subtotal": "小计",
-      "tax": "税费"
+      "tax": "税费",
+      "memberId": "成员",
+      "dayId": "培训日",
+      "dayNumber": "第几天",
+      "objectiveId": "培训目标",
+      "text": "内容",
+      "orgName": "店铺名称"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "清空记录",
@@ -2913,7 +2926,9 @@
       "adding": "添加中…",
       "deleting": "删除中…",
       "added": "已添加",
-      "deleted": "已删除"
+      "deleted": "已删除",
+      "notAdded": "未添加",
+      "cancelled": "已取消"
     },
     "tasks": {
       "loading": "正在加载任务…",
@@ -2929,7 +2944,9 @@
       "evidencePrompt": "此任务需要凭证 — 请选择应上传的群组频道：",
       "noGroupChats": "暂无群组频道 — 请先在频道页面创建一个。",
       "add": "添加",
-      "skip": "跳过"
+      "skip": "跳过",
+      "addWithoutEvidence": "不要凭证，直接添加",
+      "createChannel": "去创建群组频道"
     },
     "command": {
       "deleteRoleFailed": "删除岗位失败",
@@ -3132,6 +3149,22 @@
         "partial": "部分自动",
         "full": "完全自动"
       }
+    },
+    "refs": {
+      "unknown": "未找到",
+      "unknownRole": "未知岗位",
+      "unknownTask": "未知任务",
+      "day": "第 {n} 天"
+    },
+    "toast": {
+      "done": "已完成：{action}",
+      "doneWithTarget": "已完成：{action} · {target}",
+      "orderEmailed": "订单已通过邮件发给供应商",
+      "orderDraft": "订单已存为草稿，已通知经理",
+      "failed": "操作失败：{reason}",
+      "unknownAction": "Mr. Merchiva 请求了一个本应用没有的操作。",
+      "targetMissing": "找不到此操作针对的记录，它可能已被修改或删除。",
+      "evidenceNeedsChannel": "拍照凭证需要一个群组频道，请在人员页面的任务编辑器中选择。"
     }
   },
   "admins": {

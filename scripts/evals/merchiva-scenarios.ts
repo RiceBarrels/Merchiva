@@ -6,8 +6,9 @@
  * `--tier` answers with that tier's model whatever the router picks (the router's choice is still
  * reported), to see a fix hold on every model and not only the one these requests route to.
  *
- * Each scenario is one chat message sent from one page, run the way /api/store-ai/enqueue runs a
- * background job: the real L1 triage (lib/ai/run-triage), the real router, the tier's real model
+ * Each scenario is one chat message sent from one page — after the earlier messages of the same
+ * chat, when it has any, each answered first and carried as the client's `history` — run the way
+ * /api/store-ai/enqueue runs a background job: the real L1 triage (lib/ai/run-triage), the real router, the tier's real model
  * (lib/ai/models tierModel) with the real system prompt (lib/ai/store-ai-prompt + the CURRENT PAGE
  * block of lib/ai/page-prompt) and the real read tools (buildMerchivaTools). The page payload is
  * built as the chat client builds it: the page's own context builder, sanitized by
@@ -23,6 +24,7 @@ import { mock } from "bun:test";
 import type { AiTier } from "@/lib/ai/models";
 import type { CurrentPage } from "@/lib/ai/page-prompt";
 import type { MerchivaPageContext } from "@/lib/merchiva/page-context";
+import type { ChatMessage } from "@/lib/merchiva/skills/types";
 import type { ActionBlock, Checker as CheckerType, ParsedReply } from "@/scripts/evals/merchiva-checks";
 
 // ── Isolation, before anything imports the server modules ──────────────────
@@ -72,12 +74,14 @@ const { buildCurrentPage } = await import("@/lib/merchiva/current-page");
 const { tabsStore } = await import("@/lib/browser-shell/store");
 const { getDictionary, lookup } = await import("@/lib/i18n/dictionaries");
 const { getUpcomingHolidays } = await import("@/lib/holidays");
-const { scheduleContext, teamContext } = await import("@/components/personnel/page-context");
+const { rolesContext, scheduleContext, teamContext } = await import("@/components/personnel/page-context");
 const { inventoryPageContext, salesPageContext } = await import("@/lib/merchiva/data-page-context");
 const { addDaysToKey, weekdayOfKey } = await import("@/lib/merchiva/tools/store-time");
+const { boolParam, sameId } = await import("@/lib/merchiva/action-ids");
 const checks = await import("@/scripts/evals/merchiva-checks");
+const { expandHistoryFromMessages } = await import("@/lib/merchiva/chat-history");
 
-const { ORG, TOKEN, TODAY, TIME_ZONE, THIS_MONDAY, LAST_MONDAY, NEXT_MONDAY, OWNER, PLACEHOLDER, OPEN_ITEM, FIXTURE_IDS } = fixture;
+const { ORG, TOKEN, TODAY, TIME_ZONE, THIS_MONDAY, LAST_MONDAY, NEXT_MONDAY, OWNER, PLACEHOLDER, OPEN_ITEM, FIXTURE_IDS, COFFEE_ORG, STAFF_ROLE } = fixture;
 
 // ── The background job's own prompt tail, read from the route so it cannot drift ──
 
@@ -99,7 +103,26 @@ const FORCED_TIER = forced as AiTier | null;
 const LANG = "zh-cn";
 const ACCESS = memberAccess("owner", "{}");
 const READ_TOOLS = allowedMerchivaTools(ACCESS);
-const STORE_CONTEXT = fixture.storeContext(getUpcomingHolidays("US", 14));
+const HOLIDAYS = getUpcomingHolidays("US", 14);
+
+/** The fake store a scenario's messages are sent to. */
+interface Store {
+  org: string;
+  /** The `context` the dashboard sends from this store. */
+  context: Record<string, unknown>;
+  /** Every id an action block may carry, per parameter name. */
+  ids: Readonly<Record<string, readonly string[]>>;
+  /** Its job roles, as the task cards resolve them. */
+  roles: ReadonlyArray<{ id: string; name: string }>;
+}
+
+const FAN_STORE: Store = { org: ORG, context: fixture.storeContext(HOLIDAYS), ids: FIXTURE_IDS, roles: [] };
+const COFFEE_STORE: Store = {
+  org: COFFEE_ORG,
+  context: fixture.coffeeStoreContext(HOLIDAYS),
+  ids: fixture.COFFEE_IDS,
+  roles: [{ id: STAFF_ROLE.id, name: STAFF_ROLE.name }],
+};
 const zh = getDictionary("zh-cn");
 const t = (key: string) => lookup(zh, key);
 
@@ -140,14 +163,20 @@ interface Run {
   blank: boolean;
 }
 
-async function runMessage(id: number, message: string, page: CurrentPage | null): Promise<Run> {
-  const messages = conversationMessages([], message);
+type HistoryTurn = { role: "user" | "assistant"; content: string };
+
+/**
+ * `feature` names the usage rows (eval_s<id>_…); `history` is the chat so far, as the client sends
+ * it (historyAfter).
+ */
+async function runMessage(feature: string, message: string, page: CurrentPage | null, store: Store, history: HistoryTurn[]): Promise<Run> {
+  const messages = conversationMessages(history, message);
   const triage = await runTriage({
     mode: "chat",
     lang: LANG,
     messages,
-    organizationId: ORG,
-    feature: `eval_s${id}_triage`,
+    organizationId: store.org,
+    feature: `${feature}_triage`,
     description: message,
     pageNote: pageTriageNote(page),
   });
@@ -168,14 +197,14 @@ async function runMessage(id: number, message: string, page: CurrentPage | null)
   const tier = FORCED_TIER ?? routed;
   const modelId = tierModelId(tier);
   const system = withCurrentPage(
-    buildSystemPrompt(STORE_CONTEXT, LANG, {}, permissionSummary(ACCESS), "chat", READ_TOOLS, ""),
+    buildSystemPrompt(store.context, LANG, {}, permissionSummary(ACCESS), "chat", READ_TOOLS, ""),
     page,
   );
   // The route's ackNote, verbatim.
   const ackNote = ack
     ? `\n\nNOTE: An acknowledgment has ALREADY been sent: "${ack}". Skip greetings.`
     : "\n\nNOTE: Skip greetings; go straight to substantive answer or action blocks.";
-  const tools = buildMerchivaTools({ token: TOKEN, organizationId: ORG, allowed: READ_TOOLS, today: TODAY, timeZone: TIME_ZONE });
+  const tools = buildMerchivaTools({ token: TOKEN, organizationId: store.org, allowed: READ_TOOLS, today: TODAY, timeZone: TIME_ZONE });
   const calls: ToolCallRecord[] = [];
   const spent = { inputTokens: 0, outputTokens: 0 };
   let finishReason = "";
@@ -220,7 +249,7 @@ async function runMessage(id: number, message: string, page: CurrentPage | null)
     return { text, messages: (await stream.response).messages };
   });
   if (blank) transcript += replyString(LANG, "merchiva.errors.chatFallback");
-  await recordAiUsage({ organizationId: ORG, feature: `eval_s${id}_reply`, model: modelId, description: message, ...spent });
+  await recordAiUsage({ organizationId: store.org, feature: `${feature}_reply`, model: modelId, description: message, ...spent });
 
   const chosen = route
     ? `${tierLabel(routed)} (score ${route.score}; signals [${route.signals.join(", ") || "none"}])`
@@ -244,7 +273,15 @@ function outputSummary(output: unknown): string {
     .slice(0, 220);
 }
 
-function transcriptOf(message: string, run: Run): string {
+/** One task card as the user sees it: "→ Staff: 开店准备 06:30–07:00 [evidence]". */
+function cardLine(card: ReturnType<typeof checks.taskCards>[number]): string {
+  const { task } = card;
+  const time = task.startTime || task.endTime ? ` ${task.startTime ?? ""}–${task.endTime ?? ""}` : "";
+  return `→ ${card.label}: ${task.title}${time}${task.requiresEvidence ? " [evidence]" : ""}`;
+}
+
+function transcriptOf(message: string, run: Run, store: Store): string {
+  const cards = checks.taskCards(run.reply.tasksAdd, store.roles);
   const lines = [
     `USER (${run.page?.path ?? "no page"}): ${message}`,
     `PAGE: ${JSON.stringify(run.page?.context ?? null)}`,
@@ -252,6 +289,8 @@ function transcriptOf(message: string, run: Run): string {
     ...(run.reply.ack ? [`ACK: ${run.reply.ack}`] : []),
     ...run.calls.map((c) => `TOOL ${c.tool}(${JSON.stringify(c.input)}) → ${c.error ? `ERROR ${c.error}` : outputSummary(c.output)}`),
     ...(run.retried ? [`RETRY: the first reply was blank${run.blank ? "; so was the retry (fallback line)" : ""}`] : []),
+    ...(cards.length > 0 ? [`TASK CARDS (${cards.length}):`, ...cards.map((card) => `  ${cardLine(card)}`)] : []),
+    ...run.reply.questions.map((q) => `ASK: ${q.q} [${q.a.join(" / ")}]`),
     `REPLY: ${run.reply.text.trim()}`,
   ];
   const text = lines.join("\n");
@@ -264,27 +303,59 @@ const writes = (run: Run) => run.reply.actions;
 const named = (run: Run, action: string) => run.reply.actions.filter((a) => a.action === action);
 const called = (run: Run, ...tools: string[]) => run.calls.some((c) => tools.includes(c.tool));
 
-function commonChecks(run: Run, c: CheckerType): void {
-  c.info(`router: ${run.tierText} → ${run.model}`);
-  c.check("reply has content", run.reply.prose.trim().length > 0 || run.reply.actions.length > 0);
-  const idAsks = checks.asksForIdOrCode(run.reply.prose);
-  c.check("never asks the user for an id or code", idAsks.length === 0, idAsks.join(" | "));
-  c.check("no /ask card without options", run.reply.emptyAsks.length === 0, run.reply.emptyAsks.join(" | "));
-  const bad = run.reply.actions.flatMap((a) => checks.registryProblems(a, FIXTURE_IDS));
-  c.check(`action blocks satisfy the registry (${run.reply.actions.length} blocks)`, bad.length === 0, bad.join("; "));
+/** `turn` prefixes every label of an earlier message of the chat ("turn 1: "). */
+function commonChecks(run: Run, c: CheckerType, store: Store, turn = ""): void {
+  c.info(`${turn}router: ${run.tierText} → ${run.model}`);
+  c.check(`${turn}reply has content`, run.reply.prose.trim().length > 0 || run.reply.actions.length > 0);
+  // The ack is a bubble of its own, read like the reply.
+  const idAsks = checks.asksForIdOrCode(`${run.reply.ack}\n${run.reply.prose}`);
+  c.check(`${turn}never asks the user for an id or code`, idAsks.length === 0, idAsks.join(" | "));
+  c.check(`${turn}no /ask card without options`, run.reply.emptyAsks.length === 0, run.reply.emptyAsks.join(" | "));
+  const bad = run.reply.actions.flatMap((a) => checks.registryProblems(a, store.ids));
+  c.check(`${turn}action blocks satisfy the registry (${run.reply.actions.length} blocks)`, bad.length === 0, bad.join("; "));
   c.check(
-    "every ```action block parses",
+    `${turn}every \`\`\`action block parses`,
     run.reply.actions.length >= run.reply.actionFences,
     `${run.reply.actionFences} fences, ${run.reply.actions.length} parsed`,
   );
   const failed = run.calls.filter((call) => call.error || (call.output as { error?: unknown } | undefined)?.error);
-  c.check("tool calls succeeded", failed.length === 0, failed.map((call) => `${call.tool}: ${call.error ?? outputSummary(call.output)}`).join("; "));
-  c.check("finished within the output cap", run.finishReason !== "length", run.finishReason);
-  if (run.triageFailed) c.warn("triage failed (lib/ai/run-triage returned null)", "the reply fell back to L2 with no acknowledgment");
-  c.check("not left blank (the route's fallback line)", !run.blank);
-  if (run.retried && !run.blank) c.warn("the first reply was blank", "the route's blank-reply retry answered");
+  c.check(`${turn}tool calls succeeded`, failed.length === 0, failed.map((call) => `${call.tool}: ${call.error ?? outputSummary(call.output)}`).join("; "));
+  c.check(`${turn}finished within the output cap`, run.finishReason !== "length", run.finishReason);
+  if (run.triageFailed) c.warn(`${turn}triage failed (lib/ai/run-triage returned null)`, "the reply fell back to L2 with no acknowledgment");
+  c.check(`${turn}not left blank (the route's fallback line)`, !run.blank);
+  if (run.retried && !run.blank) c.warn(`${turn}the first reply was blank`, "the route's blank-reply retry answered");
   const shownIds = [...new Set(run.reply.prose.match(checks.UUID_RE) ?? [])];
-  if (shownIds.length > 0) c.warn("shows a raw id to the user in prose", shownIds.join(", "));
+  if (shownIds.length > 0) c.warn(`${turn}shows a raw id to the user in prose`, shownIds.join(", "));
+}
+
+/** The blocks parseAllSkills turns into role and task cards; every other block stays an action card. */
+const CARD_BLOCKS = new Set(["addRole", "addRoleTask", "deleteRoleTask"]);
+
+/**
+ * The `history` entries the chat client adds for one answered message: its bubbles — the user's
+ * message, the ack and the reply (its text with the blocks taken out, then the line naming its
+ * cards) — through the client's own lib/merchiva/chat-history.ts expandHistoryFromMessages.
+ */
+function historyAfter(message: string, run: Run, store: Store): HistoryTurn[] {
+  const structured = run.reply.actions.length > 0 || run.reply.questions.length > 0;
+  const bubbles: ChatMessage[] = [
+    { id: "u", from: "user", text: message, time: "" },
+    ...(run.reply.ack ? [{ id: "ack", from: "merchiva" as const, text: run.reply.ack, time: "" }] : []),
+    {
+      id: "reply",
+      from: "merchiva",
+      text: run.reply.cleanText || (structured ? "" : run.reply.text.trim()),
+      time: "",
+      actions: run.reply.actions
+        .filter((a) => !CARD_BLOCKS.has(String(a.action)))
+        .map((a, i) => ({ id: `a${i}`, action: a, status: "pending" as const })),
+      questions: run.reply.questions,
+      rolesAdd: run.reply.rolesAdd,
+      tasksAdd: run.reply.tasksAdd,
+      tasksDelete: run.reply.tasksDelete,
+    },
+  ];
+  return expandHistoryFromMessages(bubbles, store.roles);
 }
 
 function noWrites(run: Run, c: CheckerType): void {
@@ -296,15 +367,92 @@ function noWrites(run: Run, c: CheckerType): void {
 interface Scenario {
   id: number;
   name: string;
+  /** Earlier messages of the same chat, sent from the same page and answered first, in order. */
+  before?: string[];
   message: string;
   path: string;
   context: MerchivaPageContext;
-  verify: (run: Run, c: CheckerType) => void;
+  /** Default: the Fan's Coffee store of the "给我排一下班" report. */
+  store?: Store;
+  /** `earlier` holds the replies to `before`, in order; commonChecks has already run on each. */
+  verify: (run: Run, c: CheckerType, earlier: Run[]) => void;
+}
+
+/**
+ * The task cards of a reply to a request for the Staff role's tasks ("岗位的id是有问题的": each card
+ * read "→ <role uuid>", and none was ever added). The cards are resolved the way CommandGroup
+ * resolves them — parseAllSkills, then lib/merchiva/role-ref.ts — against the role rows in each
+ * form a reader holds: the hyphenated string (viewRoles, the tools), 32 hex digits (toHexString,
+ * older client code) and the SDK Uuid (the client cache).
+ */
+function staffTaskChecks(run: Run, c: CheckerType, asked: string[], turn: string, required: boolean): void {
+  const tasks = run.reply.tasksAdd;
+  if (required) c.check(`${turn}emits addRoleTask blocks (the user asked for the tasks)`, tasks.length > 0, `${tasks.length} task cards`);
+  else c.info(`${turn}${tasks.length} task card(s)${tasks.length === 0 ? "; asked first" : ""}`);
+  const byId = tasks.filter((task) => task.roleId).length;
+  if (tasks.length > 0) c.info(`${turn}cards name the role by roleId: ${byId}/${tasks.length}; viewRoles ${called(run, "viewRoles") ? "called" : "not called"}`);
+
+  const rowForms: Array<[string, Array<{ id: unknown; name: string }>]> = [
+    ["hyphenated", [{ id: STAFF_ROLE.id, name: STAFF_ROLE.name }]],
+    ["32-hex", [{ id: STAFF_ROLE.id.replace(/-/g, ""), name: STAFF_ROLE.name }]],
+    ["SDK Uuid", [{ id: STAFF_ROLE.uuid, name: STAFF_ROLE.name }]],
+  ];
+  const unresolved: string[] = [];
+  const wrongLabel: string[] = [];
+  const shownIds: string[] = [];
+  for (const [form, rows] of rowForms) {
+    for (const card of checks.taskCards(tasks, rows)) {
+      const what = `"${card.task.title}" (roleId ${card.task.roleId ?? "none"}, role "${card.task.role}") with ${form} role ids`;
+      if (!sameId(card.role?.id, STAFF_ROLE.id)) unresolved.push(what);
+      if (card.label !== STAFF_ROLE.name) wrongLabel.push(`${what} → "${card.label}"`);
+      shownIds.push(...checks.idsShownOnCard(card).map((field) => `"${card.task.title}" ${field}`));
+    }
+  }
+  c.check(`${turn}every task card resolves to the Staff role (role-ref, every id form)`, unresolved.length === 0, unresolved.slice(0, 4).join("; "));
+  c.check(`${turn}every task card's header reads "→ Staff"`, wrongLabel.length === 0, wrongLabel.slice(0, 4).join("; "));
+  c.check(`${turn}no task card shows an id`, shownIds.length === 0, [...new Set(shownIds)].slice(0, 4).join("; "));
+
+  const blocks = named(run, "addRoleTask");
+  const offRole = blocks.filter(
+    (b) => !sameId(b.roleId, STAFF_ROLE.id) && String(b.role ?? b.roleName ?? "").trim().toLowerCase() !== STAFF_ROLE.name.toLowerCase(),
+  );
+  c.check(
+    `${turn}every addRoleTask block names the Staff role`,
+    offRole.length === 0,
+    offRole.map((b) => `"${String(b.title)}": roleId ${String(b.roleId ?? "none")}, role ${String(b.role ?? b.roleName ?? "none")}`).join("; "),
+  );
+  if (!asked.some(checks.asksForProof)) {
+    const proof = [
+      ...blocks.filter((b) => boolParam(b.requiresEvidence)).map((b) => `block "${String(b.title)}"`),
+      ...tasks.filter((task) => task.requiresEvidence).map((task) => `card "${task.title}"`),
+    ];
+    c.check(`${turn}no requiresEvidence (nobody asked for photo proof)`, proof.length === 0, [...new Set(proof)].join(", "));
+  }
+  const channelAsks = checks.asksAboutChannels(run.reply.prose);
+  c.check(`${turn}never asks about group channels`, channelAsks.length === 0, channelAsks.join(" | "));
+
+  // "安排" also means scheduling; here it is the Staff tasks, so no shifts, roles or deletes.
+  const others = new Map<string, number>();
+  for (const a of writes(run).filter((a) => a.action !== "addRoleTask")) others.set(String(a.action), (others.get(String(a.action)) ?? 0) + 1);
+  c.check(
+    `${turn}no actions but addRoleTask (the Staff tasks, not shifts or roles)`,
+    others.size === 0,
+    [...others].map(([action, n]) => `${action}×${n}`).join(", "),
+  );
+  if (!required && tasks.length === 0) c.warn(`${turn}asks for the tasks it was asked to write`, run.reply.prose.trim().slice(0, 120));
+  const proofAsks = checks.asksForProofChoice(run.reply.prose);
+  if (proofAsks.length > 0) c.warn(`${turn}asks whether the tasks need photo proof`, proofAsks.join(" | "));
+  const titles = tasks.map((task) => task.title.trim().toLowerCase());
+  const repeated = [...new Set(titles.filter((title, i) => titles.indexOf(title) !== i))];
+  if (repeated.length > 0) c.warn(`${turn}the same task twice`, repeated.join(", "));
 }
 
 const nextWeekEnd = addDaysToKey(NEXT_MONDAY, 6);
 const thisWeekEnd = addDaysToKey(THIS_MONDAY, 6);
 const thisWeekShifts = fixture.shiftsBetween(THIS_MONDAY, thisWeekEnd);
+/** The "岗位的id是有问题的" chat, as the user typed it. */
+const STAFF_TASKS = "写一下staff的任务";
+const COFFEE_SHOP = "是一家咖啡店 你安排一下";
 
 const SCENARIOS: Scenario[] = [
   {
@@ -469,6 +617,20 @@ const SCENARIOS: Scenario[] = [
       }
     },
   },
+  {
+    id: 6,
+    name: "roles page (coffee shop, one role \"Staff\"): 写一下staff的任务 → 是一家咖啡店 你安排一下",
+    before: [STAFF_TASKS],
+    message: COFFEE_SHOP,
+    path: "/manager/personnel/roles",
+    context: rolesContext({ roleCount: 1, role: null, statusDate: TODAY, today: TODAY }),
+    store: COFFEE_STORE,
+    verify: (run, c, earlier) => {
+      if (earlier[0]) staffTaskChecks(earlier[0], c, [STAFF_TASKS], "turn 1: ", false);
+      staffTaskChecks(run, c, [STAFF_TASKS, COFFEE_SHOP], "", true);
+      if (run.reply.questions.length > 0) c.warn("asks again after 你安排一下", run.reply.questions.map((q) => q.q).join(" | "));
+    },
+  },
 ];
 
 // ── Main ────────────────────────────────────────────────────────────────────
@@ -490,13 +652,15 @@ if (args.includes("--dry")) {
     const page = pageFor(s.path, s.context);
     console.log(`\n── ${s.id}. ${s.name}\npage: ${JSON.stringify(page)}\ntriage note: ${pageTriageNote(page)}`);
   }
-  const system = buildSystemPrompt(STORE_CONTEXT, LANG, {}, permissionSummary(ACCESS), "chat", READ_TOOLS, "");
-  console.log(`\nsystem prompt: ${system.length} chars + background note ${BACKGROUND_NOTE.length}; output cap ${MAX_OUTPUT_TOKENS}`);
-  const tools = buildMerchivaTools({ token: TOKEN, organizationId: ORG, allowed: READ_TOOLS, today: TODAY, timeZone: TIME_ZONE });
-  for (const [name, def] of Object.entries(tools)) {
-    const input = name === "proposeSchedule" ? { weekStart: NEXT_MONDAY } : {};
-    const out = await def.execute?.(input, { toolCallId: `dry-${name}`, messages: [] });
-    console.log(`${name}: ${outputSummary(out)}`);
+  for (const store of new Set(selected.map((s) => s.store ?? FAN_STORE))) {
+    const system = buildSystemPrompt(store.context, LANG, {}, permissionSummary(ACCESS), "chat", READ_TOOLS, "");
+    console.log(`\nstore ${store.org}: system prompt ${system.length} chars + background note ${BACKGROUND_NOTE.length}; output cap ${MAX_OUTPUT_TOKENS}`);
+    const tools = buildMerchivaTools({ token: TOKEN, organizationId: store.org, allowed: READ_TOOLS, today: TODAY, timeZone: TIME_ZONE });
+    for (const [name, def] of Object.entries(tools)) {
+      const input = name === "proposeSchedule" ? { weekStart: NEXT_MONDAY } : {};
+      const out = await def.execute?.(input, { toolCallId: `dry-${name}`, messages: [] });
+      console.log(`${name}: ${name === "viewRoles" ? JSON.stringify(out) : outputSummary(out)}`);
+    }
   }
   console.log(`\n${network.sql.length} fake SQL queries; refused: ${network.blocked.join(", ") || "none"}`);
   process.exit(network.blocked.length ? 1 : 0);
@@ -505,21 +669,37 @@ if (args.includes("--dry")) {
 const results = await Promise.all(
   selected.map(async (s) => {
     const c = new checks.Checker();
-    let transcript = "";
-    let tier = "";
+    const store = s.store ?? FAN_STORE;
+    const page = pageFor(s.path, s.context);
+    const messages = [...(s.before ?? []), s.message];
+    const turns = messages.length > 1;
+    const transcripts: string[] = [];
+    const replies: string[] = [];
+    const tiers: string[] = [];
     try {
-      const run = await runMessage(s.id, s.message, pageFor(s.path, s.context));
-      tier = run.tierText;
-      transcript = transcriptOf(s.message, run);
-      commonChecks(run, c);
-      s.verify(run, c);
+      // One chat: each message waits for the reply before it, which the next one carries as history.
+      const runs: Run[] = [];
+      let history: HistoryTurn[] = [];
+      for (const [i, message] of messages.entries()) {
+        const run = await runMessage(turns ? `eval_s${s.id}_t${i + 1}` : `eval_s${s.id}`, message, page, store, history);
+        runs.push(run);
+        tiers.push(run.tierText);
+        replies.push(run.raw);
+        transcripts.push(`${turns ? `── turn ${i + 1}\n` : ""}${transcriptOf(message, run, store)}`);
+        commonChecks(run, c, store, i < messages.length - 1 ? `turn ${i + 1}: ` : "");
+        history = [...history, ...historyAfter(message, run, store)];
+      }
+      s.verify(runs[runs.length - 1], c, runs.slice(0, -1));
     } catch (err) {
       c.check("scenario ran", false, err instanceof Error ? err.message : String(err));
     }
     const spent = usage.filter((u) => u.feature.startsWith(`eval_s${s.id}_`));
     const cost = spent.reduce((sum, u) => sum + u.cost, 0);
     c.info(`usage: ${spent.map((u) => `${u.model} ${u.inputTokens}+${u.outputTokens} tok`).join(", ")}; $${cost.toFixed(5)}`);
-    return { name: `${s.id}. ${s.name}`, passed: c.problems.length === 0, checks: c.checks, transcript, problems: c.problems, warnings: c.warnings, tier, cost };
+    return {
+      name: `${s.id}. ${s.name}`, passed: c.problems.length === 0, checks: c.checks, transcript: transcripts.join("\n"), replies,
+      problems: c.problems, warnings: c.warnings, tier: tiers.join(" | "), cost,
+    };
   }),
 );
 

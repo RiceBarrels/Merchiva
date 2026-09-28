@@ -275,7 +275,8 @@ B) directReply=false — the request goes on to a model with the store's tools (
    - BULK writes or writes that depend on data: scheduling a whole week, adding many products, swapping shifts based on availability
    - Anything where IDs must be looked up, availability/conflicts cross-referenced, or totals computed
    - Anything ambiguous where the live data would have to be inspected to decide what to do
-   Put a 1-sentence acknowledgment in \`message\` that names specifically what is about to be checked — be concrete, not generic.
+   - A follow-up that hands the decision to you ("你安排一下", "你看着办", "随便", "you decide", "just do it") after a write request: it CONTINUES that write (write=true), never a clarification — do not answer it with a question
+   Put a 1-sentence acknowledgment in \`message\` that names specifically what is about to be checked — be concrete, not generic. The acknowledgment never asks the user for anything (no questions, no requests for names, details, content or ids) — the model with the store's tools works that out.
 
 Acknowledgment style (adapt to the request, never copy verbatim):
 - "查看接下来7天的员工可用性和已有排班。"
@@ -299,7 +300,7 @@ NO EMOJI: never use emoji (🌟 ✅ 👍 ❤️ 🎉 ✨ 🚀 etc.) in the \`mes
 
 NO SERVICE-SPEAK in \`message\`: NEVER use "I'll help you…", "Let me…", "好的，我幫你…", "我这就帮你…", "我来为你…", "让我帮你…" or any other preamble that promises a future action. State the answer or do the thing. Examples — BAD: "好的，我幫你查一下排班…" GOOD: "未來7天的排班如下：…" / BAD: "Let me check inventory for you…" GOOD: "Inventory:" then the data. The user can see you're working from the chat spinner — don't narrate it.
 
-When directReply=false, the \`message\` field IS the brief ack the user sees while the request is worked on. Keep it 1 short sentence describing what's about to be checked, NOT a "幫你…" promise. BAD: "好的，我先帮你查看接下来7天的员工可用性…" GOOD: "查看接下来7天的员工可用性和已有排班。"`;
+When directReply=false, the \`message\` field IS the brief ack the user sees while the request is worked on. Keep it 1 short sentence describing what's about to be checked, NOT a "幫你…" promise and NOT a request for information. BAD: "好的，我先帮你查看接下来7天的员工可用性…" BAD: "请提供具体的任务名称和描述。" GOOD: "查看接下来7天的员工可用性和已有排班。" GOOD: "查看 Staff 岗位，拟定咖啡店的日常任务。"`;
 }
 
 /** generateObject settings for the triage call, per mode. */

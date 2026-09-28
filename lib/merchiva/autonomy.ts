@@ -134,6 +134,12 @@ export interface ActionRiskMeta {
 export interface GateContext {
   /** How many actions have already auto-executed today (for the daily cap). */
   autoActionsToday?: number;
+  /**
+   * The product's current price, from the store's rows (the caller looks the
+   * action's productId up). The model sends only {productId, newPrice}, so
+   * without it the price-change cap had no baseline and never applied.
+   */
+  oldPrice?: number | null;
 }
 
 export interface GateResult {
@@ -228,7 +234,7 @@ function capBreach(
     if (caps.maxPriceChangePct != null) {
       const newPrice = num(params.newPrice) ?? num(params.price);
       const oldPrice =
-        num(params.__oldPrice) ?? num(params.currentPrice) ?? num(params.oldPrice);
+        (ctx.oldPrice != null ? num(ctx.oldPrice) : null) ?? num(params.currentPrice) ?? num(params.oldPrice);
       if (newPrice != null && oldPrice != null && oldPrice > 0) {
         const pct = (Math.abs(newPrice - oldPrice) / oldPrice) * 100;
         if (pct > caps.maxPriceChangePct) {

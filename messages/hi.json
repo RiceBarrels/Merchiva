@@ -2764,7 +2764,14 @@
       "replaceBuilderHtml": "एलिमेंट बदलें",
       "deleteBuilderHtml": "एलिमेंट हटाएँ",
       "updateBuilderPage": "पेज अपडेट करें",
-      "updateBuilderSite": "साइट अपडेट करें"
+      "updateBuilderSite": "साइट अपडेट करें",
+      "setPunchInCode": "पंच-इन कोड सेट करें",
+      "addTrainingDay": "प्रशिक्षण दिन जोड़ें",
+      "updateTrainingDay": "प्रशिक्षण दिन संपादित करें",
+      "deleteTrainingDay": "प्रशिक्षण दिन हटाएँ",
+      "addTrainingObjective": "उद्देश्य जोड़ें",
+      "updateTrainingObjective": "उद्देश्य संपादित करें",
+      "deleteTrainingObjective": "उद्देश्य हटाएँ"
     },
     "fields": {
       "staffName": "स्टाफ",
@@ -2843,7 +2850,13 @@
       "published": "प्रकाशित",
       "plugins": "प्लगइन्स",
       "subtotal": "उप-योग",
-      "tax": "कर"
+      "tax": "कर",
+      "memberId": "सदस्य",
+      "dayId": "प्रशिक्षण दिन",
+      "dayNumber": "दिन",
+      "objectiveId": "उद्देश्य",
+      "text": "पाठ",
+      "orgName": "स्टोर का नाम"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "इतिहास साफ़ करें",
@@ -2913,7 +2926,9 @@
       "adding": "जोड़ा जा रहा है...",
       "deleting": "हटाया जा रहा है...",
       "added": "जोड़ा गया",
-      "deleted": "हटाया गया"
+      "deleted": "हटाया गया",
+      "notAdded": "नहीं जोड़ा गया",
+      "cancelled": "रद्द किया गया"
     },
     "tasks": {
       "loading": "कार्य लोड हो रहे हैं...",
@@ -2929,7 +2944,9 @@
       "evidencePrompt": "इस कार्य के लिए साक्ष्य आवश्यक है — वह ग्रुप चैनल चुनें जहाँ इसे अपलोड किया जाना चाहिए:",
       "noGroupChats": "अभी तक कोई ग्रुप चैनल नहीं — पहले चैनल पेज से एक बनाएँ।",
       "add": "जोड़ें",
-      "skip": "छोड़ें"
+      "skip": "छोड़ें",
+      "addWithoutEvidence": "साक्ष्य के बिना जोड़ें",
+      "createChannel": "ग्रुप चैनल बनाएँ"
     },
     "command": {
       "deleteRoleFailed": "रोल हटाने में विफल",
@@ -3132,6 +3149,22 @@
         "partial": "आंशिक रूप से स्वचालित",
         "full": "पूरी तरह स्वचालित"
       }
+    },
+    "refs": {
+      "unknown": "नहीं मिला",
+      "unknownRole": "अज्ञात भूमिका",
+      "unknownTask": "अज्ञात कार्य",
+      "day": "दिन {n}"
+    },
+    "toast": {
+      "done": "पूरा हुआ: {action}",
+      "doneWithTarget": "पूरा हुआ: {action} · {target}",
+      "orderEmailed": "ऑर्डर सप्लायर को ईमेल किया गया",
+      "orderDraft": "ऑर्डर ड्राफ्ट के रूप में सहेजा गया — मैनेजर को सूचित किया गया",
+      "failed": "कार्रवाई विफल: {reason}",
+      "unknownAction": "Mr. Merchiva ने ऐसी कार्रवाई माँगी जो इस ऐप में नहीं है।",
+      "targetMissing": "यह कार्रवाई जिस रिकॉर्ड के लिए है, वह नहीं मिला — हो सकता है वह बदला या हटाया गया हो।",
+      "evidenceNeedsChannel": "फ़ोटो साक्ष्य के लिए एक ग्रुप चैनल चाहिए। स्टाफ़ पेज पर कार्य के संपादक में एक चुनें।"
     }
   },
   "admins": {
