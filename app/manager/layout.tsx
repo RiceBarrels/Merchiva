@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { ManagerShell } from "@/components/browser-shell/manager-shell";
 import { ShellContextMenu } from "@/components/browser-shell/shared/shell-context-menu";
 import { MerchivaDock } from "@/components/merchiva-dock";
+import { PresenceLayer } from "@/components/presence/presence-layer";
 import { SheetSessionKeeper } from "@/lib/sheets/use-sheet-session-keeper";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { ShakeBugReport } from "@/components/shake-bug-report";
@@ -562,6 +563,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
               <ManagerShell>{children}</ManagerShell>
               <ShellContextMenu />
               <SheetSessionKeeper />
+              <PresenceLayer />
               <MerchivaDock />
               <PushNotificationPrompt />
               <TauriNotificationBridge />

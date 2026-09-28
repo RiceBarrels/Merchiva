@@ -14,6 +14,8 @@
 
 import { schema, t, table, SenderError, Range } from 'spacetimedb/server';
 import { Identity, Timestamp, Uuid } from 'spacetimedb';
+import { pagePresenceTable } from './presence/tables';
+import { definePagePresenceReducers } from './presence/reducers';
 import {
   driveItemTable, driveOrgStateTable, driveAdminIndexTable, documentReaderIndexTable, driveUsageTable,
   driveStarTable, driveNoticeAckTable, driveServiceReaderTable, driveBlobGcTable, documentEditLeaseTable,
@@ -2500,6 +2502,7 @@ const spacetimedb = schema({
   documentStar: documentStarTable,
   documentAccess: documentAccessTable,
   bugReport: bugReportTable,
+  pagePresence: pagePresenceTable,
   // Drive + the Docs-family reader index + Sheets (./drive/tables.ts).
   driveItem: driveItemTable,
   driveOrgState: driveOrgStateTable,
@@ -2616,7 +2619,7 @@ const RLS_ORG_SCOPED: Array<string | [table: string, column: string]> = [
   'document', 'document_file', 'document_access', 'document_comment', 'document_presence',
   'document_snapshot', 'document_star', 'document_update', 'document_version',
   'expense', 'inventory_item', 'inventory_transaction',
-  'location', 'org_invitation', 'payment', 'punch_event', 'purchase_order',
+  'location', 'org_invitation', 'page_presence', 'payment', 'punch_event', 'purchase_order',
   'queue_entry', ['role_task', 'orgId'], 'role_task_assignment', 'sales_record',
   'settings', 'shift', 'shift_preset', 'shift_trade', 'site', 'site_booking',
   'site_component', 'staff_availability', 'staff_member', 'staff_role',
@@ -9753,6 +9756,9 @@ export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
       ctx.db.documentPresence.delete(p);
     }
     detachSheetLeases(ctx, connectionId);
+    for (const p of [...ctx.db.pagePresence.byConnectionId.filter(connectionId)]) {
+      ctx.db.pagePresence.delete(p);
+    }
   } catch {
     // Best effort by design (see above).
   }
@@ -9933,6 +9939,11 @@ export const {
   acquireSheetLease, heartbeatSheetLease, releaseSheetLease, declineSheetLeaseRequest, cancelSheetLeaseRequest,
   pushSheetOps, compactSheet, resetSheetContent, saveSheetVersion,
 } = defineSheetReducers(spacetimedb, sheetDeps);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PAGE PRESENCE REDUCERS (./presence/reducers.ts)
+// ═══════════════════════════════════════════════════════════════════════════════
+export const { upsertPagePresence, removePagePresence } = definePagePresenceReducers(spacetimedb, { t, SenderError });
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // BUG REPORT REDUCERS

@@ -2999,6 +2999,9 @@
       "resize": "调整 Mr. Merchiva 宽度",
       "hintPrefix": "按",
       "hintSuffix": "随时唤起 Mr. Merchiva"
+    },
+    "presence": {
+      "cursorLabel": "{name} 的 Mr. Merchiva"
     }
   },
   "admins": {
@@ -5874,6 +5877,10 @@
     "fields": {
       "shiftType": "班次类型"
     }
+  },
+  "presence": {
+    "viewing": "在此页面：{names}",
+    "youOtherTab": "你（其他标签页）"
   },
   "drive": {
     "errors": {

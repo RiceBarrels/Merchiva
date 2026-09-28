@@ -2405,3 +2405,51 @@ export async function migrateSecurityV1(): Promise<void> {
 export async function pruneOrgHistory(keepDays: number, dryRun = true): Promise<void> {
   return conn().reducers.pruneOrgHistory({ organizationId: orgId(), keepDays, dryRun });
 }
+
+// ─── Page presence ───────────────────────────────────────────────────────────
+// Live cursors on /manager pages (`page_presence`). Best effort by design: never
+// queued (a cursor replayed after a reconnect is a lie), a missing connection or
+// reducer is a no-op, and a rejected call is swallowed — presence must never
+// surface an error. The module derives name / avatar / member itself and
+// validates the rest (spacetimedb/src/presence/validate.ts).
+
+export interface PagePresenceArgs {
+  organizationId: string;
+  kind: "user" | "agent";
+  /** Agent: the chat scope (tab id or "__window__"). User: "". */
+  slot: string;
+  pagePath: string;
+  anchor: string;
+  anchorX: number;
+  anchorY: number;
+  pointX: number;
+  pointY: number;
+  /** Wraps at 2^32. */
+  clickSeq: number;
+  /** Agent: the tool / action name. User: "". */
+  activity: string;
+}
+
+function callPresenceReducer(name: string, args: Record<string, unknown>): Promise<void> {
+  try {
+    const reducers = getConnection()?.reducers as Record<string, ((a: unknown) => Promise<void>) | undefined> | undefined;
+    const reducer = reducers?.[name];
+    if (typeof reducer !== "function") return Promise.resolve();
+    return Promise.resolve(reducer.call(reducers, args)).catch((err: unknown) => {
+      if (process.env.NODE_ENV === "development") console.debug(`[presence] ${name} rejected:`, err);
+    });
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") console.debug(`[presence] ${name} failed:`, err);
+    return Promise.resolve();
+  }
+}
+
+/** Upserts this tab's row for (kind, slot). Never rejects. */
+export function upsertPagePresence(args: PagePresenceArgs): Promise<void> {
+  return callPresenceReducer("upsertPagePresence", { ...args, clickSeq: Math.trunc(args.clickSeq) >>> 0 });
+}
+
+/** Removes this tab's row for (kind, slot). Never rejects. */
+export function removePagePresence(kind: PagePresenceArgs["kind"], slot: string): Promise<void> {
+  return callPresenceReducer("removePagePresence", { kind, slot });
+}

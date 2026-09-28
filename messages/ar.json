@@ -2999,6 +2999,9 @@
       "resize": "تغيير حجم Mr. Merchiva",
       "hintPrefix": "اضغط",
       "hintSuffix": "لاستدعاء Mr. Merchiva"
+    },
+    "presence": {
+      "cursorLabel": "Mr. Merchiva الخاص بـ {name}"
     }
   },
   "admins": {
@@ -5874,6 +5877,10 @@
     "fields": {
       "shiftType": "نوع الوردية"
     }
+  },
+  "presence": {
+    "viewing": "في هذه الصفحة: {names}",
+    "youOtherTab": "أنت (علامة تبويب أخرى)"
   },
   "drive": {
     "errors": {

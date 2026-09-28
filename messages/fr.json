@@ -2999,6 +2999,9 @@
       "resize": "Redimensionner Mr. Merchiva",
       "hintPrefix": "Appuyez sur",
       "hintSuffix": "pour appeler Mr. Merchiva"
+    },
+    "presence": {
+      "cursorLabel": "Mr. Merchiva de {name}"
     }
   },
   "admins": {
@@ -5874,6 +5877,10 @@
     "fields": {
       "shiftType": "Type de service"
     }
+  },
+  "presence": {
+    "viewing": "Sur cette page : {names}",
+    "youOtherTab": "Vous (autre onglet)"
   },
   "drive": {
     "errors": {

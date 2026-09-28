@@ -177,6 +177,15 @@ function bugSubscriptions(orgId: string): string[] {
   return [`SELECT * FROM bug_report WHERE organization_id = '${orgId}'`];
 }
 
+/**
+ * Page presence (live cursors), on its own for the same reason as bug reports:
+ * a module without `page_presence` loses only the cursors, never the org batch.
+ */
+function presenceSubscriptions(orgId: string): string[] {
+  if (!isUuid(orgId)) return [];
+  return [`SELECT * FROM page_presence WHERE organization_id = '${orgId}'`];
+}
+
 interface SpacetimeProviderProps {
   children: ReactNode;
 }
@@ -385,6 +394,16 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
               .subscribe(bugSubscriptions(bootOrgId));
           } catch (err) {
             console.warn("[SpacetimeDB] Bug report subscription failed:", err);
+          }
+          try {
+            conn
+              .subscriptionBuilder()
+              .onError(() =>
+                console.warn("[SpacetimeDB] page_presence subscription failed — is the module published?"),
+              )
+              .subscribe(presenceSubscriptions(bootOrgId));
+          } catch (err) {
+            console.warn("[SpacetimeDB] Page presence subscription failed:", err);
           }
         }
       })

@@ -2,8 +2,9 @@
 // Use these in any client component inside <SpacetimeProvider>.
 
 import { useState } from "react";
-import { useTable } from "spacetimedb/react";
+import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { tables } from "./generated";
+import type { PagePresence } from "./generated/types";
 
 export { useSpacetimeDB } from "spacetimedb/react";
 export { useTable } from "spacetimedb/react";
@@ -248,3 +249,27 @@ export function useDeviceOperatorSession() {
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
 }
 /* eslint-enable */
+
+// ── Page presence ───────────────────────────────────────────────────────────
+// Live cursors on /manager pages — people and Mr. Merchiva (`page_presence`).
+// Rows change on every cursor move, so pass the active org id: the subscription
+// is then scoped to that org (null subscribes to nothing). With no argument it
+// is RLS-scoped only, i.e. every org the caller belongs to. `updatedAt` cannot
+// be filtered in SQL — callers drop rows older than the 90 s TTL themselves.
+// Guarded like the tables above: bindings without the table return an empty,
+// never-ready tuple.
+const EMPTY_PRESENCE_RESULT = EMPTY_TABLE_RESULT as unknown as [readonly PagePresence[], boolean];
+/* eslint-disable react-hooks/rules-of-hooks */
+export function usePagePresenceRows(organizationId?: string | null): [readonly PagePresence[], boolean] {
+  const tbl = tables.pagePresence as typeof tables.pagePresence | undefined;
+  if (!tbl) return EMPTY_PRESENCE_RESULT;
+  if (organizationId === undefined) return useTable(tbl);
+  return useTable(tbl.where((r) => r.organizationId.eq(organizationId ?? "")), { enabled: !!organizationId });
+}
+/* eslint-enable */
+
+/** This tab's connection id (hex) once connected, else null. Same identity + another id = my other tab. */
+export function useMyConnectionId(): string | null {
+  const { isActive, connectionId } = useSpacetimeDB();
+  return isActive && connectionId ? connectionId.toHexString() : null;
+}

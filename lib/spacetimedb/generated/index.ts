@@ -175,6 +175,7 @@ import RegisterDeviceReducer from "./register_device_reducer";
 import RegisterServiceIdentityReducer from "./register_service_identity_reducer";
 import ReleaseSheetLeaseReducer from "./release_sheet_lease_reducer";
 import RemoveDocumentPresenceReducer from "./remove_document_presence_reducer";
+import RemovePagePresenceReducer from "./remove_page_presence_reducer";
 import RemoveStoreDeviceReducer from "./remove_store_device_reducer";
 import RenameDocumentReducer from "./rename_document_reducer";
 import RenameDocumentVersionReducer from "./rename_document_version_reducer";
@@ -271,6 +272,7 @@ import UpdateTrainingDayReducer from "./update_training_day_reducer";
 import UpdateTrainingObjectiveReducer from "./update_training_objective_reducer";
 import UpsertAvailabilityReducer from "./upsert_availability_reducer";
 import UpsertDocumentPresenceReducer from "./upsert_document_presence_reducer";
+import UpsertPagePresenceReducer from "./upsert_page_presence_reducer";
 import VerifyManagerPinReducer from "./verify_manager_pin_reducer";
 
 // Import all procedure arg schemas
@@ -321,6 +323,7 @@ import OrgInvitationRow from "./org_invitation_table";
 import OrgMemberRow from "./org_member_table";
 import OrgMembershipIndexRow from "./org_membership_index_table";
 import OrganizationRow from "./organization_table";
+import PagePresenceRow from "./page_presence_table";
 import PaymentRow from "./payment_table";
 import PunchEventRow from "./punch_event_table";
 import PurchaseOrderRow from "./purchase_order_table";
@@ -1132,6 +1135,23 @@ const tablesSchema = __schema({
       { name: 'organization_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, OrganizationRow),
+  pagePresence: __table({
+    name: 'page_presence',
+    indexes: [
+      { accessor: 'byConnectionId', name: 'page_presence_connection_id_idx_btree', algorithm: 'btree', columns: [
+        'connectionId',
+      ] },
+      { accessor: 'id', name: 'page_presence_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'page_presence_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'page_presence_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, PagePresenceRow),
   payment: __table({
     name: 'payment',
     indexes: [
@@ -1812,6 +1832,7 @@ const reducersSchema = __reducers(
   __reducerSchema("register_service_identity", RegisterServiceIdentityReducer),
   __reducerSchema("release_sheet_lease", ReleaseSheetLeaseReducer),
   __reducerSchema("remove_document_presence", RemoveDocumentPresenceReducer),
+  __reducerSchema("remove_page_presence", RemovePagePresenceReducer),
   __reducerSchema("remove_store_device", RemoveStoreDeviceReducer),
   __reducerSchema("rename_document", RenameDocumentReducer),
   __reducerSchema("rename_document_version", RenameDocumentVersionReducer),
@@ -1908,6 +1929,7 @@ const reducersSchema = __reducers(
   __reducerSchema("update_training_objective", UpdateTrainingObjectiveReducer),
   __reducerSchema("upsert_availability", UpsertAvailabilityReducer),
   __reducerSchema("upsert_document_presence", UpsertDocumentPresenceReducer),
+  __reducerSchema("upsert_page_presence", UpsertPagePresenceReducer),
   __reducerSchema("verify_manager_pin", VerifyManagerPinReducer),
 );
 

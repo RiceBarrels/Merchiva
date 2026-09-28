@@ -12,6 +12,8 @@ import type { EntryKey } from "./types";
 
 const ROOT_SELECTOR = "[data-tab-scroll-root]";
 const CONTENT_SELECTOR = "#desktop-content, #mobile-content";
+const ACTIVE_SLOT_SELECTOR =
+  '#desktop-content [data-tab-slot][data-tab-active="true"], #mobile-content [data-tab-slot][data-tab-active="true"]';
 const RESTORE_TIMEOUT_MS = 2000;
 const RESTORE_TOLERANCE_PX = 4;
 /** Reload / deep-link boot: the page's data is often still loading when the shell binds. */
@@ -40,6 +42,16 @@ export function trackedScrollOf(entryKey: EntryKey): number | undefined {
 
 function isVisible(el: HTMLElement): boolean {
   return el.isConnected && el.getClientRects().length > 0;
+}
+
+/**
+ * The active keep-alive slot of the browser shell (the displayed tab page), or null outside the
+ * browser shell. Page-level DOM lookups (presence anchors, scroll roots) scope to it: hidden
+ * slots stay in the document.
+ */
+export function activeTabRoot(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  return document.querySelector<HTMLElement>(ACTIVE_SLOT_SELECTOR);
 }
 
 /**

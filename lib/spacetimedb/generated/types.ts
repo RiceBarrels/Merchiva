@@ -710,6 +710,28 @@ export const Organization = __t.object("Organization", {
 });
 export type Organization = __Infer<typeof Organization>;
 
+export const PagePresence = __t.object("PagePresence", {
+  id: __t.string(),
+  organizationId: __t.string(),
+  connectionId: __t.string(),
+  identity: __t.identity(),
+  memberId: __t.string(),
+  kind: __t.string(),
+  slot: __t.string(),
+  name: __t.string(),
+  avatarUrl: __t.string(),
+  pagePath: __t.string(),
+  anchor: __t.string(),
+  anchorX: __t.f64(),
+  anchorY: __t.f64(),
+  pointX: __t.f64(),
+  pointY: __t.f64(),
+  clickSeq: __t.u32(),
+  activity: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type PagePresence = __Infer<typeof PagePresence>;
+
 export const Payment = __t.object("Payment", {
   id: __t.uuid(),
   organizationId: __t.string(),

@@ -1,9 +1,9 @@
 /**
  * Docs colours.
  *
- * - `PRESENCE_COLORS`: collaborator carets, remote selections and avatar rings in the editor only (lead decision Q3:
- *   8 muted hues taken from families the app already uses — status tones and the chart blue ramp). Everything
- *   else in the UI stays neutral.
+ * - `PRESENCE_COLORS`: collaborator carets, remote selections and avatar rings in the editor (lead decision Q3:
+ *   8 muted hues taken from families the app already uses — status tones and the chart blue ramp). They live in
+ *   lib/presence/colors.ts, shared with the live cursors on /manager pages, and are re-exported here.
  * - `TEXT_COLORS` / `HIGHLIGHT_COLORS`: the named quick row at the top of the picker. Names are i18n suffixes
  *   under `docs.colors.*`.
  * - `DOC_COLOR_GRID`: the full palette below it — a greyscale row plus six tint/shade rows across ten hues. A
@@ -14,34 +14,7 @@
  * The page sheet stays light in dark mode (docs-editor-ui spec §4.11), so these fixed hex values are readable there.
  */
 
-export const PRESENCE_COLORS = [
-  "#2563eb",
-  "#059669",
-  "#d97706",
-  "#dc2626",
-  "#0284c7",
-  "#1f3fad",
-  "#57534e",
-  "#047857",
-] as const;
-
-export type PresenceColor = (typeof PRESENCE_COLORS)[number];
-
-/** FNV-1a 32-bit hash of a string. */
-function fnv1a(value: string): number {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < value.length; i++) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return hash >>> 0;
-}
-
-/** Stable collaborator colour for an org member id (same on every device). */
-export function colorForMember(memberId: string | null | undefined): PresenceColor {
-  if (!memberId) return PRESENCE_COLORS[6];
-  return PRESENCE_COLORS[fnv1a(memberId) % PRESENCE_COLORS.length];
-}
+export { PRESENCE_COLORS, colorForMember, type PresenceColor } from "@/lib/presence/colors";
 
 export type DocColorName =
   | "black"

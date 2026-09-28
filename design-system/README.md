@@ -90,6 +90,18 @@ Counted across `app/manager` and `components`:
 
 `violet-*`, `orange-*`, `rose-*` appear in small numbers and are not standardized. `text-stone-*` still has ~800 usages; treat them as legacy.
 
+### Presence colors (the one per-person hue)
+
+`PRESENCE_COLORS` in `lib/presence/colors.ts` (re-exported by `lib/docs/colors.ts`): 8 muted hues from families the palette already has — `#2563eb #059669 #d97706 #dc2626 #0284c7 #1f3fad #57534e #047857`. `colorForMember(memberId)` (FNV-1a mod 8) gives each org member the same one on every device.
+
+This is a deliberate exception to "hue only in status colors and charts", and it is limited to multi-user presence:
+
+- Docs editor carets and remote selections.
+- Live cursors on `/manager` pages (arrow + click ring) and their name tags: white 10px/600 text on the member's hue, the same flag shape as `.collaboration-carets__label`. Arrows get a white outline so the dark hues stay visible in dark mode.
+- The 2px ring around presence avatars (sidebar row badges, the Docs header).
+
+Mr. Merchiva's cursor is always neutral (`bg-foreground text-background`, foreground arrow with a background outline) so it never reads as a person. `Avatar` itself stays neutral, and nothing else gets a per-person color.
+
 ---
 
 ## 3. Typography
@@ -343,6 +355,7 @@ Rules: never recolor with a hue; never add gradients or shadows; keep clear spac
 | Dialog / drawer overlay | `fade-in-0` / `fade-out-0`, 100ms | Overlays |
 | Popover | `fade-in-0 zoom-in-95` | Menus, pickers |
 | Spinner | `<Loader2 className="h-4 w-4 animate-spin" />` | Loading |
+| Presence cursor | spring, stiffness 500, damping 38, mass 0.6 (the dock's); click ring scale 0.4→1.6, fading out, 300ms; jumps and no ring with reduced motion | Live cursors on `/manager` pages |
 | Landing-only | `mv-*` keyframes (reveal 700ms, marquee, shimmer) | `app/[locale]` marketing pages only |
 
 Haptics: `hapticLight()` on button clicks, nav links and tab changes (Capacitor).
@@ -376,7 +389,7 @@ Haptics: `hapticLight()` on button clicks, nav links and tab changes (Capacitor)
 |:---|:---|
 | `rounded-2xl`, `rounded-full` on cards | `rounded-lg` (2.4px) |
 | Colored or glow shadows | 1px `border-border` |
-| Blue/purple gradient accents | Neutral palette, hue only in status colors and charts |
+| Blue/purple gradient accents | Neutral palette, hue only in status colors, charts and presence colors |
 | `text-stone-900` / `text-stone-500` in new code | `text-foreground` / `text-muted-foreground` |
 | Hero sections and generous whitespace inside `/manager/` | Compact headers, dense tables |
 | Per-component CSS files | Tailwind utilities |

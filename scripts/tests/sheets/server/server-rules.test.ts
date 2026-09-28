@@ -76,7 +76,7 @@ describe("index.ts hooks (sheets.md §3.8, DS §6.8, U7)", () => {
     const hooks: Array<[string, string[]]> = [
       ["purgeDocumentRows", ["adjustSheetBytes(ctx, doc.organizationId, -sheetContentBytes(ctx, id))", "documentVersionState.delete", "documentEditLease.delete", "dropDocumentFile(ctx, id)"]],
       ["trashDocument", ["dropDocumentLease(ctx, doc.id)"]],
-      ["onDisconnect", ["detachSheetLeases(ctx, connectionId)"]],
+      ["onDisconnect", ["detachSheetLeases(ctx, connectionId)", "ctx.db.pagePresence.byConnectionId.filter(connectionId)"]],
       ["pruneDocPresence", ["revalidateSheetLease(ctx, doc, members)"]],
       ["deleteDocumentVersion", ["documentVersionState.versionId.find(v.id.toString())", "adjustSheetBytes"]],
       ["duplicateDocument", ["assertSheetBytesFit(ctx, src.organizationId, sheetBytes)", "adjustSheetBytes(ctx, src.organizationId, sheetBytes)", "driveFolderFits", "setDocumentFile(ctx, copy,"]],

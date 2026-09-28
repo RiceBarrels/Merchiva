@@ -2999,6 +2999,9 @@
       "resize": "Resize Mr. Merchiva",
       "hintPrefix": "Press",
       "hintSuffix": "to summon Mr. Merchiva"
+    },
+    "presence": {
+      "cursorLabel": "{name}'s Mr. Merchiva"
     }
   },
   "admins": {
@@ -5874,6 +5877,10 @@
     "fields": {
       "shiftType": "Shift type"
     }
+  },
+  "presence": {
+    "viewing": "On this page: {names}",
+    "youOtherTab": "You (other tab)"
   },
   "drive": {
     "errors": {

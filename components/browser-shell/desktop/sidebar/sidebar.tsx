@@ -6,10 +6,12 @@ import { ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { AppIcon } from "@/components/device/app-icons";
 import { MerchivaLogo } from "@/components/logo";
+import { NavPresence } from "@/components/presence/nav-presence";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useActiveTab, useNavSections, useTabPresentation, type NavSection, type TabUrl } from "@/lib/browser-shell";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
+import { navPresenceId } from "@/lib/presence/anchor";
 import { cn } from "@/lib/utils";
 import {
   SIDEBAR_CLASS,
@@ -172,6 +174,7 @@ function SidebarSection({
           icon={section.icon}
           active={active}
           collapsed={false}
+          childrenVisible={childrenVisible}
           className="min-w-0 flex-1"
         />
         <button
@@ -212,12 +215,15 @@ function SidebarSection({
                   prefetch={false}
                   onMouseDown={onRowMouseDown}
                   aria-current={isRowActive(child.href, activeUrl) ? "page" : undefined}
+                  data-presence-id={navPresenceId(child.href)}
                   className={cn(
+                    "relative",
                     SIDEBAR_SUB_ROW_CLASS,
                     isRowActive(child.href, activeUrl) ? SIDEBAR_ROW_ACTIVE_CLASS : SIDEBAR_ROW_IDLE_CLASS,
                   )}
                 >
                   {t(child.titleKey)}
+                  <NavPresence href={child.href} level="child" />
                 </Link>
               ))}
             </div>
@@ -234,6 +240,7 @@ function SidebarRow({
   icon: Icon,
   active,
   collapsed,
+  childrenVisible = false,
   className,
 }: {
   href: TabUrl;
@@ -241,15 +248,19 @@ function SidebarRow({
   icon: AppIcon;
   active: boolean;
   collapsed: boolean;
+  /** Its sub-page rows are on screen (they show their own presence badges). */
+  childrenVisible?: boolean;
   className?: string;
 }) {
   const content: ReactNode = (
     <>
       <Icon className="h-[18px] w-[18px] shrink-0" />
       {collapsed ? null : <span className="min-w-0 flex-1 truncate">{title}</span>}
+      <NavPresence href={href} level="section" childrenVisible={childrenVisible} collapsed={collapsed} />
     </>
   );
   const rowClass = cn(
+    "relative",
     SIDEBAR_ROW_CLASS,
     collapsed && "justify-center",
     active ? SIDEBAR_ROW_ACTIVE_CLASS : SIDEBAR_ROW_IDLE_CLASS,
@@ -263,6 +274,7 @@ function SidebarRow({
         prefetch={false}
         onMouseDown={onRowMouseDown}
         aria-current={active ? "page" : undefined}
+        data-presence-id={navPresenceId(href)}
         className={rowClass}
       >
         {content}
@@ -280,6 +292,7 @@ function SidebarRow({
             onMouseDown={onRowMouseDown}
             aria-current={active ? "page" : undefined}
             aria-label={title}
+            data-presence-id={navPresenceId(href)}
             className={rowClass}
           />
         }

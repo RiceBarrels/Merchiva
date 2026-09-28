@@ -2999,6 +2999,9 @@
       "resize": "Redimensionar Mr. Merchiva",
       "hintPrefix": "Pulsa",
       "hintSuffix": "para invocar a Mr. Merchiva"
+    },
+    "presence": {
+      "cursorLabel": "Mr. Merchiva de {name}"
     }
   },
   "admins": {
@@ -5874,6 +5877,10 @@
     "fields": {
       "shiftType": "Tipo de turno"
     }
+  },
+  "presence": {
+    "viewing": "En esta página: {names}",
+    "youOtherTab": "Tú (otra pestaña)"
   },
   "drive": {
     "errors": {

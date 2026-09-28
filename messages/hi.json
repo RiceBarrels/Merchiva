@@ -2999,6 +2999,9 @@
       "resize": "Mr. Merchiva का आकार बदलें",
       "hintPrefix": "दबाएँ",
       "hintSuffix": "Mr. Merchiva को बुलाने के लिए"
+    },
+    "presence": {
+      "cursorLabel": "{name} का Mr. Merchiva"
     }
   },
   "admins": {
@@ -5874,6 +5877,10 @@
     "fields": {
       "shiftType": "शिफ़्ट का प्रकार"
     }
+  },
+  "presence": {
+    "viewing": "इस पेज पर: {names}",
+    "youOtherTab": "आप (दूसरा टैब)"
   },
   "drive": {
     "errors": {
