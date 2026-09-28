@@ -8020,6 +8020,10 @@ function requireAdmin(ctx: any): void {
 export const claimFirstAdmin = spacetimedb.reducer(
   { email: t.string() },
   (ctx, { email }) => {
+    // Bootstrap is service-only: with no admin yet, any signed-in identity
+    // could otherwise make itself platform admin. A human admin is promoted
+    // by the service identity through setUserAdmin.
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
     const anyAdmin = [...ctx.db.user.iter()].some((u) => u.isAdmin === true);
     if (anyAdmin) unauthorized('Admin already claimed');
 
@@ -8128,7 +8132,9 @@ export const updateBlogPost = spacetimedb.reducer(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isServiceCaller(ctx: any): boolean {
-  return ctx.db.serviceIdentity.identity.find(ctx.sender) !== undefined;
+  // Unique-index find() returns null on a miss (SDK runtime tableIterateOne),
+  // never undefined: `!== undefined` made EVERY caller the service identity.
+  return ctx.db.serviceIdentity.identity.find(ctx.sender) != null;
 }
 
 /**
