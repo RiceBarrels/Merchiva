@@ -4,7 +4,8 @@
 //
 // Scenarios: a staff operator on a tablet signed in as the owner (Mine, Store, Trash, other apps, the actions each
 // entry offers), a staff-account tablet (Store only), the owner on her phone, the unacknowledged notice, empty,
-// not published, offline, loading, an editor inside the panel, a camera shot, and a lost PIN session.
+// not published, offline, loading, an editor inside the panel, a camera shot, a lost PIN session, and the file
+// store being unavailable.
 
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
@@ -19,7 +20,7 @@ import { DriveClientError } from "@/lib/drive/errors";
 const ROOT = join(import.meta.dir, "..", "..", "..");
 const SCENARIOS = [
   "store-operator", "staff-tablet", "personal", "needs-ack", "empty", "not-published", "offline", "checking", "editor",
-  "camera", "operator",
+  "camera", "operator", "storage-off",
 ] as const;
 
 function run(env: Record<string, string>): { exitCode: number | null; output: string } {

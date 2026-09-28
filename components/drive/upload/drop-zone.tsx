@@ -3,7 +3,9 @@
 // Dropping files or folders from the computer anywhere on a Drive view uploads them to the
 // view's folder. Drags that start inside Drive (moving entries, marked DRIVE_DND_MIME) are left
 // to the entry drop targets; anything that carries no files is ignored. Folders are read with
-// readDroppedFiles, which must run inside the drop handler itself.
+// readDroppedFiles, which must run inside the drop handler itself. While uploads can't work at
+// all (the file store is unavailable), the drag shows why and is refused (dropEffect "none");
+// a drop the browser delivers anyway says it again.
 //
 // Structure of components/docs/home/import-drop-zone.tsx: dragenter/dragleave fire for every
 // child element, so a depth counter tells when the pointer really left.
@@ -39,6 +41,8 @@ export interface DriveDropZoneProps {
   targetLabel?: string;
   /** Uploads are off (offline, notice not acknowledged): drops are swallowed and no overlay shows. */
   disabled?: boolean;
+  /** Why uploads can't work here right now (already translated): the overlay shows it instead of the target. */
+  unavailableReason?: string | null;
   /** The dropped files with their paths; called only with at least one file. */
   onFiles(files: DroppedFile[], target: DriveMoveTarget): void;
   /** Reading the drop failed; default: an error toast. */
@@ -47,11 +51,15 @@ export interface DriveDropZoneProps {
   children: React.ReactNode;
 }
 
-export function DriveDropZone({ target, targetLabel, disabled = false, onFiles, onError, className, children }: DriveDropZoneProps) {
+export function DriveDropZone({
+  target, targetLabel, disabled = false, unavailableReason = null, onFiles, onError, className, children,
+}: DriveDropZoneProps) {
   const t = useT();
   const [dragging, setDragging] = useState(false);
   const depthRef = useRef(0);
-  const accepts = !disabled && target !== null;
+  // A view that takes files, but not right now: say why instead of taking the drop.
+  const refusal = !disabled && target !== null ? unavailableReason : null;
+  const accepts = !disabled && target !== null && refusal === null;
   const label = targetLabel ?? (target?.space === "store" ? t("drive.nav.store") : t("drive.nav.my"));
 
   return (
@@ -80,6 +88,7 @@ export function DriveDropZone({ target, targetLabel, disabled = false, onFiles, 
         event.preventDefault();
         depthRef.current = 0;
         setDragging(false);
+        if (refusal !== null) toast.error(refusal);
         if (!accepts || target === null) return;
         const dropTarget = target;
         readDroppedFiles(event.dataTransfer)
@@ -109,8 +118,8 @@ export function DriveDropZone({ target, targetLabel, disabled = false, onFiles, 
             )}
           >
             {accepts ? <FileUp className="h-6 w-6" /> : <Ban className="h-6 w-6" />}
-            <span dir="auto" className="max-w-full truncate">
-              {accepts ? fmt(t("drive.upload.dropHere"), { folder: label }) : t("drive.upload.dropNotAllowed")}
+            <span dir="auto" className={cn("max-w-full", accepts && "truncate")}>
+              {accepts ? fmt(t("drive.upload.dropHere"), { folder: label }) : (refusal ?? t("drive.upload.dropNotAllowed"))}
             </span>
           </div>
         </div>

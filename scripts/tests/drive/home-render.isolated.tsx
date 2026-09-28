@@ -12,7 +12,7 @@ import { decode, driveData, GONE, makeDoc, makeItem, ME, ORG, PRIYA, translator,
 
 type Scenario =
   | "checking" | "not_published" | "offline" | "empty-my" | "items-grid" | "items-list" | "trash-empty"
-  | "search-no-matches" | "members" | "apps-summary" | "needs-ack";
+  | "search-no-matches" | "members" | "apps-summary" | "needs-ack" | "storage-off" | "storage-off-items";
 const SCENARIO = (process.env.DRIVE_HOME_SCENARIO ?? "checking") as Scenario;
 
 const SEARCH: Partial<Record<Scenario, string>> = {
@@ -31,7 +31,7 @@ const DECK = uuid(5);
 const PRIYA_FILE = uuid(6);
 const GONE_FILE = uuid(7);
 
-const withItems = ["offline", "items-grid", "items-list", "search-no-matches", "members", "needs-ack"].includes(SCENARIO);
+const withItems = ["offline", "items-grid", "items-list", "search-no-matches", "members", "needs-ack", "storage-off-items"].includes(SCENARIO);
 const items = withItems
   ? [
       makeItem({ id: FOLDER, name: "Receipts", kind: "folder" }),
@@ -111,6 +111,9 @@ mock.module("@/lib/drive/use-drive-uploads", () => ({
   useDriveUploads: () => ({ entries: [], queue: { localItemIds: () => new Set<string>(), enqueue: () => [], cancel: noop, retry: noop, clearFinished: noop } }),
 }));
 mock.module("@/lib/drive/use-drive-url", () => ({ useDriveUrl: () => ({ url: null, loading: false, error: null }) }));
+mock.module("@/lib/drive/use-drive-storage-status", () => ({
+  useDriveStorageStatus: () => ({ status: SCENARIO.startsWith("storage-off") ? "unavailable" : "ready" }),
+}));
 mock.module("@/components/page-header", () => ({
   PageHeader: ({ title, right }: { title: string; right?: ReactNode }) => h("header", null, h("h1", null, title), right),
 }));
@@ -221,12 +224,35 @@ test(`drive home: ${SCENARIO}`, () => {
       expect(html).toContain("Not included:");
       expect(html).not.toContain('data-drive-notice="banner"');
       break;
+    case "storage-off":
+    case "storage-off-items": {
+      // The file store is unavailable: only the uploads are off; New (folders, documents) works. The header's
+      // reason is a hover tooltip, so the page body says it once too, where a touch screen shows it.
+      const reason = "File uploads aren't available right now. Try again later.";
+      expect(disabledButtons(header)).toBe(1);
+      expect(header).toMatch(/<button[^>]*disabled=""[^>]*>(?:<svg[\s\S]*?<\/svg>)?<span[^>]*>Upload</);
+      expect(header).toContain(reason);
+      const body = html.slice(html.indexOf("</header>"));
+      expect(body).toMatch(new RegExp(`data-drive-upload-off=""[^>]*>(?:<svg[\\s\\S]*?<\\/svg>)?<div[^>]*><div[^>]*>${reason}</div>`));
+      expect(body.split(reason).length - 1).toBe(1);
+      if (SCENARIO === "storage-off-items") {
+        expect(html).toContain("Receipts");
+        expect(html).not.toContain("data-drive-empty=");
+        break;
+      }
+      expect(html).toContain('data-drive-empty="my"');
+      const empty = html.slice(html.indexOf('data-drive-empty="my"'));
+      expect(empty).toMatch(/<button[^>]*disabled=""[^>]*>(?:<svg[\s\S]*?<\/svg>)?Upload</);
+      expect(empty).toMatch(/<button(?![^>]*disabled="")[^>]*>(?:<svg[\s\S]*?<\/svg>)?New folder</);
+      break;
+    }
     case "needs-ack":
       expect(disabledButtons(header)).toBe(2);
       expect(header).toContain("Read the note about who can see your files first.");
       expect(html).toContain("Receipts");
       break;
   }
+  if (!SCENARIO.startsWith("storage-off")) expect(html).not.toContain("data-drive-upload-off");
   expect(html).not.toContain("!drive.");
 });
 

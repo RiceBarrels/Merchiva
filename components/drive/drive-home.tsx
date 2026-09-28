@@ -8,7 +8,9 @@
 //
 // Everything is the signed-in member's (useDriveData); the module decides every write. Until the
 // management notice is acknowledged (ManagementNoticeGate), and while offline or loading, nothing
-// can be uploaded or created. On phones the section picker and the search take the nav column's
+// can be uploaded or created; while the file store is unavailable (useDriveStorageStatus) only the
+// uploads are off, and a note above the list says why (the Upload tooltip needs a mouse, so touch
+// screens would get no reason otherwise). On phones the section picker and the search take the nav column's
 // place, the list is compact, and the selection bar floats with the upload tray at the bottom of
 // the page's own scroller (never `fixed`: in the mobile browser shell that would paint under the
 // bottom chrome).
@@ -18,6 +20,7 @@ import dynamic from "next/dynamic";
 import { Upload } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { useDocsOpenUrl } from "@/components/docs/docs-open-context";
 import { useMinuteClock } from "@/components/docs/home/format";
 import { entryLocationLabel } from "@/components/drive/list/entry-list";
@@ -34,7 +37,7 @@ import { useManagementNoticeAck } from "@/components/drive/notice/use-notice-ack
 import { usePreviewLoader } from "@/components/drive/preview/open-entry";
 import { DrivePreviewSheet } from "@/components/drive/preview/preview-sheet";
 import { DriveToolbar } from "@/components/drive/toolbar/drive-toolbar";
-import { NewMenu } from "@/components/drive/toolbar/new-menu";
+import { DisabledReasonTooltip, NewMenu } from "@/components/drive/toolbar/new-menu";
 import { SelectionBar } from "@/components/drive/toolbar/selection-bar";
 import { DriveDropZone } from "@/components/drive/upload/drop-zone";
 import { DriveFileInputs, useDriveFilePickers } from "@/components/drive/upload/file-inputs";
@@ -46,6 +49,7 @@ import { useSetTabTitle } from "@/lib/browser-shell";
 import { usePermissions } from "@/lib/context/permissions";
 import { isManagerRouteEnabled } from "@/lib/device-apps";
 import { driveHref } from "@/lib/drive/hrefs";
+import { useDriveStorageStatus } from "@/lib/drive/use-drive-storage-status";
 import { useDriveTokenBridge } from "@/lib/drive/use-drive-token";
 import { useDriveUploads } from "@/lib/drive/use-drive-uploads";
 import { useI18n } from "@/lib/i18n/context";
@@ -71,6 +75,7 @@ export function DriveHome() {
   useDriveTokenBridge();
   const url = useDriveUrlState();
   const { queue } = useDriveUploads();
+  const storage = useDriveStorageStatus();
   const data = useDriveData({ localUploadIds: queue.localItemIds() });
   const { actor, drive, tree, members, memberNames, listingActor } = data;
   const usage = displayUsage(drive);
@@ -153,6 +158,9 @@ export function DriveHome() {
           : null;
   const createTarget = blockedReason === null ? listing.createTarget : null;
   const disabledReason = blockedReason ?? (createTarget === null ? t("drive.home.cannotCreateHere") : null);
+  // Uploads also need the file store; folders and Docs / Sheets / Slides don't.
+  const uploadOffReason = storage.status === "unavailable" ? t("drive.errors.storageUnavailable") : null;
+  const uploadReason = disabledReason ?? uploadOffReason;
   const pickers = useDriveFilePickers((files) => {
     if (createTarget) create.uploadFiles(files, createTarget);
   });
@@ -160,14 +168,18 @@ export function DriveHome() {
   const onNewFolder = () => {
     if (createTarget) actions.createFolder(createTarget);
   };
+  const uploadButton = (
+    <Button type="button" variant="outline" size="sm" disabled={uploadReason !== null} onClick={pickers.pickFiles} className="gap-1.5">
+      <Upload aria-hidden className="h-3.5 w-3.5" />
+      <span className="sr-only sm:not-sr-only">{t("drive.home.upload")}</span>
+    </Button>
+  );
   const headerActions = (
     <>
-      <Button type="button" variant="outline" size="sm" disabled={createTarget === null} title={disabledReason ?? undefined} onClick={pickers.pickFiles} className="gap-1.5">
-        <Upload aria-hidden className="h-3.5 w-3.5" />
-        <span className="sr-only sm:not-sr-only">{t("drive.home.upload")}</span>
-      </Button>
+      {uploadReason === null ? uploadButton : <DisabledReasonTooltip reason={uploadReason}>{uploadButton}</DisabledReasonTooltip>}
       <NewMenu
         disabledReason={disabledReason}
+        uploadDisabledReason={uploadOffReason}
         docsInstalled={docsInstalled}
         supportsFolder={pickers.supportsFolder}
         onNewFolder={onNewFolder}
@@ -209,6 +221,7 @@ export function DriveHome() {
         target={listing.createTarget}
         targetLabel={listing.folder ? listing.folder.name.trim() || untitled.folder : undefined}
         disabled={blockedReason !== null}
+        unavailableReason={uploadOffReason}
         onFiles={create.uploadFiles}
         className="flex flex-1 flex-col"
       >
@@ -229,6 +242,11 @@ export function DriveHome() {
             {section !== "apps" && <ManagementNoticeBanner compact={phone} />}
             {/* The nav column (and its meter) is hidden below lg: show the storage line here instead. */}
             <StorageMeter usage={usage} compact className="lg:hidden" />
+            {uploadOffReason !== null && createTarget !== null && (
+              <Callout tone="warning" data-drive-upload-off="">
+                {uploadOffReason}
+              </Callout>
+            )}
             <DriveToolbar
               crumbs={listing.crumbs}
               section={section}
@@ -273,6 +291,7 @@ export function DriveHome() {
               empty={{
                 kind: driveEmptyKind(query, listing),
                 canCreate: createTarget !== null,
+                uploadDisabled: uploadOffReason !== null,
                 onUpload: pickers.pickFiles,
                 onNewFolder,
                 onClearFilters: url.clearFilters,

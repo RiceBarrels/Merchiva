@@ -7,7 +7,9 @@
 //
 // Everything listed is the person's: the PIN operator on /store, never the tablet account (useDriveData). On a
 // tablet signed in with a staff account only Store works there, which a note says. Nothing can be added while
-// offline, before the rows arrive, or where the person may not add (the listing's createTarget).
+// offline, before the rows arrive, or where the person may not add (the listing's createTarget). While the file
+// store is unavailable (useDriveStorageStatus) "Take photo", "Upload file" and "Choose photos" are off and a note
+// says why; folders and documents still work.
 
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -22,6 +24,7 @@ import { entryLabel } from "@/components/drive/preview/preview-mode";
 import { DriveFileInputs, useDriveFilePickers } from "@/components/drive/upload/file-inputs";
 import { STATUS_TONE_CLASSES } from "@/components/ui/status-badge";
 import { formatDriveBytes } from "@/lib/drive/format";
+import { useDriveStorageStatus } from "@/lib/drive/use-drive-storage-status";
 import { useI18n } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
 import { cn } from "@/lib/utils";
@@ -60,6 +63,7 @@ function LiteNote({ icon: Icon, text, tone = "muted", data }: { icon: LucideIcon
 export function LiteDriveHome({ screen }: { screen: LiteHomeScreen }) {
   const { t, locale } = useI18n();
   const { drive, nav, panels, openEntry } = useLiteDriveContext();
+  const uploadsOff = useDriveStorageStatus().status === "unavailable";
   const now = useMinuteClock();
   const { tree, actor, listingActor, memberNames } = drive.data;
   const [newOpen, setNewOpen] = useState(false);
@@ -131,7 +135,7 @@ export function LiteDriveHome({ screen }: { screen: LiteHomeScreen }) {
       ? <LiteEmpty icon={SearchX} title={t("drive.list.empty.searchTitle")} />
       : tab === "shared"
         ? <LiteEmpty icon={SECTION_ICONS.shared} title={t("drive.list.empty.sharedTitle")} description={t("drive.list.empty.sharedDescription")} />
-        : <LiteEmpty icon={FolderOpen} title={t("device.lite.drive.empty")} description={createTarget ? t("device.lite.drive.emptyHint") : undefined} />;
+        : <LiteEmpty icon={FolderOpen} title={t("device.lite.drive.empty")} description={createTarget && !uploadsOff ? t("device.lite.drive.emptyHint") : undefined} />;
   } else {
     content = (
       <div data-lite-list="entries" className="flex flex-col gap-2">
@@ -176,9 +180,10 @@ export function LiteDriveHome({ screen }: { screen: LiteHomeScreen }) {
           {createTarget && (
             <div data-lite-create="" className="flex flex-col gap-2">
               <div className="grid grid-cols-2 gap-2">
-                <LiteButton icon={Camera} label={t("device.lite.drive.takePhoto")} onClick={pickFor(pickers.takePhoto)} />
-                <LiteButton icon={Upload} tone="outline" label={t("device.lite.drive.uploadFile")} onClick={pickFor(pickers.pickFiles)} />
+                <LiteButton icon={Camera} label={t("device.lite.drive.takePhoto")} disabled={uploadsOff} onClick={pickFor(pickers.takePhoto)} />
+                <LiteButton icon={Upload} tone="outline" label={t("device.lite.drive.uploadFile")} disabled={uploadsOff} onClick={pickFor(pickers.pickFiles)} />
               </div>
+              {uploadsOff && <LiteNote icon={CloudOff} tone="warning" text={t("drive.errors.storageUnavailable")} data="storage" />}
               <LiteButton icon={Plus} tone="outline" label={t("device.lite.drive.new")} busy={drive.busy} onClick={() => setNewOpen(true)} />
               {drive.surface === "store" && <LiteSharedDeviceNote />}
             </div>
@@ -199,7 +204,14 @@ export function LiteDriveHome({ screen }: { screen: LiteHomeScreen }) {
           )}
         </>
       )}
-      {createTarget && <LiteNewDrawer open={newOpen} onOpenChange={setNewOpen} target={createTarget} onPickPhotos={pickFor(pickers.pickPhotos)} />}
+      {createTarget && (
+        <LiteNewDrawer
+          open={newOpen}
+          onOpenChange={setNewOpen}
+          target={createTarget}
+          onPickPhotos={uploadsOff ? null : pickFor(pickers.pickPhotos)}
+        />
+      )}
       <DriveFileInputs {...pickers.inputs} />
     </LiteScreen>
   );

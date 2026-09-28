@@ -1,8 +1,9 @@
 // lib/drive/upload.ts: planDriveUpload (limits, names, types, keys),
 // mapBlobSdkError, the uploadDriveFile steps over a fake transport (fresh,
-// resume, cancel, oversize, release on failure, late progress), and the real
-// transport's begin check and PUT token request (through a fake connection
-// and a stubbed fetch; client-adapter.test.ts covers the storage status).
+// resume, cancel, oversize, release on failure, late progress, which failures
+// reserved nothing), the real transport's begin and commit checks and PUT token
+// request (through a fake connection and a stubbed fetch; client-adapter.test.ts
+// covers the storage status answers), and the tab's shared storage answer.
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { newDocumentId } from "@/lib/docs/ids";
@@ -13,8 +14,9 @@ import {
 } from "@/lib/drive/rules";
 import { createDriveThumbnail, type DriveThumbnail } from "@/lib/drive/thumbnail";
 import {
-  __resetDriveStorageStatusForTests, createDriveUploadTransport, mapBlobSdkError, planDriveUpload, uploadDriveFile, type DriveUploadPlan,
-  type DriveUploadProgress, type DriveUploadTarget, type DriveUploadTransport,
+  __resetDriveStorageStatusForTests, createDriveUploadTransport, driveStorageReady, driveUploadReservedNothing,
+  getDriveStorageAvailability, mapBlobSdkError, planDriveUpload, subscribeDriveStorageAvailability, uploadDriveFile,
+  type DriveUploadPlan, type DriveUploadProgress, type DriveUploadTarget, type DriveUploadTransport,
 } from "@/lib/drive/upload";
 import { clearConnection, setActiveOrgId, setConnection } from "@/lib/spacetimedb/client";
 
@@ -288,6 +290,40 @@ describe("uploadDriveFile", () => {
     expect((quota as Error).message).toContain("[drive.quota_exceeded]");
     expect(second.steps.map((s) => s.op)).toEqual(["thumbnail"]);
   });
+
+  test("a failure reserved nothing when begin was refused with a Drive code; not when a row may exist", async () => {
+    const failBegin = async (err: Error) => {
+      const { transport } = fakeTransport();
+      transport.begin = async () => {
+        throw err;
+      };
+      return uploadDriveFile({ file: new File(["x"], "a.txt") }, TARGET, { transport, keepPendingOnFailure: true }).catch((e: unknown) => e);
+    };
+    for (const refusal of [
+      new DriveClientError("not_configured"), new DriveClientError("not_connected"), new DriveClientError("not_published"),
+      new Error("[drive.quota_exceeded] Storage is full"), new Error("SenderError: [drive.too_many_pending] Wait"), new Error("[drive.brand_new] x"),
+    ]) {
+      const err = await failBegin(refusal);
+      expect(err).toBe(refusal);
+      expect(driveUploadReservedNothing(err)).toBe(true);
+    }
+    // No Drive code: the module may have taken the row before the answer was lost.
+    expect(driveUploadReservedNothing(await failBegin(new Error("WebSocket closed")))).toBe(false);
+
+    const afterBegin = fakeTransport({ putError: (which) => (which === "original" ? new DriveClientError("not_configured") : null) });
+    const put = await uploadDriveFile({ file: new File(["x"], "a.txt") }, TARGET, { transport: afterBegin.transport, keepPendingOnFailure: true }).catch((e: unknown) => e);
+    expect((put as DriveClientError).code).toBe("not_configured");
+    expect(driveUploadReservedNothing(put)).toBe(false);
+
+    const file = new File(["x"], "a.txt");
+    const resumed = fakeTransport({ commits: [new DriveClientError("not_configured")] });
+    const commit = await uploadDriveFile({ file }, TARGET, { transport: resumed.transport, plan: planDriveUpload({ file }, TARGET), resume: true, keepPendingOnFailure: true })
+      .catch((e: unknown) => e);
+    expect((commit as DriveClientError).code).toBe("not_configured");
+    expect(driveUploadReservedNothing(commit)).toBe(false);
+    expect(driveUploadReservedNothing(new DriveClientError("not_configured"))).toBe(false);
+    expect(driveUploadReservedNothing("[drive.not_configured]")).toBe(false);
+  });
 });
 
 describe("createDriveThumbnail", () => {
@@ -332,12 +368,122 @@ describe("createDriveUploadTransport", () => {
     });
   });
 
-  test("begin refuses a plan whose key differs from the one the module computes", async () => {
-    connectWith({ beginDriveUpload: async () => undefined });
+  test("begin refuses a plan whose key differs from the one the module computes, and drops the row the module took", async () => {
+    const aborted: Array<Record<string, unknown>> = [];
+    connectWith({ beginDriveUpload: async () => undefined, abortDriveUpload: async (args) => void aborted.push(args) });
     const plan: DriveUploadPlan = planDriveUpload({ file: fakeFile(42, "a.pdf") }, TARGET);
     const tampered = { ...plan, blobKey: plan.blobKey.replace("/a.pdf", "/b.pdf") };
     const err = await createDriveUploadTransport().begin(tampered).catch((e: unknown) => e);
     expect((err as DriveClientError).code).toBe("invalid");
+    expect(aborted).toEqual([{ itemId: plan.itemId }]);
+  });
+
+  test("with the store off, an upload fails with not_configured before the module is asked, and reserved nothing", async () => {
+    unregister = registerDriveTokenGetter(async () => "tok");
+    globalThis.fetch = (async () =>
+      Response.json({ configured: false, paused: false, maxFileBytes: 1, multipartThresholdBytes: 1, thumbMaxBytes: 1 })) as unknown as typeof fetch;
+    const calls: Array<Record<string, unknown>> = [];
+    connectWith({ beginDriveUpload: async (args) => void calls.push(args), abortDriveUpload: async (args) => void calls.push(args) });
+    const err = await uploadDriveFile({ file: fakeFile(42, "a.pdf") }, TARGET, { transport: createDriveUploadTransport(), keepPendingOnFailure: true })
+      .catch((e: unknown) => e);
+    expect((err as DriveClientError).code).toBe("not_configured");
+    expect(driveUploadReservedNothing(err)).toBe(true);
+    expect(calls).toEqual([]);
+    expect(getDriveStorageAvailability()).toBe("unavailable");
+  });
+
+  test("commit sends nothing while the store is not configured; paused or an unreadable status still commits", async () => {
+    unregister = registerDriveTokenGetter(async () => "tok");
+    let status: { configured: boolean; paused: boolean } | number = { configured: false, paused: false };
+    const hits: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/drive/status")) {
+        hits.push("status");
+        if (typeof status === "number") return new Response("down", { status });
+        return Response.json({ ...status, maxFileBytes: 1, multipartThresholdBytes: 1, thumbMaxBytes: 1 });
+      }
+      hits.push(url.endsWith("/api/drive/commit") ? "commit" : url);
+      // The route refuses before it reads the row only when storage is not configured; paused still commits.
+      return typeof status === "number" || !status.configured
+        ? Response.json({ error: "File storage is not configured", code: "not_configured" }, { status: 503 })
+        : Response.json({ outcome: "committed", sizeBytes: 5 });
+    }) as unknown as typeof fetch;
+    const plan = planDriveUpload({ file: fakeFile(5, "a.pdf") }, TARGET);
+    const input = { itemId: plan.itemId, blobKey: plan.blobKey, thumbKey: plan.thumbKey };
+    const transport = createDriveUploadTransport();
+
+    // A Retry of a reserved upload while the store is off: the status says so, and no commit goes out.
+    for (let i = 0; i < 3; i++) {
+      const err = await transport.commit(input).catch((e: unknown) => e);
+      expect((err as DriveClientError).code).toBe("not_configured");
+    }
+    expect(hits).toEqual(["status"]);
+
+    __resetDriveStorageStatusForTests();
+    status = { configured: true, paused: true };
+    expect(await transport.commit(input)).toEqual({ outcome: "committed", sizeBytes: 5 });
+    expect(hits).toEqual(["status", "status", "commit"]);
+
+    // Unknown: the commit goes ahead and the route answers for itself.
+    __resetDriveStorageStatusForTests();
+    status = 500;
+    const unknown = await transport.commit(input).catch((e: unknown) => e);
+    expect((unknown as DriveClientError).code).toBe("not_configured");
+    expect(hits).toEqual(["status", "status", "commit", "status", "commit"]);
+  });
+
+  test("the tab's storage answer: shared, cached a minute, followed by listeners; an unreadable status is unknown and not kept", async () => {
+    unregister = registerDriveTokenGetter(async () => "tok");
+    const answers: Array<{ configured: boolean; paused: boolean } | number> = [
+      { configured: false, paused: false }, { configured: true, paused: false }, 500, { configured: true, paused: true },
+    ];
+    let asked = 0;
+    globalThis.fetch = (async () => {
+      const answer = answers[asked++];
+      if (typeof answer === "number") return new Response("down", { status: answer });
+      return Response.json({ ...answer, maxFileBytes: 1, multipartThresholdBytes: 1, thumbMaxBytes: 1 });
+    }) as unknown as typeof fetch;
+    const heard: string[] = [];
+    const unsubscribe = subscribeDriveStorageAvailability(() => heard.push(getDriveStorageAvailability()));
+    try {
+      expect(getDriveStorageAvailability()).toBe("checking");
+      expect(await driveStorageReady()).toBe(false);
+      expect(getDriveStorageAvailability()).toBe("unavailable");
+      // Cached: no second request.
+      expect(await driveStorageReady()).toBe(false);
+      expect(asked).toBe(1);
+      expect(await driveStorageReady(true)).toBe(true);
+      expect(await driveStorageReady(true)).toBeNull();
+      expect(getDriveStorageAvailability()).toBe("unknown");
+      // The unknown answer was not kept: the next read asks again (paused counts as unavailable).
+      expect(await driveStorageReady()).toBe(false);
+      expect(asked).toBe(4);
+      expect(heard).toEqual(["unavailable", "ready", "unknown", "unavailable"]);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  test("an answer overtaken by a newer read is not published", async () => {
+    unregister = registerDriveTokenGetter(async () => "tok");
+    let releaseSlow!: () => void;
+    const slow = new Promise<void>((resolve) => {
+      releaseSlow = resolve;
+    });
+    let asked = 0;
+    globalThis.fetch = (async () => {
+      const first = asked++ === 0;
+      if (first) await slow;
+      return Response.json({ configured: !first, paused: false, maxFileBytes: 1, multipartThresholdBytes: 1, thumbMaxBytes: 1 });
+    }) as unknown as typeof fetch;
+    const older = driveStorageReady();
+    expect(await driveStorageReady(true)).toBe(true);
+    releaseSlow();
+    expect(await older).toBe(false);
+    await Promise.resolve();
+    expect(getDriveStorageAvailability()).toBe("ready");
+    expect(await driveStorageReady()).toBe(true);
   });
 
   test("put asks /api/drive/upload for a token with the Bearer header and the client payload; a refusal → upload_start_failed", async () => {

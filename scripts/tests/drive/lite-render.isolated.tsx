@@ -19,7 +19,7 @@ import {
 
 type Scenario =
   | "store-operator" | "staff-tablet" | "personal" | "needs-ack" | "empty" | "not-published" | "offline" | "checking"
-  | "editor" | "camera" | "operator";
+  | "editor" | "camera" | "operator" | "storage-off";
 const SCENARIO = (process.env.DRIVE_LITE_SCENARIO ?? "store-operator") as Scenario;
 
 const person: Person = SCENARIO === "personal" ? PEOPLE.ana : PEOPLE.priya;
@@ -113,6 +113,9 @@ mock.module("@/lib/browser-shell", () => ({
 }));
 mock.module("@/lib/drive/use-drive-token", () => ({ useDriveTokenBridge: noop }));
 mock.module("@/lib/drive/use-drive-url", () => ({ useDriveUrl: () => ({ url: null, loading: false, error: null }) }));
+mock.module("@/lib/drive/use-drive-storage-status", () => ({
+  useDriveStorageStatus: () => ({ status: SCENARIO === "storage-off" ? "unavailable" : "ready" }),
+}));
 mock.module("@/lib/drive/use-drive-uploads", () => ({
   useDriveUploads: () => ({
     entries: uploads,
@@ -315,6 +318,18 @@ test(`drive lite: ${SCENARIO}`, async () => {
       expect(html).toContain("No connection. You can look, but changes can't be saved.");
       expect(html).toContain("priya-notes.pdf");
       expect(html).not.toContain("Take photo");
+      break;
+    }
+    case "storage-off": {
+      // The file store is unavailable: the photo and file buttons are off and a note says why; New still works.
+      const html = renderApp();
+      expect(html).toContain('data-lite-note="storage"');
+      expect(html).toContain("File uploads aren't available right now. Try again later.");
+      for (const label of ["Take photo", "Upload file"]) {
+        expect(html).toMatch(new RegExp(`<button[^>]*disabled=""[^>]*>(?:<svg[\\s\\S]*?</svg>)?${label}<`));
+      }
+      expect(html).toMatch(/<button(?![^>]*disabled="")[^>]*>(?:<svg[\s\S]*?<\/svg>)?New</);
+      expect(html).toContain("priya-notes.pdf");
       break;
     }
     case "checking": {

@@ -9,12 +9,22 @@
 // tab leaves pending rows to the upload webhook or the module's sweep, so the
 // tab's queue arms the browser's "leave site?" question while anything is
 // queued or running, whichever page is on screen.
+//
+// A failed file keeps its pending row for Retry, which commits first, only
+// when the attempt may have left one: a failure that reserved nothing
+// (driveUploadReservedNothing: storage off, a refused begin) retries from
+// begin with the same plan, and there is nothing to release. A resume that
+// fails keeps committing first on the next Retry, even after `not_configured`:
+// the commit route checks storage before it looks at the row, so that says
+// nothing about the row, which an earlier attempt did reserve. While the tab's
+// status says the store is not configured, the transport fails that commit at
+// once without a request, so such Retries send nothing until it comes back.
 
 import { newDocumentId } from "@/lib/docs/ids";
 import { driveErrorCode, type DriveClientErrorCode } from "@/lib/drive/errors";
 import {
-  planDriveUpload, sharedDriveUploadTransport, uploadDriveFile, type DriveUploadPlan, type DriveUploadProgress,
-  type DriveUploadSource, type DriveUploadTarget, type DriveUploadTransport,
+  driveUploadReservedNothing, planDriveUpload, sharedDriveUploadTransport, uploadDriveFile, type DriveUploadPlan,
+  type DriveUploadProgress, type DriveUploadSource, type DriveUploadTarget, type DriveUploadTransport,
 } from "@/lib/drive/upload";
 
 export type DriveUploadState = "queued" | "preparing" | "uploading" | "finalizing" | "done" | "failed" | "cancelled";
@@ -70,7 +80,7 @@ interface Job {
   attempt: number;
   /** The next run commits first: a pending row may already hold this plan's bytes. */
   resume: boolean;
-  /** A pending row may exist for `plan` (the upload got as far as begin). */
+  /** A pending row may exist for `plan` (an attempt is running, or the last one may have got past begin). */
   reserved: boolean;
 }
 
@@ -225,7 +235,11 @@ export function createDriveUploadQueue(deps: DriveUploadQueueDeps): DriveUploadQ
           update(job, { itemId: fresh.itemId, state: "preparing", loaded: 0, errorCode: null });
           continue;
         }
-        job.resume = true;
+        // Without a row (the store is off, begin was refused) Retry begins again instead of committing a row that
+        // does not exist, and clearing the entry has nothing to release.
+        const left = resume || !driveUploadReservedNothing(err);
+        job.resume = left;
+        job.reserved = left;
         update(job, { state: "failed", errorCode: code });
         return;
       }

@@ -3,7 +3,7 @@
 // must still see 0 of its quota once Drive has loaded, not nothing.
 
 import { describe, expect, test } from "bun:test";
-import { displayUsage, storageFigures } from "@/components/drive/nav/storage-meter";
+import { displayUsage, storageFigures } from "@/lib/drive/storage-figures";
 import { DRIVE_DEFAULT_QUOTA_BYTES } from "@/lib/drive/rules";
 import type { DriveUsageView } from "@/lib/drive/types";
 

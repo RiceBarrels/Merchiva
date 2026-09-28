@@ -2,7 +2,8 @@
 
 // What an empty Drive view says (drive-ui §7.8), one state per DriveEmptyKind. Where the person
 // may add files, My files offers Upload and New folder, Store and a folder offer Upload; a search
-// offers "Clear filters", and a folder that is gone offers the way back to My files.
+// offers "Clear filters", and a folder that is gone offers the way back to My files. While the
+// file store is unavailable, Upload is disabled (the page's note says why).
 
 import {
   Clock, FolderOpen, FolderPlus, FolderX, HardDrive, LayoutGrid, SearchX, Star, Store, Trash2, Upload, UserRound, Users,
@@ -37,6 +38,8 @@ export interface DriveEmptyProps {
   kind: DriveEmptyKind;
   /** Files can be added here right now (a create target, connected, notice acknowledged). */
   canCreate: boolean;
+  /** Uploads alone are off (the file store is unavailable): Upload is disabled, New folder still works. */
+  uploadDisabled?: boolean;
   onUpload(): void;
   onNewFolder(): void;
   onClearFilters(): void;
@@ -44,7 +47,7 @@ export interface DriveEmptyProps {
   className?: string;
 }
 
-export function DriveEmpty({ kind, canCreate, onUpload, onNewFolder, onClearFilters, onGoToMy, className }: DriveEmptyProps) {
+export function DriveEmpty({ kind, canCreate, uploadDisabled = false, onUpload, onNewFolder, onClearFilters, onGoToMy, className }: DriveEmptyProps) {
   const t = useT();
   const copy = COPY[kind];
 
@@ -64,7 +67,7 @@ export function DriveEmpty({ kind, canCreate, onUpload, onNewFolder, onClearFilt
   } else if (canCreate && (kind === "my" || kind === "store" || kind === "folder")) {
     action = (
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <Button type="button" size="sm" className="gap-1.5" onClick={onUpload}>
+        <Button type="button" size="sm" className="gap-1.5" disabled={uploadDisabled} onClick={onUpload}>
           <Upload aria-hidden className="h-3.5 w-3.5" />
           {t("drive.home.upload")}
         </Button>

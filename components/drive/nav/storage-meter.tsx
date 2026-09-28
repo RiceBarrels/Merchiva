@@ -13,43 +13,12 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { STATUS_TONE_TEXT } from "@/components/ui/status-badge";
 import { formatDriveBytes } from "@/lib/drive/format";
 import type { DriveUsageView } from "@/lib/drive/types";
-import { DRIVE_DEFAULT_QUOTA_BYTES } from "@/lib/drive/rules";
 import { useI18n } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
 import { cn } from "@/lib/utils";
 
-/** Share of the quota from which the meter warns. */
-export const STORAGE_WARN_RATIO = 0.9;
-
-export type StorageLevel = "ok" | "warning" | "full";
-
-export interface StorageFigures {
-  used: number;
-  total: number;
-  /** 0–100, or null without a quota. */
-  percent: number | null;
-  level: StorageLevel;
-}
-
-/** The meter's numbers: used = stored + reserved by pending uploads. */
-export function storageFigures(usage: Pick<DriveUsageView, "usedBytes" | "reservedBytes" | "quotaBytes">): StorageFigures {
-  const used = Math.max(0, usage.usedBytes) + Math.max(0, usage.reservedBytes);
-  const total = Number.isFinite(usage.quotaBytes) && usage.quotaBytes > 0 ? usage.quotaBytes : 0;
-  if (total === 0) return { used, total, percent: null, level: "ok" };
-  const ratio = used / total;
-  const level: StorageLevel = ratio >= 1 ? "full" : ratio >= STORAGE_WARN_RATIO ? "warning" : "ok";
-  return { used, total, percent: Math.min(100, Math.round(ratio * 1000) / 10), level };
-}
-
-/**
- * The usage the meter shows: the store's `drive_usage` row, or, once Drive has loaded and no upload has created that
- * row yet, zero of the default quota, so a new store still sees how much it has. null while loading or unpublished.
- */
-export function displayUsage(drive: { status: string; isReady: boolean; usage: DriveUsageView | null }): DriveUsageView | null {
-  if (drive.usage) return drive.usage;
-  if (drive.status !== "ready" || !drive.isReady) return null;
-  return { usedBytes: 0, reservedBytes: 0, quotaBytes: DRIVE_DEFAULT_QUOTA_BYTES, fileCount: 0, sheetBytes: 0 };
-}
+export { STORAGE_WARN_RATIO, displayUsage, storageFigures, type StorageFigures, type StorageLevel } from "@/lib/drive/storage-figures";
+import { storageFigures, type StorageLevel } from "@/lib/drive/storage-figures";
 
 const INDICATOR_TONE: Readonly<Record<StorageLevel, string | undefined>> = {
   ok: undefined,

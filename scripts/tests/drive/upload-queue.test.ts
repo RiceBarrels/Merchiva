@@ -1,13 +1,17 @@
 // lib/drive/upload-queue.ts over a fake transport whose PUTs the test holds
 // open: concurrency (two at a time, a multipart file alone), throttled
-// progress, cancel, retry (commit first; start over when the row is gone),
-// errors, late SDK progress, activeCount / localItemIds, the leave guard, and
-// immutable snapshots.
+// progress, cancel, retry (commit first; start over when the row is gone; begin
+// again when the failure reserved nothing; no commit request while the store
+// is not configured, through the real transport's commit), errors, late SDK
+// progress, activeCount / localItemIds, the leave guard, and immutable snapshots.
 
 import { describe, expect, test } from "bun:test";
+import { registerDriveTokenGetter } from "@/lib/drive/api";
 import { DriveClientError } from "@/lib/drive/errors";
 import { DRIVE_MULTIPART_THRESHOLD_BYTES } from "@/lib/drive/rules";
-import type { DriveUploadTarget, DriveUploadTransport } from "@/lib/drive/upload";
+import {
+  __resetDriveStorageStatusForTests, createDriveUploadTransport, type DriveUploadTarget, type DriveUploadTransport,
+} from "@/lib/drive/upload";
 import {
   createDriveUploadQueue, DRIVE_UPLOAD_PROGRESS_INTERVAL_MS, guardDriveUploadsOnLeave, type DriveUploadEntry,
 } from "@/lib/drive/upload-queue";
@@ -41,6 +45,7 @@ function fakeTransport() {
   const log: string[] = [];
   const names = new Map<string, string>();
   const held = new Map<string, ReturnType<typeof deferred>>();
+  const beginFailures = new Map<string, Error[]>();
   const putFailures = new Map<string, Error[]>();
   const commitFailures = new Map<string, Error[]>();
   const transport: DriveUploadTransport = {
@@ -48,6 +53,8 @@ function fakeTransport() {
     async begin(plan) {
       names.set(plan.itemId, plan.name);
       log.push(`begin:${plan.name}`);
+      const failure = beginFailures.get(plan.name)?.shift();
+      if (failure) throw failure;
     },
     async put(plan, which, body, _type, opts) {
       names.set(plan.itemId, plan.name);
@@ -77,7 +84,7 @@ function fakeTransport() {
       gate.resolve();
     };
   };
-  return { log, transport, hold, putFailures, commitFailures };
+  return { log, transport, hold, beginFailures, putFailures, commitFailures };
 }
 
 async function waitFor(check: () => boolean, ms = 1_000): Promise<void> {
@@ -206,6 +213,123 @@ describe("createDriveUploadQueue", () => {
     expect(log.slice(2)).toEqual(["commit:a.txt", "abort:a.txt", "begin:a.txt", "put:a.txt", "commit:a.txt"]);
     expect(queue.getSnapshot()[0].itemId).not.toBe(oldItemId);
     expect(queue.getSnapshot()[0].key).toBe(key);
+  });
+
+  test("storage off at begin reserves nothing: Retry begins again with the same plan and never commits", async () => {
+    const { transport, log, beginFailures, putFailures, commitFailures } = fakeTransport();
+    beginFailures.set("a.txt", [new DriveClientError("not_configured"), new DriveClientError("not_configured")]);
+    const queue = createDriveUploadQueue({ transport });
+    const [key] = queue.enqueue([file("a.txt")], TARGET);
+    const itemId = queue.getSnapshot()[0].itemId;
+    await waitFor(() => stateOf(queue.getSnapshot(), "a.txt") === "failed");
+    expect(queue.getSnapshot()[0].errorCode).toBe("not_configured");
+    queue.retry(key);
+    await waitFor(() => log.length === 2 && stateOf(queue.getSnapshot(), "a.txt") === "failed");
+    expect(log).toEqual(["begin:a.txt", "begin:a.txt"]);
+
+    // The store is back but the PUT drops: now a row exists, so the next Retry commits it first.
+    putFailures.set("a.txt", [new DriveClientError("network")]);
+    queue.retry(key);
+    await waitFor(() => queue.getSnapshot()[0].errorCode === "network");
+    commitFailures.set("a.txt", [new DriveClientError("not_uploaded")]);
+    queue.retry(key);
+    await waitFor(() => stateOf(queue.getSnapshot(), "a.txt") === "done");
+    expect(log).toEqual(["begin:a.txt", "begin:a.txt", "begin:a.txt", "put:a.txt", "commit:a.txt", "put:a.txt", "commit:a.txt"]);
+    expect(queue.getSnapshot()[0].itemId).toBe(itemId);
+  });
+
+  test("a begin that failed without a Drive code may have landed: Retry commits first", async () => {
+    const { transport, log, beginFailures } = fakeTransport();
+    beginFailures.set("a.txt", [new Error("WebSocket closed")]);
+    const queue = createDriveUploadQueue({ transport });
+    const [key] = queue.enqueue([file("a.txt")], TARGET);
+    await waitFor(() => stateOf(queue.getSnapshot(), "a.txt") === "failed");
+    expect(queue.getSnapshot()[0].errorCode).toBe("generic");
+    queue.retry(key);
+    await waitFor(() => stateOf(queue.getSnapshot(), "a.txt") === "done");
+    expect(log).toEqual(["begin:a.txt", "commit:a.txt"]);
+  });
+
+  test("a resume the commit route answers not_configured keeps its row and commits first on the next Retry", async () => {
+    const { transport, log, putFailures, commitFailures } = fakeTransport();
+    putFailures.set("a.txt", [new DriveClientError("network")]);
+    const queue = createDriveUploadQueue({ transport });
+    const [key] = queue.enqueue([file("a.txt")], TARGET);
+    await waitFor(() => stateOf(queue.getSnapshot(), "a.txt") === "failed");
+    // The route checks storage before it reads the row, so the answer says nothing about the row begin reserved.
+    commitFailures.set("a.txt", [new DriveClientError("not_configured")]);
+    queue.retry(key);
+    await waitFor(() => queue.getSnapshot()[0].errorCode === "not_configured");
+    queue.retry(key);
+    await waitFor(() => stateOf(queue.getSnapshot(), "a.txt") === "done");
+    expect(log).toEqual(["begin:a.txt", "put:a.txt", "commit:a.txt", "commit:a.txt"]);
+  });
+
+  test("with the real commit, Retry of a reserved upload sends no commit while the store is not configured", async () => {
+    // The reported loop: begin went through (the status was unreadable then), the PUT found the store gone, and every
+    // Retry POSTed a commit the route had to refuse with 503 not_configured.
+    const realFetch = globalThis.fetch;
+    const unregister = registerDriveTokenGetter(async () => "tok");
+    __resetDriveStorageStatusForTests();
+    let configured = false;
+    const hits: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/drive/status")) {
+        hits.push("status");
+        return Response.json({ configured, paused: false, maxFileBytes: 1, multipartThresholdBytes: 1, thumbMaxBytes: 1 });
+      }
+      hits.push(url.endsWith("/api/drive/commit") ? "commit" : url);
+      return configured
+        ? Response.json({ outcome: "committed", sizeBytes: 5 })
+        : Response.json({ error: "File storage is not configured", code: "not_configured" }, { status: 503 });
+    }) as unknown as typeof fetch;
+    try {
+      const fake = fakeTransport();
+      fake.putFailures.set("a.txt", [new DriveClientError("not_configured")]);
+      const transport: DriveUploadTransport = { ...fake.transport, commit: createDriveUploadTransport().commit };
+      const queue = createDriveUploadQueue({ transport });
+      const [key] = queue.enqueue([file("a.txt")], TARGET);
+      await waitFor(() => stateOf(queue.getSnapshot(), "a.txt") === "failed");
+      for (let i = 0; i < 3; i++) {
+        queue.retry(key);
+        await waitFor(() => stateOf(queue.getSnapshot(), "a.txt") === "failed");
+        expect(queue.getSnapshot()[0].errorCode).toBe("not_configured");
+      }
+      expect(hits).toEqual(["status"]);
+
+      // The store is back and the cached answer ran out: the next Retry commits the row begin reserved.
+      configured = true;
+      __resetDriveStorageStatusForTests();
+      queue.retry(key);
+      await waitFor(() => stateOf(queue.getSnapshot(), "a.txt") === "done");
+      expect(hits).toEqual(["status", "status", "commit"]);
+      expect(fake.log).toEqual(["begin:a.txt", "put:a.txt"]);
+    } finally {
+      globalThis.fetch = realFetch;
+      unregister();
+      __resetDriveStorageStatusForTests();
+    }
+  });
+
+  test("cancelling or clearing a failure releases a row only when one may exist", async () => {
+    const { transport, log, beginFailures } = fakeTransport();
+    beginFailures.set("off.txt", [new DriveClientError("not_configured")]);
+    beginFailures.set("full.txt", [new Error("[drive.quota_exceeded] Storage is full")]);
+    beginFailures.set("lost.txt", [new Error("WebSocket closed")]);
+    const queue = createDriveUploadQueue({ transport, concurrency: 3 });
+    const [off] = queue.enqueue([file("off.txt"), file("full.txt"), file("lost.txt")], TARGET);
+    await waitFor(() => queue.activeCount() === 0);
+    expect(queue.getSnapshot().map((e) => [e.name, e.state, e.errorCode])).toEqual([
+      ["off.txt", "failed", "not_configured"],
+      ["full.txt", "failed", "quota_exceeded"],
+      ["lost.txt", "failed", "generic"],
+    ]);
+    queue.cancel(off);
+    expect(stateOf(queue.getSnapshot(), "off.txt")).toBe("cancelled");
+    queue.clearFinished();
+    expect(queue.getSnapshot()).toEqual([]);
+    expect(log.filter((l) => l.startsWith("abort:"))).toEqual(["abort:lost.txt"]);
   });
 
   test("a cancelled file retries with new ids from the start", async () => {
