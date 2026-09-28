@@ -5,6 +5,8 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { ArrowLeft, XIcon } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import { getSafeAreaInsets } from "@/lib/safe-area";
+import { displayedDialogPage, lastShownDialogClose } from "@/lib/browser-shell/shell-dom";
+import { useDialogDepth, useOpenDynamicUIElementCount } from "@/components/ui/dialog-depth";
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -100,22 +102,8 @@ function DynamicUIElementOverlay({
 
 // Track stacked mobile dialogs for iOS-like depth effect
 const MobileDynamicUIElementDepthContext = React.createContext(0);
-// Global counter for open mobile dialogs
-let globalDynamicUIElementCount = 0;
-const globalDynamicUIElementIds: string[] = [];
-const dynamicUIElementListeners = new Set<(count: number) => void>();
-export function useOpenDynamicUIElementCount() {
-  const [count, setCount] = React.useState(globalDynamicUIElementCount);
-  React.useEffect(() => {
-    dynamicUIElementListeners.add(setCount);
-    setCount(globalDynamicUIElementCount);
-    return () => { dynamicUIElementListeners.delete(setCount); };
-  }, []);
-  return count;
-}
-function notifyDynamicUIElementListeners() {
-  dynamicUIElementListeners.forEach((fn) => fn(globalDynamicUIElementCount));
-}
+// Open dialogs and their depths (open order, not effect order): components/ui/dialog-depth.ts
+export { useOpenDynamicUIElementCount }
 // Global swipe progress for the topmost dialog (0 = fully open, 1 = fully swiped away)
 let globalDynamicUIElementSwipeProgress = 0;
 const dynamicUIElementSwipeListeners = new Set<(p: number) => void>();
@@ -195,14 +183,12 @@ if (typeof window !== "undefined") {
       // Back navigation — close the topmost dialog
       handlingPopstate = true;
       const topIdx = openDialogs.length - 1;
-      const topDialog = document.getElementById(`mobile-dialog-${topIdx}`);
+      const topDialog = displayedDialogPage(topIdx);
       const backBtn = topDialog?.querySelector("[data-dialog-back]") as HTMLButtonElement | null;
       if (backBtn) {
         backBtn.click();
       } else {
-        const closeBtns = document.querySelectorAll('[data-slot="dialog-close"]');
-        const lastClose = closeBtns[closeBtns.length - 1] as HTMLButtonElement | null;
-        lastClose?.click();
+        lastShownDialogClose()?.click();
       }
       setTimeout(() => { handlingPopstate = false; }, 100);
     }
@@ -281,7 +267,7 @@ const MobileDynamicUIElementTitleContext = React.createContext<{
 function findBgTarget(depth: number): HTMLElement | null {
   if (depth < 0) return null;
   if (typeof document === "undefined") return null;
-  if (depth > 0) return document.getElementById(`mobile-dialog-${depth - 1}`);
+  if (depth > 0) return displayedDialogPage(depth - 1);
   return (
     document.getElementById("mobile-content") ??
     document.getElementById("desktop-content")
@@ -328,7 +314,10 @@ function useDialogBgPush({
 }) {
   const targetRef = React.useRef<HTMLElement | null>(null);
   React.useLayoutEffect(() => {
-    targetRef.current = findBgTarget(depth);
+    const target = findBgTarget(depth);
+    // The depth changed (the stack re-ranks when another dialog opens): the old layer is let go.
+    if (targetRef.current && targetRef.current !== target) releaseBgTarget(targetRef.current);
+    targetRef.current = target;
   }, [depth]);
 
   const tr = transition ?? DIALOG_BG_TRANSITION;
@@ -343,47 +332,20 @@ function useDialogBgPush({
 
   React.useEffect(() => {
     return () => {
-      const el = targetRef.current;
-      if (!el) return;
-      el.style.transition = DIALOG_BG_TRANSITION;
-      el.style.transform = "";
-      el.style.borderRadius = "";
-      window.setTimeout(() => {
-        if (!el) return;
-        el.style.overflow = "";
-        el.style.transition = "";
-      }, 520);
+      if (targetRef.current) releaseBgTarget(targetRef.current);
     };
   }, []);
 }
 
-/**
- * Allocate a fresh dialog depth (0, 1, 2 …) and register / unregister the
- * matching `mobile-dialog-N` id so nested dialogs can target each other.
- *
- * Returns the depth as state — the first render produces -1 (skip side
- * effects), then the layout effect commits the real depth before paint. This
- * is more reliable than the previous ref-based approach where depth lagged
- * one render behind the actual mount order.
- */
-function useDialogDepth(): number {
-  const [depth, setDepth] = React.useState<number>(-1);
-  const myIdRef = React.useRef<string>("");
-  React.useLayoutEffect(() => {
-    const d = globalDynamicUIElementCount;
-    myIdRef.current = `mobile-dialog-${d}`;
-    globalDynamicUIElementIds.push(myIdRef.current);
-    globalDynamicUIElementCount++;
-    setDepth(d);
-    notifyDynamicUIElementListeners();
-    return () => {
-      globalDynamicUIElementCount--;
-      const idx = globalDynamicUIElementIds.indexOf(myIdRef.current);
-      if (idx >= 0) globalDynamicUIElementIds.splice(idx, 1);
-      notifyDynamicUIElementListeners();
-    };
-  }, []);
-  return depth;
+/** Animates a pushed layer back to identity, then clears the inline styles once it has slid back. */
+function releaseBgTarget(el: HTMLElement) {
+  el.style.transition = DIALOG_BG_TRANSITION;
+  el.style.transform = "";
+  el.style.borderRadius = "";
+  window.setTimeout(() => {
+    el.style.overflow = "";
+    el.style.transition = "";
+  }, 520);
 }
 
 function MobileDynamicUIElementPage({

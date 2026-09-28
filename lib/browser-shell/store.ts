@@ -180,7 +180,7 @@ function captureScroll(): void {
 function restoreScrollFor(entryKey: EntryKey, reuseRoot: boolean, opts?: ScrollRestoreOptions): void {
   const hit = findByEntryKey(state, entryKey);
   const stored = hit ? hit.tab.history.entries[hit.index].scrollY : undefined;
-  scheduleScrollRestore(trackedScrollOf(entryKey) ?? stored, reuseRoot, opts);
+  scheduleScrollRestore(trackedScrollOf(entryKey) ?? stored, reuseRoot, { ...opts, tabId: hit?.tab.id });
 }
 
 function recordVisit(tabId: TabId, entryKey: EntryKey): void {
@@ -547,9 +547,9 @@ function activateTab(id: TabId): void {
   const now = clock();
   captureScroll();
 
-  // Same URL and nothing in flight: commit now and remount (two tabs can share a URL).
+  // Same URL and nothing in flight: commit now (two tabs can share a URL; each keeps its own page).
   if (!intent && here?.key === key) {
-    commit(bumpMountNonce(setPending(commitActivation(state, id, now), [])));
+    commit(setPending(commitActivation(state, id, now), []));
     bridge.stampCurrentEntry(id, entry.key);
     skipNextPageTransition();
     restoreScrollFor(entry.key, false);

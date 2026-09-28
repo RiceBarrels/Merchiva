@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useId } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Settings,
@@ -172,6 +172,7 @@ export default function SettingsPage() {
   const [personalName, setPersonalName] = useState("");
   const [personalBirthday, setPersonalBirthday] = useState("");
   const [savingPersonal, setSavingPersonal] = useState(false);
+  const personalFieldId = useId(); // unique per page instance: keep-alive tabs can hold two settings pages
   const [assistantSaving, setAssistantSaving] = useState(false);
   const [weeklyRestockTime, setWeeklyRestockTime] = useState("09:00");
 
@@ -1830,11 +1831,11 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-4 px-[18px] py-4">
             <div className="space-y-1.5">
-              <Label htmlFor="personal-name" className="text-xs font-medium text-muted-foreground">
+              <Label htmlFor={`${personalFieldId}-name`} className="text-xs font-medium text-muted-foreground">
                 {t("settings.personalName")}
               </Label>
               <Input
-                id="personal-name"
+                id={`${personalFieldId}-name`}
                 value={personalName}
                 onChange={(e) => setPersonalName(e.target.value)}
                 placeholder={t("settings.personalNamePlaceholder")}
@@ -1842,11 +1843,11 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="personal-birthday" className="text-xs font-medium text-muted-foreground">
+              <Label htmlFor={`${personalFieldId}-birthday`} className="text-xs font-medium text-muted-foreground">
                 {t("settings.birthday")}
               </Label>
               <Input
-                id="personal-birthday"
+                id={`${personalFieldId}-birthday`}
                 type="date"
                 value={personalBirthday}
                 onChange={(e) => setPersonalBirthday(e.target.value)}
@@ -1857,11 +1858,11 @@ export default function SettingsPage() {
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="personal-email" className="text-xs font-medium text-muted-foreground">
+              <Label htmlFor={`${personalFieldId}-email`} className="text-xs font-medium text-muted-foreground">
                 {t("settings.personalEmail")}
               </Label>
               <Input
-                id="personal-email"
+                id={`${personalFieldId}-email`}
                 value={userEmail || t("settings.emailFallback")}
                 disabled
                 className="h-10 font-mono text-xs"

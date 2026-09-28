@@ -16,4 +16,5 @@ export { registerContextMenuTarget, useContextMenuTarget } from "./context-menu"
 export type { ShellContextHit, ShellContextLink, ShellContextMenuItem } from "./context-menu";
 export { useBookmarks } from "./bookmarks";
 export { useBrowsingHistory } from "./browsing-history";
-export { useTabContentHost } from "./scroll";
+export { activeTabRoot, useTabContentHost } from "./scroll";
+export { useTabSlotId } from "./tab-slot-context";

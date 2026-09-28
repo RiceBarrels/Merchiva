@@ -149,9 +149,9 @@ export interface BrowsingHistoryItem { readonly url: TabUrl; readonly title: str
 export interface ActiveNavState {
   readonly canGoBack: boolean;    // dialogOpen || tab.canGoBack || backClosesTab
   readonly canGoForward: boolean;
-  readonly dialogOpen: boolean;   // useOpenDynamicUIElementCount() > 0 (dynamic-ui-element.tsx:107)
-  readonly dialogTitle: string;   // useDynamicUIElementTitle() (:143)
-  readonly dialogSwipe: number;   // useDynamicUIElementSwipeProgress() (:122)
+  readonly dialogOpen: boolean;   // useOpenDynamicUIElementCount() > 0 (components/ui/dialog-depth.ts)
+  readonly dialogTitle: string;   // useDynamicUIElementTitle() (dynamic-ui-element.tsx:131)
+  readonly dialogSwipe: number;   // useDynamicUIElementSwipeProgress() (dynamic-ui-element.tsx:110)
   readonly backClosesTab: boolean;
 }
 export interface VirtualKeyboardState { readonly open: boolean; readonly inset: number; readonly editableFocused: boolean }

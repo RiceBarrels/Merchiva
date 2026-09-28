@@ -8,6 +8,7 @@ import { useMemo } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { inHiddenSubtree } from "@/lib/browser-shell/shell-dom";
 import type { DocPeer } from "@/lib/docs/sync-types";
 import { useT } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
@@ -28,7 +29,9 @@ export function uniquePeers(peers: readonly DocPeer[]): DocPeer[] {
 
 export function scrollToCaret(memberId: string): void {
   const selector = `.collaboration-carets__caret[data-member-id="${CSS.escape(memberId)}"]`;
-  document.querySelector(selector)?.scrollIntoView({ block: "center", behavior: "smooth" });
+  // A kept-alive background tab can show the same member's caret in its (hidden) editor: skip those.
+  const caret = Array.from(document.querySelectorAll(selector)).find((el) => !inHiddenSubtree(el));
+  caret?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
 export function PresenceAvatars({ max }: { max: number }) {
