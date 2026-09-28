@@ -1,0 +1,18 @@
+{
+  "drive": {
+    "upload": {
+      "preparing": "Préparation…",
+      "finishing": "Finalisation…",
+      "expand": "Développer",
+      "readFailed": "Impossible de lire les fichiers déposés. Choisissez-les plutôt avec Téléverser.",
+      "folderFailed": "Impossible de créer le dossier « {name} » : rien n'a été téléversé.",
+      "skipped": "{count} fichiers ont été ignorés : leur nom ou leur dossier n'est pas utilisable, ou ils sont trop imbriqués.",
+      "skippedOne": "1 fichier a été ignoré : son nom ou son dossier n'est pas utilisable, ou il est trop imbriqué."
+    },
+    "home": {
+      "downloadBlocked": "Votre navigateur a bloqué le téléchargement. Réessayez.",
+      "downloadPartial": "{saved} fichiers sur {total} enregistrés. Enregistrez les autres un par un.",
+      "downloadNext": "Enregistrer le suivant (reste : {count})"
+    }
+  }
+}

@@ -76,7 +76,11 @@ export function onDocConnectionDown(raw: unknown, listener: () => void): () => v
   };
 }
 
-function wrapTable<Row>(raw: any, map: (row: any) => Row): DocTableHandle<Row> {
+/**
+ * A raw SDK table handle whose rows and callbacks come out mapped (each cached row mapped once). Also used by the
+ * Sheets connection adapter for its lease table.
+ */
+export function wrapDocTable<Row>(raw: any, map: (row: any) => Row): DocTableHandle<Row> {
   // Cached rows are immutable decoded objects; map each one once.
   const mapped = new WeakMap<object, Row>();
   const mapRow = (row: any): Row => {
@@ -180,9 +184,9 @@ export function createDocConnection(raw: unknown): DocConnection | null {
       return id && typeof id.toHexString === "function" ? String(id.toHexString()) : "";
     },
     db: {
-      documentUpdate: wrapTable(db.documentUpdate, mapUpdateRow),
-      documentSnapshot: wrapTable(db.documentSnapshot, mapSnapshotRow),
-      documentPresence: wrapTable(db.documentPresence, mapPresenceRow),
+      documentUpdate: wrapDocTable(db.documentUpdate, mapUpdateRow),
+      documentSnapshot: wrapDocTable(db.documentSnapshot, mapSnapshotRow),
+      documentPresence: wrapDocTable(db.documentPresence, mapPresenceRow),
     },
     subscriptionBuilder: () => wrapSubscriptionBuilder(conn.subscriptionBuilder()),
   };

@@ -1,0 +1,12 @@
+{
+  "drive": {
+    "nav": {
+      "breadcrumbs": "資料夾路徑",
+      "morePath": "顯示完整路徑"
+    },
+    "list": {
+      "memberHint": "位於 {name} 的檔案。店舖管理層可以查看。",
+      "formerMemberHint": "位於已離職成員的檔案。店舖管理層可以查看。"
+    }
+  }
+}

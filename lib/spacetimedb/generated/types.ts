@@ -213,6 +213,14 @@ export const DeviceLoginRequest = __t.object("DeviceLoginRequest", {
 });
 export type DeviceLoginRequest = __Infer<typeof DeviceLoginRequest>;
 
+export const DeviceLoginRequester = __t.object("DeviceLoginRequester", {
+  requestId: __t.uuid(),
+  requesterIdentity: __t.identity(),
+  organizationId: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type DeviceLoginRequester = __Infer<typeof DeviceLoginRequester>;
+
 export const DeviceOperatorSession = __t.object("DeviceOperatorSession", {
   identity: __t.identity(),
   organizationId: __t.string(),
@@ -274,6 +282,40 @@ export const DocumentComment = __t.object("DocumentComment", {
 });
 export type DocumentComment = __Infer<typeof DocumentComment>;
 
+export const DocumentEditLease = __t.object("DocumentEditLease", {
+  documentId: __t.string(),
+  organizationId: __t.string(),
+  epoch: __t.u64(),
+  holderMemberId: __t.string(),
+  holderActorMemberId: __t.string(),
+  holderSessionId: __t.string(),
+  holderConnectionId: __t.string(),
+  holderName: __t.string(),
+  acquiredAt: __t.timestamp(),
+  heartbeatAt: __t.timestamp(),
+  lastEditAt: __t.timestamp(),
+  lastSeq: __t.u64(),
+  requestedByMemberId: __t.string(),
+  requestedByActorMemberId: __t.string(),
+  requestedBySessionId: __t.string(),
+  requestedByConnectionId: __t.string(),
+  requestedByName: __t.string(),
+  requestedAt: __t.timestamp(),
+  logBytes: __t.u64(),
+  logRows: __t.u32(),
+  logOtherMaxId: __t.u64(),
+});
+export type DocumentEditLease = __Infer<typeof DocumentEditLease>;
+
+export const DocumentFile = __t.object("DocumentFile", {
+  documentId: __t.string(),
+  organizationId: __t.string(),
+  fileType: __t.string(),
+  folderId: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type DocumentFile = __Infer<typeof DocumentFile>;
+
 export const DocumentPresence = __t.object("DocumentPresence", {
   id: __t.uuid(),
   documentId: __t.string(),
@@ -289,6 +331,13 @@ export const DocumentPresence = __t.object("DocumentPresence", {
   updatedAt: __t.timestamp(),
 });
 export type DocumentPresence = __Infer<typeof DocumentPresence>;
+
+export const DocumentReaderIndex = __t.object("DocumentReaderIndex", {
+  id: __t.string(),
+  documentId: __t.string(),
+  userId: __t.identity(),
+});
+export type DocumentReaderIndex = __Infer<typeof DocumentReaderIndex>;
 
 export const DocumentSnapshot = __t.object("DocumentSnapshot", {
   documentId: __t.string(),
@@ -338,6 +387,120 @@ export const DocumentVersion = __t.object("DocumentVersion", {
   createdByMemberId: __t.string(),
 });
 export type DocumentVersion = __Infer<typeof DocumentVersion>;
+
+export const DocumentVersionState = __t.object("DocumentVersionState", {
+  versionId: __t.string(),
+  documentId: __t.string(),
+  organizationId: __t.string(),
+  state: __t.byteArray(),
+  byteLength: __t.u32(),
+});
+export type DocumentVersionState = __Infer<typeof DocumentVersionState>;
+
+export const DriveAdminIndex = __t.object("DriveAdminIndex", {
+  id: __t.string(),
+  adminScope: __t.string(),
+  userId: __t.identity(),
+});
+export type DriveAdminIndex = __Infer<typeof DriveAdminIndex>;
+
+export const DriveBlobGc = __t.object("DriveBlobGc", {
+  blobKey: __t.string(),
+  scope: __t.string(),
+  organizationId: __t.string(),
+  itemId: __t.string(),
+  action: __t.string(),
+  reason: __t.string(),
+  declaredBytes: __t.u64(),
+  holdUntil: __t.timestamp(),
+  attempts: __t.u32(),
+  lastError: __t.string(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type DriveBlobGc = __Infer<typeof DriveBlobGc>;
+
+export const DriveItem = __t.object("DriveItem", {
+  id: __t.string(),
+  organizationId: __t.string(),
+  adminScope: __t.string(),
+  space: __t.string(),
+  parentId: __t.string(),
+  kind: __t.string(),
+  name: __t.string(),
+  mimeType: __t.string(),
+  sizeBytes: __t.u64(),
+  blobKey: __t.string(),
+  thumbKey: __t.string(),
+  thumbBytes: __t.u64(),
+  etag: __t.string(),
+  ownerMemberId: __t.string(),
+  createdByMemberId: __t.string(),
+  uploaderIdentity: __t.identity(),
+  status: __t.string(),
+  uploadExpiresAt: __t.timestamp(),
+  uploadAttempts: __t.u32(),
+  trashed: __t.bool(),
+  trashRootId: __t.string(),
+  trashedAt: __t.option(__t.timestamp()),
+  trashedByMemberId: __t.string(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+  lastEditorMemberId: __t.string(),
+  trashRootAt: __t.u64(),
+});
+export type DriveItem = __Infer<typeof DriveItem>;
+
+export const DriveNoticeAck = __t.object("DriveNoticeAck", {
+  id: __t.string(),
+  organizationId: __t.string(),
+  memberId: __t.string(),
+  userId: __t.identity(),
+  notice: __t.string(),
+  surface: __t.string(),
+  acknowledgedAt: __t.timestamp(),
+});
+export type DriveNoticeAck = __Infer<typeof DriveNoticeAck>;
+
+export const DriveOrgState = __t.object("DriveOrgState", {
+  organizationId: __t.string(),
+  adminScope: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type DriveOrgState = __Infer<typeof DriveOrgState>;
+
+export const DriveServiceReader = __t.object("DriveServiceReader", {
+  identityHex: __t.string(),
+  scope: __t.string(),
+  userId: __t.identity(),
+  registeredAt: __t.timestamp(),
+});
+export type DriveServiceReader = __Infer<typeof DriveServiceReader>;
+
+export const DriveStar = __t.object("DriveStar", {
+  id: __t.string(),
+  itemId: __t.string(),
+  organizationId: __t.string(),
+  memberId: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type DriveStar = __Infer<typeof DriveStar>;
+
+export const DriveUsage = __t.object("DriveUsage", {
+  organizationId: __t.string(),
+  scope: __t.string(),
+  bytesUsed: __t.u64(),
+  bytesReserved: __t.u64(),
+  fileCount: __t.u32(),
+  itemCount: __t.u32(),
+  quotaBytesOverride: __t.u64(),
+  sheetBytes: __t.u64(),
+  measuredBytes: __t.u64(),
+  measuredCount: __t.u32(),
+  measuredAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type DriveUsage = __Infer<typeof DriveUsage>;
 
 export const Expense = __t.object("Expense", {
   id: __t.uuid(),

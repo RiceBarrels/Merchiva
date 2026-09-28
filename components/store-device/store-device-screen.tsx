@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { usePermissions } from "@/lib/context/permissions";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { hapticSuccess } from "@/lib/haptics";
-import { registerStoreDevice } from "@/lib/spacetimedb/actions";
+import { clearDeviceOperator, registerStoreDevice } from "@/lib/spacetimedb/actions";
 import { getOrCreateDeviceId, getStoreMachineMode, setStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
-import { useAutolockSeconds, useCurrentOperator, setCurrentOperator } from "@/lib/store-device-lock";
+import { useAutolockSeconds, useCurrentOperator, setCurrentOperator, getCurrentOperator } from "@/lib/store-device-lock";
 import { useIsMobile } from "@/lib/use-is-mobile";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { useNow, fmtStatusClock, useIdleTimer, useOnShift, IdleLock, MiniAppSurface } from "@/components/device";
@@ -18,6 +18,12 @@ import { LoginPane } from "./login-pane";
 import { RosterPages, StoreClockCard, useClosingTime } from "./roster-pages";
 import { LoggedInScreen } from "./logged-in-screen";
 import { PunchPrompt } from "./punch-prompt";
+
+/** Delete this tablet's `device_operator_session` row. Best effort: the server
+ *  also ignores a session older than 12 h. */
+function forgetOperatorSession() {
+  void clearDeviceOperator().catch((err) => console.warn("[store-device] clear operator failed:", err));
+}
 
 /**
  * /store — the shared store device. Logged out it shows the QR / PIN log-in
@@ -76,6 +82,28 @@ export function StoreDeviceScreen() {
   useEffect(() => {
     if (operator && membersReady && !operatorMember) setCurrentOperator(null);
   }, [operator, membersReady, operatorMember]);
+
+  // A PIN / QR log-in leaves this tablet a server-side operator session
+  // (`device_operator_session`), which lets Drive act for that person for up to
+  // 12 h. Drop it the moment nobody is logged in here: log-out, the idle log-out,
+  // the stale-operator drop above, or a clear from anywhere else (another tab,
+  // an app's "log in again").
+  const operatorId = operator?.memberId ?? null;
+  const lastOperatorIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const last = lastOperatorIdRef.current;
+    lastOperatorIdRef.current = operatorId;
+    if (last && !operatorId) forgetOperatorSession();
+  }, [operatorId]);
+
+  // The idle lock while nobody is logged in drops it too: a session can outlive
+  // a log-in that never finished (the lock hides the log-in pane, which cancels
+  // a QR log-in it had already consumed; a PIN answer can land after the pane
+  // gave up). Read the operator live, not from state: a log-in that lands in the
+  // same tick has already stored it, and its fresh session must stay.
+  useEffect(() => {
+    if (idleLocked && !getCurrentOperator()) forgetOperatorSession();
+  }, [idleLocked]);
 
   const loggedIn = !!operatorMember;
   const operatorShift = operatorMember ? onShift.forMember(operatorMember.id) : null;

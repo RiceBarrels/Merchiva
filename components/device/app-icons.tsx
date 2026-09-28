@@ -432,12 +432,26 @@ export function NotificationsIcon({ className }: P) {
   );
 }
 
+/** Drive: blue folder holding a white page with a green sheet bar and an orange slide bar. */
+export function DriveIcon({ className }: P) {
+  return (
+    <Svg className={className}>
+      <path d="M2.5 6.4a2 2 0 0 1 2-2h4.4l2 2.1h8.6a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2z" fill={BLUE} />
+      <rect x="6" y="2.6" width="12" height="9.2" rx="1" fill={WHITE} stroke={LIGHT} strokeWidth="1" />
+      <rect x="7.8" y="4.3" width="5" height="1.5" rx=".75" fill={GREEN} />
+      <rect x="7.8" y="6.6" width="8.4" height="1.5" rx=".75" fill={ORANGE} />
+      <path d="M2.5 10.4a2 2 0 0 1 2-2h15a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2z" fill={SKY} />
+    </Svg>
+  );
+}
+
 /** Icon for a grid app id (built-ins + catalog ids); undefined when unknown. */
 export const APP_ICONS: Record<string, AppIcon> = {
   "punch-in": PunchInIcon,
   merchiva: MerchivaAppIcon,
   requests: RequestsIcon,
   docs: DocsIcon,
+  drive: DriveIcon,
   directory: DirectoryIcon,
   settings: SettingsIcon,
   schedule: ScheduleIcon,

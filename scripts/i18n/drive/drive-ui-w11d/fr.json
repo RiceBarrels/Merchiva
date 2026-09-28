@@ -1,0 +1,12 @@
+{
+  "drive": {
+    "home": {
+      "noticeRequired": "Lisez d'abord la note sur les personnes qui peuvent voir vos fichiers."
+    },
+    "members": {
+      "col": {
+        "member": "Membre"
+      }
+    }
+  }
+}

@@ -9,6 +9,19 @@ export function isDocumentId(s: string): boolean {
   return typeof s === "string" && DOC_UUID_RE.test(s.toLowerCase());
 }
 
+const BARE_UUID_RE = /^([0-9a-f]{8})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{12})$/;
+
+/**
+ * A uuid row id in the form lib/docs/mappers idString gives it (lowercase 8-4-4-4-12). Links made while ids were
+ * read through Uuid.toHexString() carry 32 bare hex digits (a `?version=` link, for one), so those get their dashes
+ * back; any other value is only trimmed and lowercased.
+ */
+export function canonicalUuidText(value: string): string {
+  const clean = value.trim().toLowerCase();
+  const bare = BARE_UUID_RE.exec(clean);
+  return bare ? `${bare[1]}-${bare[2]}-${bare[3]}-${bare[4]}-${bare[5]}` : clean;
+}
+
 /** Formats 16 random bytes as a lowercase RFC 4122 v4 UUID (sets the version/variant bits). */
 export function formatUuidV4(bytes: Uint8Array): string {
   if (bytes.length !== 16) throw new Error("formatUuidV4 needs exactly 16 bytes");

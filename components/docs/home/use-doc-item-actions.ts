@@ -3,10 +3,15 @@
 // Runs the per-document menu actions of the docs home and owns the rename,
 // delete-forever and share dialog targets. Reducer failures surface as toasts
 // (`[doc.<code>]` → docs.errors.*, anything else → the given fallback key).
+// On /store a rename goes through Drive's renameDriveDocument for the PIN
+// operator (their rights, their name on it), and a Drive failure shows
+// drive.errors.*.
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useDocsOpenUrl } from "@/components/docs/docs-open-context";
+import { useDocCreatePlacement } from "@/components/drive/drive-actor";
+import { placedCreateErrorKey, renameDocumentFor } from "@/lib/docs/create";
 import { DOC_ERROR_I18N_KEYS, docErrorCode } from "@/lib/docs/errors";
 import { documentHref } from "@/lib/docs/hrefs";
 import { useT } from "@/lib/i18n/context";
@@ -14,7 +19,6 @@ import { fmt } from "@/lib/i18n/fmt";
 import {
   deleteDocumentForever,
   duplicateDocument,
-  renameDocument,
   restoreDocument,
   toggleDocumentStar,
   trashDocument,
@@ -52,6 +56,7 @@ export interface DocItemActions {
 export function useDocItemActions(): DocItemActions {
   const t = useT();
   const openUrl = useDocsOpenUrl();
+  const placement = useDocCreatePlacement();
   const [rename, setRename] = useState<DocDialogTarget>(CLOSED);
   const [remove, setRemove] = useState<DocDialogTarget>(CLOSED);
   const [share, setShare] = useState<DocDialogTarget>(CLOSED);
@@ -140,13 +145,15 @@ export function useDocItemActions(): DocItemActions {
       const target = rename.item;
       if (!target) return;
       try {
-        await renameDocument(target.doc.id, title);
+        await renameDocumentFor(target.doc.id, title, placement);
       } catch (err) {
-        fail(err);
+        const driveKey = placedCreateErrorKey(err);
+        if (driveKey) toast.error(t(driveKey));
+        else fail(err);
         throw err;
       }
     },
-    [rename.item, fail],
+    [rename.item, placement, fail, t],
   );
 
   const confirmRemove = useCallback(async () => {

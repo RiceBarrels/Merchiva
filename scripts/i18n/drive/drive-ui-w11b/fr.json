@@ -1,0 +1,16 @@
+{
+  "drive": {
+    "preview": {
+      "rowsShown": "Seules les {count} premières lignes sont affichées.",
+      "rowsShownOne": "Seule la première ligne est affichée.",
+      "columnsShown": "Seules les {count} premières colonnes sont affichées.",
+      "openBlocked": "Votre navigateur a bloqué la nouvelle fenêtre. Réessayez.",
+      "pdfExternal": "Ouvrez le PDF pour le lire."
+    },
+    "apps": {
+      "empty": "Aucun fichier de cette application pour l'instant.",
+      "latest": "Dernier ajout le {date}",
+      "unavailable": "Les fichiers de cette application ne vous sont pas accessibles ici."
+    }
+  }
+}

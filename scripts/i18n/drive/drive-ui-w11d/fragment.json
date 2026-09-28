@@ -1,0 +1,9 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "W1.1d",
+  "note": "New leaves under drive-ui's prefixes for the Drive manager home (drive-ui.md §7, §10): the reason New and Upload are off while the management notice waits for its acknowledgement, and the member column of Members' files. Terms follow the drive-ui fragment and drive-disclosure's wording for 'who can see your files'.",
+  "owned": [],
+  "extends": "drive-ui",
+  "overwrites": [],
+  "allowSameAsEn": []
+}

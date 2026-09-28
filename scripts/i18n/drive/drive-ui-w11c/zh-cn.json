@@ -1,0 +1,12 @@
+{
+  "drive": {
+    "nav": {
+      "breadcrumbs": "文件夹路径",
+      "morePath": "显示完整路径"
+    },
+    "list": {
+      "memberHint": "在 {name} 的文件中。门店管理层可以看到。",
+      "formerMemberHint": "在已离开成员的文件中。门店管理层可以看到。"
+    }
+  }
+}

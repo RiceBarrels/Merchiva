@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { NextConfig } from "next";
+import { hyphenationPatternAliases } from "./scripts/licenses/hyphenation";
 
 const isStatic = process.env.NEXT_OUTPUT === "static";
 
@@ -13,7 +14,10 @@ const appVersion: string = JSON.parse(
 const nextConfig: NextConfig = {
   // Pin the filesystem root: a stray package-lock.json in $HOME otherwise makes
   // Turbopack infer the home directory as the workspace root and walk all of it.
-  turbopack: { root: __dirname },
+  // resolveAlias swaps Univer's lazily loaded TeX hyphenation patterns (some are
+  // MPL/GPL/LGPL or LPPL only) for an empty stand-in, so they never ship; see
+  // scripts/licenses/hyphenation.ts.
+  turbopack: { root: __dirname, resolveAlias: hyphenationPatternAliases(__dirname) },
   allowedDevOrigins: ["192.168.1.108", "192.168.1.147"],
   env: { NEXT_PUBLIC_APP_VERSION: appVersion },
   ...(isStatic
@@ -29,8 +33,10 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: [
           {
+            // blob: lets Drive preview a PDF from a local blob: URL (the private
+            // Blob store's host is never framed).
             key: "Content-Security-Policy",
-            value: "frame-src 'self' https://*.notion.so https://notion.so;",
+            value: "frame-src 'self' blob: https://*.notion.so https://notion.so;",
           },
         ],
       },

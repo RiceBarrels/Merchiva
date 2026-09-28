@@ -11,6 +11,8 @@ import type {
   DocAccessGrant,
   DocComment,
   DocCommentThread,
+  DocFileRow,
+  DocFileType,
   DocPageSetup,
   DocPresenceRow,
   DocSnapshotRow,
@@ -34,10 +36,14 @@ export function toDate(value: { toDate(): Date } | Date | null | undefined): Dat
   return typeof value.toDate === "function" ? value.toDate() : null;
 }
 
-/** Uuid → canonical string, Identity/ConnectionId → hex, strings unchanged. */
+/** Uuid → canonical (hyphenated) string, Identity/ConnectionId → hex, strings unchanged. */
 export function idString(value: unknown): string {
   if (value == null) return "";
   if (typeof value === "string") return value;
+  // An SDK Uuid carries `__uuid__`. Its toHexString() drops the dashes, but the
+  // module writes every reference as `id.toString()` (8-4-4-4-12), so an id
+  // mapped from a Uuid must use that form or it never equals a stored reference.
+  if (typeof (value as { __uuid__?: unknown }).__uuid__ === "bigint") return String(value).toLowerCase();
   const toHex = (value as { toHexString?: unknown }).toHexString;
   if (typeof toHex === "function") return String(toHex.call(value));
   return String(value);
@@ -109,7 +115,29 @@ function parseMentions(raw: any): string[] {
   }
 }
 
-export function mapDocument(row: any): DocumentMeta {
+/** `document_file.fileType` → DocFileType: missing, '' and 'doc' are text documents; any other value is 'unknown'. */
+export function docFileType(raw: unknown): DocFileType {
+  if (raw == null || raw === "" || raw === "doc") return "doc";
+  return raw === "sheet" || raw === "slides" ? raw : "unknown";
+}
+
+/** A `document_file` row. Ids are lowercased like every document reference. */
+export function mapDocumentFile(row: any): DocFileRow {
+  return {
+    documentId: str(row.documentId).toLowerCase(),
+    organizationId: str(row.organizationId),
+    fileType: docFileType(row.fileType),
+    folderId: str(row.folderId).toLowerCase(),
+    updatedAt: dateOrEpoch(row.updatedAt),
+  };
+}
+
+/**
+ * A `document` row plus its type and folder from `file`, the document's `document_file` row. No row (null) is a
+ * document from before Drive: a text document at the root of its space. The `document` row itself has no type or
+ * folder (those columns would break every client built before Drive), so any on `row` are ignored.
+ */
+export function mapDocument(row: any, file: Pick<DocFileRow, "fileType" | "folderId"> | null = null): DocumentMeta {
   return {
     id: str(row.id).toLowerCase(),
     organizationId: str(row.organizationId),
@@ -127,7 +155,19 @@ export function mapDocument(row: any): DocumentMeta {
     lastEditorMemberId: optStr(row.lastEditorMemberId),
     trashedAt: toDate(row.trashedAt),
     trashedByMemberId: optStr(row.trashedByMemberId),
+    fileType: file ? file.fileType : "doc",
+    folderId: file ? file.folderId : "",
   };
+}
+
+/** `document` rows, each paired with its `document_file` row by document id (mapDocument). */
+export function mapDocuments(docRows: readonly any[], fileRows: readonly any[]): DocumentMeta[] {
+  const files = new Map<string, DocFileRow>();
+  for (const row of fileRows) {
+    const file = mapDocumentFile(row);
+    files.set(file.documentId, file);
+  }
+  return docRows.map((row) => mapDocument(row, files.get(str(row.id).toLowerCase()) ?? null));
 }
 
 export function mapUpdateRow(row: any): DocUpdateRow {

@@ -1,0 +1,18 @@
+{
+  "drive": {
+    "upload": {
+      "preparing": "Preparing…",
+      "finishing": "Finishing…",
+      "expand": "Expand",
+      "readFailed": "Couldn't read the dropped files. Choose them with Upload instead.",
+      "folderFailed": "Couldn't create the folder \"{name}\", so nothing was uploaded.",
+      "skipped": "{count} files were left out: their names or folders can't be used, or they're nested too deep.",
+      "skippedOne": "1 file was left out: its name or folder can't be used, or it's nested too deep."
+    },
+    "home": {
+      "downloadBlocked": "Your browser blocked the download. Try again.",
+      "downloadPartial": "Saved {saved} of {total} files. Save the others one at a time.",
+      "downloadNext": "Save next ({count} left)"
+    }
+  }
+}

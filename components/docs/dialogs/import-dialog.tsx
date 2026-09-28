@@ -12,7 +12,9 @@
  * Behaviour:
  * 1. "Choose file" opens a hidden `<input type="file" accept={IMPORT_ACCEPT}>`; a file can also be dropped on the
  *    drop area.
- * 2. `validateImportFile`, then `importAsNewDocument(file, { t, locale })`, with a Loader2 progress state (`docs.import.importing`).
+ * 2. `validateImportFile`, then `importAsNewDocument(file, { t, locale, placement })`, with a Loader2 progress state
+ *    (`docs.import.importing`). `placement` (`useDocCreatePlacement()`) is set only in a device panel on /store, where
+ *    the new document belongs to the PIN operator.
  * 3. After success: `docs.import.warnings` if `result.warnings > 0`; `docs.import.imagesSkipped` if `result.skippedImages > 0`.
  * 4. Errors: `toast.error(t(importErrorMessageKey(err)))`; the dialog stays open.
  * 5. It can't be dismissed while an import is running.
@@ -23,6 +25,7 @@ import { useRef, useState } from "react";
 import { FileUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useDocCreatePlacement } from "@/components/drive/drive-actor";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -47,6 +50,7 @@ function hasFiles(event: React.DragEvent): boolean {
 
 export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogProps): React.JSX.Element {
   const { t, locale } = useI18n();
+  const placement = useDocCreatePlacement();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -59,7 +63,7 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
     try {
       const invalid = validateImportFile(file);
       if (invalid) throw new DocImportError(invalid);
-      const { documentId, result } = await importAsNewDocument(file, { t, locale });
+      const { documentId, result } = await importAsNewDocument(file, { t, locale, placement });
       if (result.warnings > 0) toast(t("docs.import.warnings"));
       if (result.skippedImages > 0) toast.warning(t("docs.import.imagesSkipped"));
       onImported(documentId);

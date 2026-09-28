@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   inviteToOrg,
@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { timestampToMsOrNull } from "@/lib/spacetimedb/timestamp";
+import { cn } from "@/lib/utils";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -45,49 +46,76 @@ const PERMISSION_SECTIONS: ReadonlyArray<{
   { key: "settings",         i18nKey: "settings",        actions: ["view"] },
   { key: "team",             i18nKey: "team",            actions: ["view", "invite", "edit"] },
   { key: "training_grading", i18nKey: "trainingGrading", actions: ["view", "edit"] },
+  { key: "drive",            i18nKey: "drive",           actions: ["view", "edit"] },
   { key: "merchiva",         i18nKey: "merchiva",        actions: ["view"] },
 ];
 
 export function PermissionsEditor({
   value,
   onChange,
+  role,
+  lockedSections = [],
 }: {
   value: Permissions;
   onChange: (next: Permissions) => void;
+  /** The role being edited: a manager holds the Drive power by role, whatever
+   *  the boxes say, so the drive row says so. */
+  role?: string;
+  /** Sections shown read-only. Only owners may grant `drive`; the server strips
+   *  it from a manager's invitation, so the invite dialog shows it locked. */
+  lockedSections?: readonly (keyof Permissions)[];
 }) {
   const t = useT();
+  const hintPrefix = useId();
   return (
     <div className="mt-1 border border-border rounded-lg divide-y divide-border max-h-[260px] overflow-y-auto">
       {PERMISSION_SECTIONS.map(({ key, i18nKey, actions }) => {
         const sec = (value[key] ?? {}) as { view?: boolean; edit?: boolean; invite?: boolean };
+        const locked = lockedSections.includes(key);
+        const lockedNote = locked ? t("personnel.team.permissionLockedOwnerOnly") : null;
+        const hint = lockedNote ?? (key === "drive" && role === "manager" ? t("drive.members.managersAlways") : null);
+        const hintId = hint ? `${hintPrefix}-${key}` : undefined;
         return (
-          <div key={key} className="flex items-center gap-3 px-2.5 py-1.5">
-            <span className="text-[12px] flex-1 truncate">
-              {t(`personnel.team.permissionSection.${i18nKey}`)}
-            </span>
-            {actions.map((action) => {
-              const cbId = `perm-${key}-${action}`;
-              return (
-                <label
-                  key={action}
-                  htmlFor={cbId}
-                  className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer"
-                >
-                  <Checkbox
-                    id={cbId}
-                    checked={sec[action] === true}
-                    onCheckedChange={() => {
-                      const next: { view?: boolean; edit?: boolean; invite?: boolean } = { ...sec };
-                      next[action] = !next[action];
-                      if (action === "view" && !next.view) { next.edit = false; next.invite = false; }
-                      if ((action === "edit" || action === "invite") && next[action]) next.view = true;
-                      onChange({ ...value, [key]: next } as Permissions);
-                    }}
-                  />
-                  {t(`personnel.team.permissionAction.${action}`)}
-                </label>
-              );
-            })}
+          <div key={key} className="px-2.5 py-1.5">
+            <div className="flex items-center gap-3">
+              <span className="text-[12px] flex-1 truncate">
+                {t(`personnel.team.permissionSection.${i18nKey}`)}
+              </span>
+              {actions.map((action) => {
+                const cbId = `perm-${key}-${action}`;
+                return (
+                  <label
+                    key={action}
+                    htmlFor={cbId}
+                    title={lockedNote ?? undefined}
+                    className={cn(
+                      "flex items-center gap-1 text-[11px] text-muted-foreground",
+                      locked ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+                    )}
+                  >
+                    <Checkbox
+                      id={cbId}
+                      checked={sec[action] === true}
+                      disabled={locked}
+                      aria-describedby={hintId}
+                      onCheckedChange={() => {
+                        const next: { view?: boolean; edit?: boolean; invite?: boolean } = { ...sec };
+                        next[action] = !next[action];
+                        if (action === "view" && !next.view) { next.edit = false; next.invite = false; }
+                        if ((action === "edit" || action === "invite") && next[action]) next.view = true;
+                        onChange({ ...value, [key]: next } as Permissions);
+                      }}
+                    />
+                    {t(`personnel.team.permissionAction.${action}`)}
+                  </label>
+                );
+              })}
+            </div>
+            {hint && (
+              <p id={hintId} className="mt-0.5 text-[11px] text-muted-foreground">
+                {hint}
+              </p>
+            )}
           </div>
         );
       })}
@@ -250,7 +278,12 @@ export function InviteMemberDialog({
           </div>
           <div className="space-y-1.5">
             <Eyebrow>{t("personnel.team.fieldPermissions")}</Eyebrow>
-            <PermissionsEditor value={perms} onChange={setPerms} />
+            <PermissionsEditor
+              value={perms}
+              onChange={setPerms}
+              role={role}
+              lockedSections={isOwner ? [] : ["drive"]}
+            />
           </div>
           <DialogActions
             divider={false}
@@ -364,7 +397,7 @@ export function EditMemberDialog({
           </div>
           <div className="space-y-1.5">
             <Eyebrow>{t("personnel.team.fieldPermissions")}</Eyebrow>
-            <PermissionsEditor value={perms} onChange={setPerms} />
+            <PermissionsEditor value={perms} onChange={setPerms} role={role} />
           </div>
           <DialogActions
             divider={false}

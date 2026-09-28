@@ -82,6 +82,8 @@ export const MANAGER_ROUTE_APPS: Record<string, string> = {
   "/manager/personnel/training": "training",
   "/manager/personnel/pay": "pay",
   "/manager/docs": "docs",
+  // Also the Sheets / Slides editors (/manager/drive/sheet, /manager/drive/slides).
+  "/manager/drive": "drive",
   "/manager/bookings": "bookings",
   "/manager/reviews": "bookings",
 };

@@ -23,6 +23,7 @@ const OWNED = [
 const SOURCES = [
   ...readdirSync(join(ROOT, "components/docs/home")).map((f) => join("components/docs/home", f)),
   "components/docs/dialogs/share-dialog.tsx",
+  "components/docs/dialogs/make-private-dialog.tsx",
   "components/docs/dialogs/open-document-dialog.tsx",
   "components/docs/dialogs/rename-dialog.tsx",
   "components/docs/dialogs/delete-forever-dialog.tsx",

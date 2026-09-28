@@ -1,0 +1,190 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "W1.4",
+  "note": "Owned by W1.4 (legal notices). License TEXTS are never translated (they are data in public/legal/*), only this UI chrome. Legal strings in zh-hk, zh-tw, ar and hi await review by a fluent reviewer (DECISIONS U18).",
+  "owned": [
+    "licenses",
+    "landing.footer.licenses"
+  ],
+  "allowSameAsEn": [],
+  "locales": {
+    "en": {
+      "licenses": {
+        "title": "Open-source licenses",
+        "intro": "Merchiva is built with open-source software. Below are the packages included in the app and the license terms they come with.",
+        "originalLanguage": "License texts are shown in their original language.",
+        "search": "Search packages",
+        "count": "{count} packages",
+        "loadError": "Couldn't load the license list.",
+        "retry": "Try again",
+        "noMatches": "No packages match your search.",
+        "showText": "Show license",
+        "hideText": "Hide license",
+        "bundledIn": "Included in {package}",
+        "elected": "Used under the {license} license",
+        "downloadAll": "Download all notices (.txt)"
+      },
+      "landing": {
+        "footer": {
+          "licenses": "Open-source licenses"
+        }
+      }
+    },
+    "es": {
+      "licenses": {
+        "title": "Licencias de código abierto",
+        "intro": "Merchiva está creado con software de código abierto. A continuación se muestran los paquetes incluidos en la aplicación y sus condiciones de licencia.",
+        "originalLanguage": "Los textos de las licencias se muestran en su idioma original.",
+        "search": "Buscar paquetes",
+        "count": "{count} paquetes",
+        "loadError": "No se pudo cargar la lista de licencias.",
+        "retry": "Reintentar",
+        "noMatches": "Ningún paquete coincide con tu búsqueda.",
+        "showText": "Ver licencia",
+        "hideText": "Ocultar licencia",
+        "bundledIn": "Incluido en {package}",
+        "elected": "Se usa bajo la licencia {license}",
+        "downloadAll": "Descargar todos los avisos (.txt)"
+      },
+      "landing": {
+        "footer": {
+          "licenses": "Licencias de código abierto"
+        }
+      }
+    },
+    "fr": {
+      "licenses": {
+        "title": "Licences open source",
+        "intro": "Merchiva est conçu avec des logiciels open source. Voici les paquets inclus dans l'application et les conditions de licence qui les accompagnent.",
+        "originalLanguage": "Les textes des licences sont affichés dans leur langue d'origine.",
+        "search": "Rechercher des paquets",
+        "count": "{count} paquets",
+        "loadError": "Impossible de charger la liste des licences.",
+        "retry": "Réessayer",
+        "noMatches": "Aucun paquet ne correspond à votre recherche.",
+        "showText": "Afficher la licence",
+        "hideText": "Masquer la licence",
+        "bundledIn": "Inclus dans {package}",
+        "elected": "Utilisé sous la licence {license}",
+        "downloadAll": "Télécharger toutes les mentions (.txt)"
+      },
+      "landing": {
+        "footer": {
+          "licenses": "Licences open source"
+        }
+      }
+    },
+    "hi": {
+      "licenses": {
+        "title": "ओपन-सोर्स लाइसेंस",
+        "intro": "Merchiva ओपन-सोर्स सॉफ़्टवेयर से बना है। नीचे ऐप में शामिल पैकेज और उनकी लाइसेंस शर्तें दी गई हैं।",
+        "originalLanguage": "लाइसेंस के पाठ उनकी मूल भाषा में दिखाए गए हैं।",
+        "search": "पैकेज खोजें",
+        "count": "{count} पैकेज",
+        "loadError": "लाइसेंस सूची लोड नहीं हो सकी।",
+        "retry": "फिर से कोशिश करें",
+        "noMatches": "आपकी खोज से कोई पैकेज मेल नहीं खाता।",
+        "showText": "लाइसेंस दिखाएँ",
+        "hideText": "लाइसेंस छिपाएँ",
+        "bundledIn": "{package} में शामिल",
+        "elected": "{license} लाइसेंस के तहत उपयोग किया गया",
+        "downloadAll": "सभी सूचनाएँ डाउनलोड करें (.txt)"
+      },
+      "landing": {
+        "footer": {
+          "licenses": "ओपन-सोर्स लाइसेंस"
+        }
+      }
+    },
+    "ar": {
+      "licenses": {
+        "title": "تراخيص المصادر المفتوحة",
+        "intro": "تم بناء Merchiva باستخدام برمجيات مفتوحة المصدر. فيما يلي الحزم المضمّنة في التطبيق وشروط الترخيص الخاصة بها.",
+        "originalLanguage": "تُعرض نصوص التراخيص بلغتها الأصلية.",
+        "search": "ابحث في الحزم",
+        "count": "عدد الحزم: {count}",
+        "loadError": "تعذّر تحميل قائمة التراخيص.",
+        "retry": "حاول مرة أخرى",
+        "noMatches": "لا توجد حزم مطابقة لبحثك.",
+        "showText": "عرض الترخيص",
+        "hideText": "إخفاء الترخيص",
+        "bundledIn": "مضمَّن في {package}",
+        "elected": "مستخدَم بموجب ترخيص {license}",
+        "downloadAll": "تنزيل جميع الإشعارات (.txt)"
+      },
+      "landing": {
+        "footer": {
+          "licenses": "تراخيص المصادر المفتوحة"
+        }
+      }
+    },
+    "zh-cn": {
+      "licenses": {
+        "title": "开源许可",
+        "intro": "Merchiva 使用开源软件构建。以下是应用中包含的软件包及其许可条款。",
+        "originalLanguage": "许可文本以原始语言显示。",
+        "search": "搜索软件包",
+        "count": "{count} 个软件包",
+        "loadError": "无法加载许可列表。",
+        "retry": "重试",
+        "noMatches": "没有与搜索匹配的软件包。",
+        "showText": "查看许可",
+        "hideText": "隐藏许可",
+        "bundledIn": "包含于 {package}",
+        "elected": "依据 {license} 许可使用",
+        "downloadAll": "下载全部声明（.txt）"
+      },
+      "landing": {
+        "footer": {
+          "licenses": "开源许可"
+        }
+      }
+    },
+    "zh-tw": {
+      "licenses": {
+        "title": "開放原始碼授權",
+        "intro": "Merchiva 使用開放原始碼軟體建置。以下是應用程式中包含的套件及其授權條款。",
+        "originalLanguage": "授權條款以原始語言顯示。",
+        "search": "搜尋套件",
+        "count": "{count} 個套件",
+        "loadError": "無法載入授權清單。",
+        "retry": "重試",
+        "noMatches": "沒有符合搜尋的套件。",
+        "showText": "查看授權",
+        "hideText": "隱藏授權",
+        "bundledIn": "包含於 {package}",
+        "elected": "依據 {license} 授權使用",
+        "downloadAll": "下載全部聲明（.txt）"
+      },
+      "landing": {
+        "footer": {
+          "licenses": "開放原始碼授權"
+        }
+      }
+    },
+    "zh-hk": {
+      "licenses": {
+        "title": "開源授權",
+        "intro": "Merchiva 使用開源軟件建構。以下是應用程式中包含的套件及其授權條款。",
+        "originalLanguage": "授權文本以原文顯示。",
+        "search": "搜尋套件",
+        "count": "{count} 個套件",
+        "loadError": "無法載入授權清單。",
+        "retry": "重試",
+        "noMatches": "沒有符合搜尋的套件。",
+        "showText": "查看授權",
+        "hideText": "隱藏授權",
+        "bundledIn": "包含於 {package}",
+        "elected": "依據 {license} 授權使用",
+        "downloadAll": "下載全部聲明（.txt）"
+      },
+      "landing": {
+        "footer": {
+          "licenses": "開源授權"
+        }
+      }
+    }
+  },
+  "extends": null,
+  "overwrites": []
+}

@@ -10,7 +10,7 @@ import {
   setCurrentOperator,
   getCurrentOperator,
 } from "@/lib/store-device-lock";
-import { recordPunch, resolveDeviceOperator } from "@/lib/spacetimedb/actions";
+import { clearDeviceOperator, recordPunch, resolveDeviceOperator } from "@/lib/spacetimedb/actions";
 import { useT } from "@/lib/i18n/context";
 import { hapticSuccess, hapticMedium, hapticLight } from "@/lib/haptics";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -24,6 +24,12 @@ interface MemberRow {
 }
 
 const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"] as const;
+
+/** Delete this tablet's `device_operator_session` so Drive stops acting for the
+ *  last operator. Every unlock resolves the PIN and writes a new one. */
+function forgetOperatorSession() {
+  void clearDeviceOperator().catch((err) => console.warn("[store-device-lock] clear operator failed:", err));
+}
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const fmtClock = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
@@ -164,6 +170,17 @@ export function StoreDeviceLock() {
     window.addEventListener("store-device-force-lock", handler);
     return () => window.removeEventListener("store-device-force-lock", handler);
   }, [storeMachine, clearTimer]);
+
+  // A lock waiting for a PIN has no operator, so a session row it can see is
+  // left over: from the unlock before an autolock, a log-out, a reload or store
+  // mode switched back on, or from a PIN answer that landed after the keypad
+  // gave up. Keyed on the row, not on the lock engaging: after a reload the lock
+  // is up before the connection is, and the row only arrives once it is.
+  // Declared before the PIN handshake so the clear goes out ahead of a resolve.
+  const leftoverSession = storeMachine && locked && stage === "entry" && operatorRows.length > 0;
+  useEffect(() => {
+    if (leftoverSession) forgetOperatorSession();
+  }, [leftoverSession]);
 
   // Reset entry state every time we re-enter the lock screen.
   useEffect(() => {

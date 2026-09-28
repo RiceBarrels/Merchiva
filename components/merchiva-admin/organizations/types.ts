@@ -120,6 +120,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<string, Record<string, Record<stri
     website: { view: false, edit: false },
     training_grading: { view: false, edit: false },
     merchiva: { view: true },
+    drive: { view: false, edit: false },
   },
   manager: {
     dashboard: { view: true },
@@ -133,6 +134,8 @@ export const ROLE_PERMISSION_DEFAULTS: Record<string, Record<string, Record<stri
     website: { view: true, edit: true },
     training_grading: { view: true, edit: true },
     merchiva: { view: true },
+    // A manager holds the Drive power by role, whatever is stored here.
+    drive: { view: true, edit: true },
   },
 };
 

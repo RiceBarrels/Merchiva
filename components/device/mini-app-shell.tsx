@@ -97,7 +97,9 @@ export function MiniAppShell({ open, onClose, title, closeLabel, children, class
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // Content that handled Escape itself (a dialog, a slideshow) keeps it:
+      // one press closes the innermost thing, not the whole app behind it.
+      if (e.key === "Escape" && !e.defaultPrevented) onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);

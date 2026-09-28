@@ -1,0 +1,16 @@
+{
+  "drive": {
+    "preview": {
+      "rowsShown": "只顯示首 {count} 行。",
+      "rowsShownOne": "只顯示第 1 行。",
+      "columnsShown": "只顯示首 {count} 列。",
+      "openBlocked": "瀏覽器封鎖了新視窗，請再試一次。",
+      "pdfExternal": "開啟 PDF 即可閱讀。"
+    },
+    "apps": {
+      "empty": "此應用程式中尚未有檔案。",
+      "latest": "最近新增：{date}",
+      "unavailable": "你無法在此處查看此應用程式中的檔案。"
+    }
+  }
+}

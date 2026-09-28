@@ -1,0 +1,392 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "U10 (data-server.md rev 2) — keys used by lib/drive/errors.ts, the DocEditorRoute file-type / not-found states and the owner-only permission lock",
+  "note": "Copy to scripts/i18n/drive/data-layer.json. Terminology follows drive-disclosure.json: My files = 我的文件/我的檔案, Store files = 门店文件/店面檔案/店舖檔案. drive.errors.notConnected is NOT a key: not_connected maps to the existing toast.notConnected. Rev 2: drive.errors absorbs storage-api's extra codes (integration-legal §14.2; DS wording wins on duplicates; storage 'unknown' maps to drive.errors.generic, not a key); notPending folded into conflict; docs.errors.locked/leaseRequired removed (sheet errors are sheets.*). CONTRACTS.md §6: client codes map to keys through DRIVE_ERROR_I18N_KEYS — not_configured → drive.errors.storageUnavailable (copy reworded: platform config, not the store owner), network → drive.errors.offline, aborted → drive.upload.canceled (drive-ui), orphan_brake/unknown → drive.errors.generic. Copied into the repo by W0.7.",
+  "owned": [
+    "drive.errors",
+    "docs.editor.otherTypeTitle",
+    "docs.editor.otherTypeDescription",
+    "docs.editor.openInDrive",
+    "docs.editor.notFoundOrNoAccess",
+    "personnel.team.permissionLockedOwnerOnly"
+  ],
+  "allowSameAsEn": [],
+  "locales": {
+    "en": {
+      "drive": {
+        "errors": {
+          "notFound": "This file or folder no longer exists.",
+          "forbidden": "You don't have permission to do that.",
+          "invalid": "That change couldn't be saved. Reload and try again.",
+          "invalidName": "Names can't be empty, longer than 255 characters, or contain / or \\.",
+          "cycle": "A folder can't be moved into itself.",
+          "tooDeep": "Folders can't be nested this deep.",
+          "trashed": "That folder is in the trash.",
+          "tooLarge": "This file is too large to upload.",
+          "quotaExceeded": "Your store is out of storage space.",
+          "tooManyPending": "Too many uploads at once. Wait for some to finish.",
+          "tooManyItems": "Your store has reached the maximum number of files.",
+          "batchTooLarge": "Too many items selected. Select fewer and try again.",
+          "expired": "The upload took too long. Try again.",
+          "spaceMismatch": "Only the owner can move this between My files and Store files.",
+          "operator": "Enter your PIN again to continue.",
+          "notPublished": "Drive isn't available yet. Try again after the next update.",
+          "blockedType": "Apps and installers can't be uploaded.",
+          "conflict": "This upload already finished.",
+          "tooManyAttempts": "Too many tries. Start the upload again.",
+          "notUploaded": "The file didn't finish uploading. Try again.",
+          "storageUnavailable": "File uploads aren't available right now. Try again later.",
+          "offline": "You're offline. Try again when you're connected.",
+          "uploadStartFailed": "Couldn't start the upload. Try again.",
+          "downloadFailed": "Couldn't download the file.",
+          "unauthenticated": "Your session expired. Sign in again.",
+          "subtreeForbidden": "This folder has files you can't remove. Ask their owners or a manager.",
+          "deviceScope": "On a shared store device you can only use Store files.",
+          "generic": "Something went wrong. Try again."
+        }
+      },
+      "docs": {
+        "editor": {
+          "otherTypeTitle": "This file opens in Drive",
+          "otherTypeDescription": "Spreadsheets and presentations open in their own editor.",
+          "openInDrive": "Open",
+          "notFoundOrNoAccess": "It may have been deleted, the link may be wrong, or it hasn't been shared with you."
+        }
+      },
+      "personnel": {
+        "team": {
+          "permissionLockedOwnerOnly": "Only the store owner can change this."
+        }
+      }
+    },
+    "es": {
+      "drive": {
+        "errors": {
+          "notFound": "Este archivo o carpeta ya no existe.",
+          "forbidden": "No tienes permiso para hacer eso.",
+          "invalid": "No se pudo guardar el cambio. Recarga e inténtalo de nuevo.",
+          "invalidName": "Los nombres no pueden estar vacíos, superar 255 caracteres ni contener / o \\.",
+          "cycle": "Una carpeta no se puede mover dentro de sí misma.",
+          "tooDeep": "Las carpetas no pueden anidarse a tanta profundidad.",
+          "trashed": "Esa carpeta está en la papelera.",
+          "tooLarge": "Este archivo es demasiado grande para subirlo.",
+          "quotaExceeded": "Tu tienda se quedó sin espacio de almacenamiento.",
+          "tooManyPending": "Demasiadas subidas a la vez. Espera a que terminen algunas.",
+          "tooManyItems": "Tu tienda alcanzó el número máximo de archivos.",
+          "batchTooLarge": "Hay demasiados elementos seleccionados. Selecciona menos e inténtalo de nuevo.",
+          "expired": "La subida tardó demasiado. Inténtalo de nuevo.",
+          "spaceMismatch": "Solo el propietario puede mover esto entre Mis archivos y Archivos de la tienda.",
+          "operator": "Vuelve a introducir tu PIN para continuar.",
+          "notPublished": "Los archivos aún no están disponibles. Inténtalo de nuevo después de la próxima actualización.",
+          "blockedType": "No se pueden subir aplicaciones ni instaladores.",
+          "conflict": "Esta subida ya terminó.",
+          "tooManyAttempts": "Demasiados intentos. Vuelve a iniciar la subida.",
+          "notUploaded": "El archivo no terminó de subirse. Inténtalo de nuevo.",
+          "storageUnavailable": "La subida de archivos no está disponible ahora. Inténtalo más tarde.",
+          "offline": "Estás sin conexión. Inténtalo de nuevo cuando tengas conexión.",
+          "uploadStartFailed": "No se pudo iniciar la subida. Inténtalo de nuevo.",
+          "downloadFailed": "No se pudo descargar el archivo.",
+          "unauthenticated": "Tu sesión caducó. Vuelve a iniciar sesión.",
+          "subtreeForbidden": "Esta carpeta tiene archivos que no puedes quitar. Pídeselo a sus propietarios o a un gerente.",
+          "deviceScope": "En un dispositivo compartido de la tienda solo puedes usar Archivos de la tienda.",
+          "generic": "Algo salió mal. Inténtalo de nuevo."
+        }
+      },
+      "docs": {
+        "editor": {
+          "otherTypeTitle": "Este archivo se abre en Archivos",
+          "otherTypeDescription": "Las hojas de cálculo y las presentaciones se abren en su propio editor.",
+          "openInDrive": "Abrir",
+          "notFoundOrNoAccess": "Puede que se haya eliminado, que el enlace sea incorrecto o que no se haya compartido contigo."
+        }
+      },
+      "personnel": {
+        "team": {
+          "permissionLockedOwnerOnly": "Solo el propietario de la tienda puede cambiar esto."
+        }
+      }
+    },
+    "fr": {
+      "drive": {
+        "errors": {
+          "notFound": "Ce fichier ou ce dossier n'existe plus.",
+          "forbidden": "Vous n'avez pas l'autorisation de faire cela.",
+          "invalid": "Cette modification n'a pas pu être enregistrée. Rechargez et réessayez.",
+          "invalidName": "Les noms ne peuvent pas être vides, dépasser 255 caractères ni contenir / ou \\.",
+          "cycle": "Un dossier ne peut pas être déplacé dans lui-même.",
+          "tooDeep": "Les dossiers ne peuvent pas être imbriqués aussi profondément.",
+          "trashed": "Ce dossier est dans la corbeille.",
+          "tooLarge": "Ce fichier est trop volumineux pour être envoyé.",
+          "quotaExceeded": "Votre magasin n'a plus d'espace de stockage.",
+          "tooManyPending": "Trop d'envois en même temps. Attendez que certains se terminent.",
+          "tooManyItems": "Votre magasin a atteint le nombre maximal de fichiers.",
+          "batchTooLarge": "Trop d'éléments sélectionnés. Sélectionnez-en moins et réessayez.",
+          "expired": "L'envoi a pris trop de temps. Réessayez.",
+          "spaceMismatch": "Seul le propriétaire peut déplacer cet élément entre Mes fichiers et Fichiers du magasin.",
+          "operator": "Saisissez à nouveau votre code PIN pour continuer.",
+          "notPublished": "Les fichiers ne sont pas encore disponibles. Réessayez après la prochaine mise à jour.",
+          "blockedType": "Les applications et les programmes d'installation ne peuvent pas être envoyés.",
+          "conflict": "Cet envoi est déjà terminé.",
+          "tooManyAttempts": "Trop de tentatives. Relancez l'envoi.",
+          "notUploaded": "L'envoi du fichier n'a pas abouti. Réessayez.",
+          "storageUnavailable": "Le téléversement de fichiers n'est pas disponible pour le moment. Réessayez plus tard.",
+          "offline": "Vous êtes hors ligne. Réessayez une fois connecté.",
+          "uploadStartFailed": "Impossible de lancer l'envoi. Réessayez.",
+          "downloadFailed": "Impossible de télécharger le fichier.",
+          "unauthenticated": "Votre session a expiré. Reconnectez-vous.",
+          "subtreeForbidden": "Ce dossier contient des fichiers que vous ne pouvez pas retirer. Demandez à leurs propriétaires ou à un responsable.",
+          "deviceScope": "Sur un appareil partagé du magasin, vous ne pouvez utiliser que Fichiers du magasin.",
+          "generic": "Un problème est survenu. Réessayez."
+        }
+      },
+      "docs": {
+        "editor": {
+          "otherTypeTitle": "Ce fichier s'ouvre dans Fichiers",
+          "otherTypeDescription": "Les feuilles de calcul et les présentations s'ouvrent dans leur propre éditeur.",
+          "openInDrive": "Ouvrir",
+          "notFoundOrNoAccess": "Il a peut-être été supprimé, le lien est peut-être erroné, ou il n'a pas été partagé avec vous."
+        }
+      },
+      "personnel": {
+        "team": {
+          "permissionLockedOwnerOnly": "Seul le propriétaire du magasin peut modifier ce paramètre."
+        }
+      }
+    },
+    "hi": {
+      "drive": {
+        "errors": {
+          "notFound": "यह फ़ाइल या फ़ोल्डर अब मौजूद नहीं है।",
+          "forbidden": "आपको ऐसा करने की अनुमति नहीं है।",
+          "invalid": "यह बदलाव सहेजा नहीं जा सका। पेज फिर से लोड करके दोबारा कोशिश करें।",
+          "invalidName": "नाम खाली नहीं हो सकता, 255 अक्षरों से लंबा नहीं हो सकता, और उसमें / या \\ नहीं हो सकता।",
+          "cycle": "किसी फ़ोल्डर को उसी के अंदर नहीं ले जाया जा सकता।",
+          "tooDeep": "फ़ोल्डर इतनी गहराई तक एक-दूसरे के अंदर नहीं रखे जा सकते।",
+          "trashed": "वह फ़ोल्डर ट्रैश में है।",
+          "tooLarge": "यह फ़ाइल अपलोड करने के लिए बहुत बड़ी है।",
+          "quotaExceeded": "आपके स्टोर का स्टोरेज भर गया है।",
+          "tooManyPending": "एक साथ बहुत सारे अपलोड हो रहे हैं। कुछ के पूरे होने तक इंतज़ार करें।",
+          "tooManyItems": "आपके स्टोर में फ़ाइलों की अधिकतम संख्या पूरी हो गई है।",
+          "batchTooLarge": "बहुत सारे आइटम चुने गए हैं। कम चुनकर दोबारा कोशिश करें।",
+          "expired": "अपलोड में बहुत समय लगा। दोबारा कोशिश करें।",
+          "spaceMismatch": "इसे मेरी फ़ाइलें और स्टोर की फ़ाइलें के बीच केवल इसका मालिक ले जा सकता है।",
+          "operator": "जारी रखने के लिए अपना PIN फिर से डालें।",
+          "notPublished": "फ़ाइलें अभी उपलब्ध नहीं हैं। अगले अपडेट के बाद फिर कोशिश करें।",
+          "blockedType": "ऐप और इंस्टॉलर अपलोड नहीं किए जा सकते।",
+          "conflict": "यह अपलोड पहले ही पूरा हो चुका है।",
+          "tooManyAttempts": "बहुत बार कोशिश की गई। अपलोड फिर से शुरू करें।",
+          "notUploaded": "फ़ाइल पूरी तरह अपलोड नहीं हुई। दोबारा कोशिश करें।",
+          "storageUnavailable": "फ़ाइल अपलोड अभी उपलब्ध नहीं है। बाद में फिर से कोशिश करें।",
+          "offline": "आप ऑफ़लाइन हैं। कनेक्ट होने पर दोबारा कोशिश करें।",
+          "uploadStartFailed": "अपलोड शुरू नहीं हो सका। दोबारा कोशिश करें।",
+          "downloadFailed": "फ़ाइल डाउनलोड नहीं हो सकी।",
+          "unauthenticated": "आपका सत्र समाप्त हो गया। फिर से साइन इन करें।",
+          "subtreeForbidden": "इस फ़ोल्डर में ऐसी फ़ाइलें हैं जिन्हें आप नहीं हटा सकते। उनके मालिकों या किसी मैनेजर से कहें।",
+          "deviceScope": "स्टोर के साझा डिवाइस पर आप केवल स्टोर की फ़ाइलें इस्तेमाल कर सकते हैं।",
+          "generic": "कुछ गलत हो गया। दोबारा कोशिश करें।"
+        }
+      },
+      "docs": {
+        "editor": {
+          "otherTypeTitle": "यह फ़ाइल फ़ाइलें ऐप में खुलती है",
+          "otherTypeDescription": "स्प्रेडशीट और प्रेज़ेंटेशन अपने अलग एडिटर में खुलते हैं।",
+          "openInDrive": "खोलें",
+          "notFoundOrNoAccess": "हो सकता है इसे मिटा दिया गया हो, लिंक गलत हो, या इसे आपके साथ साझा न किया गया हो।"
+        }
+      },
+      "personnel": {
+        "team": {
+          "permissionLockedOwnerOnly": "इसे केवल स्टोर का मालिक बदल सकता है।"
+        }
+      }
+    },
+    "ar": {
+      "drive": {
+        "errors": {
+          "notFound": "هذا الملف أو المجلد لم يعد موجودًا.",
+          "forbidden": "ليس لديك إذن للقيام بذلك.",
+          "invalid": "تعذّر حفظ هذا التغيير. أعد تحميل الصفحة وحاول مرة أخرى.",
+          "invalidName": "لا يمكن أن يكون الاسم فارغًا أو أطول من 255 حرفًا أو يحتوي على / أو \\.",
+          "cycle": "لا يمكن نقل مجلد إلى داخل نفسه.",
+          "tooDeep": "لا يمكن تداخل المجلدات إلى هذا العمق.",
+          "trashed": "هذا المجلد في سلة المهملات.",
+          "tooLarge": "هذا الملف كبير جدًا بحيث لا يمكن رفعه.",
+          "quotaExceeded": "نفدت مساحة التخزين في متجرك.",
+          "tooManyPending": "عدد كبير جدًا من عمليات الرفع في وقت واحد. انتظر حتى ينتهي بعضها.",
+          "tooManyItems": "وصل متجرك إلى الحد الأقصى لعدد الملفات.",
+          "batchTooLarge": "تم تحديد عناصر كثيرة جدًا. حدّد عددًا أقل وحاول مرة أخرى.",
+          "expired": "استغرق الرفع وقتًا طويلًا جدًا. حاول مرة أخرى.",
+          "spaceMismatch": "يمكن للمالك وحده نقل هذا بين «ملفاتي» و«ملفات المتجر».",
+          "operator": "أدخل رمز PIN مرة أخرى للمتابعة.",
+          "notPublished": "الملفات غير متاحة بعد. حاول مرة أخرى بعد التحديث القادم.",
+          "blockedType": "لا يمكن رفع التطبيقات وبرامج التثبيت.",
+          "conflict": "اكتمل هذا الرفع بالفعل.",
+          "tooManyAttempts": "محاولات كثيرة جدًا. ابدأ الرفع من جديد.",
+          "notUploaded": "لم يكتمل رفع الملف. حاول مرة أخرى.",
+          "storageUnavailable": "رفع الملفات غير متاح الآن. حاول مرة أخرى لاحقًا.",
+          "offline": "أنت غير متصل. حاول مرة أخرى عند الاتصال.",
+          "uploadStartFailed": "تعذّر بدء الرفع. حاول مرة أخرى.",
+          "downloadFailed": "تعذّر تنزيل الملف.",
+          "unauthenticated": "انتهت جلستك. سجّل الدخول مرة أخرى.",
+          "subtreeForbidden": "يحتوي هذا المجلد على ملفات لا يمكنك إزالتها. اطلب ذلك من مالكيها أو من أحد المديرين.",
+          "deviceScope": "على جهاز المتجر المشترك يمكنك استخدام «ملفات المتجر» فقط.",
+          "generic": "حدث خطأ ما. حاول مرة أخرى."
+        }
+      },
+      "docs": {
+        "editor": {
+          "otherTypeTitle": "يُفتح هذا الملف في «الملفات»",
+          "otherTypeDescription": "تُفتح جداول البيانات والعروض التقديمية في محرر خاص بها.",
+          "openInDrive": "فتح",
+          "notFoundOrNoAccess": "ربما حُذف، أو أن الرابط غير صحيح، أو لم تتم مشاركته معك."
+        }
+      },
+      "personnel": {
+        "team": {
+          "permissionLockedOwnerOnly": "يمكن لمالك المتجر وحده تغيير هذا."
+        }
+      }
+    },
+    "zh-cn": {
+      "drive": {
+        "errors": {
+          "notFound": "此文件或文件夹已不存在。",
+          "forbidden": "你没有权限执行此操作。",
+          "invalid": "此更改无法保存。请刷新后重试。",
+          "invalidName": "名称不能为空、不能超过 255 个字符，也不能包含 / 或 \\。",
+          "cycle": "文件夹不能移动到它自己里面。",
+          "tooDeep": "文件夹不能嵌套这么多层。",
+          "trashed": "该文件夹在回收站中。",
+          "tooLarge": "此文件太大，无法上传。",
+          "quotaExceeded": "门店的存储空间已用完。",
+          "tooManyPending": "同时上传的文件太多。请等部分上传完成后再试。",
+          "tooManyItems": "门店的文件数量已达上限。",
+          "batchTooLarge": "选择的项目太多。请少选一些后重试。",
+          "expired": "上传耗时过长。请重试。",
+          "spaceMismatch": "只有所有者可以在“我的文件”和“门店文件”之间移动此项。",
+          "operator": "请重新输入你的 PIN 以继续。",
+          "notPublished": "云盘功能暂不可用，请在下次更新后重试。",
+          "blockedType": "不能上传应用程序和安装包。",
+          "conflict": "此上传已完成。",
+          "tooManyAttempts": "尝试次数过多。请重新开始上传。",
+          "notUploaded": "文件未能上传完成。请重试。",
+          "storageUnavailable": "文件上传暂时不可用，请稍后再试。",
+          "offline": "你已离线。请在联网后重试。",
+          "uploadStartFailed": "无法开始上传。请重试。",
+          "downloadFailed": "无法下载该文件。",
+          "unauthenticated": "你的登录已过期。请重新登录。",
+          "subtreeForbidden": "此文件夹中有你无法移除的文件。请联系文件所有者或经理。",
+          "deviceScope": "在门店共享设备上，你只能使用“门店文件”。",
+          "generic": "出了点问题。请重试。"
+        }
+      },
+      "docs": {
+        "editor": {
+          "otherTypeTitle": "此文件在云盘中打开",
+          "otherTypeDescription": "表格和演示文稿会在各自的编辑器中打开。",
+          "openInDrive": "打开",
+          "notFoundOrNoAccess": "它可能已被删除、链接有误，或尚未与你共享。"
+        }
+      },
+      "personnel": {
+        "team": {
+          "permissionLockedOwnerOnly": "只有门店所有者可以更改此项。"
+        }
+      }
+    },
+    "zh-tw": {
+      "drive": {
+        "errors": {
+          "notFound": "這個檔案或資料夾已不存在。",
+          "forbidden": "你沒有權限執行這項操作。",
+          "invalid": "無法儲存這項變更。請重新整理後再試一次。",
+          "invalidName": "名稱不能空白、不能超過 255 個字元，也不能包含 / 或 \\。",
+          "cycle": "資料夾不能移到它自己裡面。",
+          "tooDeep": "資料夾不能巢狀這麼多層。",
+          "trashed": "該資料夾在垃圾桶中。",
+          "tooLarge": "這個檔案太大，無法上傳。",
+          "quotaExceeded": "店面的儲存空間已用完。",
+          "tooManyPending": "同時上傳的檔案太多。請等部分上傳完成後再試。",
+          "tooManyItems": "店面的檔案數量已達上限。",
+          "batchTooLarge": "選取的項目太多。請少選一些後再試一次。",
+          "expired": "上傳耗時過長。請再試一次。",
+          "spaceMismatch": "只有擁有者可以在「我的檔案」和「店面檔案」之間移動這個項目。",
+          "operator": "請重新輸入你的 PIN 以繼續。",
+          "notPublished": "雲端硬碟功能暫不可用，請在下次更新後重試。",
+          "blockedType": "無法上傳應用程式和安裝檔。",
+          "conflict": "這次上傳已經完成。",
+          "tooManyAttempts": "嘗試次數過多。請重新開始上傳。",
+          "notUploaded": "檔案沒有上傳完成。請再試一次。",
+          "storageUnavailable": "檔案上傳暫時無法使用，請稍後再試。",
+          "offline": "你目前離線。連線後請再試一次。",
+          "uploadStartFailed": "無法開始上傳。請再試一次。",
+          "downloadFailed": "無法下載檔案。",
+          "unauthenticated": "你的登入已過期。請重新登入。",
+          "subtreeForbidden": "這個資料夾中有你無法移除的檔案。請聯絡檔案擁有者或經理。",
+          "deviceScope": "在店面共用裝置上，你只能使用「店面檔案」。",
+          "generic": "發生問題。請再試一次。"
+        }
+      },
+      "docs": {
+        "editor": {
+          "otherTypeTitle": "這個檔案會在雲端硬碟中開啟",
+          "otherTypeDescription": "試算表和簡報會在各自的編輯器中開啟。",
+          "openInDrive": "開啟",
+          "notFoundOrNoAccess": "它可能已被刪除、連結有誤，或尚未與你共用。"
+        }
+      },
+      "personnel": {
+        "team": {
+          "permissionLockedOwnerOnly": "只有店面擁有者可以變更這個項目。"
+        }
+      }
+    },
+    "zh-hk": {
+      "drive": {
+        "errors": {
+          "notFound": "此檔案或資料夾已不存在。",
+          "forbidden": "你沒有權限執行此操作。",
+          "invalid": "無法儲存此變更。請重新載入後再試。",
+          "invalidName": "名稱不能留空、不能超過 255 個字元，亦不能包含 / 或 \\。",
+          "cycle": "資料夾不能移到其本身內。",
+          "tooDeep": "資料夾不能嵌套這麼多層。",
+          "trashed": "該資料夾在垃圾桶中。",
+          "tooLarge": "此檔案太大，無法上載。",
+          "quotaExceeded": "店舖的儲存空間已用完。",
+          "tooManyPending": "同時上載的檔案太多。請等候部分上載完成後再試。",
+          "tooManyItems": "店舖的檔案數量已達上限。",
+          "batchTooLarge": "已選取的項目太多。請少選一些後再試。",
+          "expired": "上載時間過長。請再試。",
+          "spaceMismatch": "只有擁有者可以在「我的檔案」和「店舖檔案」之間移動此項目。",
+          "operator": "請重新輸入你的 PIN 以繼續。",
+          "notPublished": "雲端硬碟功能暫不可用，請在下次更新後重試。",
+          "blockedType": "無法上載應用程式和安裝檔。",
+          "conflict": "此上載已完成。",
+          "tooManyAttempts": "嘗試次數過多。請重新開始上載。",
+          "notUploaded": "檔案未能上載完成。請再試。",
+          "storageUnavailable": "檔案上載暫時無法使用，請稍後再試。",
+          "offline": "你目前離線。連線後請再試。",
+          "uploadStartFailed": "無法開始上載。請再試。",
+          "downloadFailed": "無法下載檔案。",
+          "unauthenticated": "你的登入已過期。請重新登入。",
+          "subtreeForbidden": "此資料夾中有你無法移除的檔案。請聯絡檔案擁有者或經理。",
+          "deviceScope": "在店舖共用裝置上，你只能使用「店舖檔案」。",
+          "generic": "發生問題。請再試。"
+        }
+      },
+      "docs": {
+        "editor": {
+          "otherTypeTitle": "此檔案會在雲端硬碟中開啟",
+          "otherTypeDescription": "試算表和簡報會在各自的編輯器中開啟。",
+          "openInDrive": "開啟",
+          "notFoundOrNoAccess": "它可能已被刪除、連結有誤，或尚未與你共享。"
+        }
+      },
+      "personnel": {
+        "team": {
+          "permissionLockedOwnerOnly": "只有店舖擁有者可以更改此項目。"
+        }
+      }
+    }
+  }
+}

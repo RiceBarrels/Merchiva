@@ -8,6 +8,7 @@ import {
   DashboardIcon,
   DirectoryIcon,
   DocsIcon,
+  DriveIcon,
   InventoryIcon,
   NotificationsIcon,
   PayIcon,
@@ -28,7 +29,7 @@ export const NewTabIcon: AppIcon = function NewTabIcon({ className }) {
 };
 
 /**
- * Route registry. Listed sections mirror components/sidebar.tsx navItems plus Docs and
+ * Route registry. Listed sections mirror components/sidebar.tsx navItems plus Docs, Drive and
  * Settings; unlisted rows cover every other app/manager page.
  *
  * Every `permissionKey` equals the page's `<PermissionGuard section>` (verified with grep):
@@ -36,7 +37,8 @@ export const NewTabIcon: AppIcon = function NewTabIcon({ className }) {
  *   products, pricing → products · personnel/layout → staffing, personnel/team page → team ·
  *   channel → staffing · bookings, reviews, api-settings, settings/billing → settings.
  * Exceptions (no page guard): /manager/dashboard uses `dashboard` like the sidebar
- * (sidebar.tsx:86); docs use `dashboard` (plan D39); /manager/apps uses `settings` like the
+ * (sidebar.tsx:86); docs and drive (incl. its Sheets/Slides editors) use `dashboard` (plan D39);
+ * /manager/apps uses `settings` like the
  * sidebar (the page itself checks canManageDeviceApps); settings, usage (redirects to
  * settings), subscribe and new-tab have no guard — and neither does /manager, which is only
  * an alias for the New Tab home page.
@@ -65,6 +67,26 @@ export const ROUTES: readonly RouteDef[] = [
     prefix: "/manager/docs/edit", titleKey: "nav.docs", icon: DocsIcon, permissionKey: "dashboard",
     listed: false, parent: "/manager/docs", mobileChrome: "docked", previewKind: "doc",
     volatileParams: ["new", "comment", "version"],
+  },
+  // ── Drive ───────────────────────────────────────────────────────────────
+  {
+    prefix: "/manager/drive", exact: true, titleKey: "nav.drive", icon: DriveIcon, permissionKey: "dashboard",
+    listed: true, section: true, previewKind: "grid",
+    // Folder / preview / member params are navigation state the page restores; none is one-shot.
+    // The Sheets and Slides editors are unsearchable (they need an id), so their names lead here.
+    keywords: [
+      "drive", "files", "folders", "uploads", "storage", "photos", "spreadsheets", "presentations",
+      "sheets", "slides", "decks",
+    ],
+  },
+  {
+    prefix: "/manager/drive/sheet", titleKey: "nav.sheets", icon: DriveIcon, permissionKey: "dashboard",
+    listed: false, parent: "/manager/drive", mobileChrome: "docked", previewKind: "grid", volatileParams: ["new", "version"],
+  },
+  {
+    prefix: "/manager/drive/slides", titleKey: "nav.slides", icon: DriveIcon, permissionKey: "dashboard",
+    listed: false, parent: "/manager/drive", mobileChrome: "docked", previewKind: "doc",
+    volatileParams: ["new", "slide", "version", "present"],
   },
   // ── Inventory ───────────────────────────────────────────────────────────
   {

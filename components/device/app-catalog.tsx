@@ -12,7 +12,7 @@
 import { useMemo, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import {
-  BookingsIcon, BugIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DocsIcon, InventoryIcon,
+  BookingsIcon, BugIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DocsIcon, DriveIcon, InventoryIcon,
   NotificationsIcon, PayIcon, ProductsIcon, SalesIcon, ScheduleIcon, StoreSettingsIcon, TasksIcon,
   TrainingIcon, type AppIcon,
 } from "./app-icons";
@@ -147,6 +147,16 @@ export const APP_CATALOG: CatalogApp[] = [
   { id: "docs", icon: DocsIcon, route: "/manager/docs", color: "amber", permissionKey: "dashboard", surfaces: ["store", "personal"], dockOn: ["store", "personal"],
     component: lazy(() => import("@/app/manager/docs/page")),
     lite: lite(() => import("./apps/docs").then((m) => m.DocsLite)) },
+  // Drive: every file the store keeps — uploads and folders, plus the Docs,
+  // Sheets and Slides documents and read-only views of files other apps
+  // stored. The Sheets / Slides editors are pages of this app
+  // (/manager/drive/sheet, /manager/drive/slides): prefix matching gives them
+  // to Drive here and in lib/device-apps.ts → MANAGER_ROUTE_APPS, so
+  // installing Drive turns them on. The device panel is a lite app that hosts
+  // the editors' phone layouts, like Docs (./apps/drive).
+  { id: "drive", icon: DriveIcon, route: "/manager/drive", color: "violet", permissionKey: "dashboard", surfaces: ["store", "personal"],
+    component: lazy(() => import("@/app/manager/drive/page")),
+    lite: lite(() => import("./apps/drive").then((m) => m.DriveLite)) },
   // Bug tracker: on every device by default (REQUIRED_DEVICE_APPS) and gated by
   // nothing — reporting a problem with Merchiva must never depend on a
   // permission or on someone having installed the app first. Triage is on the

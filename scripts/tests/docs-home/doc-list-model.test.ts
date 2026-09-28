@@ -36,6 +36,8 @@ function makeDoc(patch: Partial<DocumentMeta> & { id: string }): DocumentMeta {
     lastEditorMemberId: null,
     trashedAt: null,
     trashedByMemberId: null,
+    fileType: "doc",
+    folderId: "",
     ...patch,
   };
 }
@@ -223,5 +225,25 @@ describe("item menu actions follow the role matrix (plan §B4.5)", () => {
     expect(groups("manager", inTrash)).toEqual([["open"], ["restore", "deleteForever"]]);
     expect(groups("editor", inTrash)).toEqual([["open"]]);
     expect(groups("none", live)).toEqual([]);
+  });
+
+  test("star and copy are left out while a /store operator is not the tablet account", () => {
+    const item = (actingForOther: boolean | undefined) =>
+      buildDocListItems({
+        docs: [live],
+        accessFor: () => docAccessFromRole("manager", false),
+        starredIds: new Set(["live"]),
+        grantedDocIds: new Set(),
+        memberNames: new Map(),
+        memberId: "m-me",
+        openedMap: new Map(),
+        actingForOther,
+      })[0];
+    expect(item(true).canStarAndCopy).toBe(false);
+    expect(docItemActionGroups(item(true))).toEqual([["open", "openNewTab"], ["rename", "share"], ["trash"]]);
+    for (const other of [false, undefined]) {
+      expect(item(other).canStarAndCopy).toBe(true);
+      expect(docItemActionGroups(item(other))).toEqual([["open", "openNewTab"], ["rename", "unstar", "share", "copy"], ["trash"]]);
+    }
   });
 });

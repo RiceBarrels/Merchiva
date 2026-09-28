@@ -85,6 +85,11 @@ export interface DocListItem {
   readonly isShared: boolean;
   /** Last opened on this device (epoch ms), or null. */
   readonly openedAt: number | null;
+  /**
+   * Star and "Make a copy" are offered. Not on /store while the operator is not the tablet account: the Docs star
+   * and copy reducers write for the signed-in account (useDocsSender).
+   */
+  readonly canStarAndCopy: boolean;
 }
 
 export interface BuildDocListItemsInput {
@@ -98,6 +103,8 @@ export interface BuildDocListItemsInput {
   readonly memberNames: ReadonlyMap<string, string>;
   readonly memberId: string | null;
   readonly openedMap: ReadonlyMap<string, number>;
+  /** useDocsSender().actingForOther: star and copy would be written for someone else. */
+  readonly actingForOther?: boolean;
 }
 
 export function buildDocListItems(input: BuildDocListItemsInput): DocListItem[] {
@@ -114,6 +121,7 @@ export function buildDocListItems(input: BuildDocListItemsInput): DocListItem[] 
       isMine: input.memberId !== null && doc.ownerMemberId === input.memberId,
       isShared: doc.visibility !== "private" || input.grantedDocIds.has(doc.id),
       openedAt: input.openedMap.get(doc.id) ?? null,
+      canStarAndCopy: input.actingForOther !== true,
     });
   }
   return items;
@@ -285,10 +293,13 @@ export type DocItemAction =
  * Menu actions for an item, in display order, split into separator groups.
  * Mirrors what the reducers allow (plan §B4.5): rename needs editor; trash,
  * restore and delete forever need manager; star, share (read-only for
- * non-managers) and copy need viewer. A trashed document can only be opened
+ * non-managers) and copy need viewer; star and copy are left out when the item
+ * says so (`canStarAndCopy` false). A trashed document can only be opened
  * (read-only), restored or deleted forever.
  */
-export function docItemActionGroups(item: Pick<DocListItem, "doc" | "access" | "starred">): DocItemAction[][] {
+export function docItemActionGroups(
+  item: Pick<DocListItem, "doc" | "access" | "starred"> & Partial<Pick<DocListItem, "canStarAndCopy">>,
+): DocItemAction[][] {
   const { access } = item;
   if (!access.canView && !access.canManage) return [];
   if (item.doc.trashedAt !== null) {
@@ -297,7 +308,10 @@ export function docItemActionGroups(item: Pick<DocListItem, "doc" | "access" | "
   const groups: DocItemAction[][] = [["open", "openNewTab"]];
   const middle: DocItemAction[] = [];
   if (access.canEdit) middle.push("rename");
-  middle.push(item.starred ? "unstar" : "star", "share", "copy");
+  const starAndCopy = item.canStarAndCopy !== false;
+  if (starAndCopy) middle.push(item.starred ? "unstar" : "star");
+  middle.push("share");
+  if (starAndCopy) middle.push("copy");
   groups.push(middle);
   if (access.canManage) groups.push(["trash"]);
   return groups;

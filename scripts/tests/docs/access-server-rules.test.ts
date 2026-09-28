@@ -3,7 +3,8 @@
 // ./server-source.ts) over the fake server's in-memory tables:
 // - presence awareness bytes are pinned to the caller's own Yjs client,
 // - presence keeps working on a trashed document,
-// - clearing a named version's name needs the creator or a manager.
+// - clearing a named version's name needs the creator or a manager,
+// - the Drive floor (permissions.drive) opens a colleague's private document.
 
 import { afterAll, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
@@ -286,5 +287,44 @@ describe("renameDocumentVersion — clearing a named version's name", () => {
     expect(versionNamed(w.server, "Kept").kind).toBe("named");
     rename(w, w.editor, restore.id, "");
     expect(versions(w.server).find((v) => v.id === restore.id)).toMatchObject({ kind: "restore", name: undefined });
+  });
+});
+
+describe("the Drive floor over the real reducers (permissions.drive)", () => {
+  function privateDoc(w: World): string {
+    const documentId = newDocumentId();
+    w.call(w.owner, "createDocument", { organizationId: ORG, documentId, title: "Payroll", visibility: "private" });
+    return documentId;
+  }
+  const presence = (w: World, member: FakeMember, documentId: string, yClientId: number) =>
+    w.call(member, "upsertDocumentPresence", { documentId, yClientId, name: "X", color: "#336699", awareness: ownUpdate(yClientId, { user: {} }) });
+  const push = (w: World, member: FakeMember, documentId: string) =>
+    w.call(member, "pushDocumentUpdate", { documentId, sessionId: "s", payload: new Uint8Array([1, 0, 0]) });
+
+  test("without drive power a colleague can't open another member's private document", () => {
+    const w = world();
+    const documentId = privateDoc(w);
+    expect(() => presence(w, w.editor, documentId, 11)).toThrow("[doc.forbidden]");
+  });
+
+  test("drive.view opens it read-only; drive.edit can edit it", () => {
+    const w = world();
+    const documentId = privateDoc(w);
+    const viewer = w.server.addMember({ organizationId: ORG, permissions: '{"drive":{"view":true}}' });
+    const editor = w.server.addMember({ organizationId: ORG, permissions: '{"drive":{"edit":true}}' });
+    presence(w, viewer, documentId, 21);
+    expect(() => push(w, viewer, documentId)).toThrow("[doc.forbidden]");
+    presence(w, editor, documentId, 22);
+    push(w, editor, documentId);
+    expect(w.server.rows("documentUpdate")).toHaveLength(1);
+    expect(w.server.rows("documentPresence").find((p) => p.yClientId === 21)?.canEdit).toBe(false);
+    expect(w.server.rows("documentPresence").find((p) => p.yClientId === 22)?.canEdit).toBe(true);
+  });
+
+  test("drive power in another organization opens nothing here", () => {
+    const w = world();
+    const documentId = privateDoc(w);
+    const outsider = w.server.addMember({ organizationId: "org-elsewhere", role: "owner", permissions: '{"drive":{"edit":true}}' });
+    expect(() => presence(w, outsider, documentId, 31)).toThrow("[doc.forbidden]");
   });
 });

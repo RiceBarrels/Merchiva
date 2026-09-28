@@ -1,0 +1,9 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "W1.1b",
+  "note": "New leaves under drive-ui's prefixes for the file previews and 'Stored in apps' (drive-ui.md §8.4, §9): the CSV row and column caps (rowsShownOne is the countKey form for a single row), a blocked 'Open' window, PDFs that open outside, an empty app source, a source the person may not see and a source's newest file. Terms follow the drive-ui fragment; zh-tw uses 列 for a row and 欄 for a column, zh-cn and zh-hk 行 / 列.",
+  "owned": [],
+  "extends": "drive-ui",
+  "overwrites": [],
+  "allowSameAsEn": []
+}

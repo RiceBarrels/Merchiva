@@ -1,0 +1,12 @@
+{
+  "drive": {
+    "home": {
+      "noticeRequired": "请先阅读关于谁能看到你文件的说明。"
+    },
+    "members": {
+      "col": {
+        "member": "成员"
+      }
+    }
+  }
+}

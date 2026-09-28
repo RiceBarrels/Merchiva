@@ -30,6 +30,7 @@ function defaultPermissions(): Perms {
     settings: { view: true },
     team: { view: false, invite: false, edit: false },
     training_grading: { view: false, edit: false },
+    drive: { view: false, edit: false },
   };
 }
 

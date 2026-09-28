@@ -1,7 +1,8 @@
 // "Is Docs published on the connected server?" (lib/spacetimedb/hooks/useDocs.ts).
 //
 // One probe per connection object: a zero-row query set over every docs table
-// (docsProbeQueries). It applies only when the module has all of them.
+// (docsProbeQueries). It applies only when the module has all of them. Drive and
+// Sheets reuse the monitor with their own zero-row set (the `queries` option).
 //
 // - Applied → `ready` (final for that connection).
 // - SubscriptionError that names a missing table/column → `not_published`, then
@@ -125,6 +126,8 @@ export class DocsBackendMonitor {
     private readonly options: {
       bindingsGenerated: boolean;
       tuning?: Partial<DocsProbeTuning>;
+      /** The zero-row query set to probe with (default docsProbeQueries). */
+      queries?: () => string[];
     },
   ) {
     this.tuning = { ...DEFAULT_DOCS_PROBE_TUNING, ...options.tuning };
@@ -206,7 +209,7 @@ export class DocsBackendMonitor {
           state.running = false;
           this.onProbeFailed(state, isMissingDocsSchemaError(error, ctx));
         })
-        .subscribe(docsProbeQueries());
+        .subscribe((this.options.queries ?? docsProbeQueries)());
       if (appliedEarly) safeUnsubscribe(handle);
     } catch (cause) {
       if (!current()) return;

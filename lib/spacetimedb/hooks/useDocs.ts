@@ -2,25 +2,34 @@
 
 // Docs read hooks (docs home, editor, New Tab page, shell recents).
 //
-// Subscriptions are always scoped — org-wide for document/star/access rows,
+// Subscriptions are always scoped — org-wide for document/file/star/access rows,
 // per document for comments and versions — and only open while the caller is
 // mounted, the Docs gate passes, and the server module actually has the docs
 // tables. Before `spacetime generate` / `spacetime publish` every hook returns
 // empty results with `isReady: true` and `backendStatus: "not_published"`, so
 // screens can show a not-published state instead of spinning.
+//
+// `document` rows also hold Sheets and Slides files. A document's type and
+// folder are its `document_file` row (none: a text document at the root), a
+// separate subscription: no document is listed or returned until it has
+// applied, and the module gives `document_file` exactly `document`'s RLS rules
+// (spacetimedb/src/index.ts), so a spreadsheet or deck never passes for a text
+// document. Lists
+// default to text documents; Drive and the shell recents ask for the other types.
+// Inside a device panel (lib/drive/actor-context.ts) access and stars are
+// evaluated for the panel's member — the PIN operator on /store.
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { usePermissions } from "@/lib/context/permissions";
-import { docsGateAllows, NO_DOC_ACCESS, resolveDocAccess } from "@/lib/docs/access";
+import { docsGateAllows, NO_DOC_ACCESS, resolveDocAccess, sameMemberId } from "@/lib/docs/access";
 import { DocsBackendMonitor, type DocsBackendStatus, type DocsProbeConnection } from "@/lib/docs/backend-probe";
 import { isDocConnectionDown, onDocConnectionDown } from "@/lib/docs/connection";
-import { documentHref } from "@/lib/docs/hrefs";
 import { isDocumentId } from "@/lib/docs/ids";
 import {
   groupDocCommentThreads,
   idString,
   mapComment,
-  mapDocument,
+  mapDocuments,
   mapGrant,
   mapStar,
   mapVersion,
@@ -30,20 +39,25 @@ import type {
   DocAccess,
   DocAccessGrant,
   DocCommentThread,
+  DocFileType,
   DocVersion,
   DocumentMeta,
   RecentDocumentItem,
 } from "@/lib/docs/types";
+import { useDriveActorOverride } from "@/lib/drive/actor-context";
+import { documentFileHref } from "@/lib/drive/hrefs";
 import { tables } from "@/lib/spacetimedb/generated";
 import {
   useDocumentAccessRows,
   useDocumentCommentRows,
+  useDocumentFileRows,
   useDocumentRows,
   useDocumentStarRows,
   useDocumentVersionRows,
   useOrgMembers,
   useSpacetimeDB,
 } from "@/lib/spacetimedb/hooks";
+import type { OrgRole } from "@/lib/types";
 
 export type { DocsBackendStatus } from "@/lib/docs/backend-probe";
 
@@ -58,6 +72,7 @@ const DOC_TABLE_ACCESSORS = [
   "documentVersion",
   "documentStar",
   "documentAccess",
+  "documentFile",
 ] as const;
 
 /** Whether `lib/spacetimedb/generated` contains the docs tables. */
@@ -103,29 +118,76 @@ export function useDocsBackendStatus(): DocsBackendStatus {
 
 // ── Current member ───────────────────────────────────────────────────────────
 
-function useCurrentMember(): { memberId: string | null; ready: boolean } {
+const ORG_ROLES: readonly string[] = ["owner", "manager", "staff"] satisfies readonly OrgRole[];
+
+export interface SignedInMember {
+  /** The identity's active org_member id in the current org; null until known. */
+  memberId: string | null;
+  /** That member's role; null until known. */
+  role: OrgRole | null;
+  ready: boolean;
+}
+
+/**
+ * The signed-in identity's own active org_member row in the current org: on a store tablet the tablet account,
+ * never the PIN operator. Access and stars use useCurrentMemberId() instead.
+ */
+export function useSignedInMember(): SignedInMember {
   const { identity } = useSpacetimeDB();
   const { organizationId } = usePermissions();
   const [members, membersReady] = useOrgMembers();
-  const memberId = useMemo(() => {
+  const row = useMemo(() => {
     if (!identity || !organizationId) return null;
     const me = identity.toHexString();
-    const row = members.find(
-      (m) => m.organizationId === organizationId && m.status === "active" && m.userId.toHexString() === me,
+    return (
+      members.find((m) => m.organizationId === organizationId && m.status === "active" && m.userId.toHexString() === me) ??
+      null
     );
-    return row ? idString(row.id) : null;
   }, [identity, organizationId, members]);
-  return { memberId, ready: membersReady || memberId !== null };
+  const memberId = row ? idString(row.id) : null;
+  const role = row && ORG_ROLES.includes(row.role) ? (row.role as OrgRole) : null;
+  const ready = membersReady || memberId !== null;
+  return useMemo(() => ({ memberId, role, ready }), [memberId, role, ready]);
 }
 
-/** The caller's active org_member id in the current org (null until known). */
+/** The panel's member under a DriveActorOverrideContext (the PIN operator on /store), else the signed-in member. */
+function useCurrentMember(): { memberId: string | null; ready: boolean } {
+  const signedIn = useSignedInMember();
+  const override = useDriveActorOverride();
+  if (override) return { memberId: override.memberId, ready: override.memberId !== null || signedIn.ready };
+  return { memberId: signedIn.memberId, ready: signedIn.ready };
+}
+
+/** The caller's active org_member id in the current org (null until known); inside a device panel, the panel's member. */
 export function useCurrentMemberId(): string | null {
   return useCurrentMember().memberId;
+}
+
+export interface DocsSender {
+  /**
+   * The member the Docs reducers that take no actingMemberId record and check — comment and version authors, stars,
+   * copies, the owner rule of setDocumentVisibility: the signed-in identity's. On /store that is the tablet account,
+   * not the PIN operator; everywhere else it is useCurrentMemberId(). null until known.
+   */
+  memberId: string | null;
+  /** On /store, the operator is not the tablet account (or that is not known yet): star and copy would be theirs. */
+  actingForOther: boolean;
+}
+
+/** Who the Docs reducers without an actingMemberId write for, and whether that is someone else than the operator. */
+export function useDocsSender(): DocsSender {
+  const signedIn = useSignedInMember();
+  const override = useDriveActorOverride();
+  const acting = override?.actingMemberId ?? "";
+  const memberId = acting || !override ? signedIn.memberId : override.memberId;
+  const actingForOther = acting !== "" && !sameMemberId(signedIn.memberId, acting);
+  return useMemo(() => ({ memberId, actingForOther }), [memberId, actingForOther]);
 }
 
 // ── Documents ────────────────────────────────────────────────────────────────
 
 const EMPTY_GRANTS: readonly DocAccessGrant[] = Object.freeze([]);
+const NO_DOCS: DocumentMeta[] = [];
 
 interface DocsCore {
   status: DocsBackendStatus;
@@ -138,18 +200,26 @@ interface DocsCore {
   isReady: boolean;
 }
 
-function useDocsCore(): DocsCore {
+/** `memberOverride`: evaluate access and stars as this member instead of useCurrentMember(). */
+function useDocsCore(memberOverride?: string | null): DocsCore {
   const { role, permissions, organizationId } = usePermissions();
   const status = useDocsBackendStatus();
   const gate = docsGateAllows(role, permissions);
   const scopedOrgId = gate && status === "ready" ? organizationId : null;
-  const { memberId, ready: memberReady } = useCurrentMember();
+  const current = useCurrentMember();
+  const memberId = memberOverride || current.memberId;
+  const memberReady = memberOverride ? true : current.ready;
 
   const [docRows, docsReady]: readonly [readonly unknown[], boolean] = useDocumentRows(scopedOrgId);
+  const [fileRows, filesReady]: readonly [readonly unknown[], boolean] = useDocumentFileRows(scopedOrgId);
   const [starRows, starsReady]: readonly [readonly unknown[], boolean] = useDocumentStarRows(scopedOrgId);
   const [accessRows, accessReady]: readonly [readonly unknown[], boolean] = useDocumentAccessRows(scopedOrgId);
 
-  const allDocs = useMemo(() => docRows.map((row) => mapDocument(row)), [docRows]);
+  // Types are known once the document_file subscription has applied; before that a document without its row would
+  // read as a text document, so none is shown. A document and its row are written in one transaction, and the two
+  // tables have the same RLS rules (so the same subscriber receives both), so afterwards a document without one
+  // really is a text document from before Drive. That pairing holds only while their rules stay identical.
+  const allDocs = useMemo(() => (filesReady ? mapDocuments(docRows, fileRows) : NO_DOCS), [docRows, fileRows, filesReady]);
 
   const grants = useMemo(() => {
     const out: DocAccessGrant[] = [];
@@ -189,15 +259,43 @@ function useDocsCore(): DocsCore {
   const isReady =
     !gate ||
     status === "not_published" ||
-    (status === "ready" && (!scopedOrgId || (docsReady && starsReady && accessReady && memberReady)));
+    (status === "ready" && (!scopedOrgId || (docsReady && filesReady && starsReady && accessReady && memberReady)));
 
   return { status, gate, organizationId, allDocs, grants, starredIds, accessFor, isReady };
 }
 
+/**
+ * Which `document` rows a list shows. "text" = Docs documents only; "all" = every row, including "unknown" types a
+ * newer client wrote; an array = exactly those types.
+ */
+export type DocFileTypeFilter = "text" | "all" | readonly DocFileType[];
+
+export interface UseDocumentsOptions {
+  /** Default "text": the Docs surfaces never list spreadsheets, decks or types they can't open. */
+  fileTypes?: DocFileTypeFilter;
+  /** Evaluate access and stars as this member (the store tablet's PIN operator). Default: useCurrentMemberId(). */
+  memberId?: string | null;
+}
+
+/** Every type an editor opens. */
+const KNOWN_FILE_TYPES: readonly DocFileType[] = ["doc", "sheet", "slides"];
+
+// One string per filter, so a caller's inline array literal doesn't rebuild the lists on every render.
+function fileTypeFilterKey(filter: DocFileTypeFilter | undefined): string {
+  if (filter === undefined || filter === "text") return "doc";
+  if (filter === "all") return "*";
+  return [...new Set(filter)].sort().join(",");
+}
+
+/** The types a filter key lets through; null = every type. */
+function fileTypesOfKey(key: string): ReadonlySet<string> | null {
+  return key === "*" ? null : new Set(key.split(",").filter(Boolean));
+}
+
 export interface UseDocumentsResult {
-  /** Documents the caller can view, not trashed, most recently updated first. */
+  /** Documents of the requested types the caller can view, not trashed, most recently updated first. */
   docs: DocumentMeta[];
-  /** Trashed documents the caller manages, most recently trashed first. */
+  /** Trashed documents of the requested types the caller manages, most recently trashed first. */
   trashed: DocumentMeta[];
   /** Documents the caller starred. */
   starredIds: ReadonlySet<string>;
@@ -208,12 +306,15 @@ export interface UseDocumentsResult {
   backendStatus: DocsBackendStatus;
 }
 
-export function useDocuments(): UseDocumentsResult {
-  const { status, allDocs, grants, starredIds, accessFor, isReady } = useDocsCore();
+export function useDocuments(opts: UseDocumentsOptions = {}): UseDocumentsResult {
+  const { status, allDocs, grants, starredIds, accessFor, isReady } = useDocsCore(opts.memberId);
+  const filterKey = fileTypeFilterKey(opts.fileTypes);
   const lists = useMemo(() => {
+    const types = fileTypesOfKey(filterKey);
     const docs: DocumentMeta[] = [];
     const trashed: DocumentMeta[] = [];
     for (const doc of allDocs) {
+      if (types && !types.has(doc.fileType)) continue;
       const access = accessFor(doc);
       if (doc.trashedAt) {
         if (access.canManage) trashed.push(doc);
@@ -224,7 +325,7 @@ export function useDocuments(): UseDocumentsResult {
     docs.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
     trashed.sort((a, b) => (b.trashedAt?.getTime() ?? 0) - (a.trashedAt?.getTime() ?? 0));
     return { docs, trashed };
-  }, [allDocs, accessFor]);
+  }, [allDocs, accessFor, filterKey]);
 
   return useMemo(
     () => ({
@@ -244,7 +345,8 @@ export interface UseDocumentResult {
   /**
    * The document row whenever it exists in the current org — including ones
    * the caller can't open. Check `access.canView` before showing its title or
-   * content.
+   * content. Never returned before its `fileType` is known (null meanwhile,
+   * with `isReady` false), so a route can trust the type of any doc it gets.
    */
   doc: DocumentMeta | null;
   access: DocAccess;
@@ -304,9 +406,15 @@ export function useDocumentVersions(documentId: string | null, enabled: boolean)
 
 // ── Recents ──────────────────────────────────────────────────────────────────
 
-/** Viewable documents by max(updatedAt, last opened on this device), newest first. Empty when the Docs gate fails. */
-export function useRecentDocuments(limit: number): { items: RecentDocumentItem[]; ready: boolean } {
-  const { docs, isReady } = useDocuments();
+/**
+ * Viewable documents by max(updatedAt, last opened on this device), newest first. Empty when the Docs gate fails.
+ * Default: every type an editor opens (Docs, Sheets, Slides), each `href` pointing at its own editor.
+ */
+export function useRecentDocuments(
+  limit: number,
+  opts: { fileTypes?: DocFileTypeFilter } = {},
+): { items: RecentDocumentItem[]; ready: boolean } {
+  const { docs, isReady } = useDocuments({ fileTypes: opts.fileTypes ?? KNOWN_FILE_TYPES });
   const opened = useLastOpenedMap();
   const items = useMemo(() => {
     const max = Math.max(0, Math.floor(limit));
@@ -320,10 +428,11 @@ export function useRecentDocuments(limit: number): { items: RecentDocumentItem[]
       ({ doc, lastOpenedAt }): RecentDocumentItem => ({
         id: doc.id,
         title: doc.title,
-        href: documentHref(doc.id),
+        href: documentFileHref(doc),
         updatedAt: doc.updatedAt,
         lastOpenedAt,
         ownerMemberId: doc.ownerMemberId,
+        fileType: doc.fileType,
       }),
     );
   }, [docs, opened, limit]);

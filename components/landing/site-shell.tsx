@@ -300,6 +300,7 @@ const ALL_FOOTER_GROUPS: { headingKey: string; items: { tKey: string; href: stri
       { tKey: "landing.footer.terms", href: "#" },
       { tKey: "landing.footer.dpa", href: "#" },
       { tKey: "landing.footer.security", href: "#" },
+      { tKey: "landing.footer.licenses", href: "/licenses" },
     ],
   },
 ];

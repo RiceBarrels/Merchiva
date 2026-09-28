@@ -92,7 +92,9 @@ export function listNavSections(ctx: AccessContext): NavSection[] {
  * (`kind: "gate"`) are excluded separately, by kind. Shared with the desktop omnibox so both
  * search fields offer the same pages.
  */
-export const NOT_SEARCHABLE: ReadonlySet<string> = new Set(["/manager", "/manager/docs/edit", "/manager/usage"]);
+export const NOT_SEARCHABLE: ReadonlySet<string> = new Set([
+  "/manager", "/manager/docs/edit", "/manager/drive/sheet", "/manager/drive/slides", "/manager/usage",
+]);
 
 function matchStrength(query: string, text: string): number {
   const haystack = text.toLocaleLowerCase();

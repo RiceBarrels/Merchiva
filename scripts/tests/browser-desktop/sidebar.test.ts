@@ -23,7 +23,7 @@ import type { Permissions } from "@/lib/types";
 
 type Section = keyof Permissions;
 
-const ALL_APPS = ["sales", "products", "tasks", "training", "pay", "bookings", "docs"];
+const ALL_APPS = ["sales", "products", "tasks", "training", "pay", "bookings", "docs", "drive"];
 
 /** Same access-context stand-in as scripts/tests/browser-shell/access.test.ts. */
 function ctx(
@@ -141,6 +141,7 @@ describe("sidebar nav rows", () => {
     expect(primary.map((section) => section.href)).toEqual([
       "/manager/new-tab",
       "/manager/docs",
+      "/manager/drive",
       "/manager/inventory",
       "/manager/sales",
       "/manager/personnel/schedule",
@@ -184,6 +185,11 @@ describe("sidebar nav rows", () => {
     // Neither route is listed, so neither can appear as a child row — the section has to carry it.
     expect(sections.find((section) => section.href === "/manager/docs")?.children).toEqual([]);
     expect(currentRows(sections, "/manager/docs/edit?id=abc")).toEqual(["/manager/docs"]);
+    // The Sheets / Slides editors are Drive's pages, so they light the Drive row.
+    expect(sections.find((section) => section.href === "/manager/drive")?.children).toEqual([]);
+    expect(currentRows(sections, "/manager/drive?space=store")).toEqual(["/manager/drive"]);
+    expect(currentRows(sections, "/manager/drive/sheet?id=abc")).toEqual(["/manager/drive"]);
+    expect(currentRows(sections, "/manager/drive/slides?id=abc&slide=2")).toEqual(["/manager/drive"]);
     expect(currentRows(sections, "/manager/settings/billing")).toEqual(["/manager/settings"]);
     // Pages outside the nav still light nothing.
     expect(currentRows(sections, "/manager/dashboard")).toEqual([]);

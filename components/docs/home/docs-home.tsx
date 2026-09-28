@@ -6,6 +6,10 @@
 //
 // No Tiptap or Yjs is imported here: templates are plain JSON, creation and
 // import load their converters lazily, and ShareDialog is code-split.
+// Until the management notice is acknowledged it blocks the page and creation;
+// on /store a new document belongs to the PIN operator (useDocCreatePlacement),
+// and star / copy, which the Docs reducers write for the tablet account, are
+// hidden and refused while the operator is someone else (useDocsSender).
 
 import { useCallback, useId, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -15,13 +19,16 @@ import { PageHeader } from "@/components/page-header";
 import { DeleteForeverDialog } from "@/components/docs/dialogs/delete-forever-dialog";
 import { ImportDialog } from "@/components/docs/dialogs/import-dialog";
 import { RenameDialog } from "@/components/docs/dialogs/rename-dialog";
+import { useDocCreatePlacement } from "@/components/drive/drive-actor";
+import { ManagementNoticeBanner, ManagementNoticeGate } from "@/components/drive/notice/management-notice";
+import { useManagementNoticeAck } from "@/components/drive/notice/use-notice-ack";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAuth } from "@/lib/auth/context";
 import { useDocsOpenUrl } from "@/components/docs/docs-open-context";
 import { usePermissions } from "@/lib/context/permissions";
-import { createDocumentFromTemplate } from "@/lib/docs/create";
+import { createDocumentFromTemplate, placedCreateErrorKey } from "@/lib/docs/create";
 import { documentHref } from "@/lib/docs/hrefs";
 import { DocImportError, importAsNewDocument, importErrorMessageKey, validateImportFile } from "@/lib/docs/import";
 import { idString } from "@/lib/docs/mappers";
@@ -31,7 +38,7 @@ import { useI18n, useT } from "@/lib/i18n/context";
 import { useOrgMembers } from "@/lib/spacetimedb/hooks";
 import { useIsMobile } from "@/lib/use-is-mobile";
 import { cn } from "@/lib/utils";
-import { useCurrentMemberId, useDocuments } from "@/lib/spacetimedb/hooks/useDocs";
+import { useCurrentMemberId, useDocsSender, useDocuments } from "@/lib/spacetimedb/hooks/useDocs";
 import { DocGrid, DocGridSkeleton } from "./doc-grid";
 import { DocList, DocListSkeleton } from "./doc-list";
 import {
@@ -40,6 +47,8 @@ import {
   filterDocItems,
   groupDocItems,
   sortDocItems,
+  type DocItemAction,
+  type DocListItem,
   type DocsEmptyKind,
   type DocView,
 } from "./doc-list-model";
@@ -55,6 +64,11 @@ const ShareDialog = dynamic(
   () => import("@/components/docs/dialogs/share-dialog").then((mod) => mod.ShareDialog),
   { ssr: false },
 );
+
+// Written for the signed-in account, which on /store is the tablet, not always the operator the list is for:
+// toggleDocumentStar would star for the tablet (drive-ui §5.2) and duplicateDocument would make the copy the tablet's.
+// The list hides them then (canStarAndCopy); this also refuses them.
+const REFUSED_WHILE_ACTING: ReadonlySet<DocItemAction> = new Set<DocItemAction>(["star", "unstar", "copy"]);
 
 function DocsEmpty({
   kind,
@@ -136,10 +150,13 @@ export function DocsHome({ compact = false }: DocsHomeProps = {}) {
   const openUrl = useDocsOpenUrl();
   const actions = useDocItemActions();
   const resultsId = useId();
+  const notice = useManagementNoticeAck();
+  const placement = useDocCreatePlacement();
+  const { actingForOther } = useDocsSender();
 
   const notPublished = backendStatus === "not_published";
   const loading = !notPublished && (!isReady || backendStatus === "checking");
-  const canCreate = backendStatus === "ready" && isReady;
+  const canCreate = backendStatus === "ready" && isReady && notice.ready && !notice.needsAck;
 
   // ── Derived list ──────────────────────────────────────────────────────────
   const memberNames = useMemo(() => {
@@ -163,8 +180,9 @@ export function DocsHome({ compact = false }: DocsHomeProps = {}) {
         memberNames,
         memberId,
         openedMap,
+        actingForOther,
       }),
-    [docs, trashed, accessFor, starredIds, grantedDocIds, memberNames, memberId, openedMap],
+    [docs, trashed, accessFor, starredIds, grantedDocIds, memberNames, memberId, openedMap, actingForOther],
   );
 
   const itemsById = useMemo(() => new Map(allItems.map((item) => [item.doc.id, item])), [allItems]);
@@ -208,16 +226,18 @@ export function DocsHome({ compact = false }: DocsHomeProps = {}) {
           locale,
           storeName: currentOrg?.name ?? null,
           authorName,
+          placement,
         });
         openUrl(documentHref(documentId, { isNew: true }), "current");
       } catch (err) {
-        toast.error(t(docErrorToastKey(err, "docs.home.createFailed")));
+        // A placed create (/store) fails with Drive codes; "[drive.operator]" asks for the PIN again.
+        toast.error(t(placedCreateErrorKey(err) ?? docErrorToastKey(err, "docs.home.createFailed")));
       } finally {
         creatingRef.current = false;
         setPendingTemplate(null);
       }
     },
-    [canCreate, t, locale, currentOrg?.name, authorName, openUrl],
+    [canCreate, t, locale, currentOrg?.name, authorName, placement, openUrl],
   );
 
   // ── Import ────────────────────────────────────────────────────────────────
@@ -227,7 +247,7 @@ export function DocsHome({ compact = false }: DocsHomeProps = {}) {
 
   const importDroppedFile = useCallback(
     async (file: File) => {
-      if (dropImportingRef.current) return;
+      if (dropImportingRef.current || !canCreate) return;
       const invalid = validateImportFile(file);
       if (invalid) {
         toast.error(t(importErrorMessageKey(new DocImportError(invalid))));
@@ -236,7 +256,7 @@ export function DocsHome({ compact = false }: DocsHomeProps = {}) {
       dropImportingRef.current = true;
       setDropImporting(true);
       try {
-        const { documentId, result } = await importAsNewDocument(file, { t, locale });
+        const { documentId, result } = await importAsNewDocument(file, { t, locale, placement });
         if (result.warnings > 0) toast(t("docs.import.warnings"));
         if (result.skippedImages > 0) toast.warning(t("docs.import.imagesSkipped"));
         openUrl(documentHref(documentId, { isNew: true }), "current");
@@ -247,7 +267,20 @@ export function DocsHome({ compact = false }: DocsHomeProps = {}) {
         setDropImporting(false);
       }
     },
-    [t, locale, openUrl],
+    [canCreate, t, locale, placement, openUrl],
+  );
+
+  // ── Item actions ──────────────────────────────────────────────────────────
+  const runItemAction = actions.run;
+  const onItemAction = useCallback(
+    (item: DocListItem, action: DocItemAction) => {
+      if (actingForOther && REFUSED_WHILE_ACTING.has(action)) {
+        toast.error(t("drive.errors.forbidden"));
+        return;
+      }
+      runItemAction(item, action);
+    },
+    [actingForOther, runItemAction, t],
   );
 
   // ── Dialog targets (resolved against live rows so sharing reflects changes) ─
@@ -299,6 +332,7 @@ export function DocsHome({ compact = false }: DocsHomeProps = {}) {
         className="flex flex-1 flex-col"
       >
         <PageHeader title={t("docs.title")} right={headerActions} />
+        <ManagementNoticeBanner compact={simple} className="mx-auto w-full max-w-[1100px] px-4 pt-3" />
 
         {!notPublished && (
           <div className={cn("border-b border-border px-4 py-2", !simple && "lg:hidden")}>
@@ -361,7 +395,7 @@ export function DocsHome({ compact = false }: DocsHomeProps = {}) {
                     scope={scope}
                     sort={sort}
                     now={now}
-                    onAction={actions.run}
+                    onAction={onItemAction}
                   />
                 ) : (
                   <DocList
@@ -370,7 +404,7 @@ export function DocsHome({ compact = false }: DocsHomeProps = {}) {
                     sort={sort}
                     now={now}
                     onSort={home.setSort}
-                    onAction={actions.run}
+                    onAction={onItemAction}
                     compact={simple}
                   />
                 )}
@@ -405,6 +439,7 @@ export function DocsHome({ compact = false }: DocsHomeProps = {}) {
           access={shareItem.access}
         />
       )}
+      <ManagementNoticeGate />
     </div>
   );
 }

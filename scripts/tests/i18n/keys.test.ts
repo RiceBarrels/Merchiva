@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { leavesOf, loadFragments, type Locale } from "../../i18n/drive/fragment";
 
 /*
  * Two properties the app depends on and nothing else enforced:
@@ -46,6 +47,13 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
 
 const en = loadLocale("en");
 
+// Drive / Sheets / Slides keep new keys in i18n fragments (scripts/i18n/drive/) until the serial merge, so call
+// sites resolve against en plus every fragment's en leaves. Loaded inside the call-site test, so a fragment that
+// does not parse fails only that test; the locale parity tests read messages/ only.
+function fragmentLeaves(locale: Locale): Array<[string, string]> {
+  return loadFragments().flatMap((f) => [...leavesOf(f, locale)]);
+}
+
 describe("locale parity", () => {
   for (const locale of LOCALES) {
     if (locale === "en") continue;
@@ -70,6 +78,7 @@ describe("locale parity", () => {
 
 describe("t() call sites", () => {
   test("every literal key resolves in en", () => {
+    const enWithFragments = new Map([...en, ...fragmentLeaves("en")]);
     const files = ["app", "components", "lib"].flatMap((d) => sourceFiles(d));
     const unresolved = new Set<string>();
     for (const file of files) {
@@ -77,7 +86,7 @@ describe("t() call sites", () => {
       if (file.endsWith(join("browser-shell", "context-menu.ts"))) continue;
       const src = readFileSync(join(ROOT, file), "utf8");
       for (const m of src.matchAll(/\bt\(\s*"([a-zA-Z][\w.-]*)"\s*\)/g)) {
-        if (!en.has(m[1])) unresolved.add(`${m[1]} (${file})`);
+        if (!enWithFragments.has(m[1])) unresolved.add(`${m[1]} (${file})`);
       }
     }
     expect([...unresolved]).toEqual([]);

@@ -4,7 +4,8 @@
  * Every editor command behind the menubar, toolbar, mobile sheets and shortcuts (docs-editor-ui spec §4.7).
  * Formatting commands run `editor.chain().focus()` first, which restores the selection the `Selection` extension
  * kept painted while a menu held focus. Comment writes are owned by the comments panel (WP-7B); this file only
- * starts drafts and tracks the active thread.
+ * starts drafts and tracks the active thread. On /store (a device panel with a PIN operator) new documents and
+ * renames go through Drive for the operator; star and copy are refused while the operator is not the tablet account.
  */
 import { useMemo, type Dispatch } from "react";
 import type { ChainedCommands, Editor } from "@tiptap/core";
@@ -13,7 +14,8 @@ import type * as Y from "yjs";
 
 import type { TabActions } from "@/lib/browser-shell";
 import type { DocsOpenUrl } from "@/components/docs/docs-open-context";
-import { createDocumentFromTemplate } from "@/lib/docs/create";
+import { useDocCreatePlacement } from "@/components/drive/drive-actor";
+import { createBlankDocument, createDocumentFromTemplate, placedCreateErrorKey, renameDocumentFor } from "@/lib/docs/create";
 import { exportDocument, printDocument, type ExportContext, type ExportFormat } from "@/lib/docs/export";
 import { startImageUpload } from "@/lib/docs/extensions/image-upload-plugin";
 import { getBlockStyle } from "@/lib/docs/extensions/paragraph-style";
@@ -27,7 +29,7 @@ import type { DocAccess, DocVersion, DocumentMeta } from "@/lib/docs/types";
 import { normalizeImageUrl, probeImageUrl } from "@/lib/docs/uploads";
 import { restoreDocumentVersion, type VersionSaver } from "@/lib/docs/versions";
 import { fmt } from "@/lib/i18n/fmt";
-import { createDocument, duplicateDocument, renameDocument, restoreDocument, toggleDocumentStar, trashDocument } from "@/lib/spacetimedb/actions";
+import { duplicateDocument, restoreDocument, toggleDocumentStar, trashDocument } from "@/lib/spacetimedb/actions";
 import { execClipboardCommand, pasteFromClipboard } from "./clipboard";
 import type { DocEditorRefs, DocEditorUiAction, DocEditorUiState } from "./doc-editor-context";
 import { reportDocError } from "./notify";
@@ -160,6 +162,8 @@ export interface DocActionDeps {
   setPreviewVersion(versionId: string | null): void;
   /** Formatted paste shortcut for the "clipboard blocked" hint. */
   pasteShortcut: string;
+  /** useDocsSender().actingForOther: star and copy would be written for someone other than the operator. */
+  actingForOther: boolean;
 }
 
 /** Font size (pt) at the selection: the text-style mark, else the block style's default. */
@@ -210,7 +214,10 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
     findVersion,
     setPreviewVersion,
     pasteShortcut,
+    actingForOther,
   } = deps;
+  // A device panel on /store: new documents belong to the PIN operator (null elsewhere).
+  const placement = useDocCreatePlacement();
 
   return useMemo<DocEditorActions>(() => {
     const format = (build: (chain: ChainedCommands) => ChainedCommands) => {
@@ -228,6 +235,20 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
       headerFooter: readHeaderFooterContent(ydoc, pageSetup),
     });
     const openNewDocument = (id: string) => openDocsUrl(documentHref(id, { isNew: true }), "new-foreground");
+    // A placed create (/store) fails with Drive codes; "[drive.operator]" asks for the PIN again.
+    const reportCreateError = (err: unknown) => {
+      const driveKey = placedCreateErrorKey(err);
+      if (driveKey) toast.error(t(driveKey));
+      else reportDocError(err, t, "docs.home.createFailed");
+    };
+    // Star and copy are written for the signed-in account, which on /store is the tablet, not always the operator:
+    // toggleDocumentStar would star for the tablet (drive-ui §5.2), duplicateDocument would make the copy its own.
+    // The menus hide them then (DocEditorContextValue.actingForOther); this also refuses them.
+    const refusedWhileActing = () => {
+      if (!actingForOther) return false;
+      toast.error(t("drive.errors.forbidden"));
+      return true;
+    };
     const activateThread = (threadId: string | null) => {
       dispatch({ type: "activateThread", threadId });
       if (!threadId) return;
@@ -385,24 +406,24 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
 
       createBlank: async () => {
         try {
-          // Seeded with one empty paragraph so concurrent first edits share it (lib/docs/blank-state.ts).
-          const { blankDocumentInput } = await import("@/lib/docs/blank-state");
-          openNewDocument(await createDocument(blankDocumentInput()));
+          // Seeded with one empty paragraph so concurrent first edits share it (lib/docs/create.ts createBlankDocument).
+          openNewDocument(await createBlankDocument(placement));
         } catch (err) {
-          reportDocError(err, t, "docs.home.createFailed");
+          reportCreateError(err);
         }
       },
       createFromTemplate: async (id) => {
         const toastId = toast.loading(t("docs.home.creating"));
         try {
-          openNewDocument(await createDocumentFromTemplate(id, { t, locale, storeName, authorName }));
+          openNewDocument(await createDocumentFromTemplate(id, { t, locale, storeName, authorName, placement }));
         } catch (err) {
-          reportDocError(err, t, "docs.home.createFailed");
+          reportCreateError(err);
         } finally {
           toast.dismiss(toastId);
         }
       },
       makeCopy: async () => {
+        if (refusedWhileActing()) return;
         try {
           const id = await duplicateDocument({
             sourceDocumentId: doc.id,
@@ -469,9 +490,12 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
       },
       renameTo: async (title) => {
         try {
-          await renameDocument(doc.id, title);
+          // On /store through Drive: the operator's rights, and their name on it.
+          await renameDocumentFor(doc.id, title, placement);
         } catch (err) {
-          reportDocError(err, t);
+          const driveKey = placedCreateErrorKey(err);
+          if (driveKey) toast.error(t(driveKey));
+          else reportDocError(err, t);
           throw err;
         }
       },
@@ -508,7 +532,7 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
       },
       toggleStar: async () => {
         // toggleDocumentStar rejects a trashed document ([doc.trashed]).
-        if (doc.trashedAt) return;
+        if (doc.trashedAt || refusedWhileActing()) return;
         try {
           await toggleDocumentStar(doc.id);
         } catch (err) {
@@ -603,8 +627,10 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
     openDocsUrl,
     storeName,
     authorName,
+    placement,
     findVersion,
     setPreviewVersion,
     pasteShortcut,
+    actingForOther,
   ]);
 }

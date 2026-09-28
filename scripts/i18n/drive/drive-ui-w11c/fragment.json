@@ -1,0 +1,9 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "W1.1c",
+  "note": "New leaves under drive-ui's prefixes for the Drive manager list and toolbar (drive-ui.md §7.4, §7.5): the breadcrumb navigation's label, the menu that holds the folders of a long path, and the screen-reader hint of an entry in another member's My files (named, or a former member), which names management like drive.list.privateHint. Folder terms follow the drive-ui fragment: es carpeta, fr dossier, ar المجلد, hi फ़ोल्डर, zh-cn 文件夹, zh-tw/zh-hk 資料夾; the management clause reuses each locale's drive.list.privateHint wording.",
+  "owned": [],
+  "extends": "drive-ui",
+  "overwrites": [],
+  "allowSameAsEn": []
+}

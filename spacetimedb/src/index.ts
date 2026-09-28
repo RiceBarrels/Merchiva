@@ -12,8 +12,34 @@
  *   - Reducers enforce authorization by checking orgMember records
  */
 
-import { schema, t, table, SenderError } from 'spacetimedb/server';
-import { Identity, Uuid } from 'spacetimedb';
+import { schema, t, table, SenderError, Range } from 'spacetimedb/server';
+import { Identity, Timestamp, Uuid } from 'spacetimedb';
+import {
+  driveItemTable, driveOrgStateTable, driveAdminIndexTable, documentReaderIndexTable, driveUsageTable,
+  driveStarTable, driveNoticeAckTable, driveServiceReaderTable, driveBlobGcTable, documentEditLeaseTable,
+  documentVersionStateTable, documentFileTable,
+} from './drive/tables';
+import { deviceLoginRequesterTable } from './device/tables';
+import {
+  deviceLoginRequesterOf, dropDeviceLoginRequester, isDeviceLoginRequester, recordDeviceLoginRequester,
+} from './device/login-requester';
+import { docFileKind, docFileTypeOf, docFolderIdOf, dropDocumentFile, documentFileOf, setDocumentFile } from './drive/document-file';
+import { driveAccessOf, withoutDrivePower } from './drive/logic';
+import {
+  dropDocumentReaders, dropDriveAdminIndex, dropMemberDocReaders, rekeyAccessIdentity, syncDocumentReaders,
+  syncDriveAdminIndex, syncMemberDocReaders,
+} from './drive/access-index';
+import { addDriveUsage, driveFolderFits, driveSpaceOfDoc, driveUsageRow, type DriveDeps } from './drive/context';
+import type { DocumentRow, DriveCtx, MemberRow } from './drive/types';
+import { defineDriveReducers } from './drive/reducers';
+import { defineDriveTrashReducers } from './drive/trash';
+import { defineDriveDocumentReducers } from './drive/documents';
+import { defineDriveUploadReducers } from './drive/uploads';
+import { defineDriveServiceReducers } from './drive/service';
+import {
+  defineSheetReducers, sheetBytesOfDocument, sheetLeaseWithoutHolder, sheetLeaseWithoutRequest, type SheetDeps,
+} from './drive/sheets';
+import { sheetBytesFit } from './drive/sheet-logic';
 
 // ─── Helper: throw on unauthorized ───────────────────────────────────────────
 
@@ -122,6 +148,40 @@ function syncChatMembershipIndex(
   const existing = ctx.db.chatMembershipIndex.chatMemberId.find(chatMemberId);
   if (existing) ctx.db.chatMembershipIndex.chatMemberId.update(row);
   else ctx.db.chatMembershipIndex.insert(row);
+}
+
+// ─── Drive / Docs access indexes (./drive/access-index.ts) ──────────────────
+//
+// drive_admin_index and document_reader_index are the rule-free join targets of
+// the drive_item admin rule and of every Docs-family rule. Same contract as the
+// membership indexes above: derived data, refreshed next to the write.
+
+/**
+ * Keep the Drive admin index and the Docs reader index in step with one
+ * org_member row (pass its state AFTER the write). Call after EVERY write that
+ * can change a member's status, role, permissions or identity — or a user
+ * silently loses (or keeps) access.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function syncMemberAccessIndexes(ctx: any, member: any): void {
+  syncDriveAdminIndex(ctx, member, docMemberGate);
+  syncMemberDocReaders(ctx, member, docRoleFor);
+  // A disabled member stops holding (or asking for) spreadsheet edit leases.
+  if (member.status !== 'active') dropSheetLeasesOfMember(ctx, member.organizationId, member.id.toString());
+}
+
+/** The member row is going away (leaveOrg): its identity keeps only what its other rows in the org grant. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dropMemberAccessIndexes(ctx: any, member: any): void {
+  dropDriveAdminIndex(ctx, member, docMemberGate);
+  dropMemberDocReaders(ctx, member, docRoleFor);
+  dropSheetLeasesOfMember(ctx, member.organizationId, member.id.toString());
+}
+
+/** Rebuild one document's readers. Call after any change to its visibility, grants or owner, and on create. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function refreshDocReaders(ctx: any, doc: any): void {
+  syncDocumentReaders(ctx, doc, docRoleFor);
 }
 
 /** Placeholder written into punch_event.pin — the real code is never stored. */
@@ -897,6 +957,12 @@ const storeDeviceTable = table(
 // phone. The store device publishes a pending nonce (encoded in its QR); the
 // phone scans it and approves as the calling member, optionally recording a
 // punch at the same time; the store device then consumes the approval.
+// Readable only by the requesting identity (rls_device_login_request_requester,
+// joined through device_login_requester in ./device/tables.ts): the nonce is
+// the whole secret of the QR, so a colleague who could read it could approve a
+// tablet from anywhere and have it act as them. The requester is NOT a column
+// here: store tablets on an older bundle decode these rows positionally, so
+// the columns below are frozen (scripts/tests/drive/client-compat-schema.test.ts).
 
 const deviceLoginRequestTable = table(
   {
@@ -2131,6 +2197,8 @@ const documentTable = table(
     lastEditorMemberId: t.option(t.string()),
     trashedAt: t.option(t.timestamp()),
     trashedByMemberId: t.option(t.string()),
+    // FROZEN: older clients decode these rows positionally. A document's Drive
+    // type and folder live in document_file (./drive/document-file.ts).
   }
 );
 
@@ -2432,6 +2500,22 @@ const spacetimedb = schema({
   documentStar: documentStarTable,
   documentAccess: documentAccessTable,
   bugReport: bugReportTable,
+  // Drive + the Docs-family reader index + Sheets (./drive/tables.ts).
+  driveItem: driveItemTable,
+  driveOrgState: driveOrgStateTable,
+  driveAdminIndex: driveAdminIndexTable,
+  documentReaderIndex: documentReaderIndexTable,
+  driveUsage: driveUsageTable,
+  driveStar: driveStarTable,
+  driveNoticeAck: driveNoticeAckTable,
+  driveServiceReader: driveServiceReaderTable,
+  driveBlobGc: driveBlobGcTable,
+  documentEditLease: documentEditLeaseTable,
+  documentVersionState: documentVersionStateTable,
+  // Side tables of document and device_login_request, whose columns are frozen
+  // for older clients (scripts/tests/drive/client-compat-schema.test.ts).
+  documentFile: documentFileTable,
+  deviceLoginRequester: deviceLoginRequesterTable,
 });
 
 export default spacetimedb;
@@ -2521,9 +2605,17 @@ const RLS_ORG_SCOPED: Array<string | [table: string, column: string]> = [
   // member's private conversation with Mr. Merchiva, not org data.
   'ai_usage', 'ai_usage_quota',
   'bug_report', 'chat_conversation', 'coupon', 'daily_briefing', 'design',
-  'device_login_request', 'document', 'document_access', 'document_comment',
-  'document_presence', 'document_snapshot', 'document_star', 'document_update',
-  'document_version', 'expense', 'inventory_item', 'inventory_transaction',
+  'drive_star', 'drive_usage',
+  // PHASE A ONLY. These nine are also reader-scoped (RLS_DOC_READER_SCOPED
+  // below). The org rule stays until document_reader_index is backfilled, so
+  // nobody loses a document in between; phase B deletes the next two lines.
+  // document_file is document's own type and folder, so it has exactly
+  // document's rules in both phases: a document row delivered without its file
+  // row reads as a text document (a store tablet in phase A would open its
+  // operator's private sheet in the text editor).
+  'document', 'document_file', 'document_access', 'document_comment', 'document_presence',
+  'document_snapshot', 'document_star', 'document_update', 'document_version',
+  'expense', 'inventory_item', 'inventory_transaction',
   'location', 'org_invitation', 'payment', 'punch_event', 'purchase_order',
   'queue_entry', ['role_task', 'orgId'], 'role_task_assignment', 'sales_record',
   'settings', 'shift', 'shift_preset', 'shift_trade', 'site', 'site_booking',
@@ -2550,6 +2642,29 @@ const RLS_SELF_SCOPED: Array<[table: string, column: string]> = [
   ['user_briefing_pref', 'userId'],
   ['member_punch_code', 'userId'],
   ['device_operator_session', 'identity'],
+  // device_login_request is self-scoped too, but through a join: see
+  // rls_device_login_request_requester below.
+];
+
+/**
+ * The Docs family (Docs, Sheets and Slides): readable by the members that may
+ * OPEN the document, not by the whole org. `document_reader_index` holds one
+ * (documentId, identity) row per reader, maintained from docRoleFor — the same
+ * function every docs reducer authorizes with. A private document in someone's
+ * My files is therefore unreadable by colleagues even over raw /sql; owners,
+ * managers and drive.view/drive.edit members read everything (docRoleFor's
+ * manager / drive floor), grantees read what was shared.
+ * Entry = [table, column joined to document_reader_index.documentId]. A new
+ * document child table joins this list, never RLS_ORG_SCOPED. (document_file
+ * is not a child: it holds document's own columns, so it mirrors document's
+ * rules, org rule included until phase B.)
+ */
+const RLS_DOC_READER_SCOPED: Array<[table: string, column: string]> = [
+  ['document', 'id'], ['document_access', 'documentId'], ['document_comment', 'documentId'],
+  ['document_edit_lease', 'documentId'], ['document_presence', 'documentId'],
+  ['document_snapshot', 'documentId'], ['document_star', 'documentId'],
+  ['document_update', 'documentId'], ['document_version', 'documentId'],
+  ['document_version_state', 'documentId'], ['document_file', 'documentId'],
 ];
 
 /**
@@ -2610,10 +2725,40 @@ const RLS_NO_CLIENT_ACCESS = [
  *                      staging publish to verify, so it is recorded here
  *                      rather than changed blind.
  *
+ *   drive_admin_index, document_reader_index, drive_service_reader
+ *                    — KNOWN GAP, same class as org_membership_index. Join targets of the
+ *                      drive_item admin rule, of every Docs-family rule and of the service
+ *                      rules; a rule of their own makes every joining table unsubscribable
+ *                      ("Subscriptions require indexes on join columns", reproduced on
+ *                      standalone 2.10.1). Minimised on purpose: drive_admin_index holds
+ *                      only (random per-org scope, identity) — no org id, member id or edit
+ *                      flag; document_reader_index holds (document id, identity);
+ *                      drive_service_reader holds the service identity. Still, anyone can
+ *                      combine them with org_membership_index to learn which identities are
+ *                      Drive admins of an org and which identities may read which document
+ *                      id. No names, emails, roles or content. Needs the same staging-verified
+ *                      fix as org_membership_index.
+ *
+ *   device_login_requester
+ *                    — KNOWN GAP, same class. Join target of the device_login_request rule
+ *                      (only the tablet that asked for a QR reads its request). It pairs,
+ *                      pseudonymously, a request uuid with the identity that asked for it,
+ *                      that identity's org id and the time: with org_membership_index,
+ *                      anyone can see which identities of an org started a QR log-in, and
+ *                      when. It holds no nonce, device id, member or status; the nonce (the
+ *                      QR's whole secret) stays in device_login_request, behind the rule. A
+ *                      request id read here is inert: approveDeviceLogin needs the nonce,
+ *                      and consumeDeviceLogin refuses anyone but the requester and the
+ *                      service identity.
+ *
  * Private (`public: false`) tables need no rule; they are unreadable by any
- * client: platform_admin_secret, user_secret, org_secret, migration_state.
+ * client: platform_admin_secret, user_secret, org_secret, migration_state,
+ * drive_org_state.
  */
-const RLS_UNFILTERED = ['blog_post', 'service_identity', 'org_membership_index', 'chat_membership_index'];
+const RLS_UNFILTERED = [
+  'blog_post', 'service_identity', 'org_membership_index', 'chat_membership_index',
+  'drive_admin_index', 'document_reader_index', 'drive_service_reader', 'device_login_requester',
+];
 void RLS_UNFILTERED;
 
 const rlsRules: Record<string, ReturnType<typeof spacetimedb.clientVisibilityFilter.sql>> = {};
@@ -2633,6 +2778,13 @@ for (const [tbl, col] of orgScopedPairs) {
 for (const [tbl, col] of RLS_SELF_SCOPED) {
   rlsRules[`rls_${tbl}_self`] = spacetimedb.clientVisibilityFilter.sql(
     `SELECT * FROM ${tbl} WHERE ${col} = :sender`
+  );
+}
+for (const [tbl, col] of RLS_DOC_READER_SCOPED) {
+  rlsRules[`rls_${tbl}_reader`] = spacetimedb.clientVisibilityFilter.sql(
+    `SELECT x.* FROM ${tbl} x ` +
+    `JOIN document_reader_index r ON x.${col} = r.documentId ` +
+    `WHERE r.userId = :sender`
   );
 }
 // ─── Hand-written rules ──────────────────────────────────────────────────────
@@ -2688,6 +2840,78 @@ rlsRules.rls_chat_message_mine = spacetimedb.clientVisibilityFilter.sql(
   `SELECT msg.* FROM chat_message msg ` +
   `JOIN chat_membership_index ci ON msg.conversationId = ci.conversationId ` +
   `WHERE ci.userId = :sender`
+);
+
+// drive_item: four rules, OR'd.
+//   owner — your own items in any space. Joined through the membership index by
+//           MEMBER id, so a file the store tablet uploaded for its PIN operator
+//           shows up on that operator's own phone; a departed member (no index
+//           row) sees nothing.
+//   store — every active member sees ready, untrashed Store-space items.
+//   admin — owners, managers and drive.view/edit members (drive_admin_index)
+//           see every item carrying their org's opaque scope.
+//   self  — the identity that started an upload sees it while it is PENDING
+//           (progress on a device that is not the owner). Never a ready file.
+// Rows matching several rules come back once per rule over HTTP /sql; the
+// WebSocket cache de-duplicates, HTTP readers must de-duplicate by id.
+rlsRules.rls_drive_item_owner = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT x.* FROM drive_item x ` +
+  `JOIN org_membership_index mi ON x.ownerMemberId = mi.memberId ` +
+  `WHERE mi.userId = :sender`
+);
+rlsRules.rls_drive_item_store = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT x.* FROM drive_item x ` +
+  `JOIN org_membership_index mi ON x.organizationId = mi.organizationId ` +
+  `WHERE mi.userId = :sender AND x.space = 'store' AND x.trashed = false AND x.status = 'ready'`
+);
+rlsRules.rls_drive_item_admin = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT x.* FROM drive_item x ` +
+  `JOIN drive_admin_index a ON x.adminScope = a.adminScope ` +
+  `WHERE a.userId = :sender`
+);
+rlsRules.rls_drive_item_self = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT * FROM drive_item WHERE uploaderIdentity = :sender AND status = 'pending'`
+);
+
+// drive_notice_ack: your own acknowledgements (by member, so the operator's
+// phone sees what they acknowledged) plus what this identity recorded (the
+// store tablet sees acknowledgements made on it).
+rlsRules.rls_drive_notice_ack_mine = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT x.* FROM drive_notice_ack x ` +
+  `JOIN org_membership_index mi ON x.memberId = mi.memberId ` +
+  `WHERE mi.userId = :sender`
+);
+rlsRules.rls_drive_notice_ack_self = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT * FROM drive_notice_ack WHERE userId = :sender`
+);
+
+// drive_blob_gc / drive_usage: the registered service identity only. Not a
+// cross join against service_identity (see WHY THERE IS NO "SERVICE IDENTITY"
+// RULE above) — an equality join on the constant `scope` column, indexed on
+// both sides. drive_usage additionally keeps its org-scoped rule. These two
+// are the only Drive/Docs tables the service identity reads; everything else
+// it does happens inside reducers.
+rlsRules.rls_drive_blob_gc_service = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT g.* FROM drive_blob_gc g ` +
+  `JOIN drive_service_reader r ON g.scope = r.scope ` +
+  `WHERE r.userId = :sender`
+);
+rlsRules.rls_drive_usage_service = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT u.* FROM drive_usage u ` +
+  `JOIN drive_service_reader r ON u.scope = r.scope ` +
+  `WHERE r.userId = :sender`
+);
+
+// device_login_request: only the identity that asked for a QR (the store
+// tablet's account) reads it; the phone that scans it needs no row. The nonce
+// is the QR's whole secret: when these rows were org-readable, any colleague
+// could approve a tablet's QR from home and have the tablet act as them. The
+// requester lives in device_login_requester (the columns of this table are
+// frozen for older tablets), joined uuid = uuid on the primary keys.
+rlsRules.rls_device_login_request_requester = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT d.* FROM device_login_request d ` +
+  `JOIN device_login_requester q ON d.id = q.requestId ` +
+  `WHERE q.requesterIdentity = :sender`
 );
 
 export const rowLevelSecurity = spacetimedb.exportGroup(rlsRules);
@@ -2830,6 +3054,9 @@ export const loginWithPassword = spacetimedb.reducer(
     writePasswordHash(ctx, newIdentity, storedHash);
     if (oldSecret) ctx.db.userSecret.delete(oldSecret);
 
+    // Drive / Docs access indexes and upload rows are keyed by identity too.
+    rekeyAccessIdentity(ctx, oldIdentity, newIdentity);
+
     // Migrate org memberships
     for (const m of [...ctx.db.orgMember.byUserId.filter(oldIdentity)]) {
       ctx.db.orgMember.id.update({ ...m, userId: newIdentity });
@@ -2929,6 +3156,7 @@ const OWNER_FULL_PERMISSIONS = {
   website: { view: true, edit: true },
   training_grading: { view: true, edit: true },
   merchiva: { view: true },
+  drive: { view: true, edit: true },
 } as const;
 
 /**
@@ -2981,6 +3209,10 @@ export const createOrg = spacetimedb.reducer(
     });
     syncOrgMembershipIndex(ctx, {
       id: ownerMemberId, organizationId: orgId.toString(), userId: ctx.sender, status: 'active',
+    });
+    syncMemberAccessIndexes(ctx, {
+      id: ownerMemberId, organizationId: orgId.toString(), userId: ctx.sender, status: 'active',
+      role: 'owner', permissions: JSON.stringify(OWNER_FULL_PERMISSIONS),
     });
 
     // Initialize default settings for the org — seed businessName from org name
@@ -3143,12 +3375,16 @@ export const inviteToOrg = spacetimedb.reducer(
       ctx.timestamp.microsSinceUnixEpoch + BigInt(7 * 24 * 60 * 60 * 1_000_000) // 7 days
     );
 
+    // Only owners grant the Drive "everyone's files" power (updateMemberPermissions
+    // is owner-only too): a manager's invitation arrives with drive switched off.
+    const storedPermissions = member.role === 'owner' || isServiceCaller(ctx) ? permissions : withoutDrivePower(permissions);
+
     ctx.db.orgInvitation.insert({
       id: ctx.newUuidV4(),
       organizationId,
       email: normalizedEmail,
       role,
-      permissions,
+      permissions: storedPermissions,
       token,
       expiresAt,
       acceptedAt: undefined,
@@ -3206,6 +3442,10 @@ export const acceptInvitation = spacetimedb.reducer(
     syncOrgMembershipIndex(ctx, {
       id: joinedMemberId, organizationId: invite.organizationId, userId: ctx.sender, status: 'active',
     });
+    syncMemberAccessIndexes(ctx, {
+      id: joinedMemberId, organizationId: invite.organizationId, userId: ctx.sender, status: 'active',
+      role: invite.role, permissions: invite.permissions,
+    });
 
     // Mark invitation as accepted (delete + reinsert)
     ctx.db.orgInvitation.delete(invite);
@@ -3256,6 +3496,7 @@ export const updateMemberPermissions = spacetimedb.reducer(
 
     ctx.db.orgMember.delete(target);
     ctx.db.orgMember.insert({ ...target, role, permissions });
+    syncMemberAccessIndexes(ctx, { ...target, role, permissions });
   }
 );
 
@@ -3273,6 +3514,7 @@ export const setMemberStatus = spacetimedb.reducer(
     ctx.db.orgMember.delete(target);
     ctx.db.orgMember.insert({ ...target, status });
     syncOrgMembershipIndex(ctx, { ...target, status });
+    syncMemberAccessIndexes(ctx, { ...target, status });
   }
 );
 
@@ -3285,6 +3527,7 @@ export const leaveOrg = spacetimedb.reducer(
     if (!member) throw new SenderError('Not a member');
     if (member.role === 'owner') throw new SenderError('Owner cannot leave; transfer ownership first');
     dropOrgMembershipIndex(ctx, member.id.toString());
+    dropMemberAccessIndexes(ctx, member);
     ctx.db.orgMember.delete(member);
   }
 );
@@ -3381,19 +3624,24 @@ export const resolveDeviceOperator = spacetimedb.reducer(
       .find(m => m.id.toString() === entry.memberId);
     if (!member || member.status !== 'active') throw new SenderError('PIN_NOT_RECOGNIZED');
 
-    const row = {
-      identity: ctx.sender,
-      organizationId,
-      memberId: member.id.toString(),
-      memberName: member.displayName,
-      role: member.role,
-      resolvedAt: ctx.timestamp,
-    };
-    const existing = ctx.db.deviceOperatorSession.identity.find(ctx.sender);
-    if (existing) ctx.db.deviceOperatorSession.identity.update(row);
-    else ctx.db.deviceOperatorSession.insert(row);
+    writeDeviceOperatorSession(ctx, organizationId, member);
   }
 );
+
+/** ctx.sender's device is now operated by `member` (a PIN unlock, or a QR log-in it asked for). */
+function writeDeviceOperatorSession(ctx: DriveCtx, organizationId: string, member: MemberRow): void {
+  const row = {
+    identity: ctx.sender,
+    organizationId,
+    memberId: member.id.toString(),
+    memberName: member.displayName,
+    role: member.role,
+    resolvedAt: ctx.timestamp,
+  };
+  const existing = ctx.db.deviceOperatorSession.identity.find(ctx.sender);
+  if (existing) ctx.db.deviceOperatorSession.identity.update(row);
+  else ctx.db.deviceOperatorSession.insert(row);
+}
 
 /** Forget the resolved operator (device lock / sign-out). */
 export const clearDeviceOperator = spacetimedb.reducer(
@@ -3832,15 +4080,31 @@ export const createDeviceLoginRequest = spacetimedb.reducer(
     findActiveMember(ctx, organizationId);
     if (!nonce || nonce.length < 8) throw new SenderError('Invalid nonce');
 
+    // A request may only replace the caller's own: re-issuing a tablet's
+    // (deviceId, nonce) from another phone would otherwise delete its row and
+    // bind the QR still on its screen — and the operator session the approval
+    // writes — to the colleague who re-issued it. (The rows are readable by
+    // their requester only now, but deviceId is no secret and rows used to be
+    // org-readable.) A request with no requester row is nobody's own.
     const now = ctx.timestamp.microsSinceUnixEpoch;
     for (const row of [...ctx.db.deviceLoginRequest.byOrganizationId.filter(organizationId)]) {
       const stale = now - row.createdAt.microsSinceUnixEpoch > DEVICE_LOGIN_PRUNE_MICROS;
-      const samePending = row.deviceId === deviceId && row.status === 'pending';
-      if (stale || samePending) ctx.db.deviceLoginRequest.delete(row);
+      const ownPending = row.deviceId === deviceId && row.status === 'pending' && isDeviceLoginRequester(ctx, row.id);
+      if (stale || ownPending) {
+        ctx.db.deviceLoginRequest.delete(row);
+        dropDeviceLoginRequester(ctx, row.id);
+      }
+    }
+    // A nonce names exactly one request, whoever holds it (approveDeviceLogin looks it up alone).
+    if ([...ctx.db.deviceLoginRequest.byNonce.filter(nonce)].length > 0) {
+      throw new SenderError('Nonce already in use');
     }
 
+    // Tablets on an older bundle call this reducer with these same arguments,
+    // so their requests get a requester row (and so stay readable to them) too.
+    const id = ctx.newUuidV4();
     ctx.db.deviceLoginRequest.insert({
-      id: ctx.newUuidV4(),
+      id,
       organizationId,
       deviceId,
       nonce,
@@ -3850,6 +4114,7 @@ export const createDeviceLoginRequest = spacetimedb.reducer(
       createdAt: ctx.timestamp,
       expiresAt: new (ctx.timestamp.constructor as any)(now + DEVICE_LOGIN_TTL_MICROS),
     });
+    recordDeviceLoginRequester(ctx, id, organizationId);
   }
 );
 
@@ -3859,12 +4124,24 @@ export const approveDeviceLogin = spacetimedb.reducer(
     intent: t.string(), // "login" | "punch-in" | "punch-out"
   },
   (ctx, { nonce, intent }) => {
-    const row = [...ctx.db.deviceLoginRequest.byNonce.filter(nonce)][0];
+    const matches = [...ctx.db.deviceLoginRequest.byNonce.filter(nonce)];
+    // Two rows for one nonce (only rows from before createDeviceLoginRequest
+    // refused a taken nonce) leave no way to tell which device shows the QR.
+    if (matches.length > 1) throw new SenderError('QR code not recognised');
+    const row = matches[0];
     if (!row) throw new SenderError('QR code not recognised');
     if (row.status !== 'pending') throw new SenderError('QR code already used');
     if (row.expiresAt.microsSinceUnixEpoch < ctx.timestamp.microsSinceUnixEpoch) {
       ctx.db.deviceLoginRequest.delete(row);
       ctx.db.deviceLoginRequest.insert({ ...row, status: 'expired' });
+      throw new SenderError('QR code expired — refresh it on the store device');
+    }
+    // A request with no requester row was written before device_login_requester
+    // existed. The rule joins that table, so no tablet can read it any more: the
+    // QR still on a screen can never log in, and approving it would report a
+    // success nobody receives. The tablet's next QR (the same reducer, from any
+    // bundle) gets a requester row.
+    if (!deviceLoginRequesterOf(ctx, row.id)) {
       throw new SenderError('QR code expired — refresh it on the store device');
     }
     if (intent !== 'login' && intent !== 'punch-in' && intent !== 'punch-out') {
@@ -3899,6 +4176,25 @@ export const consumeDeviceLogin = spacetimedb.reducer(
     const row = ctx.db.deviceLoginRequest.id.find(id);
     if (!row) throw new SenderError('Request not found');
     findActiveMember(ctx, row.organizationId);
+    // Request ids are readable in device_login_requester (a rule-free join
+    // target), so only the requester — or the service identity, the admin
+    // console's revoke — may consume one; otherwise any colleague could cancel
+    // a tablet's log-in. A request with no requester row predates the table
+    // and stays consumable by any member, as before.
+    const requester = deviceLoginRequesterOf(ctx, row.id);
+    const requested = !!requester && requester.isEqual(ctx.sender);
+    if (requester && !requested && !isServiceCaller(ctx)) throw new SenderError('Request not found');
+    // The tablet that asked for this QR — and only it — is now operated by the
+    // member who approved it, exactly as after a PIN unlock, so Drive and Sheets
+    // can act for a QR operator (resolveDriveActor). Only an approved, unexpired
+    // request whose requester is ctx.sender; a request with no requester row
+    // (from before device_login_requester) never writes a session.
+    if (row.status === 'approved' && row.memberId && requested
+        && row.expiresAt.microsSinceUnixEpoch >= ctx.timestamp.microsSinceUnixEpoch) {
+      const operator = [...ctx.db.orgMember.byOrganizationId.filter(row.organizationId)]
+        .find(m => m.id.toString() === row.memberId && m.status === 'active');
+      if (operator) writeDeviceOperatorSession(ctx, row.organizationId, operator);
+    }
     ctx.db.deviceLoginRequest.delete(row);
     ctx.db.deviceLoginRequest.insert({ ...row, status: 'consumed' });
   }
@@ -4553,6 +4849,7 @@ function reassignMembersRole(ctx: any, organizationId: string, roleId: string, f
     if (String(m.role).trim().toLowerCase() !== from) continue;
     ctx.db.orgMember.delete(m);
     ctx.db.orgMember.insert({ ...m, role: toName });
+    syncMemberAccessIndexes(ctx, { ...m, role: toName });
   }
 }
 
@@ -7081,6 +7378,7 @@ const SERVICE_FULL_PERMISSIONS = JSON.stringify({
   training: { view: true, edit: true },
   chat: { view: true, edit: true },
   website: { view: true, edit: true },
+  drive: { view: true, edit: true },
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -8432,9 +8730,14 @@ export const platformAdminSetPassword = spacetimedb.reducer(
 //     virtual owner) or a member whose permissions resolve dashboard.view ===
 //     true — the same check as can('dashboard','view') + PermissionGuard
 //     section="dashboard" on the client (see docMemberGate).
+//   - A member's role on another organization's document is always 'none'.
 //   - Inside the gate: org owners, org managers and the doc's owner → 'manager';
-//     everyone else → the higher of the visibility role (org_edit → editor,
-//     org_view → viewer, private → none) and any document_access grant.
+//     everyone else → the highest of the visibility role (org_edit → editor,
+//     org_view → viewer, private → none), the Drive floor (permissions.drive.edit
+//     → editor, drive.view → viewer: "everyone's files") and any
+//     document_access grant.
+//   - Who may READ a document's rows is document_reader_index (RLS), kept equal
+//     to "docRoleFor ≥ viewer" by refreshDocReaders / syncMemberAccessIndexes.
 //   - viewer: open, star, presence · commenter: + comment, reply, resolve ·
 //     editor: + push, compact, versions, rename, meta · manager: + visibility,
 //     grants, trash/restore/delete forever, delete any comment or version.
@@ -8480,9 +8783,9 @@ const DOC_PRESENCE_DEFAULT_COLOR = '#57534e';
 const DOC_NOTIFY_BODY_MAX = 200;
 
 /** The member shape the docs helpers need (a real org_member row or serviceMember()). */
-type DocMemberLike = { id: { toString(): string }; role: string; permissions: string };
+type DocMemberLike = { id: { toString(): string }; organizationId: string; role: string; permissions: string };
 /** The document fields that decide access. */
-type DocAccessSubject = { id: string; ownerMemberId: string; visibility: string };
+type DocAccessSubject = { id: string; organizationId: string; ownerMemberId: string; visibility: string };
 
 function docError(code: DocErrorCode, message: string): SenderError {
   return new SenderError(`[doc.${code}] ${message}`);
@@ -8537,11 +8840,20 @@ function docMemberGate(member: { role: string; permissions: string }): boolean {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function docRoleFor(ctx: any, doc: DocAccessSubject, member: DocMemberLike): DocRole {
+  // A member only ever has a role on documents of its OWN organization.
+  // requireDoc resolves the member in the doc's org; Drive batch reducers
+  // resolve it in the org they were called for, so this line is what stops a
+  // cross-tenant id.
+  if (member.organizationId !== doc.organizationId) return 'none';
   if (member.role === 'owner') return 'manager';
   if (!docMemberGate(member)) return 'none';
   const memberId = member.id.toString();
   if (member.role === 'manager' || doc.ownerMemberId === memberId) return 'manager';
   let role: DocRole = doc.visibility === 'org_edit' ? 'editor' : doc.visibility === 'org_view' ? 'viewer' : 'none';
+  // Drive "everyone's files": drive.edit → at least editor, drive.view → at least viewer.
+  const drive = driveAccessOf(member);
+  const floor: DocRole = drive.edit ? 'editor' : drive.view ? 'viewer' : 'none';
+  if (DOC_ROLE_RANK[floor] > DOC_ROLE_RANK[role]) role = floor;
   for (const grant of ctx.db.documentAccess.byDocumentId.filter(doc.id)) {
     if (grant.memberId !== memberId) continue;
     const granted = String(grant.role);
@@ -8558,6 +8870,22 @@ function findDocMember(ctx: any, organizationId: string): DocMemberLike {
   } catch {
     throw docError('forbidden', 'Not an active member of this organization');
   }
+}
+
+/** Whether `memberId` is an active member of `organizationId` (the departed-owner rescue rule). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isActiveMemberId(ctx: any, organizationId: string, memberId: string): boolean {
+  return [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+    .some((m: { id: { toString(): string }; status: string }) => m.id.toString() === memberId && m.status === 'active');
+}
+
+// What a document holds and which folder it sits in: document_file, through
+// docFileTypeOf(ctx, id) / docFolderIdOf(ctx, id) / setDocumentFile
+// (./drive/document-file.ts). No row = a text document at its space's root.
+
+/** The Drive space a document lives in — derived from its visibility, never stored. */
+function docSpaceOf(doc: { visibility: string }): 'my' | 'store' {
+  return driveSpaceOfDoc(doc);
 }
 
 /** Load a doc, resolve the caller's membership in ITS org and enforce a minimum role. */
@@ -8597,21 +8925,110 @@ function pruneDocPresence(ctx: any, doc: any): void {
     const canEdit = DOC_ROLE_RANK[role] >= DOC_ROLE_RANK.editor;
     if (canEdit !== p.canEdit) ctx.db.documentPresence.id.update({ ...p, canEdit });
   }
+  if (docFileTypeOf(ctx, doc.id) === 'sheet') revalidateSheetLease(ctx, doc, members);
 }
 
 /** Delete every row that belongs to a document, then the document itself. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function purgeDocumentRows(ctx: any, doc: any): void {
   const id: string = doc.id;
+  // A sheet's bytes leave the org's sheet budget with it (measured before its rows go).
+  if (docFileTypeOf(ctx, id) === 'sheet') adjustSheetBytes(ctx, doc.organizationId, -sheetContentBytes(ctx, id));
   for (const r of [...ctx.db.documentUpdate.byDocumentId.filter(id)]) ctx.db.documentUpdate.delete(r);
   const snap = ctx.db.documentSnapshot.documentId.find(id);
   if (snap) ctx.db.documentSnapshot.delete(snap);
   for (const r of [...ctx.db.documentPresence.byDocumentId.filter(id)]) ctx.db.documentPresence.delete(r);
   for (const r of [...ctx.db.documentComment.byDocumentId.filter(id)]) ctx.db.documentComment.delete(r);
   for (const r of [...ctx.db.documentVersion.byDocumentId.filter(id)]) ctx.db.documentVersion.delete(r);
+  for (const r of [...ctx.db.documentVersionState.byDocumentId.filter(id)]) ctx.db.documentVersionState.delete(r);
   for (const r of [...ctx.db.documentStar.byDocumentId.filter(id)]) ctx.db.documentStar.delete(r);
   for (const r of [...ctx.db.documentAccess.byDocumentId.filter(id)]) ctx.db.documentAccess.delete(r);
+  const lease = ctx.db.documentEditLease.documentId.find(id);
+  if (lease) ctx.db.documentEditLease.delete(lease);
+  dropDocumentReaders(ctx, id);
+  dropDocumentFile(ctx, id);
   ctx.db.document.delete(doc);
+}
+
+// ── Sheets hooks (./drive/sheets.ts holds the sheet reducers) ────────────────
+//
+// A sheet (document_file.fileType 'sheet') keeps gzipped Univer data in the Docs tables and
+// has one writer at a time: the session holding its document_edit_lease row.
+// The Docs reducers keep that honest through these helpers: the Yjs writes
+// refuse sheets, every access change re-checks the lease holder and requester
+// (pruneDocPresence), and the org's sheet bytes (drive_usage.sheetBytes, capped
+// by SHEET_ORG_MAX_BYTES) follow every copy and deletion.
+
+/** Clear the holder and the request but keep the row, so `epoch` stays monotonic; only purgeDocumentRows deletes it. */
+function dropDocumentLease(ctx: DriveCtx, documentId: string): void {
+  const lease = ctx.db.documentEditLease.documentId.find(documentId);
+  if (lease) ctx.db.documentEditLease.documentId.update(sheetLeaseWithoutRequest(sheetLeaseWithoutHolder(lease, ctx.timestamp)));
+}
+
+/** onDisconnect: a lease held on the closing connection detaches (its grace starts now); requests made from it lapse. */
+function detachSheetLeases(ctx: DriveCtx, connectionId: string): void {
+  for (const lease of [...ctx.db.documentEditLease.byHolderConnectionId.filter(connectionId)]) {
+    ctx.db.documentEditLease.documentId.update({ ...lease, holderConnectionId: '', heartbeatAt: ctx.timestamp });
+  }
+  for (const lease of [...ctx.db.documentEditLease.byRequestedByConnectionId.filter(connectionId)]) {
+    const current = ctx.db.documentEditLease.documentId.find(lease.documentId);
+    if (current) ctx.db.documentEditLease.documentId.update(sheetLeaseWithoutRequest(current));
+  }
+}
+
+/** A holder or requester whose member or actor is no longer an active editor of the sheet loses it. */
+function revalidateSheetLease(ctx: DriveCtx, doc: DocumentRow, members: ReadonlyMap<string, MemberRow>): void {
+  const lease = ctx.db.documentEditLease.documentId.find(doc.id);
+  if (!lease) return;
+  const editor = (memberId: string): boolean => {
+    const member = members.get(memberId);
+    return !!member && member.status === 'active' && DOC_ROLE_RANK[docRoleFor(ctx, doc, member)] >= DOC_ROLE_RANK.editor;
+  };
+  let next = lease;
+  if (next.holderMemberId !== '' && !(editor(next.holderMemberId) && editor(next.holderActorMemberId))) {
+    next = sheetLeaseWithoutHolder(next, ctx.timestamp);
+  }
+  if (next.requestedByMemberId !== '' && !(editor(next.requestedByMemberId) && editor(next.requestedByActorMemberId))) {
+    next = sheetLeaseWithoutRequest(next);
+  }
+  if (next !== lease) ctx.db.documentEditLease.documentId.update(next);
+}
+
+/** A member left or was disabled: every lease or request in the org it holds, as caller or as actor, is cleared. */
+function dropSheetLeasesOfMember(ctx: DriveCtx, organizationId: string, memberId: string): void {
+  for (const lease of [...ctx.db.documentEditLease.byOrganizationId.filter(organizationId)]) {
+    let next = lease;
+    if (next.holderMemberId !== '' && (next.holderMemberId === memberId || next.holderActorMemberId === memberId)) {
+      next = sheetLeaseWithoutHolder(next, ctx.timestamp);
+    }
+    if (next.requestedByMemberId !== '' && (next.requestedByMemberId === memberId || next.requestedByActorMemberId === memberId)) {
+      next = sheetLeaseWithoutRequest(next);
+    }
+    if (next !== lease) ctx.db.documentEditLease.documentId.update(next);
+  }
+}
+
+/** Snapshot + update-log bytes of a document. */
+function sheetLiveBytes(ctx: DriveCtx, documentId: string): bigint {
+  return sheetBytesOfDocument(ctx, documentId).live;
+}
+
+/** Live bytes plus the bytes of its saved versions (document_version_state). */
+function sheetContentBytes(ctx: DriveCtx, documentId: string): bigint {
+  const bytes = sheetBytesOfDocument(ctx, documentId);
+  return bytes.live + bytes.versions;
+}
+
+function adjustSheetBytes(ctx: DriveCtx, organizationId: string, delta: bigint): void {
+  if (delta !== 0n) addDriveUsage(ctx, organizationId, { sheetBytes: delta });
+}
+
+/** `[sheet.quota]` unless the org's sheet bytes + growth fit SHEET_ORG_MAX_BYTES (growth ≤ 0 always fits). */
+function assertSheetBytesFit(ctx: DriveCtx, organizationId: string, growth: bigint): void {
+  if (growth <= 0n) return;
+  if (!sheetBytesFit(driveUsageRow(ctx, organizationId).sheetBytes, growth)) {
+    throw new SenderError('[sheet.quota] This store has no room for more spreadsheet data');
+  }
 }
 
 function cleanCommentBody(raw: string): string {
@@ -8692,8 +9109,16 @@ function findDocVersion(ctx: any, documentId: string, versionId: string) {
   return undefined;
 }
 
-function docLink(documentId: string, threadId?: string): string {
-  return `/manager/docs/edit?id=${documentId}${threadId ? `&comment=${threadId}` : ''}`;
+/** In-app link of a document: its own editor by type. MUST equal lib/drive/hrefs.ts documentFileHref. */
+function docLink(documentId: string, threadId?: string, fileType = ''): string {
+  const kind = docFileKind(fileType);
+  const path = kind === 'sheet' ? '/manager/drive/sheet' : kind === 'slides' ? '/manager/drive/slides' : '/manager/docs/edit';
+  return `${path}?id=${documentId}${threadId ? `&comment=${threadId}` : ''}`;
+}
+
+/** English name of an untitled document of this type (module notifications are English). */
+function untitledDocName(kind: 'doc' | 'sheet' | 'slides'): string {
+  return kind === 'sheet' ? 'Untitled spreadsheet' : kind === 'slides' ? 'Untitled presentation' : 'Untitled document';
 }
 
 /**
@@ -8705,7 +9130,8 @@ function docLink(documentId: string, threadId?: string): string {
 function notifyDocMembers(ctx: any, doc: any, actorMemberId: string, memberIds: readonly string[], title: string, body: string, threadId?: string, type = 'doc_comment'): void {
   const wanted = new Set(memberIds.filter((id) => id && id !== actorMemberId));
   if (wanted.size === 0) return;
-  const docTitle: string = doc.title || 'Untitled document';
+  const kind = docFileTypeOf(ctx, doc.id);
+  const docTitle: string = doc.title || untitledDocName(kind);
   for (const m of [...ctx.db.orgMember.byOrganizationId.filter(doc.organizationId)]) {
     const memberId: string = m.id.toString();
     if (m.status !== 'active' || !wanted.has(memberId)) continue;
@@ -8718,7 +9144,7 @@ function notifyDocMembers(ctx: any, doc: any, actorMemberId: string, memberIds: 
       type,
       title,
       body: clampChars(`${docTitle}: ${body}`, DOC_NOTIFY_BODY_MAX),
-      link: docLink(doc.id, threadId),
+      link: docLink(doc.id, threadId, kind),
       read: false,
       createdAt: ctx.timestamp,
     });
@@ -8753,7 +9179,7 @@ export const createDocument = spacetimedb.reducer(
     const memberId = member.id.toString();
     const plainText = clampChars(args.plainText ?? '', DOC_TEXT_MAX_CHARS);
     const templateId = args.templateId ? clampChars(args.templateId.trim(), DOC_TEMPLATE_ID_MAX) : '';
-    ctx.db.document.insert({
+    const doc = ctx.db.document.insert({
       id,
       organizationId: args.organizationId,
       ownerMemberId: memberId,
@@ -8770,6 +9196,7 @@ export const createDocument = spacetimedb.reducer(
       trashedAt: undefined,
       trashedByMemberId: undefined,
     });
+    refreshDocReaders(ctx, doc);
     if (init && init.length > 0) {
       ctx.db.documentSnapshot.insert({
         documentId: id,
@@ -8791,7 +9218,11 @@ export const createDocument = spacetimedb.reducer(
  * client never has to load the source. The copied snapshot restarts at
  * throughUpdateId 0 and the copied rows get fresh auto-inc ids (in the source's
  * commit order), so the provider's maxAppliedId and compactDocument's strictly
- * increasing check both stay valid. The copy keeps the source's visibility.
+ * increasing check both stay valid. The copy keeps the source's visibility
+ * and type, and its folder only when that folder still fits the copy (a live
+ * Store folder, or a My files folder of the copy's owner) — so an admin's copy
+ * never lands in someone else's My files. A sheet copy is charged to the org's
+ * sheet budget and carries no versions and no edit lease.
  */
 export const duplicateDocument = spacetimedb.reducer(
   { sourceDocumentId: t.string(), documentId: t.string(), title: t.string() },
@@ -8800,8 +9231,11 @@ export const duplicateDocument = spacetimedb.reducer(
     const id = String(args.documentId).toLowerCase();
     if (!DOC_UUID_RE.test(id)) throw docError('invalid', 'Invalid document id');
     if (ctx.db.document.id.find(id)) throw docError('invalid', 'Document id already exists');
+    const srcFile = documentFileOf(ctx, src.id);
+    const sheetBytes = docFileKind(srcFile.fileType) === 'sheet' ? sheetLiveBytes(ctx, src.id) : 0n;
+    assertSheetBytesFit(ctx, src.organizationId, sheetBytes); // no-op for other types (growth 0)
     const now = ctx.timestamp;
-    ctx.db.document.insert({
+    const copy = ctx.db.document.insert({
       ...src,
       id,
       ownerMemberId: memberId,
@@ -8812,6 +9246,11 @@ export const duplicateDocument = spacetimedb.reducer(
       trashedAt: undefined,
       trashedByMemberId: undefined,
     });
+    setDocumentFile(ctx, copy, {
+      fileType: docFileKind(srcFile.fileType),
+      folderId: driveFolderFits(ctx, src.organizationId, srcFile.folderId, docSpaceOf(src), memberId) ? srcFile.folderId : '',
+    });
+    refreshDocReaders(ctx, copy);
     const snap = ctx.db.documentSnapshot.documentId.find(src.id);
     if (snap) {
       ctx.db.documentSnapshot.insert({ ...snap, documentId: id, throughUpdateId: 0n, compactedAt: now, compactedByMemberId: memberId });
@@ -8821,6 +9260,7 @@ export const duplicateDocument = spacetimedb.reducer(
     for (const r of rows) {
       ctx.db.documentUpdate.insert({ ...r, id: 0n, documentId: id, memberId, createdAt: now });
     }
+    adjustSheetBytes(ctx, src.organizationId, sheetBytes);
   }
 );
 
@@ -8871,11 +9311,21 @@ export const updateDocumentMeta = spacetimedb.reducer(
 export const setDocumentVisibility = spacetimedb.reducer(
   { documentId: t.string(), visibility: t.string() },
   (ctx, args) => {
-    const { doc } = requireDoc(ctx, args.documentId, 'manager');
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'manager');
     if (!isDocVisibility(args.visibility)) throw docError('invalid', 'Unknown visibility');
     if (doc.visibility === args.visibility) return;
+    // Opening a private document to the store publishes someone's My files: only
+    // its owner may, unless the owner is no longer an active member (an admin
+    // rescuing a departed member's files) or the caller is the service identity.
+    if (doc.visibility === 'private' && args.visibility !== 'private' && !isServiceCaller(ctx)
+        && doc.ownerMemberId !== memberId && isActiveMemberId(ctx, doc.organizationId, doc.ownerMemberId)) {
+      throw docError('forbidden', 'Only the owner can share a private file with the whole store');
+    }
     const next = { ...doc, visibility: args.visibility };
     ctx.db.document.id.update(next);
+    // A document that changes Drive space leaves its folder (folders never span spaces).
+    if (docSpaceOf(next) !== docSpaceOf(doc)) setDocumentFile(ctx, next, { folderId: '' });
+    refreshDocReaders(ctx, next);
     pruneDocPresence(ctx, next);
   }
 );
@@ -8907,8 +9357,12 @@ export const grantDocumentAccess = spacetimedb.reducer(
         updatedAt: ctx.timestamp,
       });
       const verb = args.role === 'viewer' ? 'view' : args.role === 'commenter' ? 'comment on' : 'edit';
-      notifyDocMembers(ctx, doc, memberId, [targetId], 'Document shared with you', `You can now ${verb} it`, undefined, 'doc_share');
+      const kind = docFileTypeOf(ctx, doc.id);
+      const sharedTitle = kind === 'sheet' ? 'Spreadsheet shared with you'
+        : kind === 'slides' ? 'Presentation shared with you' : 'Document shared with you';
+      notifyDocMembers(ctx, doc, memberId, [targetId], sharedTitle, `You can now ${verb} it`, undefined, 'doc_share');
     }
+    refreshDocReaders(ctx, doc);
     pruneDocPresence(ctx, doc);
   }
 );
@@ -8921,6 +9375,7 @@ export const revokeDocumentAccess = spacetimedb.reducer(
     for (const g of [...ctx.db.documentAccess.byDocumentId.filter(doc.id)]) {
       if (g.memberId === targetId) ctx.db.documentAccess.delete(g);
     }
+    refreshDocReaders(ctx, doc);
     pruneDocPresence(ctx, doc);
   }
 );
@@ -8932,15 +9387,21 @@ export const trashDocument = spacetimedb.reducer(
     if (doc.trashedAt !== undefined) return;
     ctx.db.document.id.update({ ...doc, trashedAt: ctx.timestamp, trashedByMemberId: memberId });
     for (const p of [...ctx.db.documentPresence.byDocumentId.filter(doc.id)]) ctx.db.documentPresence.delete(p);
+    dropDocumentLease(ctx, doc.id);
   }
 );
 
+/** Back where it was, unless that folder is gone, trashed, in the other space or someone else's: then the space's root. */
 export const restoreDocument = spacetimedb.reducer(
   { documentId: t.string() },
   (ctx, args) => {
     const { doc } = requireDoc(ctx, args.documentId, 'manager', { allowTrashed: true });
     if (doc.trashedAt === undefined) return;
     ctx.db.document.id.update({ ...doc, trashedAt: undefined, trashedByMemberId: undefined });
+    const folderId = docFolderIdOf(ctx, doc.id);
+    if (!driveFolderFits(ctx, doc.organizationId, folderId, docSpaceOf(doc), doc.ownerMemberId)) {
+      setDocumentFile(ctx, doc, { folderId: '' });
+    }
   }
 );
 
@@ -8978,6 +9439,7 @@ export const pushDocumentUpdate = spacetimedb.reducer(
   { documentId: t.string(), sessionId: t.string(), payload: t.byteArray() },
   (ctx, args) => {
     const { doc, memberId } = requireDoc(ctx, args.documentId, 'editor');
+    if (docFileTypeOf(ctx, doc.id) === 'sheet') throw docError('invalid', 'Open this spreadsheet in the spreadsheet editor');
     const size = args.payload.length;
     if (size === 0) return;
     if (size > DOC_UPDATE_MAX_BYTES) throw docError('too_large', 'Edit is too large to sync');
@@ -9013,6 +9475,7 @@ export const compactDocument = spacetimedb.reducer(
   },
   (ctx, args) => {
     const { doc, memberId } = requireDoc(ctx, args.documentId, 'editor');
+    if (docFileTypeOf(ctx, doc.id) === 'sheet') throw docError('invalid', 'Open this spreadsheet in the spreadsheet editor');
     if (args.state.length === 0 || args.state.length > DOC_STATE_MAX_BYTES) {
       throw docError('too_large', 'Document is too large');
     }
@@ -9061,6 +9524,7 @@ export const saveDocumentVersion = spacetimedb.reducer(
   },
   (ctx, args) => {
     const { doc, memberId } = requireDoc(ctx, args.documentId, 'editor');
+    if (docFileTypeOf(ctx, doc.id) === 'sheet') throw docError('invalid', 'Open this spreadsheet in the spreadsheet editor');
     if (args.kind !== 'auto' && args.kind !== 'named' && args.kind !== 'restore') {
       throw docError('invalid', 'Unknown version kind');
     }
@@ -9137,6 +9601,12 @@ export const deleteDocumentVersion = spacetimedb.reducer(
       throw docError('forbidden', 'Only the creator or a manager can delete a version');
     }
     ctx.db.documentVersion.delete(v);
+    // A sheet version's bytes live in document_version_state (and count toward the org's sheet bytes).
+    const state = ctx.db.documentVersionState.versionId.find(v.id.toString());
+    if (state) {
+      ctx.db.documentVersionState.delete(state);
+      adjustSheetBytes(ctx, doc.organizationId, -BigInt(state.byteLength));
+    }
   }
 );
 
@@ -9268,9 +9738,12 @@ export const removeDocumentPresence = spacetimedb.reducer(
 );
 
 /**
- * Lifecycle: drop presence rows of the disconnecting connection. Must never
+ * Lifecycle: drop presence rows of the disconnecting connection and detach the
+ * spreadsheet edit leases held on it. Must never
  * throw — the 90 s TTL sweep in upsertDocumentPresence and the client's
- * awareness timeout are the backstops if this doesn't run or fails.
+ * awareness timeout are the backstops if this doesn't run or fails. Page
+ * presence (upsertPagePresence) has the same 90 s sweep; a lease whose holder
+ * stops heartbeating expires after SHEET_LEASE_TTL_MICROS.
  */
 export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
   try {
@@ -9279,6 +9752,7 @@ export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
     for (const p of [...ctx.db.documentPresence.byConnectionId.filter(connectionId)]) {
       ctx.db.documentPresence.delete(p);
     }
+    detachSheetLeases(ctx, connectionId);
   } catch {
     // Best effort by design (see above).
   }
@@ -9411,6 +9885,54 @@ export const deleteDocumentComment = spacetimedb.reducer(
     }
   }
 );
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DRIVE REDUCERS (./drive/*.ts)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Every export has to come from this entry module and the reducers need the
+// membership and docs helpers above, so the factories receive them here.
+// Nothing in ./drive imports this file at runtime.
+const driveDeps: DriveDeps = {
+  t, SenderError, findActiveMember, requireAdmin, docMemberGate, docRoleFor,
+  purgeDocumentRows, pruneDocPresence, refreshDocReaders, timestampMicros, cleanDocTitle, docExcerpt, clampChars,
+  dropDocumentLease,
+  isServiceCaller: (ctx) => isServiceCaller(ctx),
+  timestampFromMicros: (micros) => new Timestamp(micros),
+  u64Range: (from, toExclusive) => new Range({ tag: 'included', value: from }, { tag: 'excluded', value: toExclusive }),
+  docLimits: {
+    uuidRe: DOC_UUID_RE, stateMaxBytes: DOC_STATE_MAX_BYTES, textMaxChars: DOC_TEXT_MAX_CHARS,
+    htmlMaxChars: DOC_HTML_MAX_CHARS, templateIdMax: DOC_TEMPLATE_ID_MAX,
+  },
+};
+export const {
+  createDriveFolder, renameDriveItem, moveDriveEntries, setDocumentFolder, toggleDriveStar,
+  acknowledgeDriveNotice, refreshMyDriveAccess,
+} = defineDriveReducers(spacetimedb, driveDeps);
+export const { trashDriveEntries, restoreDriveEntries, deleteDriveEntriesForever, emptyDriveTrash } =
+  defineDriveTrashReducers(spacetimedb, driveDeps);
+export const { createDriveDocument, renameDriveDocument } = defineDriveDocumentReducers(spacetimedb, driveDeps);
+export const {
+  beginDriveUpload, authorizeDriveUpload, abortDriveUpload, serviceCommitDriveUpload, serviceFailDriveUpload,
+  serviceSetDriveThumb, serviceDiscardDriveBlob,
+} = defineDriveUploadReducers(spacetimedb, driveDeps);
+export const {
+  serviceEnsureDriveReader, serviceDriveSweep, serviceAckDriveBlobGc, serviceFailDriveBlobGc,
+  serviceEnqueueOrphanDriveBlobs, serviceFinishDriveReconcile, serviceSetDriveQuota, backfillDriveAccessV1,
+} = defineDriveServiceReducers(spacetimedb, driveDeps);
+
+// Sheets (./drive/sheets.ts): the edit lease and the content reducers of a spreadsheet.
+const sheetDeps: SheetDeps = {
+  ...driveDeps, requireDoc, touchDocument, docFileTypeOf,
+  sheetLimits: {
+    updateMaxBytes: DOC_UPDATE_MAX_BYTES, namedVersionMax: DOC_NAMED_VERSION_MAX,
+    versionNameMax: DOC_VERSION_NAME_MAX, autoVersionGapMicros: DOC_AUTO_VERSION_GAP_MICROS,
+  },
+};
+export const {
+  acquireSheetLease, heartbeatSheetLease, releaseSheetLease, declineSheetLeaseRequest, cancelSheetLeaseRequest,
+  pushSheetOps, compactSheet, resetSheetContent, saveSheetVersion,
+} = defineSheetReducers(spacetimedb, sheetDeps);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // BUG REPORT REDUCERS
@@ -9780,6 +10302,7 @@ export const migrateOwnerPermissionsV1 = spacetimedb.reducer(
       if (dryRun) continue;
       ctx.db.orgMember.delete(m);
       ctx.db.orgMember.insert({ ...m, permissions: JSON.stringify(next) });
+      syncMemberAccessIndexes(ctx, { ...m, permissions: JSON.stringify(next) });
     }
 
     const note = `${dryRun ? 'dryRun ' : ''}owners=${scanned} patched=${patched} unparsable=${unparsable}`;
@@ -9880,7 +10403,14 @@ export const pruneEphemeral = spacetimedb.reducer(
     if (!isServiceCaller(ctx)) requireAdmin(ctx);
     const now = timestampMicros(ctx.timestamp);
     for (const r of [...ctx.db.deviceLoginRequest.iter()]) {
-      if (timestampMicros(r.expiresAt) < now) ctx.db.deviceLoginRequest.delete(r);
+      if (timestampMicros(r.expiresAt) < now) {
+        ctx.db.deviceLoginRequest.delete(r);
+        dropDeviceLoginRequester(ctx, r.id);
+      }
+    }
+    // A requester row outlives its request only if a delete path above missed it.
+    for (const q of [...ctx.db.deviceLoginRequester.iter()]) {
+      if (!ctx.db.deviceLoginRequest.id.find(q.requestId)) ctx.db.deviceLoginRequester.delete(q);
     }
     // Presence rows are removed on disconnect, but a hard client crash leaves
     // one behind and it then renders as a permanent phantom cursor.

@@ -1,7 +1,9 @@
 // Server-side helper for read-only SpacetimeDB SQL queries against public
 // tables. Used by SSR pages (blogs, etc.) where we need to render content
-// without holding a WebSocket connection on the server. The SQL HTTP endpoint
-// is unauthenticated for public tables.
+// without holding a WebSocket connection on the server. Without a token the
+// query runs as an anonymous identity, so row-level security lets it see only
+// world-readable rows; with `opts.token` it runs as that identity and sees what
+// its RLS rules allow (the Drive routes forward the caller's token).
 
 const WS_BASE =
   process.env.NEXT_PUBLIC_SPACETIMEDB_URI ?? "wss://maincloud.spacetimedb.com";
@@ -15,7 +17,7 @@ interface SqlColumn {
   algebraic_type: unknown;
 }
 
-interface SqlResult {
+export interface SqlResult {
   schema: { elements: SqlColumn[] };
   rows: unknown[][];
 }
@@ -23,11 +25,13 @@ interface SqlResult {
 // Run a read-only SQL query against the deployed module. Returns parsed rows
 // as arrays of column values (same order as `schema.elements`). Throws on HTTP
 // failure so callers can decide how to fall back.
-export async function spacetimeSql(query: string): Promise<SqlResult[]> {
+export async function spacetimeSql(query: string, opts?: { token?: string | null }): Promise<SqlResult[]> {
   const url = `${HTTP_BASE.replace(/\/$/, "")}/v1/database/${MODULE_NAME}/sql`;
+  const headers: Record<string, string> = { "Content-Type": "text/plain" };
+  if (opts?.token) headers.Authorization = `Bearer ${opts.token}`;
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "text/plain" },
+    headers,
     body: query,
     cache: "no-store",
   });

@@ -168,7 +168,7 @@ function DocListRow({
       <TableCell className="relative w-0 py-1 ps-0 pe-1.5">
         <RowCellLink href={href} />
         <div className="relative z-10 flex items-center justify-end gap-0.5">
-          {scope !== "trash" && !compact && (
+          {scope !== "trash" && !compact && item.canStarAndCopy && (
             <Button
               type="button"
               variant="ghost"

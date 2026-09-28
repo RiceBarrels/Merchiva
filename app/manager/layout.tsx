@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { ManagerShell } from "@/components/browser-shell/manager-shell";
 import { ShellContextMenu } from "@/components/browser-shell/shared/shell-context-menu";
 import { MerchivaDock } from "@/components/merchiva-dock";
+import { SheetSessionKeeper } from "@/lib/sheets/use-sheet-session-keeper";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { ShakeBugReport } from "@/components/shake-bug-report";
 import { PushNotificationPrompt } from "@/components/push-notification-prompt";
@@ -553,11 +554,14 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
               {/* Device surfaces get no shell, but once notifications are
                   granted they should still register for push. */}
               <PushNotificationPrompt />
+              {/* Parked spreadsheet sessions follow reconnects (devices edit sheets too). */}
+              <SheetSessionKeeper />
             </>
           ) : (
             <>
               <ManagerShell>{children}</ManagerShell>
               <ShellContextMenu />
+              <SheetSessionKeeper />
               <MerchivaDock />
               <PushNotificationPrompt />
               <TauriNotificationBridge />

@@ -1,0 +1,8 @@
+/* Univer's preset CSS is unlayered and resets scrollbars on every element
+   (preset-sheets-core/lib/index.css: `* { scrollbar-color: initial; scrollbar-width: initial }`).
+   Unlayered beats Tailwind's `@layer utilities`, so once the editor chunk has loaded every
+   `[scrollbar-width:none]` utility in the app would lose (Next never unloads route CSS). This rule
+   (specificity 0,0,1 > `*`, and below any class selector such as .no-scrollbar) sends both properties
+   back to the layered (Tailwind) value everywhere, which inside Univer is the UA default: what Univer
+   wanted. Verified in Chromium by the S0 spike (without it the layered utility computes `auto`). */
+html, html * { scrollbar-color: revert-layer; scrollbar-width: revert-layer; }

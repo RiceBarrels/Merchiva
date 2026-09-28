@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createDocConnection } from "@/lib/docs/connection";
+import { createDocConnection, wrapDocTable } from "@/lib/docs/connection";
 import { DOC_ERROR_I18N_KEYS, docErrorCode, docErrorMessage } from "@/lib/docs/errors";
 import { DOCS_HOME_HREF, documentHref } from "@/lib/docs/hrefs";
 import { DOC_UUID_RE, formatUuidV4, isDocumentId, newDocumentId } from "@/lib/docs/ids";
@@ -8,12 +8,14 @@ import {
   idString,
   mapComment,
   mapDocument,
+  mapDocumentFile,
+  mapDocuments,
   mapGrant,
   mapUpdateRow,
   parseDocPageSetup,
   toBytes,
 } from "@/lib/docs/mappers";
-import { DOC_LIVE_TABLES, DOC_TABLE_SCOPE_COLUMNS, docLiveQueries, docScopedSql, docsProbeQueries } from "@/lib/docs/queries";
+import { DOC_LIVE_TABLES, DOC_TABLE_SCOPE_COLUMNS, docLiveQueries, docScopedSql, docsProbeQueries, sheetLiveQueries } from "@/lib/docs/queries";
 import type { DocUpdateRow } from "@/lib/docs/types";
 import { tables } from "@/lib/spacetimedb/generated";
 
@@ -34,6 +36,14 @@ describe("docLiveQueries", () => {
 
   test("lowercases the id", () => {
     expect(docLiveQueries(DOC_ID.toUpperCase())).toEqual(docLiveQueries(DOC_ID));
+  });
+
+  test("sheetLiveQueries adds the spreadsheet's edit lease to the same set", () => {
+    expect(sheetLiveQueries(DOC_ID.toUpperCase())).toEqual([
+      ...docLiveQueries(DOC_ID),
+      `SELECT * FROM "document_edit_lease" WHERE "document_edit_lease"."document_id" = '${DOC_ID}'`,
+    ]);
+    expect(() => sheetLiveQueries("abc")).toThrow("Invalid document id");
   });
 
   test("rejects anything that isn't a v4 UUID", () => {
@@ -61,7 +71,8 @@ describe("docScopedSql matches the SDK query builder", () => {
 
   test("probe covers every docs table with a zero-row predicate", () => {
     const probe = docsProbeQueries();
-    expect(probe).toHaveLength(8);
+    expect(probe).toHaveLength(9);
+    expect(probe[8]).toBe(`SELECT * FROM "document_file" WHERE "document_file"."document_id" = ''`);
     expect(probe[0]).toBe(`SELECT * FROM "document" WHERE "document"."id" = ''`);
     for (const [i, [table, column]] of DOC_TABLE_SCOPE_COLUMNS.entries()) {
       expect(probe[i]).toBe(`SELECT * FROM "${table}" WHERE "${table}"."${column}" = ''`);
@@ -80,7 +91,7 @@ describe.if(hasDocBindings)("docs bindings parity (after spacetime generate)", (
   });
 
   test("probe queries equal the generated builders", () => {
-    const accessors = ["document", "documentUpdate", "documentSnapshot", "documentPresence", "documentComment", "documentVersion", "documentStar", "documentAccess"];
+    const accessors = ["document", "documentUpdate", "documentSnapshot", "documentPresence", "documentComment", "documentVersion", "documentStar", "documentAccess", "documentFile"];
     const built = accessors.map((accessor) =>
       generated[accessor].where((r: any) => (accessor === "document" ? r.id : r.documentId).eq("")).toSql(),
     );
@@ -186,6 +197,47 @@ describe("mappers", () => {
     expect(doc.pageSetup).toEqual({ size: "a4", orientation: "landscape", marginsIn: { top: 1, right: 1, bottom: 1, left: 0.5 } });
     expect(doc.updatedAt.getTime()).toBe(2000);
     expect(doc.trashedAt).toBeNull();
+    // No document_file row: a text document from before Drive, at the root of its space.
+    expect(doc.fileType).toBe("doc");
+    expect(doc.folderId).toBe("");
+  });
+
+  test("mapDocumentFile maps a document_file row ('' → doc, a newer client's type → unknown, ids lowercased)", () => {
+    const row = { documentId: DOC_ID.toUpperCase(), organizationId: "org-1", fileType: "sheet", folderId: "", updatedAt: ts(5) };
+    expect(mapDocumentFile(row)).toEqual({ documentId: DOC_ID, organizationId: "org-1", fileType: "sheet", folderId: "", updatedAt: new Date(5) });
+    expect(mapDocumentFile({ ...row, fileType: "" }).fileType).toBe("doc");
+    expect(mapDocumentFile({ ...row, fileType: undefined }).fileType).toBe("doc");
+    expect(mapDocumentFile({ ...row, fileType: "doc" }).fileType).toBe("doc");
+    expect(mapDocumentFile({ ...row, fileType: "slides" }).fileType).toBe("slides");
+    expect(mapDocumentFile({ ...row, fileType: "form" }).fileType).toBe("unknown");
+    expect(mapDocumentFile({ ...row, folderId: "7A2B9C4D-1E3F-4A5B-8C6D-9E0F1A2B3C4D" }).folderId).toBe("7a2b9c4d-1e3f-4a5b-8c6d-9e0f1a2b3c4d");
+  });
+
+  test("mapDocument takes type and folder from the document_file row only, never from the document row", () => {
+    const row = { id: DOC_ID, organizationId: "org-1", ownerMemberId: "m-1", visibility: "org_edit", createdAt: ts(1), updatedAt: ts(2) };
+    expect(mapDocument(row, { fileType: "slides", folderId: "f-1" })).toMatchObject({ fileType: "slides", folderId: "f-1" });
+    expect(mapDocument(row, null)).toMatchObject({ fileType: "doc", folderId: "" });
+    // Columns a `document` row no longer has are ignored if present.
+    expect(mapDocument({ ...row, fileType: "sheet", folderId: "f-2" })).toMatchObject({ fileType: "doc", folderId: "" });
+  });
+
+  test("mapDocuments pairs each document with its document_file row by id", () => {
+    const doc = (id: string) => ({ id, organizationId: "org-1", ownerMemberId: "m-1", visibility: "org_edit", createdAt: ts(1), updatedAt: ts(2) });
+    const other = "2f0e4c52-8d1a-4b6e-9c3f-2a7b5d9e0c12";
+    const legacy = "3f0e4c52-8d1a-4b6e-9c3f-2a7b5d9e0c13";
+    const docs = mapDocuments(
+      [doc(DOC_ID.toUpperCase()), doc(other), doc(legacy)],
+      [
+        { documentId: DOC_ID, organizationId: "org-1", fileType: "sheet", folderId: "F-1", updatedAt: ts(3) },
+        { documentId: other.toUpperCase(), organizationId: "org-1", fileType: "slides", folderId: "", updatedAt: ts(3) },
+        { documentId: "4f0e4c52-8d1a-4b6e-9c3f-2a7b5d9e0c14", organizationId: "org-1", fileType: "sheet", folderId: "", updatedAt: ts(3) },
+      ],
+    );
+    expect(docs.map((d) => [d.id, d.fileType, d.folderId])).toEqual([
+      [DOC_ID, "sheet", "f-1"],
+      [other, "slides", ""],
+      [legacy, "doc", ""],
+    ]);
   });
 
   test("parseDocPageSetup rejects malformed JSON", () => {
@@ -318,6 +370,22 @@ describe("createDocConnection", () => {
     expect(handle.isActive()).toBe(true);
     handle.unsubscribe();
     expect(calls.unsubscribed).toBe(1);
+  });
+
+  test("wrapDocTable maps any table (e.g. the Sheets lease) and caches each row's mapping", () => {
+    const leaseRow = { documentId: DOC_ID, epoch: BigInt(2) };
+    const table = fakeTable([leaseRow]);
+    const wrapped = wrapDocTable(table, (row: any) => ({ id: String(row.documentId), epoch: Number(row.epoch) }));
+    const [first] = [...wrapped.iter()];
+    expect(first).toEqual({ id: DOC_ID, epoch: 2 });
+    expect([...wrapped.iter()][0]).toBe(first);
+    const deleted: string[] = [];
+    const onDelete = (_ctx: unknown, row: { id: string }) => deleted.push(row.id);
+    wrapped.onDelete(onDelete);
+    for (const cb of table.handlers.delete) cb({}, leaseRow);
+    expect(deleted).toEqual([DOC_ID]);
+    wrapped.removeOnDelete(onDelete);
+    expect(table.handlers.delete.size).toBe(0);
   });
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */

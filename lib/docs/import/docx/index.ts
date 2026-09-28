@@ -135,8 +135,8 @@ export async function docxToHtml(
   arrayBuffer: ArrayBuffer,
   uploadImage: (file: File) => Promise<string>,
 ): Promise<DocxHtmlResult> {
-  // The one unrecoverable failure: a file that isn't a zip isn't a document.
-  const zip = openDocxZip(arrayBuffer);
+  // The one unrecoverable failure: a file that isn't a zip, or a zip over the inflation limits, isn't a document.
+  const zip = await openDocxZip(arrayBuffer);
   const tally = createTally();
 
   const documentPath = attempt(tally, MAIN_DOCUMENT, () => mainDocumentPath(zip));

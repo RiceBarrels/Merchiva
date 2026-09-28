@@ -6,7 +6,7 @@ import type { Permissions } from "@/lib/types";
 
 type Section = keyof Permissions;
 
-const ALL_APPS = ["sales", "products", "tasks", "training", "pay", "bookings", "docs"];
+const ALL_APPS = ["sales", "products", "tasks", "training", "pay", "bookings", "docs", "drive"];
 
 function ctx(opts: {
   owner?: boolean;
@@ -32,6 +32,9 @@ function ctx(opts: {
 const EN: Record<string, string> = {
   "nav.home": "Home",
   "nav.docs": "Docs",
+  "nav.drive": "Drive",
+  "nav.sheets": "Sheets",
+  "nav.slides": "Slides",
   "nav.inventory": "Inventory",
   "nav.wasteLog": "Waste Log",
   "nav.suppliers": "Suppliers",
@@ -96,6 +99,21 @@ describe("getRouteAccess", () => {
     expect(getRouteAccess("/manager/docs/edit?id=1", ctx({ owner: true, apps: [] }))).toBe("featureOff");
   });
 
+  test("drive and its Sheets / Slides editors follow dashboard.view and the Drive app", () => {
+    for (const url of ["/manager/drive", "/manager/drive?space=store", "/manager/drive/sheet?id=1", "/manager/drive/slides?id=1&slide=2"]) {
+      expect(getRouteAccess(url, ctx({ view: ["dashboard"] }))).toBe("allowed");
+      expect(getRouteAccess(url, ctx({ view: ["inventory"] }))).toBe("forbidden");
+      // Drive is an installable app: the editors are its pages, so without it they are off too.
+      expect(getRouteAccess(url, ctx({ owner: true, apps: [] }))).toBe("featureOff");
+      expect(getRouteAccess(url, ctx({ owner: true, apps: ["drive"] }))).toBe("allowed");
+      // Docs is its own app: installing it does not turn Drive on.
+      expect(getRouteAccess(url, ctx({ owner: true, apps: ["docs"] }))).toBe("featureOff");
+    }
+    expect(getRouteAccess("/manager/docs", ctx({ owner: true, apps: ["drive"] }))).toBe("featureOff");
+    // The home row is exact: an unknown sub-path is not a Drive page.
+    expect(getRouteAccess("/manager/drive/unknown", ctx({ owner: true }))).toBe("unknownRoute");
+  });
+
   test("the native app and personal mode don't change route access", () => {
     const view: Section[] = ["inventory", "staffing"];
     expect(getRouteAccess("/manager/inventory", ctx({ view, capacitor: true }))).toBe("allowed");
@@ -109,6 +127,7 @@ describe("listNavSections", () => {
     expect(sections.map((s) => s.href)).toEqual([
       "/manager/new-tab",
       "/manager/docs",
+      "/manager/drive",
       "/manager/inventory",
       "/manager/sales",
       "/manager/personnel/schedule",
@@ -130,6 +149,18 @@ describe("listNavSections", () => {
       "/manager/personnel/pay",
     ]);
     expect(byHref.get("/manager/docs")?.titleKey).toBe("nav.docs");
+    expect(byHref.get("/manager/drive")?.titleKey).toBe("nav.drive");
+    // The editors are unlisted pages of the section, never rows of their own.
+    expect(byHref.get("/manager/drive")?.children).toEqual([]);
+  });
+
+  test("the Drive section needs the Drive app and dashboard.view", () => {
+    const hrefs = (c: AccessContext) => listNavSections(c).map((s) => s.href);
+    expect(hrefs(ctx({ owner: true, apps: ["docs"] }))).not.toContain("/manager/drive");
+    expect(hrefs(ctx({ owner: true, apps: ["drive"] }))).toContain("/manager/drive");
+    expect(hrefs(ctx({ view: ["dashboard"], apps: ["drive"] }))).toContain("/manager/drive");
+    expect(hrefs(ctx({ view: ["inventory"], apps: ["drive"] }))).not.toContain("/manager/drive");
+    expect(hrefs(ctx({ owner: true, mode: "personal" }))).not.toContain("/manager/drive");
   });
 
   test("uninstalled apps and denied permissions hide sections and children", () => {
@@ -182,5 +213,22 @@ describe("searchRoutes", () => {
     expect(searchRoutes("schedule", t, ctx({ owner: true, mode: "personal" }))[0]?.href).toBe("/manager/personnel/schedule");
     const scores = searchRoutes("s", t, owner).map((r) => r.score);
     expect([...scores].sort((a, b) => b - a)).toEqual(scores);
+  });
+
+  test("Drive is found by name and keywords; its editors never are", () => {
+    const owner = ctx({ owner: true });
+    expect(searchRoutes("drive", t, owner)[0]?.href).toBe("/manager/drive");
+    expect(searchRoutes("spreadsheets", t, owner)[0]?.href).toBe("/manager/drive");
+    // The editors' own names lead to the Drive home, the only way into them.
+    for (const q of ["sheet", "sheets", "slides", "deck"]) {
+      expect(searchRoutes(q, t, owner)[0]?.href).toBe("/manager/drive");
+    }
+    for (const q of ["drive", "sheets", "slides", "files"]) {
+      const hrefs = searchRoutes(q, t, owner).map((r) => r.href);
+      expect(hrefs).not.toContain("/manager/drive/sheet");
+      expect(hrefs).not.toContain("/manager/drive/slides");
+    }
+    expect(searchRoutes("drive", t, ctx({ owner: true, apps: ["docs"] }))).toEqual([]);
+    expect(searchRoutes("drive", t, ctx({ view: ["inventory"] }))).toEqual([]);
   });
 });
