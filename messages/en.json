@@ -1670,13 +1670,7 @@
     "timeToday": "Today",
     "timeYesterday": "Yesterday",
     "attach": "Attach",
-    "merchivaInvite": "Invite Mr. Merchiva",
-    "merchivaRemove": "Remove Mr. Merchiva",
-    "merchivaOn": "Mr. Merchiva",
-    "merchivaMentionHint": "Ask the AI assistant",
     "noMatches": "No matches",
-    "online": "online",
-    "aiOpsAgent": "Your AI ops agent",
     "mentionLower": "mention",
     "sendKbd": "send",
     "send": "Send",
@@ -2599,7 +2593,6 @@
     "name": "Mr. Merchiva",
     "online": "online",
     "opsAgent": "Your ops agent · trained on {orgName}",
-    "trainedOn": "Trained on {orgName}",
     "newChat": "New chat",
     "chatHistory": "Chat history",
     "history": "History",
@@ -2617,9 +2610,6 @@
     "stopRecording": "Stop recording",
     "mentionData": "Mention data",
     "dataLabel": "data",
-    "quickSchedule": "Schedule next week",
-    "quickSales": "Today's sales",
-    "quickInventory": "Inventory alerts",
     "quickChips": {
       "pendingTimeOff": "{n} time-off pending",
       "pendingTrades": "{n} shift trades pending",
@@ -2632,7 +2622,6 @@
     },
     "errorNoResponse": "Sorry, the AI service is temporarily unavailable. Please try again later.",
     "supplierOrderPrepared": "Prepared a supplier order for approval.",
-    "allClear": "All clear — no issues found.",
     "startCall": "Start voice call",
     "call": {
       "title": "Voice call",
@@ -2998,7 +2987,14 @@
       "dismiss": "Dismiss",
       "empty": "No new notifications"
     },
-    "noAccess": "Mr. Merchiva is disabled for your account. Ask a manager to enable it."
+    "noAccess": "Mr. Merchiva is disabled for your account. Ask a manager to enable it.",
+    "dock": {
+      "open": "Open Mr. Merchiva",
+      "close": "Close Mr. Merchiva",
+      "resize": "Resize Mr. Merchiva",
+      "hintPrefix": "Press",
+      "hintSuffix": "to summon Mr. Merchiva"
+    }
   },
   "admins": {
     "checking": "Checking admin access…",
@@ -3179,32 +3175,6 @@
         "promoted": "User promoted to admin.",
         "demoted": "Admin role revoked."
       }
-    }
-  },
-  "quickDialog": {
-    "title": "Mr. Merchiva",
-    "online": "online",
-    "placeholder": "Ask Mr. Merchiva, or run a command…",
-    "thinking": "thinking…",
-    "askAgain": "Ask again",
-    "openAssistant": "Open Mr. Merchiva",
-    "askPrefix": "Press Enter to ask",
-    "navigate": "navigate",
-    "run": "run",
-    "footer": "MERCHIVA · ANYWHERE",
-    "error": "Mr. Merchiva couldn't reach the server. Try again.",
-    "hintPrefix": "Press",
-    "hintSuffix": "to summon Mr. Merchiva",
-    "groups": {
-      "suggested": "Suggested",
-      "staffing": "Staffing"
-    },
-    "commands": {
-      "attention": "What needs my attention today?",
-      "sales": "Summarize today's sales",
-      "lowStock": "Which items are low on stock?",
-      "whosOn": "Who's working right now?",
-      "coverage": "Any gaps in this week's schedule?"
     }
   },
   "usage": {
@@ -5636,8 +5606,6 @@
     "toolbar": {
       "label": "Browser toolbar",
       "reloadHint": "Shift-click for a full reload",
-      "merchiva": "Mr. Merchiva",
-      "merchivaNativeHint": "{shortcut} opens Mr. Merchiva anywhere",
       "profile": "Account and stores",
       "menu": "Customize and control Merchiva"
     },
@@ -5666,8 +5634,7 @@
       "switchStore": "Switch store",
       "bookmarkPage": "Bookmark this tab",
       "toggleBookmarksBar": "Show bookmarks bar",
-      "hideBookmarksBar": "Hide bookmarks bar",
-      "askMerchiva": "Ask Mr. Merchiva"
+      "hideBookmarksBar": "Hide bookmarks bar"
     },
     "bookmarks": {
       "bar": "Bookmarks",

@@ -1670,13 +1670,7 @@
     "timeToday": "今天",
     "timeYesterday": "昨天",
     "attach": "附件",
-    "merchivaInvite": "邀請 Mr. Merchiva",
-    "merchivaRemove": "移除 Mr. Merchiva",
-    "merchivaOn": "Mr. Merchiva",
-    "merchivaMentionHint": "詢問 AI 助手",
     "noMatches": "無匹配",
-    "online": "線上",
-    "aiOpsAgent": "您的 AI 營運助理",
     "mentionLower": "提及",
     "sendKbd": "傳送",
     "send": "傳送",
@@ -2599,7 +2593,6 @@
     "name": "Mr. Merchiva",
     "online": "線上",
     "opsAgent": "你的運營助手 · 已學習 {orgName}",
-    "trainedOn": "已學習 {orgName}",
     "newChat": "新對話",
     "chatHistory": "歷史記錄",
     "history": "歷史記錄",
@@ -2617,9 +2610,6 @@
     "stopRecording": "停止錄音",
     "mentionData": "提及資料",
     "dataLabel": "資料",
-    "quickSchedule": "幫我排下週的班",
-    "quickSales": "今日銷售概況",
-    "quickInventory": "庫存預警",
     "quickChips": {
       "pendingTimeOff": "有 {n} 個請假待審批",
       "pendingTrades": "有 {n} 個換班待審批",
@@ -2632,7 +2622,6 @@
     },
     "errorNoResponse": "抱歉，AI 服務暫時無法響應。請稍後再試。",
     "supplierOrderPrepared": "已準備供應商補貨單，核准後會傳送給供應商。",
-    "allClear": "一切正常 — 暫無異常。",
     "startCall": "開始語音通話",
     "call": {
       "title": "語音通話",
@@ -2998,7 +2987,14 @@
       "dismiss": "忽略",
       "empty": "沒有新通知"
     },
-    "noAccess": "你的帳號已被停用 Mr. Merchiva，請聯繫管理員開啟。"
+    "noAccess": "你的帳號已被停用 Mr. Merchiva，請聯繫管理員開啟。",
+    "dock": {
+      "open": "開啟 Mr. Merchiva",
+      "close": "關閉 Mr. Merchiva",
+      "resize": "調整 Mr. Merchiva 寬度",
+      "hintPrefix": "按",
+      "hintSuffix": "隨時喚起 Mr. Merchiva"
+    }
   },
   "admins": {
     "checking": "正在校驗管理員許可權…",
@@ -3179,32 +3175,6 @@
         "promoted": "使用者已設為管理員。",
         "demoted": "管理員許可權已撤銷。"
       }
-    }
-  },
-  "quickDialog": {
-    "title": "Mr. Merchiva",
-    "online": "線上",
-    "placeholder": "向 Mr. Merchiva 提問，或執行命令…",
-    "thinking": "思考中…",
-    "askAgain": "重新提問",
-    "openAssistant": "開啟 Mr. Merchiva",
-    "askPrefix": "按回車鍵提問",
-    "navigate": "導航",
-    "run": "執行",
-    "footer": "MERCHIVA · 隨時隨地",
-    "error": "Mr. Merchiva 無法連線伺服器，請重試。",
-    "hintPrefix": "按",
-    "hintSuffix": "隨時喚起 Mr. Merchiva",
-    "groups": {
-      "suggested": "推薦",
-      "staffing": "排班"
-    },
-    "commands": {
-      "attention": "今天有什麼需要我關注的？",
-      "sales": "總結今天的銷售情況",
-      "lowStock": "哪些商品庫存不足？",
-      "whosOn": "現在誰在上班？",
-      "coverage": "本週排班有空缺嗎？"
     }
   },
   "usage": {
@@ -5636,8 +5606,6 @@
     "toolbar": {
       "label": "瀏覽器工具欄",
       "reloadHint": "按住 Shift 點選可完全重新載入",
-      "merchiva": "Mr. Merchiva",
-      "merchivaNativeHint": "在任意位置按 {shortcut} 開啟 Mr. Merchiva",
       "profile": "賬戶和門店",
       "menu": "自定義及控制 Merchiva"
     },
@@ -5666,8 +5634,7 @@
       "switchStore": "切換門店",
       "bookmarkPage": "為此分頁新增書籤",
       "toggleBookmarksBar": "顯示書籤欄",
-      "hideBookmarksBar": "隱藏書籤欄",
-      "askMerchiva": "詢問 Mr. Merchiva"
+      "hideBookmarksBar": "隱藏書籤欄"
     },
     "bookmarks": {
       "bar": "書籤",

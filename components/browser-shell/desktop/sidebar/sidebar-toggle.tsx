@@ -27,7 +27,7 @@ import {
  * The shortcut lives in core's table (lib/browser-shell/shortcuts.ts): Alt+S (⌥S on macOS) in
  * every environment — Tauri, a plain web tab and an installed PWA. The natural Mod combos are
  * taken (Mod+B and Mod+backslash by the docs editor, Mod+Shift+B by the bookmarks bar), while
- * Alt+S is clear of the core table, the docs keymap, the quick dialog (Mod+Shift+M) and the
+ * Alt+S is clear of the core table, the docs keymap, the Mr. Merchiva dock (Mod+Shift+M) and the
  * browser/OS combos, and Alt bindings never fire while typing (plan D21). When the command is
  * unbound `useShortcutLabel` returns null and the tooltip shows the label alone.
  */

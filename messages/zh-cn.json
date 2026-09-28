@@ -1670,13 +1670,7 @@
     "timeToday": "今天",
     "timeYesterday": "昨天",
     "attach": "附件",
-    "merchivaInvite": "邀请 Mr. Merchiva",
-    "merchivaRemove": "移除 Mr. Merchiva",
-    "merchivaOn": "Mr. Merchiva",
-    "merchivaMentionHint": "询问 AI 助手",
     "noMatches": "无匹配",
-    "online": "在线",
-    "aiOpsAgent": "您的 AI 运营助手",
     "mentionLower": "提及",
     "sendKbd": "发送",
     "send": "发送",
@@ -2599,7 +2593,6 @@
     "name": "Mr. Merchiva",
     "online": "在线",
     "opsAgent": "你的运营助手 · 已学习 {orgName}",
-    "trainedOn": "已学习 {orgName}",
     "newChat": "新对话",
     "chatHistory": "历史记录",
     "history": "历史记录",
@@ -2617,9 +2610,6 @@
     "stopRecording": "停止录音",
     "mentionData": "提及数据",
     "dataLabel": "数据",
-    "quickSchedule": "帮我排下周的班",
-    "quickSales": "今日销售概况",
-    "quickInventory": "库存预警",
     "quickChips": {
       "pendingTimeOff": "有 {n} 个请假待审批",
       "pendingTrades": "有 {n} 个换班待审批",
@@ -2632,7 +2622,6 @@
     },
     "errorNoResponse": "抱歉，AI 服务暂时无法响应。请稍后再试。",
     "supplierOrderPrepared": "已准备供应商补货单，审批后会发送给供应商。",
-    "allClear": "一切正常 — 暂无异常。",
     "startCall": "开始语音通话",
     "call": {
       "title": "语音通话",
@@ -2998,7 +2987,14 @@
       "dismiss": "忽略",
       "empty": "暂无新通知"
     },
-    "noAccess": "你的账号已被禁用 Mr. Merchiva，请联系管理员开启。"
+    "noAccess": "你的账号已被禁用 Mr. Merchiva，请联系管理员开启。",
+    "dock": {
+      "open": "打开 Mr. Merchiva",
+      "close": "关闭 Mr. Merchiva",
+      "resize": "调整 Mr. Merchiva 宽度",
+      "hintPrefix": "按",
+      "hintSuffix": "随时唤起 Mr. Merchiva"
+    }
   },
   "admins": {
     "checking": "正在校验管理员权限…",
@@ -3179,32 +3175,6 @@
         "promoted": "用户已设为管理员。",
         "demoted": "管理员权限已撤销。"
       }
-    }
-  },
-  "quickDialog": {
-    "title": "Mr. Merchiva",
-    "online": "在线",
-    "placeholder": "向 Mr. Merchiva 提问，或运行命令…",
-    "thinking": "思考中…",
-    "askAgain": "重新提问",
-    "openAssistant": "打开 Mr. Merchiva",
-    "askPrefix": "按回车键提问",
-    "navigate": "导航",
-    "run": "运行",
-    "footer": "MERCHIVA · 随时随地",
-    "error": "Mr. Merchiva 无法连接服务器，请重试。",
-    "hintPrefix": "按",
-    "hintSuffix": "随时唤起 Mr. Merchiva",
-    "groups": {
-      "suggested": "推荐",
-      "staffing": "排班"
-    },
-    "commands": {
-      "attention": "今天有什么需要我关注的？",
-      "sales": "总结今天的销售情况",
-      "lowStock": "哪些商品库存不足？",
-      "whosOn": "现在谁在上班？",
-      "coverage": "本周排班有空缺吗？"
     }
   },
   "usage": {
@@ -5636,8 +5606,6 @@
     "toolbar": {
       "label": "浏览器工具栏",
       "reloadHint": "按住 Shift 点击可完全重新加载",
-      "merchiva": "Mr. Merchiva",
-      "merchivaNativeHint": "在任意位置按 {shortcut} 打开 Mr. Merchiva",
       "profile": "账户和门店",
       "menu": "自定义及控制 Merchiva"
     },
@@ -5666,8 +5634,7 @@
       "switchStore": "切换门店",
       "bookmarkPage": "为此标签页添加书签",
       "toggleBookmarksBar": "显示书签栏",
-      "hideBookmarksBar": "隐藏书签栏",
-      "askMerchiva": "询问 Mr. Merchiva"
+      "hideBookmarksBar": "隐藏书签栏"
     },
     "bookmarks": {
       "bar": "书签",

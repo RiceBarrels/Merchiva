@@ -233,7 +233,7 @@ List `inline-flex h-8 rounded-lg p-[3px] text-muted-foreground` (`variant="line"
 - Mobile sheets and menus use the shadcn **Drawer** (vaul), `max-h-[85vh]`, `DrawerTitle` styled `text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`.
 - Popovers / dropdowns: `rounded-[0.3rem] border border-border bg-popover shadow-md animate-in fade-in-0 zoom-in-95`.
 - Toasts: Sonner, `position="top-center" richColors`.
-- Mr. Merchiva quick dialog (Cmd/Ctrl+Shift+M): backdrop is intentionally fully transparent, no scrim.
+- Mr. Merchiva dock (Cmd/Ctrl+Shift+M, or the rail on desktop): a non-modal chat panel on the right — no scrim, no click-away, stays until the user closes it. Desktop: its own resizable column (220–680px, default 420) that collapses to a 44px rail with a vertical label. Other shells overlay it on the page. One conversation per browser tab.
 
 ### Icons
 

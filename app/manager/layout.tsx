@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { ManagerShell } from "@/components/browser-shell/manager-shell";
 import { ShellContextMenu } from "@/components/browser-shell/shared/shell-context-menu";
-import { MerchivaQuickDialog } from "@/components/merchiva-quick-dialog";
+import { MerchivaDock } from "@/components/merchiva-dock";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { ShakeBugReport } from "@/components/shake-bug-report";
 import { PushNotificationPrompt } from "@/components/push-notification-prompt";
@@ -558,7 +558,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
             <>
               <ManagerShell>{children}</ManagerShell>
               <ShellContextMenu />
-              <MerchivaQuickDialog />
+              <MerchivaDock />
               <PushNotificationPrompt />
               <TauriNotificationBridge />
             </>

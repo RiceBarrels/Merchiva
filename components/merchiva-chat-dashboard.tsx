@@ -32,6 +32,7 @@ import { parseAllSkills, executeAction, getActionCatalog } from "@/lib/merchiva/
 import { extractActionBlocks } from "@/lib/merchiva/skills/actions";
 import { gateAction, type GateDecision } from "@/lib/merchiva/autonomy";
 import { useAssistantConfig } from "@/lib/spacetimedb/hooks/useSettings";
+import { useTabChatSession } from "@/components/merchiva-dock/tab-sessions";
 import { captureUndoSnapshot, buildInverse, isUndoable, type UndoSnapshot } from "@/lib/merchiva/undo";
 import { useAiJobs } from "@/lib/spacetimedb/hooks";
 import { consumeAiJob, deleteAiJob, markNotificationRead } from "@/lib/spacetimedb/actions";
@@ -78,6 +79,7 @@ type AiChatSessionRow = {
   id?: RowIdLike;
   organizationId?: string;
   userId?: RowIdLike;
+  createdAt?: TimestampLike;
   updatedAt?: TimestampLike;
   archived?: boolean;
   messages?: string;
@@ -2479,6 +2481,10 @@ function getThinkingLabel(
 interface MerchivaChatProps {
   compact?: boolean;
   header?: boolean;
+  /** Browser tab this Merchiva belongs to — every tab keeps its own conversation. */
+  sessionScope?: string;
+  /** False while the chat is mounted but not on screen (another tab's, or a collapsed dock). */
+  active?: boolean;
 }
 
 /** Permission gate: admins can disable Mr. Merchiva per member via the
@@ -2505,6 +2511,8 @@ export function MerchivaChat(props: MerchivaChatProps = {}) {
 function MerchivaChatInner({
   compact = false,
   header = true,
+  sessionScope,
+  active = true,
 }: MerchivaChatProps = {}) {
   const { currentOrg, organizationId, isOwner, role: orgRole, permissions: userPermissions, can } = usePermissions();
   const { getToken } = useAuth();
@@ -2562,38 +2570,36 @@ function MerchivaChatInner({
       .filter((s) => s && s.organizationId === organizationId && rowIdString(s.userId) === myIdentityHex)
       .sort((a, b) => timestampMicros(b.updatedAt) - timestampMicros(a.updatedAt));
   }, [sessionRows, organizationId, myIdentityHex]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const sessionInitDone = useRef(false);
+  // Each browser tab has its own Mr. Merchiva: `sessionScope` (the tab id) picks — and when the
+  // tab has none yet, creates — the session this chat shows (components/merchiva-dock/tab-sessions.ts).
+  const sessionRefs = useMemo(
+    () => mySessions.map((s) => ({ id: rowIdString(s.id), archived: s.archived === true, createdAt: timestampMicros(s.createdAt) })),
+    [mySessions],
+  );
+  const createSession = useCallback(() => execCreateSession(t("merchiva.newConversation")), [t]);
+  const activeSessionId = useTabChatSession({
+    tabId: sessionScope ?? null,
+    sessions: sessionRefs,
+    ready: !!organizationId && sessionsReady && !!myIdentityHex && !!getConnection(),
+    needed: messages.length > 0,
+    create: createSession,
+  });
   // Session-level circuit breaker for the background-enqueue path. If the
   // server returns 501 "reducer_missing" once, we know the SpacetimeDB module
   // isn't republished yet and skip the enqueue call entirely until the page
   // is reloaded — sendMessage falls straight through to the streaming route.
   const enqueueDisabledRef = useRef(false);
 
-  // Initialize: load most recent session or create one
+  // Show the session's saved messages once it resolves. A session this tab just created is empty,
+  // so it never wipes what the user already sent before it arrived.
+  const loadedSessionRef = useRef<string | null>(null);
   useEffect(() => {
-    if (sessionInitDone.current) return;
-    if (!organizationId || !sessionsReady || !myIdentityHex) return;
-    if (mySessions.length > 0) {
-      const latest = mySessions.find((s) => !s.archived) ?? mySessions[0];
-      const sid = rowIdString(latest.id);
-      setActiveSessionId(sid);
-      setMessages(parseSessionMessages(latest.messages ?? ""));
-      sessionInitDone.current = true;
-    } else if (getConnection()) {
-      execCreateSession(t("merchiva.newConversation")).catch(() => {});
-      sessionInitDone.current = true;
-    }
-  }, [organizationId, mySessions, sessionsReady, myIdentityHex, t]);
-
-  // When sessions update and we just created one, pick the newest
-  useEffect(() => {
-    if (activeSessionId || !sessionInitDone.current || mySessions.length === 0) return;
-    const latest = mySessions[0];
-    const sid = rowIdString(latest.id);
-    setActiveSessionId(sid);
-    setMessages(parseSessionMessages(latest.messages ?? ""));
-  }, [mySessions, activeSessionId]);
+    if (!activeSessionId || loadedSessionRef.current === activeSessionId) return;
+    loadedSessionRef.current = activeSessionId;
+    const row = mySessions.find((s) => rowIdString(s.id) === activeSessionId);
+    const saved = parseSessionMessages(row?.messages ?? "");
+    setMessages((prev) => (saved.length > 0 || prev.length === 0 ? saved : prev));
+  }, [activeSessionId, mySessions]);
 
   // Save messages on change to the SpacetimeDB session
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2608,9 +2614,8 @@ function MerchivaChatInner({
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [messages, activeSessionId, organizationId]);
 
-  // Each user keeps a single persistent Mr. Merchiva history. "Clear history"
-  // empties the current session in place (no new session is ever created), so
-  // there's exactly one conversation thread per user.
+  // Each tab keeps one persistent conversation. "Clear history" empties the
+  // current session in place (no new session is created).
   const handleClearHistory = useCallback(async () => {
     if (!confirm(t("merchiva.clearHistoryConfirm"))) return;
     setMessages([]);
@@ -3171,7 +3176,7 @@ function MerchivaChatInner({
   // the reply stream in, clear the matching unread one (keyed by session id in
   // the link) so the bell doesn't show a redundant badge.
   useEffect(() => {
-    if (!organizationId || !activeSessionId) return;
+    if (!active || !organizationId || !activeSessionId) return;
     if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
     const marker = `mvsession=${encodeURIComponent(activeSessionId)}`;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -3181,7 +3186,7 @@ function MerchivaChatInner({
         markNotificationRead(n.id.toString()).catch(() => {});
       }
     }
-  }, [rawNotifs, organizationId, activeSessionId, visTick]);
+  }, [active, rawNotifs, organizationId, activeSessionId, visTick]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || sending) return;
@@ -4591,154 +4596,11 @@ function MobileKpiRow() {
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function MobileMerchivaChat() {
-  const { currentOrg, organizationId } = usePermissions();
-  const t = useT();
-  const orgName = currentOrg?.name ?? t("merchiva.yourStore");
-
-  const { items: invItems } = useInventory(organizationId);
-  const { history: salesHistory, hourly: salesHourly } = useSales();
-  const { shifts } = useStaffing(organizationId, null, false);
-
-  const insights = useMemo(
-    () => generateInsights(invItems, shifts, salesHistory, salesHourly),
-    [invItems, shifts, salesHistory, salesHourly],
-  );
-
-  const headline = useMemo(
-    () => generateGreeting(insights.length),
-    [insights.length],
-  );
-
-  const nowTime = useMemo(() => {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  }, []);
-
-  const quickChips = [
-    t("merchiva.quickSchedule"),
-    t("merchiva.quickSales"),
-    t("merchiva.quickInventory"),
-  ];
-
-  const MOBILE_ICONS: Record<string, React.ReactNode> = {
-    inventory: <Package className="h-[10px] w-[10px]" />,
-    staffing: <Users className="h-[10px] w-[10px]" />,
-    sales: <ChevronRight className="h-[10px] w-[10px]" />,
-    watchlist: <Eye className="h-[10px] w-[10px]" />,
-  };
-
-  return (
-    <section className="mx-4 rounded-lg border border-border bg-background overflow-hidden flex flex-col">
-      {/* Header */}
-      <header className="px-4 py-3 border-b border-border flex items-center gap-3 shrink-0" style={{ background: M_ACC_SOFT }}>
-        <NotchM size={34} fg={M_ACC_SOFT} bg="#1c1917" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-[14.5px] font-semibold tracking-tight">{t("merchiva.name")}</span>
-            <span className="inline-flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <Eyebrow as="span" size="xs" className="text-emerald-600 dark:text-emerald-400">{t("merchiva.online")}</Eyebrow>
-            </span>
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{t("merchiva.trainedOn").replace("{orgName}", orgName)}</div>
-        </div>
-      </header>
-
-      {/* Brief message */}
-      <div className="px-4 py-4 flex items-start gap-3">
-        <NotchM size={28} fg="#fff" bg="#1c1917" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[12.5px] font-semibold">{t("merchiva.name")}</span>
-            <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{nowTime}</span>
-          </div>
-          <p className="text-[13.5px] text-foreground leading-[1.55]">{headline}</p>
-        </div>
-      </div>
-
-      {/* Condensed insight cards from real data */}
-      <div className="px-4 pb-3 space-y-2">
-        {insights.slice(0, 4).map((insight) => (
-          <MobileInsight
-            key={insight.id}
-            pill={insight.type.toUpperCase()}
-            icon={MOBILE_ICONS[insight.type] ?? <Package className="h-[10px] w-[10px]" />}
-            title={insight.title}
-            sub={insight.body.slice(0, 60) + (insight.body.length > 60 ? "..." : "")}
-            confidence={insight.confidence}
-          />
-        ))}
-        {insights.length === 0 && (
-          <div className="rounded-lg border border-border bg-background p-3 text-center text-[12.5px] text-muted-foreground">
-            {t("merchiva.allClear")}
-          </div>
-        )}
-      </div>
-
-      {/* Quick chips */}
-      <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto -mx-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {quickChips.map((s) => (
-          <button key={s} className="h-9 px-3 rounded-full border border-border bg-background text-[12px] text-muted-foreground active:bg-muted inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors">
-            <Sparkles className="h-[11px] w-[11px]" style={{ color: M_ACC }} />
-            {s}
-          </button>
-        ))}
-      </div>
-
-      {/* Simple input */}
-      <div className="px-4 pb-4">
-        <div className="flex items-center gap-2 rounded-full border border-border bg-background pl-4 pr-1.5 py-1.5">
-          <Input
-            type="text"
-            placeholder={t("merchiva.composerPlaceholder")}
-            className="flex-1 h-9 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:border-transparent md:text-[13.5px] placeholder:text-muted-foreground/60"
-          />
-          <Button
-            type="button"
-            size="icon-lg"
-            aria-label={t("merchiva.send")}
-            className="rounded-full active:scale-95"
-          >
-            <ArrowUp className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function MobileInsight({ pill, icon, title, sub, confidence }: {
-  pill: string;
-  icon: React.ReactNode;
-  title: string;
-  sub: string;
-  confidence: number;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-background p-3">
-      <div className="flex items-center gap-2 mb-1.5">
-        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1"
-          style={{ background: M_ACC_SOFT, border: `1px solid ${M_ACC_BD}`, color: M_ACC }}>
-          {icon}
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{pill}</span>
-        </span>
-        <div className="flex-1" />
-        <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{(confidence * 100).toFixed(0)}%</span>
-      </div>
-      <div className="text-[13px] font-medium leading-tight">{title}</div>
-      <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>
-    </div>
-  );
-}
-
 export function MobileMerchivaDashboard() {
   return (
     <div className="pb-8 space-y-4">
       <style>{`@keyframes ddBlink { 0%,50% { opacity: 1; } 50.01%,100% { opacity: 0; } }`}</style>
       <MobileKpiRow />
-      {/* <MobileMerchivaChat /> */}
       <div className="px-4 space-y-4">
         <TodayScheduleCard />
         <NotificationsCard />

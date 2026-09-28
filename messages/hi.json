@@ -1670,13 +1670,7 @@
     "timeToday": "आज",
     "timeYesterday": "कल",
     "attach": "संलग्न करें",
-    "merchivaInvite": "Mr. Merchiva को आमंत्रित करें",
-    "merchivaRemove": "Mr. Merchiva हटाएँ",
-    "merchivaOn": "Mr. Merchiva",
-    "merchivaMentionHint": "AI सहायक से पूछें",
     "noMatches": "कोई मिलान नहीं",
-    "online": "ऑनलाइन",
-    "aiOpsAgent": "आपका AI ऑप्स एजेंट",
     "mentionLower": "उल्लेख",
     "sendKbd": "भेजें",
     "send": "भेजें",
@@ -2599,7 +2593,6 @@
     "name": "Mr. Merchiva",
     "online": "ऑनलाइन",
     "opsAgent": "आपका ऑप्स एजेंट · {orgName} पर प्रशिक्षित",
-    "trainedOn": "{orgName} पर प्रशिक्षित",
     "newChat": "नया चैट",
     "chatHistory": "चैट इतिहास",
     "history": "इतिहास",
@@ -2617,9 +2610,6 @@
     "stopRecording": "रिकॉर्डिंग रोकें",
     "mentionData": "डेटा मेंशन करें",
     "dataLabel": "डेटा",
-    "quickSchedule": "अगले सप्ताह का शेड्यूल",
-    "quickSales": "आज की बिक्री",
-    "quickInventory": "इन्वेंट्री अलर्ट",
     "quickChips": {
       "pendingTimeOff": "{n} छुट्टी अनुरोध लंबित",
       "pendingTrades": "{n} शिफ्ट ट्रेड लंबित",
@@ -2632,7 +2622,6 @@
     },
     "errorNoResponse": "क्षमा करें, AI सेवा अस्थायी रूप से अनुपलब्ध है। कृपया बाद में पुनः प्रयास करें।",
     "supplierOrderPrepared": "आपूर्तिकर्ता ऑर्डर स्वीकृति के लिए तैयार है.",
-    "allClear": "सब ठीक है — कोई समस्या नहीं मिली।",
     "startCall": "वॉइस कॉल शुरू करें",
     "call": {
       "title": "वॉइस कॉल",
@@ -2998,7 +2987,14 @@
       "dismiss": "खारिज करें",
       "empty": "कोई नई सूचना नहीं"
     },
-    "noAccess": "आपके खाते के लिए Mr. Merchiva अक्षम है। इसे सक्षम करने के लिए मैनेजर से कहें।"
+    "noAccess": "आपके खाते के लिए Mr. Merchiva अक्षम है। इसे सक्षम करने के लिए मैनेजर से कहें।",
+    "dock": {
+      "open": "Mr. Merchiva खोलें",
+      "close": "Mr. Merchiva बंद करें",
+      "resize": "Mr. Merchiva का आकार बदलें",
+      "hintPrefix": "दबाएँ",
+      "hintSuffix": "Mr. Merchiva को बुलाने के लिए"
+    }
   },
   "admins": {
     "checking": "एडमिन एक्सेस की जाँच…",
@@ -3179,32 +3175,6 @@
         "promoted": "उपयोगकर्ता एडमिन बना.",
         "demoted": "एडमिन भूमिका हटी."
       }
-    }
-  },
-  "quickDialog": {
-    "title": "Mr. Merchiva",
-    "online": "ऑनलाइन",
-    "placeholder": "Mr. Merchiva से पूछें, या कोई कमांड चलाएँ…",
-    "thinking": "सोच रहे हैं…",
-    "askAgain": "फिर से पूछें",
-    "openAssistant": "Mr. Merchiva खोलें",
-    "askPrefix": "पूछने के लिए Enter दबाएँ",
-    "navigate": "नेविगेट",
-    "run": "चलाएँ",
-    "footer": "MERCHIVA · कहीं भी",
-    "error": "Mr. Merchiva सर्वर से कनेक्ट नहीं हो सका। पुनः प्रयास करें।",
-    "hintPrefix": "दबाएँ",
-    "hintSuffix": "Mr. Merchiva को बुलाने के लिए",
-    "groups": {
-      "suggested": "सुझाव",
-      "staffing": "स्टाफ़िंग"
-    },
-    "commands": {
-      "attention": "आज मुझे किस पर ध्यान देना चाहिए?",
-      "sales": "आज की बिक्री का सारांश दें",
-      "lowStock": "कौन-से आइटम का स्टॉक कम है?",
-      "whosOn": "अभी कौन काम कर रहा है?",
-      "coverage": "इस सप्ताह के शेड्यूल में कोई कमी है?"
     }
   },
   "usage": {
@@ -5636,8 +5606,6 @@
     "toolbar": {
       "label": "ब्राउज़र टूलबार",
       "reloadHint": "पूरी तरह रीलोड करने के लिए Shift दबाकर क्लिक करें",
-      "merchiva": "Mr. Merchiva",
-      "merchivaNativeHint": "{shortcut} से कहीं भी Mr. Merchiva खोलें",
       "profile": "खाता और स्टोर",
       "menu": "Merchiva को कस्टमाइज़ और नियंत्रित करें"
     },
@@ -5666,8 +5634,7 @@
       "switchStore": "स्टोर बदलें",
       "bookmarkPage": "इस टैब को बुकमार्क करें",
       "toggleBookmarksBar": "बुकमार्क बार दिखाएँ",
-      "hideBookmarksBar": "बुकमार्क बार छिपाएँ",
-      "askMerchiva": "Mr. Merchiva से पूछें"
+      "hideBookmarksBar": "बुकमार्क बार छिपाएँ"
     },
     "bookmarks": {
       "bar": "बुकमार्क",

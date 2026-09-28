@@ -1098,13 +1098,6 @@ export async function addMembersToConversation(convId: string, userIds: string[]
   return conn().reducers.addMembersToConversation({ conversationId: convId, userIds: JSON.stringify(userIds) });
 }
 
-// Invite / remove Mr. Merchiva from a conversation. The actual bot replies are
-// posted server-side (see /api/chat/merchiva via sendMerchivaMessage); this
-// only flips the conversation flag.
-export async function setConversationMerchiva(conversationId: string, enabled: boolean): Promise<void> {
-  return conn().reducers.setConversationMerchiva({ conversationId, enabled });
-}
-
 /**
  * Emoji reactions have no table and no reducer in the module yet.
  *

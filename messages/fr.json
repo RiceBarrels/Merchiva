@@ -1670,13 +1670,7 @@
     "timeToday": "Aujourd'hui",
     "timeYesterday": "Hier",
     "attach": "Joindre",
-    "merchivaInvite": "Inviter Mr. Merchiva",
-    "merchivaRemove": "Retirer Mr. Merchiva",
-    "merchivaOn": "Mr. Merchiva",
-    "merchivaMentionHint": "Demander à l'assistant IA",
     "noMatches": "Aucun résultat",
-    "online": "en ligne",
-    "aiOpsAgent": "Votre agent d'exploitation IA",
     "mentionLower": "mentionner",
     "sendKbd": "envoyer",
     "send": "Envoyer",
@@ -2599,7 +2593,6 @@
     "name": "Mr. Merchiva",
     "online": "en ligne",
     "opsAgent": "Votre agent d'opérations · entraîné sur {orgName}",
-    "trainedOn": "Entraîné sur {orgName}",
     "newChat": "Nouveau chat",
     "chatHistory": "Historique des chats",
     "history": "Historique",
@@ -2617,9 +2610,6 @@
     "stopRecording": "Arrêter l'enregistrement",
     "mentionData": "Mentionner des données",
     "dataLabel": "données",
-    "quickSchedule": "Planifier la semaine prochaine",
-    "quickSales": "Ventes du jour",
-    "quickInventory": "Alertes d'inventaire",
     "quickChips": {
       "pendingTimeOff": "{n} demandes de congé en attente",
       "pendingTrades": "{n} échanges de shift en attente",
@@ -2632,7 +2622,6 @@
     },
     "errorNoResponse": "Désolé, le service IA est temporairement indisponible. Veuillez réessayer plus tard.",
     "supplierOrderPrepared": "Commande fournisseur préparée pour approbation.",
-    "allClear": "Tout va bien — aucun problème détecté.",
     "startCall": "Démarrer un appel vocal",
     "call": {
       "title": "Appel vocal",
@@ -2998,7 +2987,14 @@
       "dismiss": "Ignorer",
       "empty": "Aucune nouvelle notification"
     },
-    "noAccess": "Mr. Merchiva est désactivé pour votre compte. Demandez à un responsable de l'activer."
+    "noAccess": "Mr. Merchiva est désactivé pour votre compte. Demandez à un responsable de l'activer.",
+    "dock": {
+      "open": "Ouvrir Mr. Merchiva",
+      "close": "Fermer Mr. Merchiva",
+      "resize": "Redimensionner Mr. Merchiva",
+      "hintPrefix": "Appuyez sur",
+      "hintSuffix": "pour appeler Mr. Merchiva"
+    }
   },
   "admins": {
     "checking": "Vérification de l'accès admin…",
@@ -3179,32 +3175,6 @@
         "promoted": "Utilisateur promu admin.",
         "demoted": "Rôle admin révoqué."
       }
-    }
-  },
-  "quickDialog": {
-    "title": "Mr. Merchiva",
-    "online": "en ligne",
-    "placeholder": "Demandez à Mr. Merchiva ou lancez une commande…",
-    "thinking": "réflexion…",
-    "askAgain": "Reposer la question",
-    "openAssistant": "Ouvrir Mr. Merchiva",
-    "askPrefix": "Appuyez sur Entrée pour demander",
-    "navigate": "naviguer",
-    "run": "lancer",
-    "footer": "MERCHIVA · PARTOUT",
-    "error": "Mr. Merchiva n'a pas pu joindre le serveur. Réessayez.",
-    "hintPrefix": "Appuyez sur",
-    "hintSuffix": "pour appeler Mr. Merchiva",
-    "groups": {
-      "suggested": "Suggestions",
-      "staffing": "Personnel"
-    },
-    "commands": {
-      "attention": "Qu'est-ce qui nécessite mon attention aujourd'hui ?",
-      "sales": "Résume les ventes d'aujourd'hui",
-      "lowStock": "Quels articles sont en rupture de stock ?",
-      "whosOn": "Qui travaille en ce moment ?",
-      "coverage": "Y a-t-il des trous dans le planning de cette semaine ?"
     }
   },
   "usage": {
@@ -5636,8 +5606,6 @@
     "toolbar": {
       "label": "Barre d'outils du navigateur",
       "reloadHint": "Maj + clic pour un rechargement complet",
-      "merchiva": "Mr. Merchiva",
-      "merchivaNativeHint": "{shortcut} ouvre Mr. Merchiva n'importe où",
       "profile": "Compte et magasins",
       "menu": "Personnaliser et contrôler Merchiva"
     },
@@ -5666,8 +5634,7 @@
       "switchStore": "Changer de magasin",
       "bookmarkPage": "Ajouter cet onglet aux favoris",
       "toggleBookmarksBar": "Afficher la barre de favoris",
-      "hideBookmarksBar": "Masquer la barre de favoris",
-      "askMerchiva": "Demander à Mr. Merchiva"
+      "hideBookmarksBar": "Masquer la barre de favoris"
     },
     "bookmarks": {
       "bar": "Favoris",

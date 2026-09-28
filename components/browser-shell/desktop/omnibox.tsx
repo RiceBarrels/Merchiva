@@ -35,7 +35,6 @@ import {
 import { DOCS_HOME_HREF, documentHref } from "@/lib/docs/hrefs";
 import type { RecentDocumentItem } from "@/lib/docs/types";
 import { useT } from "@/lib/i18n/context";
-import { useIsNativeShellSync } from "@/lib/native-shell";
 import { createDocument } from "@/lib/spacetimedb/actions";
 import { useRecentDocuments } from "@/lib/spacetimedb/hooks/useDocs";
 import { cn } from "@/lib/utils";
@@ -45,8 +44,6 @@ import { OMNIBOX_POPUP_CLASS, OMNIBOX_SHELL_CLASS } from "./chrome-classes";
 import { useDesktopChrome, useOverlayBackHandler } from "./chrome-context";
 import { useChromeEnv } from "./chrome-env";
 import { isImeComposing } from "./ime";
-import { useCanUseMerchiva, useOpenMerchiva } from "./merchiva-button";
-import { MERCHIVA_CHANNEL_URL, merchivaLaunchMode } from "./merchiva-launch";
 import { useOmniboxResults, type OmniboxItem, type OmniboxResultOptions } from "./omnibox-results";
 import { ResultGroupLabel, ResultRow, optionDomId } from "./result-list";
 import { useAnnounce } from "./shell-live-region";
@@ -96,13 +93,6 @@ export function Omnibox() {
   const bookmarks = useBookmarks();
   const workspace = useWorkspaceActions();
   const [barVisible, setBarVisible] = useBookmarksBarVisible();
-  const native = useIsNativeShellSync();
-  const canUseMerchiva = useCanUseMerchiva();
-  // Reuses this component's access context (no second device-apps subscription).
-  const merchivaLaunch = merchivaLaunchMode(native, getRouteAccess(MERCHIVA_CHANNEL_URL, ctx));
-  const openMerchiva = useOpenMerchiva(merchivaLaunch);
-  // "Ask Mr. Merchiva" only where running it opens something (not the shortcut-only hint in Tauri).
-  const merchivaAllowed = canUseMerchiva && merchivaLaunch !== "shortcut";
 
   const inputRef = useRef<HTMLInputElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -212,9 +202,6 @@ export function Omnibox() {
         window.requestAnimationFrame(() => chrome.openBookmarkStar(existing === undefined, bookmark.id));
         return false;
       }
-      case "ask-merchiva":
-        openMerchiva(shellRef.current);
-        return false;
     }
   };
 
@@ -285,7 +272,6 @@ export function Omnibox() {
 
   const popupOptions: OmniboxResultOptions & { onRun: typeof run } = {
     docsAllowed,
-    merchivaAllowed,
     bookmarksBarVisible: barVisible,
     isNewTabPage: presentation.isNewTab,
     openedAt: editing?.openedAt ?? 0,

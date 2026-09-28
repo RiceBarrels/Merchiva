@@ -18,13 +18,12 @@
         "updater:default",
         "core:window:allow-minimize",
         "core:window:allow-toggle-maximize",
-        "core:window:allow-close",
-        "core:window:allow-destroy"
+        "core:window:allow-close"
       ]
     },
     {
       "identifier": "main-window-chrome-remote",
-      "description": "Window chrome IPC for the hosted app. Release builds load https://merchiva.com, which Tauri treats as a remote origin, so the local-only capability above never applies there. Limited to what the browser chrome needs: caption buttons (minimize / maximize / close, destroying the hidden quick overlay on close), drag regions (start dragging, double-click maximize) and window-state tracking (fullscreen / maximized + resize listener).",
+      "description": "Window chrome IPC for the hosted app. Release builds load https://merchiva.com, which Tauri treats as a remote origin, so the local-only capability above never applies there. Limited to what the browser chrome needs: caption buttons (minimize / maximize / close), drag regions (start dragging, double-click maximize) and window-state tracking (fullscreen / maximized + resize listener).",
       "local": false,
       "remote": {
         "urls": ["https://merchiva.com", "https://*.merchiva.com"]
@@ -34,8 +33,6 @@
         "core:window:allow-minimize",
         "core:window:allow-toggle-maximize",
         "core:window:allow-close",
-        "core:window:allow-destroy",
-        "core:window:allow-get-all-windows",
         "core:window:allow-start-dragging",
         "core:window:allow-internal-toggle-maximize",
         "core:window:allow-is-fullscreen",

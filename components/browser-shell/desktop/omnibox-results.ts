@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { FilePlus, History, PanelTop, Plus, Settings, Sparkles, Star, Store, type LucideIcon } from "lucide-react";
+import { FilePlus, History, PanelTop, Plus, Settings, Star, Store, type LucideIcon } from "lucide-react";
 import type { AppIcon } from "@/components/device/app-icons";
 import {
   NOT_SEARCHABLE,
@@ -37,8 +37,7 @@ export type OmniboxActionId =
   | "switch-store"
   | "reopen-closed"
   | "toggle-bookmarks-bar"
-  | "bookmark-page"
-  | "ask-merchiva";
+  | "bookmark-page";
 export type OmniboxItem =
   | { kind: "tab"; id: string; tabId: string; title: string; url: TabUrl; icon: AppIcon }
   | { kind: "page"; id: string; title: string; parentTitle?: string; url: TabUrl; icon: AppIcon }
@@ -295,7 +294,6 @@ export function buildOmniboxGroups(query: string, sources: OmniboxSources, text:
 export interface OmniboxResultOptions {
   /** `getRouteAccess("/manager/docs") === "allowed"`. */
   readonly docsAllowed: boolean;
-  readonly merchivaAllowed: boolean;
   readonly bookmarksBarVisible: boolean;
   /** The active tab shows the New Tab page ("Bookmark this tab" is hidden there). */
   readonly isNewTabPage: boolean;
@@ -321,7 +319,7 @@ export function useOmniboxResults(
   const newTabShortcut = useShortcutLabel("newTab");
   const reopenShortcut = useShortcutLabel("reopenClosedTab");
   const toggleBarShortcut = useShortcutLabel("toggleBookmarksBar");
-  const { docsAllowed, merchivaAllowed, bookmarksBarVisible, isNewTabPage, openedAt } = opts;
+  const { docsAllowed, bookmarksBarVisible, isNewTabPage, openedAt } = opts;
 
   const pageSources = useMemo(() => {
     const navSections = listNavSections(ctx);
@@ -414,9 +412,6 @@ export function useOmniboxResults(
     if (!isNewTabPage) {
       actions.push({ id: "bookmark-page", title: t("browserDesktop.actions.bookmarkPage"), icon: Star, keywords: ["bookmark", "star", "favorite", "save"] });
     }
-    if (merchivaAllowed) {
-      actions.push({ id: "ask-merchiva", title: t("browserDesktop.actions.askMerchiva"), icon: Sparkles, keywords: ["ask", "ai", "assistant", "merchiva", "help", "chat"] });
-    }
 
     const typedPath = looksLikeTypedPath(query) ? normalizeTypedPath(query, ctx) : null;
 
@@ -463,7 +458,6 @@ export function useOmniboxResults(
     reopenShortcut,
     toggleBarShortcut,
     docsAllowed,
-    merchivaAllowed,
     bookmarksBarVisible,
     isNewTabPage,
     openedAt,

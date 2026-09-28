@@ -10,14 +10,11 @@ import {
   SwitchModeLink,
   useWorkspaceActions,
 } from "@/components/browser-shell/shared/workspace-menu";
-import { MerchivaAppIcon } from "@/components/device/app-icons";
 import { NotificationCenter } from "@/components/notification-center";
 import { StoreLogo } from "@/components/store-picker";
 import { OptionRow } from "@/components/ui/option-row";
 import { canonicalizeUrl, useBookmarks, usePageActions, useShellBackHandler, type TabUrl } from "@/lib/browser-shell";
-import { DRAWER_RELEASE_MS } from "@/lib/browser-shell/mobile/geometry";
 import { buildShareUrl } from "@/lib/browser-shell/mobile/share";
-import { usePermissions } from "@/lib/context/permissions";
 import { LOCALES, LOCALE_LABELS } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/context";
 import { copyLinkWithFeedback, toggleFavoriteWithFeedback } from "./share-drawer";
@@ -39,12 +36,11 @@ type NestedSheet = "notifications" | "language";
 
 /**
  * Store-logo page menu (mobile-safari spec §13): this page, store switcher and creation, accounts,
- * mode links, notifications, Mr. Merchiva, settings, language and reload. Full parity with the
+ * mode links, notifications, settings, language and reload. Full parity with the
  * legacy sidebar's workspace menu through the shared workspace-menu module (plan D24).
  */
 export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab, unreadCount, onNavigate }: PageMenuSheetProps) {
   const { t, locale, setLocale } = useI18n();
-  const { isOwner, can } = usePermissions();
   const bookmarks = useBookmarks();
   const pageActions = usePageActions();
   const close = () => onOpenChange(false);
@@ -67,14 +63,7 @@ export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab
   }, open && nested !== null);
 
   const bookmarked = !isNewTab && bookmarks.find(pageUrl) !== undefined;
-  const showMerchiva = isOwner || can("merchiva", "view");
   const currentOrg = workspace.currentOrg;
-
-  const openMerchiva = () => {
-    close();
-    // vaul keeps `body { pointer-events: none }` until its exit animation ends.
-    window.setTimeout(() => window.dispatchEvent(new Event("merchiva:quick-dialog")), DRAWER_RELEASE_MS);
-  };
 
   return (
     <ShellDrawer open={open} onOpenChange={onOpenChange} title={t("browserMobile.pageMenu")}>
@@ -180,11 +169,6 @@ export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab
         >
           {t("notifications.title")}
         </SheetRow>
-        {showMerchiva && (
-          <SheetRow icon={MerchivaAppIcon} onClick={openMerchiva}>
-            {t("merchiva.name")}
-          </SheetRow>
-        )}
         <SheetRow
           icon={Settings}
           onClick={() => {

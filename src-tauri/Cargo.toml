@@ -24,11 +24,3 @@ serde_json = "1"
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
-tauri-plugin-global-shortcut = "2"
-
-# macOS-only: raise the quick-dialog overlay window's NSWindow level and add
-# FullScreenAuxiliary to its collection behavior so it shows over fullscreen apps.
-# Versions tracked to tao's (currently 0.35) to avoid duplicate builds.
-[target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6"
-objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSResponder"] }

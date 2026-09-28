@@ -371,6 +371,7 @@ Approval for one of these is not approval for the next one.
 - **No placeholder implementations.** No mock data, no `TODO: implement`, no function that returns a hardcoded value, presented as finished work. If you can't complete it, say so.
 - **Match the surrounding code** — its comment density, naming, and idiom. New code should be unrecognizable as new.
 - **Don't reintroduce removed features.** POS integrations, website builder, design tools, customers, marketing, the hourly patrol, and the parent/sub-store ("multi-store") hierarchy were all deliberately deleted. Their leftover columns and tables stay in the schema; the features do not come back. Every organization is standalone: there is no share group, no `parentOrgId`, and nothing is shared between stores.
+- **Mr. Merchiva lives in the dock** (`components/merchiva-dock/`): a chat on the right of `/manager` that stays until the user closes it. Two ways in only — ⌘⇧M (Ctrl+Shift+M) everywhere, and on desktop the rail on the right edge. Every browser tab has its own Merchiva and conversation. Don't add a button, menu row, omnibox action, chat channel or overlay window that opens him.
 
 ### When something breaks
 

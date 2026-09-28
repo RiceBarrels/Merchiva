@@ -4,10 +4,10 @@ import { join } from "node:path";
 
 /*
  * The desktop chrome's window IPC (caption buttons, drag regions, fullscreen / maximized
- * tracking, closing the quick overlay) must be allowed for the origin the main window really
- * loads. Release builds load https://merchiva.com (src-tauri/src/lib.rs APP_URL), a remote
- * origin for Tauri's ACL, so a local-only capability silently rejects every call there while
- * `tauri dev` (localhost = devUrl = local) keeps working.
+ * tracking) must be allowed for the origin the main window really loads. Release builds load
+ * https://merchiva.com (src-tauri/src/lib.rs APP_URL), a remote origin for Tauri's ACL, so a
+ * local-only capability silently rejects every call there while `tauri dev` (localhost =
+ * devUrl = local) keeps working.
  */
 
 const ROOT = join(import.meta.dir, "..", "..", "..");
@@ -54,8 +54,6 @@ const CHROME_WINDOW_PERMISSIONS = [
   "core:window:allow-minimize",
   "core:window:allow-toggle-maximize",
   "core:window:allow-close",
-  "core:window:allow-destroy",
-  "core:window:allow-get-all-windows",
   "core:window:allow-start-dragging",
   "core:window:allow-internal-toggle-maximize",
   "core:window:allow-is-fullscreen",

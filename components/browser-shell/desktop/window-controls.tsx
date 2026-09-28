@@ -63,31 +63,17 @@ export function MacTrafficLightInset({ fullscreen }: { fullscreen: boolean }) {
   );
 }
 
-/** Label of the hidden Mr. Merchiva quick-dialog overlay window (src-tauri/src/lib.rs). */
-const QUICK_OVERLAY_LABEL = "quick";
-
 async function runWindowCommand(command: "minimize" | "toggleMaximize" | "close"): Promise<void> {
   try {
-    const { Window, getCurrentWindow } = await import("@tauri-apps/api/window");
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
     const win = getCurrentWindow();
     if (command === "minimize") {
       await win.minimize();
     } else if (command === "toggleMaximize") {
       await win.toggleMaximize();
     } else {
-      // The caption X quits the app, like closing Chrome's last window. Tauri exits once its last
-      // window is gone, but the hidden, taskbar-less quick overlay lives for the app's lifetime:
-      // closing only "main" would leave a windowless process (global shortcut still registered),
-      // and a relaunch just focuses the missing "main" window (single-instance), so the app could
-      // not be reopened. Destroy the overlay first (capabilities: core:window:allow-destroy).
-      if (win.label !== QUICK_OVERLAY_LABEL) {
-        try {
-          const overlay = await Window.getByLabel(QUICK_OVERLAY_LABEL);
-          await overlay?.destroy();
-        } catch (error) {
-          console.warn("[window-controls] could not close the quick overlay", error);
-        }
-      }
+      // The caption X quits the app, like closing Chrome's last window: "main" is the only window,
+      // and Tauri exits once its last window is gone.
       await win.close();
     }
   } catch (error) {

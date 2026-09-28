@@ -1670,13 +1670,7 @@
     "timeToday": "Hoy",
     "timeYesterday": "Ayer",
     "attach": "Adjuntar",
-    "merchivaInvite": "Invitar a Mr. Merchiva",
-    "merchivaRemove": "Quitar a Mr. Merchiva",
-    "merchivaOn": "Mr. Merchiva",
-    "merchivaMentionHint": "Pregunta al asistente IA",
     "noMatches": "Sin coincidencias",
-    "online": "en línea",
-    "aiOpsAgent": "Tu agente de operaciones con IA",
     "mentionLower": "mencionar",
     "sendKbd": "enviar",
     "send": "Enviar",
@@ -2599,7 +2593,6 @@
     "name": "Mr. Merchiva",
     "online": "en línea",
     "opsAgent": "Tu agente de operaciones · entrenado en {orgName}",
-    "trainedOn": "Entrenado en {orgName}",
     "newChat": "Nuevo chat",
     "chatHistory": "Historial de chats",
     "history": "Historial",
@@ -2617,9 +2610,6 @@
     "stopRecording": "Detener grabación",
     "mentionData": "Mencionar datos",
     "dataLabel": "datos",
-    "quickSchedule": "Programar próxima semana",
-    "quickSales": "Ventas de hoy",
-    "quickInventory": "Alertas de inventario",
     "quickChips": {
       "pendingTimeOff": "{n} solicitudes de tiempo libre pendientes",
       "pendingTrades": "{n} intercambios de turno pendientes",
@@ -2632,7 +2622,6 @@
     },
     "errorNoResponse": "Lo sentimos, el servicio de IA no está disponible temporalmente. Inténtalo de nuevo más tarde.",
     "supplierOrderPrepared": "Pedido al proveedor preparado para aprobación.",
-    "allClear": "Todo en orden — sin problemas encontrados.",
     "startCall": "Iniciar llamada de voz",
     "call": {
       "title": "Llamada de voz",
@@ -2998,7 +2987,14 @@
       "dismiss": "Descartar",
       "empty": "No hay notificaciones nuevas"
     },
-    "noAccess": "Mr. Merchiva está desactivado para tu cuenta. Pide a un gerente que lo active."
+    "noAccess": "Mr. Merchiva está desactivado para tu cuenta. Pide a un gerente que lo active.",
+    "dock": {
+      "open": "Abrir Mr. Merchiva",
+      "close": "Cerrar Mr. Merchiva",
+      "resize": "Redimensionar Mr. Merchiva",
+      "hintPrefix": "Pulsa",
+      "hintSuffix": "para invocar a Mr. Merchiva"
+    }
   },
   "admins": {
     "checking": "Comprobando acceso de administrador…",
@@ -3179,32 +3175,6 @@
         "promoted": "Usuario promovido a admin.",
         "demoted": "Rol de admin revocado."
       }
-    }
-  },
-  "quickDialog": {
-    "title": "Mr. Merchiva",
-    "online": "en línea",
-    "placeholder": "Pregunta a Mr. Merchiva o ejecuta un comando…",
-    "thinking": "pensando…",
-    "askAgain": "Preguntar de nuevo",
-    "openAssistant": "Abrir Mr. Merchiva",
-    "askPrefix": "Pulsa Intro para preguntar",
-    "navigate": "navegar",
-    "run": "ejecutar",
-    "footer": "MERCHIVA · EN CUALQUIER LUGAR",
-    "error": "Mr. Merchiva no pudo conectar con el servidor. Inténtalo de nuevo.",
-    "hintPrefix": "Pulsa",
-    "hintSuffix": "para invocar a Mr. Merchiva",
-    "groups": {
-      "suggested": "Sugerencias",
-      "staffing": "Personal"
-    },
-    "commands": {
-      "attention": "¿Qué necesita mi atención hoy?",
-      "sales": "Resume las ventas de hoy",
-      "lowStock": "¿Qué artículos tienen poco stock?",
-      "whosOn": "¿Quién está trabajando ahora?",
-      "coverage": "¿Hay huecos en el horario de esta semana?"
     }
   },
   "usage": {
@@ -5636,8 +5606,6 @@
     "toolbar": {
       "label": "Barra de herramientas del navegador",
       "reloadHint": "Mayús + clic para recargar por completo",
-      "merchiva": "Mr. Merchiva",
-      "merchivaNativeHint": "{shortcut} abre Mr. Merchiva desde cualquier lugar",
       "profile": "Cuenta y tiendas",
       "menu": "Personalizar y controlar Merchiva"
     },
@@ -5666,8 +5634,7 @@
       "switchStore": "Cambiar de tienda",
       "bookmarkPage": "Añadir esta pestaña a marcadores",
       "toggleBookmarksBar": "Mostrar barra de marcadores",
-      "hideBookmarksBar": "Ocultar barra de marcadores",
-      "askMerchiva": "Preguntar a Mr. Merchiva"
+      "hideBookmarksBar": "Ocultar barra de marcadores"
     },
     "bookmarks": {
       "bar": "Marcadores",

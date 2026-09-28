@@ -133,7 +133,7 @@ export const ROUTES: readonly RouteDef[] = [
   {
     prefix: "/manager/channel", titleKey: "nav.chat", icon: ChannelIcon, permissionKey: "staffing",
     listed: true, section: true, mobileChrome: "docked", previewKind: "chat",
-    keywords: ["channel", "chat", "messages", "merchiva"],
+    keywords: ["channel", "chat", "messages"],
   },
   // ── Device apps ─────────────────────────────────────────────────────────
   {

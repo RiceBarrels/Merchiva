@@ -1670,13 +1670,7 @@
     "timeToday": "اليوم",
     "timeYesterday": "أمس",
     "attach": "إرفاق",
-    "merchivaInvite": "دعوة Mr. Merchiva",
-    "merchivaRemove": "إزالة Mr. Merchiva",
-    "merchivaOn": "Mr. Merchiva",
-    "merchivaMentionHint": "اسأل المساعد الذكي",
     "noMatches": "لا توجد نتائج",
-    "online": "متصل",
-    "aiOpsAgent": "وكيل العمليات بالذكاء الاصطناعي الخاص بك",
     "mentionLower": "إشارة",
     "sendKbd": "إرسال",
     "send": "إرسال",
@@ -2599,7 +2593,6 @@
     "name": "Mr. Merchiva",
     "online": "متصل",
     "opsAgent": "وكيل العمليات الخاص بك · مدرب على {orgName}",
-    "trainedOn": "مدرب على {orgName}",
     "newChat": "محادثة جديدة",
     "chatHistory": "سجل المحادثات",
     "history": "السجل",
@@ -2617,9 +2610,6 @@
     "stopRecording": "إيقاف التسجيل",
     "mentionData": "ذكر البيانات",
     "dataLabel": "بيانات",
-    "quickSchedule": "جدولة الأسبوع القادم",
-    "quickSales": "مبيعات اليوم",
-    "quickInventory": "تنبيهات المخزون",
     "quickChips": {
       "pendingTimeOff": "{n} طلبات إجازة معلقة",
       "pendingTrades": "{n} تبادلات مناوبة معلقة",
@@ -2632,7 +2622,6 @@
     },
     "errorNoResponse": "عذرًا، خدمة الذكاء الاصطناعي غير متاحة مؤقتًا. يرجى المحاولة مرة أخرى لاحقًا.",
     "supplierOrderPrepared": "تم تجهيز طلب المورد للموافقة.",
-    "allClear": "كل شيء على ما يرام — لا توجد مشاكل.",
     "startCall": "بدء مكالمة صوتية",
     "call": {
       "title": "مكالمة صوتية",
@@ -2998,7 +2987,14 @@
       "dismiss": "تجاهل",
       "empty": "لا توجد إشعارات جديدة"
     },
-    "noAccess": "تم تعطيل Mr. Merchiva لحسابك. اطلب من المدير تفعيله."
+    "noAccess": "تم تعطيل Mr. Merchiva لحسابك. اطلب من المدير تفعيله.",
+    "dock": {
+      "open": "فتح Mr. Merchiva",
+      "close": "إغلاق Mr. Merchiva",
+      "resize": "تغيير حجم Mr. Merchiva",
+      "hintPrefix": "اضغط",
+      "hintSuffix": "لاستدعاء Mr. Merchiva"
+    }
   },
   "admins": {
     "checking": "جاري التحقق من صلاحيات المسؤول…",
@@ -3179,32 +3175,6 @@
         "promoted": "تمت ترقية المستخدم.",
         "demoted": "تم سحب صلاحية المسؤول."
       }
-    }
-  },
-  "quickDialog": {
-    "title": "Mr. Merchiva",
-    "online": "متصل",
-    "placeholder": "اسأل Mr. Merchiva أو شغّل أمرًا…",
-    "thinking": "يفكّر…",
-    "askAgain": "اسأل مجددًا",
-    "openAssistant": "فتح Mr. Merchiva",
-    "askPrefix": "اضغط Enter للسؤال",
-    "navigate": "تنقّل",
-    "run": "تشغيل",
-    "footer": "MERCHIVA · في أي مكان",
-    "error": "تعذّر على Mr. Merchiva الوصول إلى الخادم. حاول مرة أخرى.",
-    "hintPrefix": "اضغط",
-    "hintSuffix": "لاستدعاء Mr. Merchiva",
-    "groups": {
-      "suggested": "مقترحات",
-      "staffing": "التوظيف"
-    },
-    "commands": {
-      "attention": "ما الذي يحتاج إلى انتباهي اليوم؟",
-      "sales": "لخّص مبيعات اليوم",
-      "lowStock": "ما الأصناف منخفضة المخزون؟",
-      "whosOn": "من يعمل الآن؟",
-      "coverage": "هل توجد فجوات في جدول هذا الأسبوع؟"
     }
   },
   "usage": {
@@ -5636,8 +5606,6 @@
     "toolbar": {
       "label": "شريط أدوات المتصفح",
       "reloadHint": "انقر مع الضغط على Shift لإعادة التحميل بالكامل",
-      "merchiva": "Mr. Merchiva",
-      "merchivaNativeHint": "يفتح {shortcut} Mr. Merchiva من أي مكان",
       "profile": "الحساب والمتاجر",
       "menu": "تخصيص Merchiva والتحكم فيه"
     },
@@ -5666,8 +5634,7 @@
       "switchStore": "تبديل المتجر",
       "bookmarkPage": "إضافة علامة التبويب هذه إلى الإشارات المرجعية",
       "toggleBookmarksBar": "إظهار شريط الإشارات المرجعية",
-      "hideBookmarksBar": "إخفاء شريط الإشارات المرجعية",
-      "askMerchiva": "اسأل Mr. Merchiva"
+      "hideBookmarksBar": "إخفاء شريط الإشارات المرجعية"
     },
     "bookmarks": {
       "bar": "الإشارات المرجعية",

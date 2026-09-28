@@ -21,9 +21,7 @@ import { Popover, PopoverContent } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { usePermissions } from "@/lib/context/permissions";
 import { getCached, setCache } from "@/lib/cache";
-import { sendMessage, addMembersToConversation, addReaction, removeReaction, deleteMessage, createConversation, setConversationMerchiva } from "@/lib/spacetimedb/actions";
-import { getStoredToken } from "@/lib/spacetimedb/client";
-import { useAuth } from "@/lib/auth/context";
+import { sendMessage, addMembersToConversation, addReaction, removeReaction, deleteMessage, createConversation } from "@/lib/spacetimedb/actions";
 import {
   getConversations, getMessages, getReactions, uploadChatFile,
   type ChatReaction,
@@ -33,25 +31,16 @@ import { getAvatarMap } from "@/lib/db/avatars";
 import type { ChatConversation, ChatMessage, OrgMember } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
-import { useT, useI18n } from "@/lib/i18n/context";
+import { useT } from "@/lib/i18n/context";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
-import { MerchivaChat } from "@/components/merchiva-chat-dashboard";
 import { useStoreMachineMode } from "@/lib/store-machine-mode";
 import { useCurrentOperator } from "@/lib/store-device-lock";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
-function MerchivaChatEmbed({ compact = false, header = true }: { compact?: boolean; header?: boolean } = {}) {
-  return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <MerchivaChat compact={compact} header={header} />
-    </div>
-  );
-}
-
-// Single source of truth for Mr. Merchiva's avatar across the chat surface
-// (sidebar, group messages, @mention picker, member pickers): the brand "M"
-// mark on the foreground token — same as the pinned sidebar entry.
+// Mr. Merchiva's avatar on the replies he posted when he could still be added to
+// a group chat: the brand "M" mark on the foreground token. He lives in the ⌘⇧M
+// dock now (components/merchiva-dock), not in Channel.
 function MerchivaAvatar({ className = "h-9 w-9", svg = 18 }: { className?: string; svg?: number }) {
   const t = useT();
   return (
@@ -90,9 +79,7 @@ function shouldShowTimeSeparator(msgs: ChatMessage[], i: number): boolean {
 
 export default function ChatPage() {
   const t = useT();
-  const { locale } = useI18n();
-  const { getToken } = useAuth();
-  const { organizationId, role, currentOrg, isOwner } = usePermissions();
+  const { organizationId, role } = usePermissions();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [team, setTeam] = useState<OrgMember[]>([]);
   const [activeConv, setActiveConv] = useState<ChatConversation | null>(null);
@@ -108,10 +95,6 @@ export default function ChatPage() {
   const [newGroupDialog, setNewGroupDialog] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  // Mr. Merchiva is invited like a teammate: picked in the New Group / Add
-  // Members lists. For a new group we stage the choice here; for an existing
-  // conversation we toggle merchivaEnabled directly.
-  const [includeMerchiva, setIncludeMerchiva] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
   const [addMemberDialog, setAddMemberDialog] = useState(false);
 
@@ -244,71 +227,11 @@ export default function ChatPage() {
     setSending(true);
     try {
       await sendMessage(activeConv.id, content || (attachment ? (attachment.type === "image" ? t("chat.sentPhoto") : attachment.type === "video" ? t("chat.sentVideo") : t("chat.sentFile")) : ""), replyId, attachment);
-      // If Mr. Merchiva is in this conversation, let the server decide whether
-      // to reply: always when @mentioned, otherwise after an OSS relevance
-      // check. Fire-and-forget — the bot's reply arrives via the subscription.
-      if (activeConv.merchivaEnabled && content) {
-        void triggerMerchivaReply(activeConv, content);
-      }
     } catch (err) {
       console.error("Send failed:", err);
       setInput(content);
     } finally {
       setSending(false);
-    }
-  };
-
-  const MERCHIVA_MENTION_RE = /@\s*mr\.?\s*merchiva|@merchiva\b/i;
-
-  // Kicks the group-chat Merchiva endpoint. Only the sender's client fires this,
-  // so exactly one reply is generated per triggering message.
-  const triggerMerchivaReply = async (conv: ChatConversation, content: string) => {
-    try {
-      const token = (await getToken().catch(() => null)) || getStoredToken();
-      if (!token || !organizationId) return;
-      const mentioned = MERCHIVA_MENTION_RE.test(content);
-      const history = messages.slice(-10).map((m) => ({
-        role: m.isMerchiva ? ("assistant" as const) : ("user" as const),
-        name: m.isMerchiva ? "Mr. Merchiva" : getMemberName(m.senderId),
-        content: m.content,
-      }));
-      await fetch("/api/chat/merchiva", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          organizationId,
-          conversationId: conv.id,
-          message: content,
-          senderName: userId ? getMemberName(userId) : undefined,
-          mentioned,
-          history,
-          lang: locale,
-          orgName: currentOrg?.name ?? undefined,
-          permissions: { isOwner, role },
-        }),
-      });
-    } catch (err) {
-      console.error("Merchiva reply trigger failed:", err);
-    }
-  };
-
-  const handleToggleMerchiva = async () => {
-    if (!activeConv) return;
-    const next = !activeConv.merchivaEnabled;
-    // Optimistic — reflect immediately, then persist + refetch.
-    setActiveConv({ ...activeConv, merchivaEnabled: next });
-    try {
-      await setConversationMerchiva(activeConv.id, next);
-      if (organizationId) {
-        const convs = await getConversations(organizationId, userId);
-        setConversations(convs);
-        const updated = convs.find((c) => c.id === activeConv.id);
-        if (updated) setActiveConv(updated);
-      }
-    } catch (err) {
-      console.error("Toggle Merchiva failed:", err);
-      setActiveConv({ ...activeConv, merchivaEnabled: !next });
     }
   };
 
@@ -339,7 +262,7 @@ export default function ChatPage() {
     await createConversation(organizationId!, type, memberUserIds, name);
     // The reducer-inserted row arrives in the local SpacetimeDB cache over the
     // same socket; refetch (with a short retry) and pick the conversation that's
-    // new to us so callers get the REAL id (needed to enable Mr. Merchiva on it).
+    // new to us so callers get the REAL id.
     for (let i = 0; i < 6; i++) {
       const convs = await getConversations(organizationId!, userId);
       const fresh = convs.find((c) => !prevIds.has(c.id) && c.type === type);
@@ -377,21 +300,11 @@ export default function ChatPage() {
     try {
       const memberIds = [...new Set([userId, ...selectedMembers])];
       const conv = await createConv("group", memberIds, groupName.trim());
-      // Mr. Merchiva was picked in the member list like a teammate — turn him on.
-      if (includeMerchiva && conv.id) {
-        try {
-          await setConversationMerchiva(conv.id, true);
-          conv.merchivaEnabled = true;
-        } catch (e) {
-          console.error("Enable Merchiva on new group failed:", e);
-        }
-      }
       setConversations((prev) => [conv, ...prev.filter((c) => c.id !== conv.id)]);
       setActiveConv(conv);
       setNewGroupDialog(false);
       setGroupName("");
       setSelectedMembers([]);
-      setIncludeMerchiva(false);
     } catch (err) {
       console.error("Create group failed:", err);
     }
@@ -451,7 +364,6 @@ export default function ChatPage() {
   };
 
   const getConvDisplayName = (conv: ChatConversation) => {
-    if (conv.id === "__merchiva__") return t("chat.mrMerchiva");
     if (conv.type === "group") return conv.name ?? t("chat.groupFallback");
     const other = conv.members?.find((m) => m.userId !== userId);
     return other ? getMemberName(other.userId) : t("chat.chatFallback");
@@ -486,7 +398,7 @@ export default function ChatPage() {
                   <MessageSquare className="h-3.5 w-3.5" /> {t("chat.dm")}
                 </Button>
                 {isManager && (
-                  <Button size="sm" onClick={() => { setIncludeMerchiva(false); setSelectedMembers([]); setNewGroupDialog(true); }} className="gap-1 h-8 text-xs">
+                  <Button size="sm" onClick={() => { setSelectedMembers([]); setNewGroupDialog(true); }} className="gap-1 h-8 text-xs">
                     <Plus className="h-3.5 w-3.5" /> {t("chat.group")}
                   </Button>
                 )}
@@ -495,26 +407,7 @@ export default function ChatPage() {
           />
 
           <div className="flex-1 overflow-y-auto">
-            {/* Mr. Merchiva — AI assistant pinned at top */}
-            <button
-              onClick={() => setActiveConv({ id: "__merchiva__", organizationId: organizationId ?? "", type: "direct", name: t("chat.mrMerchiva"), createdBy: null, createdAt: "", lastMessage: null, members: [] } as ChatConversation)}
-              className={`w-full text-left px-3 py-3 border-b border-border transition-colors ${
-                activeConv?.id === "__merchiva__" ? "bg-muted" : "hover:bg-muted/50"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <MerchivaAvatar />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">{t("chat.mrMerchiva")}</p>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-600"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{t("chat.online")}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate">{t("chat.aiOpsAgent")}</p>
-                </div>
-              </div>
-            </button>
-
-            {conversations.length === 0 && activeConv?.id !== "__merchiva__" ? (
+            {conversations.length === 0 ? (
               <EmptyState icon={MessageSquare} title={t("chat.noConversations")} description={t("chat.startDMPrompt")} />
             ) : (
               conversations.map((conv) => {
@@ -564,9 +457,7 @@ export default function ChatPage() {
         {/* ─── Chat View (Desktop: inline, Mobile: dialog) ─── */}
         {/* Desktop */}
         <div className="hidden sm:flex flex-1 flex-col">
-          {activeConv?.id === "__merchiva__" ? (
-            <MerchivaChatEmbed />
-          ) : activeConv ? (
+          {activeConv ? (
             <ChatView
               conv={activeConv}
               messages={messages}
@@ -602,11 +493,7 @@ export default function ChatPage() {
             <DynamicUIElementTitle mobileTitle={activeConv ? getConvDisplayName(activeConv) : t("chat.chatFallback")} className="hidden">
               {activeConv ? getConvDisplayName(activeConv) : t("chat.chatFallback")}
             </DynamicUIElementTitle>
-            {activeConv?.id === "__merchiva__" ? (
-              <div className="flex flex-col h-full">
-                <MerchivaChatEmbed compact header={false} />
-              </div>
-            ) : activeConv ? (
+            {activeConv ? (
               <div className="flex flex-col h-full">
                 <ChatView
                   conv={activeConv}
@@ -709,19 +596,6 @@ export default function ChatPage() {
                 </div>
               )}
               <div className="max-h-40 overflow-y-auto space-y-0.5 pt-1">
-                {/* Mr. Merchiva — invited like a teammate (pinned at the top). */}
-                {(memberSearch === "" || "mr. merchiva".includes(memberSearch.toLowerCase())) && (
-                  <button
-                    onClick={() => setIncludeMerchiva((v) => !v)}
-                    className={`w-full flex items-center gap-3 px-2 py-1.5 rounded-lg text-left transition-colors ${
-                      includeMerchiva ? "bg-muted border border-border" : "hover:bg-muted"
-                    }`}
-                  >
-                    <MerchivaAvatar className="h-7 w-7" svg={14} />
-                    <span className="text-sm flex-1">Mr. Merchiva <span className="text-xs text-muted-foreground">· {t("chat.merchivaMentionHint")}</span></span>
-                    {includeMerchiva && <span className="text-xs font-mono text-muted-foreground">{t("chat.added")}</span>}
-                  </button>
-                )}
                 {filteredTeam
                   .filter((m) => m.userId !== userId)
                   .map((m) => {
@@ -750,7 +624,7 @@ export default function ChatPage() {
             </div>
             <Button
               onClick={handleCreateGroup}
-              disabled={!groupName.trim() || (selectedMembers.length === 0 && !includeMerchiva)}
+              disabled={!groupName.trim() || selectedMembers.length === 0}
               className="w-full"
             >
               {t("chat.createGroup")} ({selectedMembers.length} {t("chat.memberPlural").toLowerCase()})
@@ -777,21 +651,6 @@ export default function ChatPage() {
               />
             </div>
             <div className="max-h-48 overflow-y-auto space-y-0.5">
-              {/* Mr. Merchiva — added/removed like a teammate; toggles instantly. */}
-              {(memberSearch === "" || "mr. merchiva".includes(memberSearch.toLowerCase())) && (
-                <button
-                  onClick={() => handleToggleMerchiva()}
-                  className={`w-full flex items-center gap-3 px-2 py-1.5 rounded-lg text-left transition-colors ${
-                    activeConv?.merchivaEnabled ? "bg-muted border border-border" : "hover:bg-muted"
-                  }`}
-                >
-                  <MerchivaAvatar className="h-7 w-7" svg={14} />
-                  <span className="text-sm flex-1">Mr. Merchiva <span className="text-xs text-muted-foreground">· {t("chat.merchivaMentionHint")}</span></span>
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {activeConv?.merchivaEnabled ? t("chat.merchivaOn") : t("chat.add")}
-                  </span>
-                </button>
-              )}
               {filteredTeam
                 .filter((m) => {
                   const existingIds = activeConv?.members?.map((cm) => cm.userId) ?? [];
@@ -894,22 +753,8 @@ function ChatView({
   const filteredMentions = team.filter(
     (m) => m.userId !== userId && m.displayName.toLowerCase().includes(mentionSearch.toLowerCase()),
   );
-  const showMerchiva = conv.merchivaEnabled === true &&
-    ("merchiva".includes(mentionSearch.toLowerCase()) || "mr. merchiva".includes(mentionSearch.toLowerCase()));
   const mentionOptions = (
     <>
-      {showMerchiva && (
-        <button
-          onClick={() => selectMention("Mr. Merchiva")}
-          className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-muted transition-colors border-b border-border text-left"
-        >
-          <MerchivaAvatar />
-          <div className="min-w-0">
-            <p className="text-sm font-medium">{t("chat.mrMerchiva")}</p>
-            <p className="text-xs text-muted-foreground truncate">{t("chat.merchivaMentionHint")}</p>
-          </div>
-        </button>
-      )}
       {showEveryone && (
         <button
           onClick={() => selectMention("everyone")}
@@ -1013,12 +858,6 @@ function ChatView({
             {conv.type === "group" ? `${conv.members?.length ?? 0} ${t("chat.memberPlural").toLowerCase()}` : t("chat.directMessage")}
           </p>
         </div>
-        {!hideHeader && conv.type === "group" && conv.merchivaEnabled && (
-          <span className="inline-flex items-center gap-1.5 h-8 px-2 text-xs text-muted-foreground" title={t("chat.merchivaOn")}>
-            <MerchivaAvatar className="h-5 w-5" svg={11} />
-            {t("chat.merchivaOn")}
-          </span>
-        )}
         {conv.type === "group" && isManager && !hideHeader && (
           <Button size="sm" variant="outline" onClick={onAddMembers} className="gap-1 h-8 text-xs">
             <UserPlus className="h-3.5 w-3.5" /> {t("chat.add")}
@@ -1093,9 +932,9 @@ function ChatView({
           <p className="text-center text-sm text-muted-foreground py-8">{t("chat.noMessagesHello")}</p>
         )}
         {messages.map((msg, i) => {
-          // Mr. Merchiva replies are inserted under the triggering user's
-          // identity but flagged isMerchiva — so they must never render as
-          // "me", and use the bot's name/avatar instead of the sender's.
+          // Mr. Merchiva's old group-chat replies were inserted under the
+          // triggering user's identity but flagged isMerchiva — so they must
+          // never render as "me", and use the bot's name/avatar instead.
           const isMerchiva = msg.isMerchiva === true;
           const senderKey = (m: ChatMessage) => (m.isMerchiva ? "__merchiva__" : m.senderId);
           const myKey = senderKey(msg);

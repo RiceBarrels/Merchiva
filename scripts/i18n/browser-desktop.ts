@@ -5,8 +5,7 @@
 // zh-cn leaf by leaf with opencc-js (never run scripts/gen-traditional-zh.ts: it rewrites
 // both files wholesale and would erase other sessions' edits).
 // Keys shared with the core chrome (tab actions, New Tab, Untitled) live under `browser.*`
-// (scripts/i18n/browser-core.ts). "Mr. Merchiva" is a product name and stays untranslated,
-// matching the existing locale files.
+// (scripts/i18n/browser-core.ts).
 import { readFileSync, writeFileSync, renameSync, statSync } from "node:fs";
 import { join } from "node:path";
 import * as OpenCC from "opencc-js";
@@ -37,8 +36,6 @@ const DICT: Record<HandLocale, Tree> = {
       toolbar: {
         label: "Browser toolbar",
         reloadHint: "Shift-click for a full reload",
-        merchiva: "Mr. Merchiva",
-        merchivaNativeHint: "{shortcut} opens Mr. Merchiva anywhere",
         profile: "Account and stores",
         menu: "Customize and control Merchiva",
       },
@@ -68,7 +65,6 @@ const DICT: Record<HandLocale, Tree> = {
         bookmarkPage: "Bookmark this tab",
         toggleBookmarksBar: "Show bookmarks bar",
         hideBookmarksBar: "Hide bookmarks bar",
-        askMerchiva: "Ask Mr. Merchiva",
       },
       bookmarks: {
         bar: "Bookmarks",
@@ -126,8 +122,6 @@ const DICT: Record<HandLocale, Tree> = {
       toolbar: {
         label: "浏览器工具栏",
         reloadHint: "按住 Shift 点击可完全重新加载",
-        merchiva: "Mr. Merchiva",
-        merchivaNativeHint: "在任意位置按 {shortcut} 打开 Mr. Merchiva",
         profile: "账户和门店",
         menu: "自定义及控制 Merchiva",
       },
@@ -157,7 +151,6 @@ const DICT: Record<HandLocale, Tree> = {
         bookmarkPage: "为此标签页添加书签",
         toggleBookmarksBar: "显示书签栏",
         hideBookmarksBar: "隐藏书签栏",
-        askMerchiva: "询问 Mr. Merchiva",
       },
       bookmarks: {
         bar: "书签",
@@ -215,8 +208,6 @@ const DICT: Record<HandLocale, Tree> = {
       toolbar: {
         label: "Barre d'outils du navigateur",
         reloadHint: "Maj + clic pour un rechargement complet",
-        merchiva: "Mr. Merchiva",
-        merchivaNativeHint: "{shortcut} ouvre Mr. Merchiva n'importe où",
         profile: "Compte et magasins",
         menu: "Personnaliser et contrôler Merchiva",
       },
@@ -246,7 +237,6 @@ const DICT: Record<HandLocale, Tree> = {
         bookmarkPage: "Ajouter cet onglet aux favoris",
         toggleBookmarksBar: "Afficher la barre de favoris",
         hideBookmarksBar: "Masquer la barre de favoris",
-        askMerchiva: "Demander à Mr. Merchiva",
       },
       bookmarks: {
         bar: "Favoris",
@@ -304,8 +294,6 @@ const DICT: Record<HandLocale, Tree> = {
       toolbar: {
         label: "Barra de herramientas del navegador",
         reloadHint: "Mayús + clic para recargar por completo",
-        merchiva: "Mr. Merchiva",
-        merchivaNativeHint: "{shortcut} abre Mr. Merchiva desde cualquier lugar",
         profile: "Cuenta y tiendas",
         menu: "Personalizar y controlar Merchiva",
       },
@@ -335,7 +323,6 @@ const DICT: Record<HandLocale, Tree> = {
         bookmarkPage: "Añadir esta pestaña a marcadores",
         toggleBookmarksBar: "Mostrar barra de marcadores",
         hideBookmarksBar: "Ocultar barra de marcadores",
-        askMerchiva: "Preguntar a Mr. Merchiva",
       },
       bookmarks: {
         bar: "Marcadores",
@@ -393,8 +380,6 @@ const DICT: Record<HandLocale, Tree> = {
       toolbar: {
         label: "ब्राउज़र टूलबार",
         reloadHint: "पूरी तरह रीलोड करने के लिए Shift दबाकर क्लिक करें",
-        merchiva: "Mr. Merchiva",
-        merchivaNativeHint: "{shortcut} से कहीं भी Mr. Merchiva खोलें",
         profile: "खाता और स्टोर",
         menu: "Merchiva को कस्टमाइज़ और नियंत्रित करें",
       },
@@ -424,7 +409,6 @@ const DICT: Record<HandLocale, Tree> = {
         bookmarkPage: "इस टैब को बुकमार्क करें",
         toggleBookmarksBar: "बुकमार्क बार दिखाएँ",
         hideBookmarksBar: "बुकमार्क बार छिपाएँ",
-        askMerchiva: "Mr. Merchiva से पूछें",
       },
       bookmarks: {
         bar: "बुकमार्क",
@@ -483,8 +467,6 @@ const DICT: Record<HandLocale, Tree> = {
       toolbar: {
         label: "شريط أدوات المتصفح",
         reloadHint: "انقر مع الضغط على Shift لإعادة التحميل بالكامل",
-        merchiva: "Mr. Merchiva",
-        merchivaNativeHint: "يفتح {shortcut} Mr. Merchiva من أي مكان",
         profile: "الحساب والمتاجر",
         menu: "تخصيص Merchiva والتحكم فيه",
       },
@@ -514,7 +496,6 @@ const DICT: Record<HandLocale, Tree> = {
         bookmarkPage: "إضافة علامة التبويب هذه إلى الإشارات المرجعية",
         toggleBookmarksBar: "إظهار شريط الإشارات المرجعية",
         hideBookmarksBar: "إخفاء شريط الإشارات المرجعية",
-        askMerchiva: "اسأل Mr. Merchiva",
       },
       bookmarks: {
         bar: "الإشارات المرجعية",

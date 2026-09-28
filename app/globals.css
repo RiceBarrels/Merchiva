@@ -744,22 +744,6 @@ html.native-shell body.app-ready #tauri-boot-splash {
   padding: 14px 16px;
   border-radius: 3px;
 }
-/* ─────────────────────────────────────────────────────────────────────────
- * Mr. Merchiva Quick Dialog overlay window (/quick-overlay).
- * Loaded in a dedicated transparent, frameless, always-on-top Tauri window.
- * The page-level <html> gets `quick-overlay` (set on mount by the route), which
- * strips the app chrome and makes every layout wrapper transparent so only the
- * dialog — and its own shadow — paint over the desktop. NEVER blur the backdrop.
- * ───────────────────────────────────────────────────────────────────────── */
-html.quick-overlay,
-html.quick-overlay body,
-html.quick-overlay #vaul-wrapper,
-html.quick-overlay #vaul-wrapper > div {
-  background: transparent !important;
-}
-html.quick-overlay #tauri-boot-splash { display: none !important; }
-html.quick-overlay { overflow: hidden; }
-
 /* ─── Docs editor ─────────────────────────────────────────────────────────
  * Page sheet, prose, collaboration carets, comments/search highlights and the
  * print portal (docs-editor-ui spec §4.11). The paper stays light in dark mode
