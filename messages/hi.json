@@ -2699,7 +2699,9 @@
       "cancel": "रद्द करें",
       "undo": "पूर्ववत",
       "noItems": "कोई लाइन आइटम नहीं",
-      "unknownSupplier": "आपूर्तिकर्ता"
+      "unknownSupplier": "आपूर्तिकर्ता",
+      "needsApproval": "आपकी मंज़ूरी चाहिए",
+      "noPermission": "अनुमति नहीं"
     },
     "categories": {
       "scheduling": "शेड्यूलिंग",
@@ -3000,8 +3002,136 @@
       "hintPrefix": "दबाएँ",
       "hintSuffix": "Mr. Merchiva को बुलाने के लिए"
     },
+    "tools": {
+      "viewTeam": {
+        "running": "टीम देख रहा हूँ…",
+        "done": "टीम देखी",
+        "error": "टीम नहीं देख सका"
+      },
+      "viewRoles": {
+        "running": "भूमिकाएँ देख रहा हूँ…",
+        "done": "भूमिकाएँ देखीं",
+        "error": "भूमिकाएँ नहीं देख सका"
+      },
+      "viewScheduleHistory": {
+        "running": "पिछली शिफ्टें देख रहा हूँ…",
+        "done": "पिछली शिफ्टें देखीं",
+        "error": "पिछली शिफ्टें नहीं देख सका"
+      },
+      "viewUpcomingShifts": {
+        "running": "आने वाली शिफ्टें देख रहा हूँ…",
+        "done": "आने वाली शिफ्टें देखीं",
+        "error": "आने वाली शिफ्टें नहीं देख सका"
+      },
+      "viewShiftPresets": {
+        "running": "शिफ्ट टेम्पलेट देख रहा हूँ…",
+        "done": "शिफ्ट टेम्पलेट देखे",
+        "error": "शिफ्ट टेम्पलेट नहीं देख सका"
+      },
+      "viewAvailability": {
+        "running": "उपलब्धता देख रहा हूँ…",
+        "done": "उपलब्धता देखी",
+        "error": "उपलब्धता नहीं देख सका"
+      },
+      "viewInventory": {
+        "running": "इन्वेंटरी जाँच रहा हूँ…",
+        "done": "इन्वेंटरी जाँची",
+        "error": "इन्वेंटरी नहीं जाँच सका"
+      },
+      "viewSuppliers": {
+        "running": "आपूर्तिकर्ता देख रहा हूँ…",
+        "done": "आपूर्तिकर्ता देखे",
+        "error": "आपूर्तिकर्ता नहीं देख सका"
+      },
+      "viewProducts": {
+        "running": "उत्पाद देख रहा हूँ…",
+        "done": "उत्पाद देखे",
+        "error": "उत्पाद नहीं देख सका"
+      },
+      "viewSales": {
+        "running": "बिक्री देख रहा हूँ…",
+        "done": "बिक्री देखी",
+        "error": "बिक्री नहीं देख सका"
+      },
+      "viewFinance": {
+        "running": "वित्त की गणना कर रहा हूँ…",
+        "done": "वित्त की गणना की",
+        "error": "वित्त की गणना नहीं कर सका"
+      },
+      "viewForecast": {
+        "running": "बिक्री पूर्वानुमान बना रहा हूँ…",
+        "done": "बिक्री पूर्वानुमान बनाया",
+        "error": "बिक्री पूर्वानुमान नहीं बना सका"
+      },
+      "viewRestockSuggestions": {
+        "running": "रीस्टॉक का हिसाब लगा रहा हूँ…",
+        "done": "रीस्टॉक का हिसाब लगाया",
+        "error": "रीस्टॉक का हिसाब नहीं लगा सका"
+      },
+      "proposeSchedule": {
+        "running": "शेड्यूल का मसौदा बना रहा हूँ…",
+        "done": "शेड्यूल का मसौदा बनाया",
+        "error": "शेड्यूल का मसौदा नहीं बना सका"
+      }
+    },
+    "steps": {
+      "label": "चरण",
+      "count": "{n} चरण",
+      "results": "{n} परिणाम",
+      "oneResult": "1 परिणाम",
+      "days": "पिछले {n} दिन",
+      "lowOnly": "केवल कम स्टॉक",
+      "weekStart": "{date} वाला सप्ताह",
+      "mcp": "{server} · {tool}",
+      "unknownRunning": "{tool} इस्तेमाल कर रहा हूँ…",
+      "unknownDone": "{tool} इस्तेमाल किया",
+      "unknownError": "{tool} इस्तेमाल नहीं कर सका",
+      "status": {
+        "running": "जारी",
+        "done": "पूरा",
+        "error": "विफल",
+        "interrupted": "रुका"
+      },
+      "nextDays": "अगले {n} दिन",
+      "supplier": "आपूर्तिकर्ता: {name}",
+      "period": {
+        "thisWeek": "इस सप्ताह",
+        "lastWeek": "पिछले सप्ताह",
+        "thisMonth": "इस महीने",
+        "lastMonth": "पिछले महीने",
+        "thisQuarter": "इस तिमाही",
+        "thisYear": "इस साल"
+      }
+    },
     "presence": {
       "cursorLabel": "{name} का Mr. Merchiva"
+    },
+    "errors": {
+      "voiceFallback": "क्षमा करें, मैं नहीं समझ पाया। क्या आप दोबारा कह सकते हैं?",
+      "chatFallback": "मैं उत्तर नहीं बना सका। कृपया पुनः प्रयास करें।"
+    },
+    "replyReady": {
+      "title": "Mr. Merchiva ने जवाब दिया",
+      "body": "आपका जवाब तैयार है।"
+    },
+    "autonomyReason": {
+      "missingPermission": "आपको यह करने की अनुमति नहीं है।",
+      "autonomyDisabled": "स्वचालित कार्य बंद हैं, इसलिए हर बदलाव के लिए आपकी मंज़ूरी चाहिए।",
+      "riskNeedsApproval": "जोखिम: {risk}। “{mode}” मोड में इसके लिए आपकी मंज़ूरी चाहिए।",
+      "dailyLimit": "{limit} स्वचालित कार्यों की दैनिक सीमा पूरी हो गई है।",
+      "orderInvalidLines": "ऋणात्मक मात्रा या लागत वाली पंक्तियाँ: {count}।",
+      "orderUnpriced": "ऑर्डर की राशि अज्ञात है। बिना इकाई लागत वाले आइटम: {count}।",
+      "orderOverCap": "ऑर्डर का कुल {total} स्वचालित ऑर्डर सीमा {limit} से अधिक है।",
+      "refundOverCap": "{amount} का रिफ़ंड स्वचालित रिफ़ंड सीमा {limit} से अधिक है।",
+      "refundFullOverCap": "पूरा रिफ़ंड स्वचालित रिफ़ंड सीमा {limit} से अधिक है।",
+      "priceChangeOverCap": "{pct}% का मूल्य बदलाव स्वचालित सीमा {limit}% से अधिक है।",
+      "auto": "“{mode}” मोड में अपने आप चलता है।",
+      "unknownAction": "अज्ञात कार्य, इसलिए आपकी मंज़ूरी चाहिए।",
+      "modes": {
+        "approval": "मंज़ूरी आवश्यक",
+        "partial": "आंशिक रूप से स्वचालित",
+        "full": "पूरी तरह स्वचालित"
+      }
     }
   },
   "admins": {

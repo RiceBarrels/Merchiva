@@ -2699,7 +2699,9 @@
       "cancel": "Annuler",
       "undo": "Annuler",
       "noItems": "Aucune ligne",
-      "unknownSupplier": "Fournisseur"
+      "unknownSupplier": "Fournisseur",
+      "needsApproval": "Votre accord est requis",
+      "noPermission": "Aucune autorisation"
     },
     "categories": {
       "scheduling": "Planification",
@@ -3000,8 +3002,136 @@
       "hintPrefix": "Appuyez sur",
       "hintSuffix": "pour appeler Mr. Merchiva"
     },
+    "tools": {
+      "viewTeam": {
+        "running": "Consultation de l'équipe…",
+        "done": "Équipe consultée",
+        "error": "Impossible de consulter l'équipe"
+      },
+      "viewRoles": {
+        "running": "Consultation des rôles…",
+        "done": "Rôles consultés",
+        "error": "Impossible de consulter les rôles"
+      },
+      "viewScheduleHistory": {
+        "running": "Consultation des shifts passés…",
+        "done": "Shifts passés consultés",
+        "error": "Impossible de consulter les shifts passés"
+      },
+      "viewUpcomingShifts": {
+        "running": "Consultation des prochains shifts…",
+        "done": "Prochains shifts consultés",
+        "error": "Impossible de consulter les prochains shifts"
+      },
+      "viewShiftPresets": {
+        "running": "Consultation des modèles de shift…",
+        "done": "Modèles de shift consultés",
+        "error": "Impossible de consulter les modèles de shift"
+      },
+      "viewAvailability": {
+        "running": "Consultation des disponibilités…",
+        "done": "Disponibilités consultées",
+        "error": "Impossible de consulter les disponibilités"
+      },
+      "viewInventory": {
+        "running": "Vérification de l'inventaire…",
+        "done": "Inventaire vérifié",
+        "error": "Impossible de vérifier l'inventaire"
+      },
+      "viewSuppliers": {
+        "running": "Consultation des fournisseurs…",
+        "done": "Fournisseurs consultés",
+        "error": "Impossible de consulter les fournisseurs"
+      },
+      "viewProducts": {
+        "running": "Consultation des produits…",
+        "done": "Produits consultés",
+        "error": "Impossible de consulter les produits"
+      },
+      "viewSales": {
+        "running": "Consultation des ventes…",
+        "done": "Ventes consultées",
+        "error": "Impossible de consulter les ventes"
+      },
+      "viewFinance": {
+        "running": "Calcul des finances…",
+        "done": "Finances calculées",
+        "error": "Impossible de calculer les finances"
+      },
+      "viewForecast": {
+        "running": "Prévision des ventes en cours…",
+        "done": "Prévision des ventes établie",
+        "error": "Impossible d'établir la prévision des ventes"
+      },
+      "viewRestockSuggestions": {
+        "running": "Calcul du réapprovisionnement…",
+        "done": "Réapprovisionnement calculé",
+        "error": "Impossible de calculer le réapprovisionnement"
+      },
+      "proposeSchedule": {
+        "running": "Préparation d'un planning…",
+        "done": "Planning préparé",
+        "error": "Impossible de préparer un planning"
+      }
+    },
+    "steps": {
+      "label": "Étapes",
+      "count": "{n} étapes",
+      "results": "{n} résultats",
+      "oneResult": "1 résultat",
+      "days": "{n} derniers jours",
+      "lowOnly": "stock bas uniquement",
+      "weekStart": "semaine du {date}",
+      "mcp": "{server} · {tool}",
+      "unknownRunning": "Utilisation de {tool}…",
+      "unknownDone": "{tool} utilisé",
+      "unknownError": "Impossible d'utiliser {tool}",
+      "status": {
+        "running": "En cours",
+        "done": "Terminé",
+        "error": "Échec",
+        "interrupted": "Interrompu"
+      },
+      "nextDays": "{n} prochains jours",
+      "supplier": "fournisseur : {name}",
+      "period": {
+        "thisWeek": "cette semaine",
+        "lastWeek": "la semaine dernière",
+        "thisMonth": "ce mois-ci",
+        "lastMonth": "le mois dernier",
+        "thisQuarter": "ce trimestre",
+        "thisYear": "cette année"
+      }
+    },
     "presence": {
       "cursorLabel": "Mr. Merchiva de {name}"
+    },
+    "errors": {
+      "voiceFallback": "Désolé, je n'ai pas compris. Pouvez-vous répéter ?",
+      "chatFallback": "Je n'ai pas pu générer de réponse. Veuillez réessayer."
+    },
+    "replyReady": {
+      "title": "Mr. Merchiva a répondu",
+      "body": "Votre réponse est prête."
+    },
+    "autonomyReason": {
+      "missingPermission": "Vous n'avez pas l'autorisation de faire ceci.",
+      "autonomyDisabled": "Les actions automatiques sont désactivées : chaque modification nécessite votre accord.",
+      "riskNeedsApproval": "Risque : {risk}. En mode « {mode} », votre accord est nécessaire.",
+      "dailyLimit": "La limite quotidienne de {limit} actions automatiques est atteinte.",
+      "orderInvalidLines": "Lignes avec une quantité ou un coût négatif : {count}.",
+      "orderUnpriced": "Le montant de la commande est inconnu. Articles sans coût unitaire : {count}.",
+      "orderOverCap": "Le total de la commande, {total}, dépasse la limite de commande automatique de {limit}.",
+      "refundOverCap": "Un remboursement de {amount} dépasse la limite de remboursement automatique de {limit}.",
+      "refundFullOverCap": "Un remboursement intégral dépasse la limite de remboursement automatique de {limit}.",
+      "priceChangeOverCap": "Une variation de prix de {pct} % dépasse la limite automatique de {limit} %.",
+      "auto": "S'exécute automatiquement en mode « {mode} ».",
+      "unknownAction": "Action inconnue : votre accord est nécessaire.",
+      "modes": {
+        "approval": "Approbation requise",
+        "partial": "Partiellement automatique",
+        "full": "Entièrement automatique"
+      }
     }
   },
   "admins": {

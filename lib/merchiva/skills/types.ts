@@ -1,3 +1,6 @@
+import type { ToolStep } from "@/lib/merchiva/tool-steps";
+import type { GateReason } from "@/lib/merchiva/autonomy-reason";
+
 export interface MerchivaSkill<TParsed = unknown> {
   id: string;
   title?: string;
@@ -18,8 +21,11 @@ export interface PendingAction {
   //   "deny"    — the actor lacks the required permission; never runs
   // Absent ⇒ treat as "auto" for backward compatibility with persisted history.
   decision?: "auto" | "propose" | "deny";
-  // Short rationale for a propose/deny decision, shown on the card.
+  // The gate's rationale in English. The card shows it only for history saved
+  // before `why` existed.
   reason?: string;
+  // The same rationale as a code plus figures; the card renders it translated.
+  why?: GateReason;
 }
 
 export interface QAItem {
@@ -76,4 +82,6 @@ export interface ChatMessage {
   rejectedRoles?: number[];
   rejectedTasks?: number[];
   voiceCall?: VoiceCallSummary;
+  // Tool calls made while writing this reply, in call order (lib/merchiva/tool-steps.ts).
+  steps?: ToolStep[];
 }

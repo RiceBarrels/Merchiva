@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useId } from "react";
 import {
   Wallet,
   Plus,
@@ -80,6 +80,7 @@ import { downloadCSV, downloadPDF } from "@/lib/export";
 import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
 import { dateFromKey, dateKey, todayKey } from "@/lib/date-key";
+import { useFinancesPageContext } from "@/app/manager/finances/use-finances-page-context";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -182,6 +183,7 @@ export default function FinancesPage() {
   const t = useT();
   const { organizationId } = usePermissions();
   const [activeTab, setActiveTab] = useState("overview");
+  useFinancesPageContext(activeTab);
 
   // Data hooks
   const [rawExpenses] = useExpenses();
@@ -412,6 +414,7 @@ function ExpensesTab({ expenses }: { expenses: any[] }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ExpenseForm>(emptyForm);
+  const recurringId = useId(); // keep-alive tabs can hold two finances pages
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterDateRange, setFilterDateRange] = useState<DateRange>("this_month");
   const [saving, setSaving] = useState(false);
@@ -719,11 +722,11 @@ function ExpensesTab({ expenses }: { expenses: any[] }) {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Checkbox
-                  id="recurring"
+                  id={recurringId}
                   checked={form.recurring}
                   onCheckedChange={(checked) => setForm((f) => ({ ...f, recurring: !!checked }))}
                 />
-                <Label htmlFor="recurring" className="text-xs cursor-pointer">
+                <Label htmlFor={recurringId} className="text-xs cursor-pointer">
                   {t("finances.expenses.recurringExpense")}
                 </Label>
               </div>

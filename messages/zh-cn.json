@@ -2699,7 +2699,9 @@
       "cancel": "取消",
       "undo": "撤销",
       "noItems": "没有明细",
-      "unknownSupplier": "供应商"
+      "unknownSupplier": "供应商",
+      "needsApproval": "需要你确认",
+      "noPermission": "无权限"
     },
     "categories": {
       "scheduling": "排班",
@@ -3000,8 +3002,136 @@
       "hintPrefix": "按",
       "hintSuffix": "随时唤起 Mr. Merchiva"
     },
+    "tools": {
+      "viewTeam": {
+        "running": "正在查看团队…",
+        "done": "查看了团队",
+        "error": "未能查看团队"
+      },
+      "viewRoles": {
+        "running": "正在查看岗位…",
+        "done": "查看了岗位",
+        "error": "未能查看岗位"
+      },
+      "viewScheduleHistory": {
+        "running": "正在查看过往排班…",
+        "done": "查看了过往排班",
+        "error": "未能查看过往排班"
+      },
+      "viewUpcomingShifts": {
+        "running": "正在查看接下来的班次…",
+        "done": "查看了接下来的班次",
+        "error": "未能查看接下来的班次"
+      },
+      "viewShiftPresets": {
+        "running": "正在查看班次模板…",
+        "done": "查看了班次模板",
+        "error": "未能查看班次模板"
+      },
+      "viewAvailability": {
+        "running": "正在查看员工可上班时间…",
+        "done": "查看了员工可上班时间",
+        "error": "未能查看员工可上班时间"
+      },
+      "viewInventory": {
+        "running": "正在查看库存…",
+        "done": "查看了库存",
+        "error": "未能查看库存"
+      },
+      "viewSuppliers": {
+        "running": "正在查看供应商…",
+        "done": "查看了供应商",
+        "error": "未能查看供应商"
+      },
+      "viewProducts": {
+        "running": "正在查看商品…",
+        "done": "查看了商品",
+        "error": "未能查看商品"
+      },
+      "viewSales": {
+        "running": "正在查看销售数据…",
+        "done": "查看了销售数据",
+        "error": "未能查看销售数据"
+      },
+      "viewFinance": {
+        "running": "正在计算财务数据…",
+        "done": "计算了财务数据",
+        "error": "未能计算财务数据"
+      },
+      "viewForecast": {
+        "running": "正在生成销售预测…",
+        "done": "生成了销售预测",
+        "error": "未能生成销售预测"
+      },
+      "viewRestockSuggestions": {
+        "running": "正在计算补货建议…",
+        "done": "计算了补货建议",
+        "error": "未能计算补货建议"
+      },
+      "proposeSchedule": {
+        "running": "正在拟定排班…",
+        "done": "拟定了排班",
+        "error": "未能拟定排班"
+      }
+    },
+    "steps": {
+      "label": "步骤",
+      "count": "{n} 个步骤",
+      "results": "{n} 条结果",
+      "oneResult": "1 条结果",
+      "days": "最近 {n} 天",
+      "lowOnly": "仅低库存",
+      "weekStart": "{date} 这一周",
+      "mcp": "{server} · {tool}",
+      "unknownRunning": "正在使用 {tool}…",
+      "unknownDone": "使用了 {tool}",
+      "unknownError": "未能使用 {tool}",
+      "status": {
+        "running": "进行中",
+        "done": "已完成",
+        "error": "失败",
+        "interrupted": "已中断"
+      },
+      "nextDays": "未来 {n} 天",
+      "supplier": "供应商：{name}",
+      "period": {
+        "thisWeek": "本周",
+        "lastWeek": "上周",
+        "thisMonth": "本月",
+        "lastMonth": "上月",
+        "thisQuarter": "本季度",
+        "thisYear": "今年"
+      }
+    },
     "presence": {
       "cursorLabel": "{name} 的 Mr. Merchiva"
+    },
+    "errors": {
+      "voiceFallback": "抱歉，我没听清，可以再说一次吗？",
+      "chatFallback": "我没能生成回复，请再试一次。"
+    },
+    "replyReady": {
+      "title": "Mr. Merchiva 回复了",
+      "body": "你的回复已经准备好了。"
+    },
+    "autonomyReason": {
+      "missingPermission": "你没有执行此操作的权限。",
+      "autonomyDisabled": "自动操作已关闭，每项更改都需要你确认。",
+      "riskNeedsApproval": "{risk}风险操作在“{mode}”模式下需要你确认。",
+      "dailyLimit": "今天的自动操作已达到 {limit} 次上限。",
+      "orderInvalidLines": "有 {count} 行的数量或单价为负数。",
+      "orderUnpriced": "订单金额未知：有 {count} 个商品没有单价。",
+      "orderOverCap": "订单总额 {total} 超过了自动下单上限 {limit}。",
+      "refundOverCap": "退款 {amount} 超过了自动退款上限 {limit}。",
+      "refundFullOverCap": "全额退款超过了自动退款上限 {limit}。",
+      "priceChangeOverCap": "价格变动 {pct}% 超过了自动上限 {limit}%。",
+      "auto": "在“{mode}”模式下自动执行。",
+      "unknownAction": "未知操作，需要你确认。",
+      "modes": {
+        "approval": "需要审批",
+        "partial": "部分自动",
+        "full": "完全自动"
+      }
     }
   },
   "admins": {

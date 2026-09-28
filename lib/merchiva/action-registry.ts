@@ -39,6 +39,8 @@ import {
 } from "@/lib/spacetimedb/actions";
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import { todayKey } from "@/lib/date-key";
+import { computeOrderTotalsStrict, orderAmounts } from "@/lib/merchiva/order-totals";
+import { idParamDescription } from "@/lib/merchiva/tools/id-sources";
 
 export type RiskLevel = "low" | "medium" | "high";
 
@@ -104,7 +106,8 @@ register({
     "Add a shift for a staff member. At least one role (staffRoles) is required — the role drives the daily task checklist for the shift, so a shift with no role can't be assigned work.",
   category: "scheduling",
   parameters: {
-    staffName: { type: "string", required: true, description: "Exact name from team roster" },
+    staffName: { type: "string", required: true, description: "Exact name from the team roster: viewTeam team[].name; without tools, LIVE STORE DATA team[].name" },
+    memberId: { type: "string", required: false, description: idParamDescription("memberId", "The person's org_member id; resolved from staffName when left out") },
     date: { type: "string", required: true, description: "YYYY-MM-DD" },
     startTime: { type: "string", required: true, description: "HH:MM" },
     endTime: { type: "string", required: true, description: "HH:MM" },
@@ -113,7 +116,7 @@ register({
       type: "array",
       required: true,
       description:
-        "One or more JOB role names for this shift, e.g. [\"Morning Cashier\"]. Each name MUST exactly match a `name` from the top-level `roles[]` array in LIVE STORE DATA. NEVER use the team member's `permissionRole` (owner/manager/staff), NEVER use the shift type (morning/afternoon/evening/closing), and NEVER invent new role names. If no role in `roles[]` fits, ask the user to create one first via the addRole action — do not guess.",
+        "One or more JOB role names for this shift, e.g. [\"Morning Cashier\"]. Each name MUST exactly match a role name: viewRoles roles[].name (or proposeSchedule's staffRoles, copied as-is); without tools, LIVE STORE DATA roles[].name. NEVER use a permission level (owner/manager/staff, viewTeam accessLevel) or the shift type (morning/afternoon/evening/closing). A role that doesn't exist yet is allowed only when an addRole block for it comes first in the same reply (e.g. proposeSchedule's rolesToCreate).",
     },
   },
   requiredPermission: { section: "staffing", action: "edit" },
@@ -145,7 +148,7 @@ register({
   description: "Modify an existing shift's time or type",
   category: "scheduling",
   parameters: {
-    shiftId: { type: "string", required: true, description: "ID of the shift to update" },
+    shiftId: { type: "string", required: true, description: idParamDescription("shiftId", "The shift to update") },
     date: { type: "string", required: false, description: "YYYY-MM-DD" },
     startTime: { type: "string", required: false, description: "HH:MM" },
     endTime: { type: "string", required: false, description: "HH:MM" },
@@ -194,7 +197,7 @@ register({
   description: "Delete a shift",
   category: "scheduling",
   parameters: {
-    shiftId: { type: "string", required: true, description: "ID of the shift to delete" },
+    shiftId: { type: "string", required: true, description: idParamDescription("shiftId", "The shift to delete") },
   },
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "high",
@@ -209,7 +212,7 @@ register({
   description: "Approve or reject a time-off request",
   category: "scheduling",
   parameters: {
-    requestId: { type: "string", required: true, description: "Time-off request ID" },
+    requestId: { type: "string", required: true, description: idParamDescription("requestId", "The pending time-off request") },
     approved: { type: "boolean", required: true, description: "true to approve, false to reject" },
     reason: { type: "string", required: false, description: "Reason for decision" },
   },
@@ -226,7 +229,7 @@ register({
   description: "Approve or reject a shift trade request",
   category: "scheduling",
   parameters: {
-    tradeId: { type: "string", required: true, description: "Shift trade ID" },
+    tradeId: { type: "string", required: true, description: idParamDescription("tradeId", "The pending shift trade") },
     approved: { type: "boolean", required: true, description: "true to approve, false to reject" },
   },
   requiredPermission: { section: "staffing", action: "edit" },
@@ -282,7 +285,7 @@ register({
       type: "string",
       required: false,
       description:
-        "Display name of the organization, used in the invite email. Read from `storeName` in LIVE STORE DATA.",
+        "Display name of the organization, used in the invite email: the STORE OVERVIEW's Store line; without tools, LIVE STORE DATA storeName.",
     },
     inviterEmail: {
       type: "string",
@@ -355,7 +358,7 @@ register({
   description: "Update a staff member's info",
   category: "staffing",
   parameters: {
-    staffMemberId: { type: "string", required: true, description: "Staff member ID" },
+    staffMemberId: { type: "string", required: true, description: idParamDescription("staffMemberId", "The placeholder staff member's staff_member id") },
     name: { type: "string", required: false, description: "New name" },
     role: { type: "string", required: false, description: "New role" },
     hourlyRate: { type: "number", required: false, description: "New hourly rate" },
@@ -377,7 +380,7 @@ register({
   description: "Remove a staff member",
   category: "staffing",
   parameters: {
-    staffMemberId: { type: "string", required: true, description: "Staff member ID" },
+    staffMemberId: { type: "string", required: true, description: idParamDescription("staffMemberId", "The placeholder staff member's staff_member id") },
   },
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "high",
@@ -387,20 +390,19 @@ register({
   toastMessage: () => "Staff member removed",
 });
 
-// Set a 4-digit punch-in code for an org member. Required before that person
-// can clock in at the store on the punch-in screen. If a team member shows
-// `hasPunchInCode: false` in LIVE STORE DATA, ASK THE USER what code to set —
-// don't pick one yourself.
+// Set a 4-digit punch-in code for an org member — the PIN they clock in with
+// on the store's punch-in screen. Only when the user asks for it: a code is
+// not a prerequisite for anything else (shifts are scheduled without one).
 register({
   name: "setPunchInCode",
   description:
-    "Set or change a team member's 4-digit punch-in code (clock-in PIN). If the user hasn't picked one yet, ASK what code they want before calling this — don't invent one. Codes must be unique within the org.",
+    "Set or change a team member's 4-digit punch-in code (clock-in PIN), only when the user asks to. Use the digits the user gave; don't invent a code. Codes must be unique within the org. Not needed for scheduling or anything else.",
   category: "staffing",
   parameters: {
     memberId: {
       type: "string",
       required: true,
-      description: "org_member id from LIVE STORE DATA team[].id",
+      description: idParamDescription("memberId", "The member's org_member id"),
     },
     code: {
       type: "string",
@@ -452,7 +454,7 @@ register({
   description: "Edit an existing role",
   category: "roles",
   parameters: {
-    roleId: { type: "string", required: true, description: "Role ID" },
+    roleId: { type: "string", required: true, description: idParamDescription("roleId", "The role") },
     name: { type: "string", required: false, description: "New name" },
     description: { type: "string", required: false, description: "New description" },
     color: { type: "string", required: false, description: "New hex color" },
@@ -478,7 +480,7 @@ register({
   description: "Delete a role (reassign staff first)",
   category: "roles",
   parameters: {
-    roleId: { type: "string", required: true, description: "Role ID to delete" },
+    roleId: { type: "string", required: true, description: idParamDescription("roleId", "The role to delete") },
   },
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "high",
@@ -495,7 +497,7 @@ register({
   description: "Add a task/duty to a role",
   category: "roles",
   parameters: {
-    roleId: { type: "string", required: true, description: "Role ID" },
+    roleId: { type: "string", required: true, description: idParamDescription("roleId", "The role") },
     title: { type: "string", required: true, description: "Task title" },
     description: { type: "string", required: false, description: "Task description" },
     startTime: { type: "string", required: false, description: "Start time HH:MM" },
@@ -522,7 +524,7 @@ register({
   description: "Edit an existing role task",
   category: "roles",
   parameters: {
-    taskId: { type: "string", required: true, description: "Task ID" },
+    taskId: { type: "string", required: true, description: idParamDescription("taskId", "The role task") },
     title: { type: "string", required: false, description: "New title" },
     description: { type: "string", required: false, description: "New description" },
     startTime: { type: "string", required: false, description: "New start time" },
@@ -548,7 +550,7 @@ register({
   description: "Delete a role task",
   category: "roles",
   parameters: {
-    taskId: { type: "string", required: true, description: "Task ID to delete" },
+    taskId: { type: "string", required: true, description: idParamDescription("taskId", "The role task to delete") },
   },
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "medium",
@@ -570,7 +572,7 @@ register({
     price: { type: "number", required: false, description: "Base price" },
     cost: { type: "number", required: false, description: "Cost price" },
     description: { type: "string", required: false, description: "Product description" },
-    inventoryUsage: { type: "array", required: false, description: "Inventory consumed per product sold: [{inventoryItemId, inventoryItemName, quantity, unit}]" },
+    inventoryUsage: { type: "array", required: false, description: `Inventory consumed per product sold: [{inventoryItemId, inventoryItemName, quantity, unit}]. ${idParamDescription("inventoryItemId", "inventoryItemId is the inventory item")}` },
     variants: { type: "array", required: false, description: "Product variants [{name, price, description}]" },
   },
   requiredPermission: { section: "products", action: "edit" },
@@ -611,13 +613,13 @@ register({
   description: "Edit a product's info (name, description, category, price)",
   category: "products",
   parameters: {
-    productId: { type: "string", required: true, description: "Product ID" },
+    productId: { type: "string", required: true, description: idParamDescription("productId", "The product") },
     name: { type: "string", required: false, description: "New name" },
     category: { type: "string", required: false, description: "New category" },
     price: { type: "number", required: false, description: "New price" },
     cost: { type: "number", required: false, description: "New cost" },
     description: { type: "string", required: false, description: "New description" },
-    inventoryUsage: { type: "array", required: false, description: "Inventory consumed per product sold: [{inventoryItemId, inventoryItemName, quantity, unit}]" },
+    inventoryUsage: { type: "array", required: false, description: `Inventory consumed per product sold: [{inventoryItemId, inventoryItemName, quantity, unit}]. ${idParamDescription("inventoryItemId", "inventoryItemId is the inventory item")}` },
   },
   requiredPermission: { section: "products", action: "edit" },
   riskLevel: "medium",
@@ -639,7 +641,7 @@ register({
   description: "Delete/delist a product",
   category: "products",
   parameters: {
-    productId: { type: "string", required: true, description: "Product ID" },
+    productId: { type: "string", required: true, description: idParamDescription("productId", "The product") },
   },
   requiredPermission: { section: "products", action: "edit" },
   riskLevel: "high",
@@ -722,7 +724,7 @@ register({
   description: "Edit inventory item info (min/max stock, unit, cost)",
   category: "inventory",
   parameters: {
-    itemId: { type: "string", required: true, description: "Inventory item ID" },
+    itemId: { type: "string", required: true, description: idParamDescription("itemId", "The inventory item") },
     name: { type: "string", required: false, description: "New name" },
     category: { type: "string", required: false, description: "New category" },
     currentStock: { type: "number", required: false, description: "New current stock" },
@@ -764,7 +766,7 @@ register({
   description: "Delete an inventory item",
   category: "inventory",
   parameters: {
-    itemId: { type: "string", required: true, description: "Inventory item ID" },
+    itemId: { type: "string", required: true, description: idParamDescription("itemId", "The inventory item") },
   },
   requiredPermission: { section: "inventory", action: "edit" },
   riskLevel: "high",
@@ -781,7 +783,7 @@ register({
   description: "Update a product's price",
   category: "pricing",
   parameters: {
-    productId: { type: "string", required: true, description: "Product ID" },
+    productId: { type: "string", required: true, description: idParamDescription("productId", "The product") },
     productName: { type: "string", required: false, description: "Product name (for display)" },
     newPrice: { type: "number", required: true, description: "New price" },
   },
@@ -827,7 +829,7 @@ register({
   description: "Edit an existing coupon",
   category: "pricing",
   parameters: {
-    couponId: { type: "string", required: true, description: "Coupon ID" },
+    couponId: { type: "string", required: true, description: idParamDescription("couponId", "The coupon") },
     code: { type: "string", required: false, description: "New code" },
     discountValue: { type: "number", required: false, description: "New discount value" },
     expiresAt: { type: "string", required: false, description: "New expiry date" },
@@ -851,7 +853,7 @@ register({
   description: "Delete a coupon",
   category: "pricing",
   parameters: {
-    couponId: { type: "string", required: true, description: "Coupon ID" },
+    couponId: { type: "string", required: true, description: idParamDescription("couponId", "The coupon") },
   },
   requiredPermission: { section: "products", action: "edit" },
   riskLevel: "high",
@@ -899,7 +901,7 @@ register({
   description: "Edit supplier information",
   category: "suppliers",
   parameters: {
-    supplierId: { type: "string", required: true, description: "Supplier ID" },
+    supplierId: { type: "string", required: true, description: idParamDescription("supplierId", "The supplier") },
     name: { type: "string", required: false, description: "New name" },
     contactName: { type: "string", required: false, description: "New contact" },
     email: { type: "string", required: false, description: "New email" },
@@ -944,7 +946,7 @@ register({
   description: "Delete a supplier",
   category: "suppliers",
   parameters: {
-    supplierId: { type: "string", required: true, description: "Supplier ID" },
+    supplierId: { type: "string", required: true, description: idParamDescription("supplierId", "The supplier") },
   },
   requiredPermission: { section: "inventory", action: "edit" },
   riskLevel: "high",
@@ -956,25 +958,26 @@ register({
 
 register({
   name: "createPurchaseOrder",
-  description: "Create a purchase order for a supplier",
+  description:
+    "Create a purchase order for a supplier. The app computes the subtotal and total from the items (unitCost × quantity) — never pass them.",
   category: "suppliers",
   parameters: {
-    supplierId: { type: "string", required: true, description: "Supplier ID" },
+    supplierId: { type: "string", required: true, description: idParamDescription("supplierId", "The supplier") },
     items: { type: "array", required: true, description: "[{name, quantity, unitCost}]" },
-    subtotal: { type: "number", required: false, description: "Subtotal" },
     tax: { type: "number", required: false, description: "Tax amount" },
-    total: { type: "number", required: false, description: "Total" },
     notes: { type: "string", required: false, description: "Notes" },
   },
   requiredPermission: { section: "inventory", action: "edit" },
   riskLevel: "medium",
   execute: async (p) => {
+    // Priced from the lines, whatever subtotal/total the model sent.
+    const { subtotal, tax, total } = orderAmounts(computeOrderTotalsStrict(p.items, p.tax));
     await createPurchaseOrder({
       supplierId: String(p.supplierId ?? ""),
       items: JSON.stringify(p.items ?? []),
-      subtotal: Number(p.subtotal ?? 0),
-      tax: Number(p.tax ?? 0),
-      total: Number(p.total ?? p.subtotal ?? 0),
+      subtotal,
+      tax,
+      total,
       notes: p.notes ? String(p.notes) : null,
     });
   },
@@ -984,19 +987,18 @@ register({
 register({
   name: "orderFromSupplier",
   description:
-    "Order inventory from a supplier: email them the purchase order AND record it. Use this (not createPurchaseOrder) when restocking. supplierId MUST match a supplier in LIVE STORE DATA; if the low-stock item's `supplier` name has no matching supplier record (no id), ask to add the supplier first via addSupplier. If the supplier has no email on file, the order is still saved as a draft and managers are notified. " +
+    "Order inventory from a supplier: email them the purchase order AND record it. Use this (not createPurchaseOrder) when restocking. supplierId MUST be a real supplier record's id (from your read tools; without tools, LIVE STORE DATA suppliers[]); if the low-stock item's `supplier` name has no matching supplier record (no id), propose an addSupplier block for it first. If the supplier has no email on file, the order is still saved as a draft and managers are notified. " +
     "WHEN A STOCK ITEM IS LOW, don't just say 'tell me if you want me to order' — EMIT this action so the manager gets an Approve/Reject card to confirm contacting the supplier. " +
-    "INTENT = ORDER: requests like '联系供应商 X' / 'contact the supplier for X' / '给 X 下单' / '订货' / 'order more X' / 'restock X' / '补货' ALL mean PLACE AN ORDER. Resolve X (an inventory item) → find its `supplier` name → the matching supplier record's id, compute the restock quantity (see QUANTITIES), and EMIT this action. Do NOT just print the supplier's name / email / phone and tell the user to reach out themselves — emailing the PO is exactly what this action does. Showing contact info instead of emitting the action is wrong. The ONLY time you ask first is when you're missing a hard requirement: no matching supplier id (then offer addSupplier), or the item/quantity is genuinely ambiguous. " +
+    "INTENT = ORDER: requests like '联系供应商 X' / 'contact the supplier for X' / '给 X 下单' / '订货' / 'order more X' / 'restock X' / '补货' ALL mean PLACE AN ORDER. Resolve X (an inventory item) → find its `supplier` name → the matching supplier record's id, take the restock quantity (see QUANTITIES), and EMIT this action. Do NOT just print the supplier's name / email / phone and tell the user to reach out themselves — emailing the PO is exactly what this action does. Showing contact info instead of emitting the action is wrong. The ONLY time you ask first is when you're missing a hard requirement: no matching supplier id (then offer addSupplier), or the item/quantity is genuinely ambiguous. " +
     "LANGUAGE + ITEM NAMES: use the supplier record's `language` field (default en) for supplier-facing notes/email content. Every item object MUST include the inventory item's actual name in `name` (also ok to duplicate as `itemName`); never use a dash/blank placeholder. " +
-    "QUANTITIES: order enough to reach the item's max stock, but if the item has `unitsPerCase` set, round the quantity UP to a whole multiple of it (order full cases), and never order below `minOrderQty` when set. Include `unitsPerCase` and `caseCount` on the line item. In Chinese UI text, show case math as `9*箱 - 108个` for 9 cases of 12 units.",
+    "QUANTITIES: unless the user named a quantity, take it from viewRestockSuggestions for that item, as-is — quantity = orderQty, caseCount = cases, plus its unitsPerCase and unitCost (supplier minimums and whole cases are already applied there). Never work out a quantity or a cost yourself. Only when that tool is not available: order enough to reach the item's max stock, round UP to a whole multiple of `unitsPerCase` when set (full cases), and never order below `minOrderQty` when set. Include `unitsPerCase` and `caseCount` on the line item. In Chinese UI text, show case math as `9*箱 - 108个` for 9 cases of 12 units. " +
+    "TOTALS: never pass subtotal or total — the app computes them from each item's unitCost × quantity.",
   category: "suppliers",
   parameters: {
-    supplierId: { type: "string", required: true, description: "Supplier ID from LIVE STORE DATA" },
-    supplierLanguage: { type: "string", required: false, description: "Supplier language from LIVE STORE DATA suppliers[].language; defaults to en" },
-    items: { type: "array", required: true, description: "[{name, itemName?, quantity, unit?, unitCost?, unitsPerCase?, caseCount?, caseUnit?, eachUnit?}]. name is required and must be the real item name." },
-    subtotal: { type: "number", required: false, description: "Subtotal (defaults to sum of unitCost*quantity)" },
+    supplierId: { type: "string", required: true, description: idParamDescription("supplierId", "The supplier") },
+    supplierLanguage: { type: "string", required: false, description: "The supplier's language: viewSuppliers suppliers[].language or viewRestockSuggestions bySupplier[].supplierLanguage; without tools, LIVE STORE DATA suppliers[].language. Defaults to en" },
+    items: { type: "array", required: true, description: "[{name, itemName?, quantity, unit?, unitCost?, unitsPerCase?, caseCount?, caseUnit?, eachUnit?}]. name is required and must be the real item name; quantity, caseCount, unitsPerCase and unitCost come from viewRestockSuggestions when it is available." },
     tax: { type: "number", required: false, description: "Tax amount" },
-    total: { type: "number", required: false, description: "Total (defaults to subtotal+tax)" },
     notes: { type: "string", required: false, description: "Notes to include in the email to the supplier" },
   },
   requiredPermission: { section: "inventory", action: "edit" },
@@ -1055,14 +1057,11 @@ register({
     const unnamed = items.find((it) => !it.name);
     if (unnamed) throw new Error("Every supplier order item must include the item name.");
 
-    const subtotal = Number(
-      p.subtotal ?? items.reduce((s, it) => s + (it.unitCost ?? 0) * it.quantity, 0),
-    );
-    const tax = Number(p.tax ?? 0);
-    const total = Number(p.total ?? subtotal + tax);
+    // Priced from the normalized lines, whatever subtotal/total the model sent.
+    const { subtotal, tax, total } = orderAmounts(computeOrderTotalsStrict(items, p.tax));
 
     // 1) Server route sends the PO email (server-only Resend) and returns the
-    //    canonical summary/totals + whether it actually emailed.
+    //    summary + whether it actually emailed.
     const supplierName = String(supplier.name ?? "");
     const res = await fetch("/api/suppliers/order", {
       method: "POST",
@@ -1090,9 +1089,6 @@ register({
     const data = (await res.json()) as {
       emailed?: boolean;
       summary?: string;
-      subtotal?: number;
-      tax?: number;
-      total?: number;
     };
     const emailed = !!data.emailed;
 
@@ -1100,13 +1096,14 @@ register({
     //    write uses the active, authenticated session and can't fail with an
     //    expired token. Manager-only permission is still enforced server-side
     //    by the reducer. If the email failed, this saves a draft + escalates.
+    //    The amounts are the ones computed above — the route only echoes them.
     await recordSupplierOrder({
       supplierId,
       supplierName,
       items: JSON.stringify(items),
-      subtotal: data.subtotal ?? subtotal,
-      tax: data.tax ?? tax,
-      total: data.total ?? total,
+      subtotal,
+      tax,
+      total,
       notes: p.notes ? String(p.notes) : null,
       summary: data.summary ?? "",
       emailed,
@@ -1274,7 +1271,7 @@ register({
     "Edit an existing curriculum day. Provide dayId OR dayNumber to identify the day, then any of title / description (HTML) / sortOrder / dayNumber.",
   category: "training",
   parameters: {
-    dayId: { type: "string", required: false, description: "Day UUID (preferred)" },
+    dayId: { type: "string", required: false, description: idParamDescription("dayId", "The curriculum day") },
     dayNumber: { type: "number", required: false, description: "Existing day number to identify the day, if dayId is not known" },
     title: { type: "string", required: false, description: "New title" },
     description: {
@@ -1314,7 +1311,7 @@ register({
     "Delete a curriculum day. Cascades to its objectives and any saved grades for that day.",
   category: "training",
   parameters: {
-    dayId: { type: "string", required: false, description: "Day UUID (preferred)" },
+    dayId: { type: "string", required: false, description: idParamDescription("dayId", "The curriculum day") },
     dayNumber: { type: "number", required: false, description: "Day number if dayId is unknown" },
   },
   requiredPermission: { section: "staffing", action: "edit" },
@@ -1332,7 +1329,7 @@ register({
     "Add an objective/attachment to a curriculum day. Identify the day via dayId or dayNumber. `text` is the objective description; `mediaUrl` + `mediaType` attach an image or video.",
   category: "training",
   parameters: {
-    dayId: { type: "string", required: false, description: "Day UUID (preferred)" },
+    dayId: { type: "string", required: false, description: idParamDescription("dayId", "The curriculum day") },
     dayNumber: { type: "number", required: false, description: "Day number, e.g. 3" },
     text: { type: "string", required: true, description: "Objective text (plain or HTML)" },
     mediaUrl: { type: "string", required: false, description: "Optional uploaded asset URL" },
@@ -1367,7 +1364,7 @@ register({
     "Edit an objective. Provide objectiveId, then any of text / mediaUrl / mediaType / sortOrder.",
   category: "training",
   parameters: {
-    objectiveId: { type: "string", required: true, description: "Objective UUID" },
+    objectiveId: { type: "string", required: true, description: idParamDescription("objectiveId", "The objective") },
     text: { type: "string", required: false, description: "New text (plain or HTML)" },
     mediaUrl: { type: "string", required: false, description: "New media URL, or empty string to clear" },
     mediaType: {
@@ -1410,7 +1407,7 @@ register({
   description: "Delete a single objective from a curriculum day.",
   category: "training",
   parameters: {
-    objectiveId: { type: "string", required: true, description: "Objective UUID" },
+    objectiveId: { type: "string", required: true, description: idParamDescription("objectiveId", "The objective") },
   },
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "high",
@@ -1496,13 +1493,13 @@ export function generateActionsPrompt(): string {
 When you want to perform an action, output a JSON block wrapped in \`\`\`action tags. The user will see an "Approve" button for medium/high risk actions.
 
 Scheduling rules:
-- Every shift you create needs at least one role in \`staffRoles\` — pick from the active \`roles\` in LIVE STORE DATA (use the exact name).
-- Before scheduling shifts for any team member whose \`hasPunchInCode\` is false in LIVE STORE DATA, STOP and ASK the user what 4-digit punch-in code they want to set for that person. Don't invent one. Once the user tells you, call \`setPunchInCode\` first, then add the shifts.
+- Every shift you create needs at least one job role in \`staffRoles\`: the exact name of one of the store's roles — never a permission level (owner/manager/staff) or the shift type. When the store has no role that fits, put an \`addRole\` block for one first, in the same reply, and use its name.
+- A shift needs nothing else: no punch-in code, no availability entry, no other setup. Don't ask for any of it before scheduling.
 
 Supplier ordering rules:
 - When the user asks to contact a supplier, restock, reorder, order more, 补货, 订货, 下单, or 联系供应商 for an inventory item, output \`orderFromSupplier\`.
 - \`orderFromSupplier\` emails the supplier through Resend after approval and records the purchase order. Do not just show supplier contact info when the user asked you to contact them.
-- Resolve the inventory item by name, match its \`supplier\` name to an entry in LIVE STORE DATA \`suppliers[]\`, use that supplier's \`id\`, and order enough to reach max stock while respecting case size/minimum order.
+- Resolve the inventory item by name, match its \`supplier\` name to a supplier record (from your read tools; without tools, LIVE STORE DATA \`suppliers[]\`), use that supplier's \`id\`, and take the quantity and unit cost from viewRestockSuggestions when that tool is available (see orderFromSupplier QUANTITIES). Never pass subtotal or total — the app computes them.
 - Every supplier has a \`language\` field (default \`en\`). Use it for supplier-facing notes and pass it as \`supplierLanguage\`.
 - Every line item must include the real item name in \`name\`; never output a blank name or dash. When \`unitsPerCase\` is set, include \`unitsPerCase\` and \`caseCount\`; for Chinese quantity text use \`9*箱 - 108个\` style.
 

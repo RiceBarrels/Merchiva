@@ -37,6 +37,7 @@ import { tables } from "@/lib/spacetimedb/generated";
 import { useStoreMachineMode } from "@/lib/store-machine-mode";
 import { useCurrentOperator } from "@/lib/store-device-lock";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { useChannelPageContext } from "@/app/manager/channel/use-channel-page-context";
 
 // Mr. Merchiva's avatar on the replies he posted when he could still be added to
 // a group chat: the brand "M" mark on the foreground token. He lives in the ⌘⇧M
@@ -372,6 +373,7 @@ export default function ChatPage() {
   const filteredTeam = team.filter(
     (m) => m.displayName.toLowerCase().includes(memberSearch.toLowerCase())
   );
+  useChannelPageContext({ conversations: conversations.length, open: activeConv, openName: activeConv ? getConvDisplayName(activeConv) : null });
 
   if (loading) {
     return (

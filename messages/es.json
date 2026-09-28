@@ -2699,7 +2699,9 @@
       "cancel": "Cancelar",
       "undo": "Deshacer",
       "noItems": "Sin líneas",
-      "unknownSupplier": "Proveedor"
+      "unknownSupplier": "Proveedor",
+      "needsApproval": "Necesita tu aprobación",
+      "noPermission": "Sin permiso"
     },
     "categories": {
       "scheduling": "Planificación",
@@ -3000,8 +3002,136 @@
       "hintPrefix": "Pulsa",
       "hintSuffix": "para invocar a Mr. Merchiva"
     },
+    "tools": {
+      "viewTeam": {
+        "running": "Revisando el equipo…",
+        "done": "Equipo revisado",
+        "error": "No se pudo revisar el equipo"
+      },
+      "viewRoles": {
+        "running": "Revisando los roles…",
+        "done": "Roles revisados",
+        "error": "No se pudieron revisar los roles"
+      },
+      "viewScheduleHistory": {
+        "running": "Revisando turnos anteriores…",
+        "done": "Turnos anteriores revisados",
+        "error": "No se pudieron revisar los turnos anteriores"
+      },
+      "viewUpcomingShifts": {
+        "running": "Revisando los próximos turnos…",
+        "done": "Próximos turnos revisados",
+        "error": "No se pudieron revisar los próximos turnos"
+      },
+      "viewShiftPresets": {
+        "running": "Revisando plantillas de turno…",
+        "done": "Plantillas de turno revisadas",
+        "error": "No se pudieron revisar las plantillas de turno"
+      },
+      "viewAvailability": {
+        "running": "Revisando la disponibilidad…",
+        "done": "Disponibilidad revisada",
+        "error": "No se pudo revisar la disponibilidad"
+      },
+      "viewInventory": {
+        "running": "Revisando el inventario…",
+        "done": "Inventario revisado",
+        "error": "No se pudo revisar el inventario"
+      },
+      "viewSuppliers": {
+        "running": "Revisando proveedores…",
+        "done": "Proveedores revisados",
+        "error": "No se pudieron revisar los proveedores"
+      },
+      "viewProducts": {
+        "running": "Revisando productos…",
+        "done": "Productos revisados",
+        "error": "No se pudieron revisar los productos"
+      },
+      "viewSales": {
+        "running": "Revisando las ventas…",
+        "done": "Ventas revisadas",
+        "error": "No se pudieron revisar las ventas"
+      },
+      "viewFinance": {
+        "running": "Calculando las finanzas…",
+        "done": "Finanzas calculadas",
+        "error": "No se pudieron calcular las finanzas"
+      },
+      "viewForecast": {
+        "running": "Calculando la predicción de ventas…",
+        "done": "Predicción de ventas calculada",
+        "error": "No se pudo calcular la predicción de ventas"
+      },
+      "viewRestockSuggestions": {
+        "running": "Calculando qué reponer…",
+        "done": "Reposición calculada",
+        "error": "No se pudo calcular la reposición"
+      },
+      "proposeSchedule": {
+        "running": "Preparando un horario…",
+        "done": "Horario preparado",
+        "error": "No se pudo preparar el horario"
+      }
+    },
+    "steps": {
+      "label": "Pasos",
+      "count": "{n} pasos",
+      "results": "{n} resultados",
+      "oneResult": "1 resultado",
+      "days": "últimos {n} días",
+      "lowOnly": "solo stock bajo",
+      "weekStart": "semana del {date}",
+      "mcp": "{server} · {tool}",
+      "unknownRunning": "Usando {tool}…",
+      "unknownDone": "Se usó {tool}",
+      "unknownError": "No se pudo usar {tool}",
+      "status": {
+        "running": "En curso",
+        "done": "Listo",
+        "error": "Error",
+        "interrupted": "Interrumpido"
+      },
+      "nextDays": "próximos {n} días",
+      "supplier": "proveedor: {name}",
+      "period": {
+        "thisWeek": "esta semana",
+        "lastWeek": "la semana pasada",
+        "thisMonth": "este mes",
+        "lastMonth": "el mes pasado",
+        "thisQuarter": "este trimestre",
+        "thisYear": "este año"
+      }
+    },
     "presence": {
       "cursorLabel": "Mr. Merchiva de {name}"
+    },
+    "errors": {
+      "voiceFallback": "Disculpa, no entendí. ¿Puedes repetirlo?",
+      "chatFallback": "No pude generar una respuesta. Inténtalo de nuevo."
+    },
+    "replyReady": {
+      "title": "Mr. Merchiva respondió",
+      "body": "Tu respuesta está lista."
+    },
+    "autonomyReason": {
+      "missingPermission": "No tienes permiso para hacer esto.",
+      "autonomyDisabled": "Las acciones automáticas están desactivadas, así que cada cambio necesita tu aprobación.",
+      "riskNeedsApproval": "Riesgo: {risk}. En el modo «{mode}» necesita tu aprobación.",
+      "dailyLimit": "Se alcanzó el límite diario de {limit} acciones automáticas.",
+      "orderInvalidLines": "Líneas con cantidad o costo negativo: {count}.",
+      "orderUnpriced": "El importe del pedido es desconocido. Artículos sin costo unitario: {count}.",
+      "orderOverCap": "El total del pedido, {total}, supera el límite de pedido automático de {limit}.",
+      "refundOverCap": "Un reembolso de {amount} supera el límite de reembolso automático de {limit}.",
+      "refundFullOverCap": "Un reembolso total supera el límite de reembolso automático de {limit}.",
+      "priceChangeOverCap": "Un cambio de precio del {pct}% supera el límite automático del {limit}%.",
+      "auto": "Se ejecuta automáticamente en el modo «{mode}».",
+      "unknownAction": "Acción desconocida, así que necesita tu aprobación.",
+      "modes": {
+        "approval": "Aprobación requerida",
+        "partial": "Parcialmente automático",
+        "full": "Totalmente automático"
+      }
     }
   },
   "admins": {

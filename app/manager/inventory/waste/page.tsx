@@ -53,6 +53,7 @@ import { toast } from "sonner";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { dateKeyOffset, todayKey } from "@/lib/date-key";
+import { useWastePageContext } from "@/app/manager/inventory/waste/use-waste-page-context";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -399,6 +400,8 @@ function WasteLogPage() {
       landscape: true,
     });
   }, [filteredLogs, dateFilter, format]);
+
+  useWastePageContext({ period: dateFilter, entries: filteredLogs.length, search: searchQuery, logging: dialogOpen, itemId: formItemId, itemName: formItemName });
 
   // ── Loading state ──────────────────────────────────────────────────────────
 

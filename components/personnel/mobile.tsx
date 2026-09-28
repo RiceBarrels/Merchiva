@@ -16,6 +16,7 @@ import {
 import { RoleTasksOverview } from "@/components/personnel/tasks-overview";
 import { TaskRow } from "@/components/personnel/task-row";
 import { AttendanceWeek } from "@/components/personnel/attendance";
+import { useMobileRolesPageContext, useMobileSchedulePageContext } from "@/components/personnel/use-page-context";
 import { TaskCompleteDialog } from "@/components/task-complete-dialog";
 import {
   useChatConversations,
@@ -477,6 +478,10 @@ export function MobileSchedule({
     : null;
   const canFindCover = !!selectedShift && !!myMemberId && selectedShift.memberId === myMemberId;
   const canChangePeople = !!selectedShift && (isOwner || orgRole === "manager" || can("staffing", "edit"));
+  useMobileSchedulePageContext({
+    view: mobileView, canManageAttendance, week, day: selDate, members, shifts: allShifts,
+    selectedShift, addShift: addShiftOpen ? addShiftForm : null,
+  });
 
   async function requestCover() {
     if (!selectedShift || !myMemberId || existingCoverRequest) return;
@@ -600,7 +605,7 @@ export function MobileSchedule({
     return (
       <div>
         {viewTabs}
-        <AttendanceWeek orgId={orgId} />
+        <AttendanceWeek orgId={orgId} shownOn="mobile" />
         <div className="h-4" />
       </div>
     );
@@ -1344,6 +1349,9 @@ export function MobileRoles({ orgId }: { orgId: string }) {
 
   const selectedRole = selectedId ? roles.find((r) => r.id === selectedId) ?? null : null;
   const selectedTasks = selectedRole ? tasksByRole.get(selectedRole.id) ?? [] : [];
+  useMobileRolesPageContext({
+    roleCount: roles.length, selectedRole, selectedTaskCount: selectedTasks.length, statusDate, todayStr,
+  });
   const selectedMembers = selectedRole
     ? activeMembers.filter((m) =>
         m.role.toLowerCase().includes(selectedRole.name.toLowerCase()),

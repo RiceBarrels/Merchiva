@@ -85,5 +85,5 @@ export const tasksSkill: MerchivaSkill<TasksData> = {
 - /tasks list '<RoleName>' — displays tasks for a role.
 - /tasks add '{"role":"...","title":"...","des":"..."}' — legacy format, still supported.
 - /tasks delete '{"role":"...","title":"..."}' — legacy format, still supported.
-PREFERRED: Use action blocks — addRoleTask, updateRoleTask, deleteRoleTask with roleId from LIVE STORE DATA.`,
+PREFERRED: Use action blocks — addRoleTask, updateRoleTask, deleteRoleTask with the real roleId / taskId (see IDS).`,
 };

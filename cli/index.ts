@@ -15,7 +15,7 @@ import { newCommand } from "./commands/new.ts";
 import { loginCommand, logoutCommand, whoamiCommand } from "./commands/auth.ts";
 import { ensureFreshToken } from "./lib/auth.ts";
 import { loadConfig, saveConfig, configPath, LOCALES, type Locale } from "./lib/config.ts";
-import { ping } from "./lib/api.ts";
+import { ping, UNAUTHORIZED_HINT } from "./lib/api.ts";
 import { c, ok, fail, info, banner, spinner } from "./lib/ui.ts";
 
 // --- tiny arg parser: separates `--flags`/`-f` from positional args ----------
@@ -119,6 +119,8 @@ async function doctorCommand() {
   const cfg = loadConfig();
   banner();
   info(`Target: ${c.bold(cfg.baseUrl)}`);
+  // /api/store-ai answers only a member of the store the request names.
+  if (!cfg.orgId) info(`No store pinned — set one with ${c.bold("merchiva config set org <organizationId>")}`);
   const spin = spinner("Pinging /api/store-ai…");
   const res = await ping(cfg);
   spin.stop();
@@ -126,6 +128,8 @@ async function doctorCommand() {
     ok(`Reachable (HTTP ${res.status}). Mr. Merchiva is online.`);
   } else if (res.status) {
     fail(`App responded HTTP ${res.status}. Endpoint reached but returned an error.`);
+    if (res.status === 401) info(UNAUTHORIZED_HINT);
+    if (res.status === 403) info("Mr. Merchiva is switched off for your account in this store. Ask a manager to turn it on.");
   } else {
     fail(`Unreachable: ${res.error}`);
     info(`Start the app with ${c.bold("bun run dev")}, or set the URL:`);

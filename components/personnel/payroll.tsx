@@ -30,6 +30,7 @@ import { StatGrid, StatTile } from "@/components/ui/stat-tile";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { mondayOf } from "@/lib/date-key";
 import { intlLocaleTag } from "@/lib/i18n/dates";
+import { usePayPageContext } from "@/components/personnel/use-page-context";
 import {
   Select,
   SelectContent,
@@ -394,6 +395,10 @@ export function PayrollPanel({ orgId, myMemberId }: { orgId: string; myMemberId:
   }, [rows]);
 
   const detailRow = detailId ? rows.find((r) => r.member.id === detailId) ?? null : null;
+  usePayPageContext({
+    unit, start, end, canViewAll, staffCount: rows.length, missingRateCount: totals.missingRate,
+    onClockCount: totals.onClock, detail: detailRow?.member ?? null,
+  });
 
   const boundPicker = (value: string, onChange: (v: string) => void, ariaLabel: string) => {
     if (unit === "day") {

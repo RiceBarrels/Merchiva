@@ -45,6 +45,7 @@ import { downloadCSV, downloadPDF } from "@/lib/export";
 import type { InventoryItem } from "@/lib/types";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { dateKey } from "@/lib/date-key";
+import { useReportsPageContext } from "@/app/manager/reports/use-reports-page-context";
 
 // ─── Date Range Helpers ─────────────────────────────────────────────────────
 
@@ -221,6 +222,7 @@ export default function ReportsPage() {
 
   // ── Staff filtered data ───────────────────────────────────────────────────
   const staffBounds = useMemo(() => getDateBounds(staffRange, formatDate, t), [staffRange, formatDate, t]);
+  useReportsPageContext({ salesRange, salesBounds, staffRange, staffBounds });
   const filteredShifts = useMemo(
     () => shifts.filter((s) => inRange(s.date, staffBounds.start, staffBounds.end)),
     [shifts, staffBounds]

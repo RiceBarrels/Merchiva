@@ -2699,7 +2699,9 @@
       "cancel": "Cancel",
       "undo": "Undo",
       "noItems": "No line items",
-      "unknownSupplier": "Supplier"
+      "unknownSupplier": "Supplier",
+      "needsApproval": "Needs your OK",
+      "noPermission": "No permission"
     },
     "categories": {
       "scheduling": "Scheduling",
@@ -3000,8 +3002,136 @@
       "hintPrefix": "Press",
       "hintSuffix": "to summon Mr. Merchiva"
     },
+    "tools": {
+      "viewTeam": {
+        "running": "Checking the team…",
+        "done": "Checked the team",
+        "error": "Couldn't check the team"
+      },
+      "viewRoles": {
+        "running": "Checking roles…",
+        "done": "Checked roles",
+        "error": "Couldn't check roles"
+      },
+      "viewScheduleHistory": {
+        "running": "Reviewing past shifts…",
+        "done": "Reviewed past shifts",
+        "error": "Couldn't review past shifts"
+      },
+      "viewUpcomingShifts": {
+        "running": "Checking upcoming shifts…",
+        "done": "Checked upcoming shifts",
+        "error": "Couldn't check upcoming shifts"
+      },
+      "viewShiftPresets": {
+        "running": "Checking shift templates…",
+        "done": "Checked shift templates",
+        "error": "Couldn't check shift templates"
+      },
+      "viewAvailability": {
+        "running": "Checking availability…",
+        "done": "Checked availability",
+        "error": "Couldn't check availability"
+      },
+      "viewInventory": {
+        "running": "Checking inventory…",
+        "done": "Checked inventory",
+        "error": "Couldn't check inventory"
+      },
+      "viewSuppliers": {
+        "running": "Checking suppliers…",
+        "done": "Checked suppliers",
+        "error": "Couldn't check suppliers"
+      },
+      "viewProducts": {
+        "running": "Checking products…",
+        "done": "Checked products",
+        "error": "Couldn't check products"
+      },
+      "viewSales": {
+        "running": "Checking sales…",
+        "done": "Checked sales",
+        "error": "Couldn't check sales"
+      },
+      "viewFinance": {
+        "running": "Calculating finances…",
+        "done": "Calculated finances",
+        "error": "Couldn't calculate finances"
+      },
+      "viewForecast": {
+        "running": "Building a sales forecast…",
+        "done": "Built a sales forecast",
+        "error": "Couldn't build a sales forecast"
+      },
+      "viewRestockSuggestions": {
+        "running": "Working out what to restock…",
+        "done": "Worked out what to restock",
+        "error": "Couldn't work out what to restock"
+      },
+      "proposeSchedule": {
+        "running": "Drafting a schedule…",
+        "done": "Drafted a schedule",
+        "error": "Couldn't draft a schedule"
+      }
+    },
+    "steps": {
+      "label": "Steps",
+      "count": "{n} steps",
+      "results": "{n} results",
+      "oneResult": "1 result",
+      "days": "last {n} days",
+      "lowOnly": "low stock only",
+      "weekStart": "week of {date}",
+      "mcp": "{server} · {tool}",
+      "unknownRunning": "Using {tool}…",
+      "unknownDone": "Used {tool}",
+      "unknownError": "Couldn't use {tool}",
+      "status": {
+        "running": "In progress",
+        "done": "Done",
+        "error": "Failed",
+        "interrupted": "Stopped"
+      },
+      "nextDays": "next {n} days",
+      "supplier": "supplier: {name}",
+      "period": {
+        "thisWeek": "this week",
+        "lastWeek": "last week",
+        "thisMonth": "this month",
+        "lastMonth": "last month",
+        "thisQuarter": "this quarter",
+        "thisYear": "this year"
+      }
+    },
     "presence": {
       "cursorLabel": "{name}'s Mr. Merchiva"
+    },
+    "errors": {
+      "voiceFallback": "Sorry, I didn't catch that — could you try again?",
+      "chatFallback": "I couldn't generate a response. Please try again."
+    },
+    "replyReady": {
+      "title": "Mr. Merchiva replied",
+      "body": "Your reply is ready."
+    },
+    "autonomyReason": {
+      "missingPermission": "You don't have permission to do this.",
+      "autonomyDisabled": "Automatic actions are off, so every change needs your OK.",
+      "riskNeedsApproval": "Risk: {risk}. In “{mode}” mode this needs your OK.",
+      "dailyLimit": "The daily limit of {limit} automatic actions has been reached.",
+      "orderInvalidLines": "Lines with a negative quantity or cost: {count}.",
+      "orderUnpriced": "The order value is unknown. Items without a unit cost: {count}.",
+      "orderOverCap": "The order total, {total}, is over the auto-order limit of {limit}.",
+      "refundOverCap": "A refund of {amount} is over the auto-refund limit of {limit}.",
+      "refundFullOverCap": "A full refund is over the auto-refund limit of {limit}.",
+      "priceChangeOverCap": "A {pct}% price change is over the auto limit of {limit}%.",
+      "auto": "Runs on its own in “{mode}” mode.",
+      "unknownAction": "Unknown action, so it needs your OK.",
+      "modes": {
+        "approval": "Approval required",
+        "partial": "Partially automatic",
+        "full": "Fully automatic"
+      }
     }
   },
   "admins": {

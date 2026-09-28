@@ -255,8 +255,11 @@ function buildInventoryUpdatePayload(itemId: string, data: Record<string, any>) 
   const c = getConnection();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = (c as any)?.db?.inventoryItem?.iter ? [...(c as any).db.inventoryItem.iter()] : [];
+  // Ids arrive hyphenated (hooks and Mr. Merchiva's read tools use toString())
+  // or as bare hex (toHexString()); compare the 32 hex digits.
+  const hex = (id: unknown) => rowIdString(id).replace(/-/g, "").toLowerCase();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const current = rows.find((r: any) => r.organizationId === organizationId && rowIdString(r.id) === itemId);
+  const current = rows.find((r: any) => r.organizationId === organizationId && hex(r.id) === hex(itemId));
 
   const value = (key: string) => (hasOwn(data, key) ? data[key] : current?.[key]);
   const required = [

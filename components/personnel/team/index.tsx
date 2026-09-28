@@ -29,6 +29,7 @@ import {
   type EditMemberInput,
 } from "@/components/personnel/team-dialogs";
 import { useIsMobile } from "@/lib/use-is-mobile";
+import { useTeamPageContext } from "@/components/personnel/use-page-context";
 
 /**
  * v2: the old key was written automatically on every visit, so its values are
@@ -201,6 +202,11 @@ export function OrgPanel({ orgId }: { orgId: string }) {
     groups: graph.nodes.filter((n) => n.kind === "group").length,
     edges: graph.edges.length,
   }), [graph.nodes, graph.edges]);
+
+  useTeamPageContext({
+    view: viewMode, nodes: graph.nodes, search: q, selected: selectedNode,
+    editingMemberId: editingMember?.id ?? null, inviteOpen, roleManagerOpen: showRoleManager,
+  });
 
   const showLegend =
     graph.roles.length > 0 && !(isMobile && graph.roles.length > MOBILE_LEGEND_MAX_ROLES);

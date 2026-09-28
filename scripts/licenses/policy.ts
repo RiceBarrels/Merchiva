@@ -33,6 +33,13 @@ export const SERVER_IMPORT_ALLOWLIST: Readonly<Record<string, string>> = {
   "lib/email/resend.ts": "resend; imported only by app/api/suppliers/* and app/api/team/send-invite-email",
   "lib/auth/workos.ts": "@workos-inc/node; imported only by app/api/auth/*",
   "lib/auth/verify-token.ts": "jose; imported only by app/api/** route handlers (billing, drive routes via lib/drive/server/deps.ts)",
+  "lib/ai/models.ts":
+    "@ai-sdk/openai; server code without the marker so its pure helpers stay unit-testable (its header says so); imported by app/api/{store-ai,walkie,suppliers}/** and lib/ai/{router,run-triage,triage}.ts",
+  "lib/merchiva/tools/view-forecast.ts": "ai; imported only by lib/merchiva/tools.ts, which starts with server-only",
+  "lib/merchiva/tools/view-finance.ts": "ai; imported only by lib/merchiva/tools.ts, which starts with server-only",
+  "lib/merchiva/tools/propose-schedule.ts": "ai; imported only by lib/merchiva/tools.ts, which starts with server-only",
+  "lib/merchiva/tools/view-restock-suggestions.ts":
+    "ai; imported by lib/merchiva/tools.ts (server-only) and lib/merchiva/tools/tool-tables.ts, which only tools.ts, tools/rows.ts and tools/sql-source.ts import",
 };
 
 /** devDependencies whose output ships (Tailwind preflight CSS). */

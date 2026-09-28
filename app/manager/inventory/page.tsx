@@ -58,6 +58,7 @@ import { PageHeader } from "@/components/page-header";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
+import { useInventoryPageContext } from "@/app/manager/inventory/use-inventory-page-context";
 import { useSuppliers as useSupplierRows } from "@/lib/spacetimedb/hooks";
 import { Combobox } from "@/components/ui/combobox";
 import { useT } from "@/lib/i18n/context";
@@ -511,6 +512,7 @@ export default function InventoryPage() {
   const criticalCount = restockSuggestions.filter((s) => s.priority === "critical").length;
   const highCount = restockSuggestions.filter((s) => s.priority === "high").length;
   const totalOrderValue = restockSuggestions.reduce((s, r) => s + r.estimatedCost, 0);
+  useInventoryPageContext({ items, shown: filtered.length, search, category, sortKey, sortDir, stockItem: stockDialogOpen ? stockItem : null, editItem: dialogOpen ? editItem : null, addingItem: dialogOpen && !editItem });
 
   return (
     <PermissionGuard section="inventory">

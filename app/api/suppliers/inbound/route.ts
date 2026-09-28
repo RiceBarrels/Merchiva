@@ -12,7 +12,6 @@
 // back → log inbound + outbound messages (escalating problems to managers).
 
 import { NextRequest, NextResponse } from "next/server";
-import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { inboundAddressFromPrefix, prefixFromRecipient } from "@/lib/suppliers/thread-token";
@@ -24,21 +23,15 @@ import {
 } from "@/lib/spacetimedb/service-client";
 import { sendSupplierReplyEmail } from "@/lib/email/resend";
 import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
+import { tierModel, tierModelId } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-function getOpenRouter() {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) throw new Error("OPENROUTER_API_KEY not configured");
-  return createOpenAI({
-    apiKey: key,
-    baseURL: "https://openrouter.ai/api/v1",
-    headers: { "HTTP-Referer": "https://merchiva.com", "X-Title": "Merchiva Supplier Agent" },
-  });
-}
-const MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b";
+// Drafting a supplier reply and judging whether to escalate is written prose
+// plus a judgment call: L2.
+const SUPPLIER_AGENT_TIER = 2;
 
 const decisionSchema = z.object({
   reply: z
@@ -408,7 +401,7 @@ export async function POST(req: NextRequest) {
   let decision: SupplierDecision;
   try {
     const res = await generateObject({
-      model: getOpenRouter().chat(MODEL),
+      model: tierModel(SUPPLIER_AGENT_TIER),
       schema: decisionSchema,
       system: buildSystemPrompt(ctx),
       prompt: `The supplier just sent this message:\n\n"""\n${supplierMsg}\n"""\n\nWrite your reply and decide whether to escalate. Return ONLY the JSON object requested by the schema, with no prose outside JSON.`,
@@ -423,7 +416,7 @@ export async function POST(req: NextRequest) {
     await recordAiUsage({
       organizationId,
       feature: "supplier_agent",
-      model: MODEL,
+      model: tierModelId(SUPPLIER_AGENT_TIER),
       description: `Replied to ${ctx.supplier.name}: ${supplierMsg}`,
       ...normalizeUsage(res.usage),
     });

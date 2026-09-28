@@ -33,6 +33,13 @@ import { extractActionBlocks } from "@/lib/merchiva/skills/actions";
 import { gateAction, type GateDecision } from "@/lib/merchiva/autonomy";
 import { useAssistantConfig } from "@/lib/spacetimedb/hooks/useSettings";
 import { useTabChatSession } from "@/components/merchiva-dock/tab-sessions";
+import { ToolSteps, ToolStepsAnnouncer } from "@/components/merchiva-dock/tool-steps";
+import { GateReasonNote } from "@/components/merchiva-dock/gate-reason-note";
+import { splitToolEvents } from "@/lib/merchiva/tool-events";
+import { applyToolEvents, restoreSteps, settleSteps, withSettledSteps, withToolEvents } from "@/lib/merchiva/tool-steps";
+import { aiFocusScope, finishAiFocus, finishReplyFocus, focusAction, focusToolStarts, followJobFrames, jobStaleInMs, releaseJobs } from "@/lib/merchiva/tool-focus";
+import { currentPagePayload } from "@/lib/merchiva/current-page";
+import { useServerClockOffset } from "@/lib/presence/store";
 import { captureUndoSnapshot, buildInverse, isUndoable, type UndoSnapshot } from "@/lib/merchiva/undo";
 import { useAiJobs } from "@/lib/spacetimedb/hooks";
 import { consumeAiJob, deleteAiJob, markNotificationRead } from "@/lib/spacetimedb/actions";
@@ -105,6 +112,8 @@ type AiJobRow = {
   resultText?: string;
   finalText?: string;
   error?: string;
+  /** Bumped by every chunk the server run writes; a long silence means the run died. */
+  updatedAt?: TimestampLike;
 };
 type SettingsCacheRow = { organizationId?: string; openingHours?: string | null; countryCode?: string | null };
 
@@ -1026,7 +1035,7 @@ function SupplierOrderPreview({ action, supplierNameById }: {
   );
 }
 
-function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecuted, decision, reason, validRoleNamesLower, supplierNameById }: {
+function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecuted, decision, reason, why, validRoleNamesLower, supplierNameById }: {
   action: Record<string, unknown>;
   onApprove: () => void;
   onReject: () => void;
@@ -1034,8 +1043,9 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
   alreadyExecuted?: boolean;
   // Autonomy gate decision. Absent ⇒ "auto" (legacy persisted actions).
   decision?: GateDecision;
-  // Why the action was proposed/denied (shown on the card).
+  // Why the action was proposed/denied: `why` translated, else legacy English `reason`.
   reason?: string;
+  why?: PendingAction["why"];
   // Passed through to ShiftPreviewStrip so addShift cards can flag invalid
   // staffRoles before the user clicks approve and trips the validator.
   validRoleNamesLower?: Set<string>;
@@ -1163,9 +1173,7 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
       )}
 
       {/* Why this needs approval (reason from the autonomy gate) */}
-      {needsApproval && status === "pending" && reason && (
-        <p className="text-[10.5px] text-muted-foreground mb-2">{reason}</p>
-      )}
+      {needsApproval && status === "pending" && <GateReasonNote why={why} reason={reason} />}
 
       {/* Approve / Reject buttons — shown for any "propose" decision (medium or
           high risk), not just high-risk as before. */}
@@ -2254,7 +2262,7 @@ function parseSessionMessages(raw: string | undefined | null): ChatMessage[] {
       let id = m.id;
       if (!id || seen.has(id)) id = msgId("e");
       seen.add(id);
-      return { ...m, id, executed: true };
+      return { ...m, id, executed: true, steps: restoreSteps(m.steps) };
     });
   } catch { return []; }
 }
@@ -2544,7 +2552,7 @@ function MerchivaChatInner({
       actions.map((a) => {
         const name = String((a.action as Record<string, unknown>).action ?? "");
         const g = gateAction(name, a.action as Record<string, unknown>, autonomyConfig, canForGate);
-        return { ...a, decision: g.decision, reason: g.reason };
+        return { ...a, decision: g.decision, reason: g.reason, why: g.why };
       }),
     [autonomyConfig, canForGate],
   );
@@ -2589,6 +2597,11 @@ function MerchivaChatInner({
   // isn't republished yet and skip the enqueue call entirely until the page
   // is reloaded — sendMessage falls straight through to the streaming route.
   const enqueueDisabledRef = useRef(false);
+  // Where this chat's Mr. Merchiva cursor lives (lib/merchiva/ai-focus.ts), and the tool calls it already followed.
+  const focusScope = aiFocusScope(sessionScope);
+  const focusedToolIds = useRef<Set<string>>(new Set());
+  // A chat closed mid-reply (its tab closed, the phone overlay dismissed) will never see the reply end.
+  useEffect(() => () => finishAiFocus(focusScope), [focusScope]);
 
   // Show the session's saved messages once it resolves. A session this tab just created is empty,
   // so it never wipes what the user already sent before it arrived.
@@ -2770,6 +2783,7 @@ function MerchivaChatInner({
     return {
       storeName: orgName,
       today,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       openingHours,
       hoursStatus,
       countryCode,
@@ -2862,13 +2876,16 @@ function MerchivaChatInner({
     };
   }, [orgName, today, invItems, suppliers, shifts, team, salesHistory, salesHourly, products, rawNotifs, insights, staffRoles, roleTasks, shiftPresets, allAvailability, timeOffRequests, shiftTrades, trainingDays, trainingObjectives, orgSettings, locale]);
 
-  // Scroll to bottom only when a new message is added
+  // Scroll to bottom only when a new message (or a new tool step) is added
   const prevMsgCount = useRef(messages.length);
+  const prevStepCount = useRef(0);
   useEffect(() => {
-    if (messages.length > prevMsgCount.current && scrollRef.current) {
+    const stepCount = messages.reduce((n, m) => n + (m.steps?.length ?? 0), 0);
+    if ((messages.length > prevMsgCount.current || stepCount > prevStepCount.current) && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
     prevMsgCount.current = messages.length;
+    prevStepCount.current = stepCount;
   }, [messages]);
 
   const flushSummaryBuffer = useCallback(async (force?: boolean) => {
@@ -2881,7 +2898,8 @@ function MerchivaChatInner({
     const mem = loadMemory(organizationId);
     localStorage.removeItem(bufKey);
     try {
-      const summarizePayload = { summarize: { prevSummary: mem.summary, newMessages: buf }, organizationId };
+      const token = (await getToken().catch(() => null)) || getStoredToken();
+      const summarizePayload = { summarize: { prevSummary: mem.summary, newMessages: buf }, organizationId, token };
       logMerchivaSend("summarize", summarizePayload);
       const res = await fetch("/api/store-ai", {
         method: "POST",
@@ -2899,7 +2917,7 @@ function MerchivaChatInner({
     } catch {
       localStorage.setItem(bufKey, JSON.stringify(buf));
     }
-  }, [organizationId, activeSessionId, messages]);
+  }, [organizationId, activeSessionId, messages, getToken]);
 
   const summaryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -3005,6 +3023,11 @@ function MerchivaChatInner({
   const aiJobRows = useMemo(() => tupleRows<AiJobRow>(aiJobsTuple), [aiJobsTuple]);
   const renderedJobIdsRef = useRef<Set<string>>(new Set());
   const finalizedJobIdsRef = useRef<Set<string>>(new Set());
+  // Jobs whose tool calls move this chat's cursor (lib/merchiva/tool-focus.ts), and a tick that
+  // re-checks them once one could have gone stale without its row changing.
+  const followedJobIdsRef = useRef<Set<string>>(new Set());
+  const [jobClock, setJobClock] = useState(0);
+  const serverClockOffset = useServerClockOffset();
   // Bumped when the tab becomes visible again, so the notification-suppression
   // effect re-runs on return (notification rows may not change at that moment).
   const [visTick, setVisTick] = useState(0);
@@ -3019,12 +3042,24 @@ function MerchivaChatInner({
   useEffect(() => {
     if (!organizationId || !activeSessionId) return;
     const myJobs = aiJobRows.filter((j) => j && j.organizationId === organizationId && j.sessionId === activeSessionId);
+    // A followed job that left the table (or this session) will never report back here.
+    const present = new Set(myJobs.map((j) => rowIdString(j.id)));
+    const gone = releaseJobs(focusScope, followedJobIdsRef.current, [...followedJobIdsRef.current].filter((id) => !present.has(id)));
+    if (gone.length > 0) setMessages((prev) => gone.reduce((acc, id) => withSettledSteps(acc, `job-${id}`), prev));
     if (myJobs.length === 0) return;
 
+    const serverNow = Date.now() + serverClockOffset;
+    let recheckInMs = Number.POSITIVE_INFINITY;
     for (const job of myJobs) {
-      // Already finalized by some earlier session — the durable marker.
-      if (job.consumed === true) continue;
       const jobId = rowIdString(job.id);
+      // Already finalized by some earlier session — the durable marker. If this chat was following
+      // it, another window finished it: stop following it here too.
+      if (job.consumed === true) {
+        if (releaseJobs(focusScope, followedJobIdsRef.current, [jobId]).length > 0) {
+          setMessages((prev) => withSettledSteps(prev, `job-${jobId}`));
+        }
+        continue;
+      }
       const msgId = `job-${jobId}`;
       const isDone = job.status === "done" || job.status === "failed";
 
@@ -3057,7 +3092,18 @@ function MerchivaChatInner({
       // 2) Live partial text — peel the ack into its own bubble, strip action
       //    JSON from the remainder for display.
       if (!isDone) {
-        const { ack, rest } = splitAck(String(job.partialText ?? ""));
+        const { ack, rest: afterAck } = splitAck(String(job.partialText ?? ""));
+        const { events, text: rest } = splitToolEvents(afterAck);
+        // A job that stopped writing is dead: its calls will never report back, so its steps settle
+        // and its frames no longer move the cursor. Until then, check again once it could be.
+        const staleInMs = jobStaleInMs(timestampMicros(job.updatedAt) / 1000, serverNow);
+        const stale = staleInMs <= 0;
+        if (stale) {
+          releaseJobs(focusScope, followedJobIdsRef.current, [jobId]);
+        } else {
+          followJobFrames(focusScope, followedJobIdsRef.current, focusedToolIds.current, jobId, events);
+          recheckInMs = Math.min(recheckInMs, staleInMs);
+        }
         const ackMsgId = `ack-${msgId}`;
         const visible = extractActionBlocks(rest).cleanText;
         const restLen = rest.length;
@@ -3079,7 +3125,8 @@ function MerchivaChatInner({
           } else if (ack) {
             next = next.map((m) => (m.id === ackMsgId ? { ...m, text: ack } : m));
           }
-          return next.map((m) => (m.id === msgId ? { ...m, text: display } : m));
+          next = withToolEvents(next.map((m) => (m.id === msgId ? { ...m, text: display } : m)), msgId, events);
+          return stale ? withSettledSteps(next, msgId) : next;
         });
         continue;
       }
@@ -3087,20 +3134,24 @@ function MerchivaChatInner({
       // 3) Done / failed — finalize once.
       if (finalizedJobIdsRef.current.has(jobId)) continue;
       finalizedJobIdsRef.current.add(jobId);
+      // Every branch below ends the cursor itself.
+      followedJobIdsRef.current.delete(jobId);
 
       if (job.status === "failed") {
         setMessages((prev) => prev.map((m) => (
           m.id === msgId
-            ? { ...m, text: t("merchiva.errorNoResponse") + (job.error ? ` (${String(job.error).slice(0, 200)})` : "") }
+            ? { ...m, text: t("merchiva.errorNoResponse") + (job.error ? ` (${String(job.error).slice(0, 200)})` : ""), steps: settleSteps(m.steps) }
             : m
         )));
+        finishAiFocus(focusScope);
         consumeAiJob(jobId).catch(() => {});
         continue;
       }
 
       const rawFinal = String(job.finalText ?? job.partialText ?? "");
       const { ack: finalAck, rest: finalRest } = splitAck(rawFinal);
-      const finalText = finalRest;
+      const { events: finalEvents, text: finalText } = splitToolEvents(finalRest);
+      focusToolStarts(focusScope, focusedToolIds.current, finalEvents);
       // Pin the ack into its own bubble (insert if it wasn't already created
       // during streaming).
       if (finalAck) {
@@ -3119,14 +3170,16 @@ function MerchivaChatInner({
           return idx === -1 ? [...prev, ackMsg] : [...prev.slice(0, idx), ackMsg, ...prev.slice(idx)];
         });
       }
-      if (!finalText.trim()) {
+      if (!finalText.trim() && finalEvents.length === 0) {
         // No substantive body beyond the ack — drop the empty job bubble.
         setMessages((prev) => prev.filter((m) => m.id !== msgId));
+        finishAiFocus(focusScope);
         consumeAiJob(jobId).catch(() => {});
         continue;
       }
 
       const parsed = parseAllSkills(finalText);
+      finishReplyFocus(focusScope, parsed);
       const fallbackAction = parsed.actions.length === 0
         ? buildSupplierRestockFallbackAction(String(job.prompt ?? ""), invItems, suppliers)
         : null;
@@ -3158,6 +3211,7 @@ function MerchivaChatInner({
               tasksAdd: parsed.tasksAdd.length > 0 ? parsed.tasksAdd : undefined,
               tasksDelete: parsed.tasksDelete.length > 0 ? parsed.tasksDelete : undefined,
               tasksList: parsed.tasksList || undefined,
+              steps: settleSteps(applyToolEvents(m.steps, finalEvents)),
             }
           : m
       )));
@@ -3168,7 +3222,10 @@ function MerchivaChatInner({
       // doesn't grow unbounded. Failures here are non-fatal.
       setTimeout(() => { deleteAiJob(jobId).catch(() => {}); }, 60_000);
     }
-  }, [aiJobRows, organizationId, activeSessionId, locale, t, tx, invItems, suppliers, decorateActions]);
+    if (recheckInMs === Number.POSITIVE_INFINITY) return;
+    const recheck = setTimeout(() => setJobClock((tick) => tick + 1), recheckInMs + 1000);
+    return () => clearTimeout(recheck);
+  }, [aiJobRows, organizationId, activeSessionId, locale, t, tx, invItems, suppliers, decorateActions, focusScope, serverClockOffset, jobClock]);
 
   // Suppress the "Mr. Merchiva replied" bell entry while the user is actively
   // looking at this chat. Those notifications are fired server-side on every
@@ -3268,6 +3325,8 @@ function MerchivaChatInner({
         ? loadStoredMcpServers(organizationId).filter((server) => server.enabled)
         : [];
       const mcpPayload = mcpServers.length > 0 ? { mcpServers } : {};
+      // The page this chat's own tab shows, so "this week" / "him" need no question.
+      const page = currentPagePayload(focusScope, t);
 
       setThinkingPhase(getThinkingLabel(text, "fetch", t));
 
@@ -3292,6 +3351,7 @@ function MerchivaChatInner({
             message: fullText,
             history: last10,
             context: storeContext,
+            page,
             lang: locale,
             memory: {
               summary: mem.summary || undefined,
@@ -3336,12 +3396,15 @@ function MerchivaChatInner({
 
       // ── Legacy streaming fallback (when no token / not in a session) ──
       const streamPayload = {
+        token,
         message: fullText,
         history: last10,
         context: storeContext,
+        page,
         organizationId,
         lang: locale,
         stream: true,
+        events: true,
         memory: {
           summary: mem.summary || undefined,
           storeOverview: mem.storeOverview || undefined,
@@ -3446,7 +3509,10 @@ function MerchivaChatInner({
           const chunk = decoder.decode(value, { stream: true });
           if (chunk) {
             fullReply += chunk;
-            const { ack } = splitAck(fullReply);
+            const { ack, rest: afterAck } = splitAck(fullReply);
+            const { events } = splitToolEvents(afterAck);
+            focusToolStarts(focusScope, focusedToolIds.current, events);
+            if (events.length > 0) setMessages((prev) => withToolEvents(prev, streamMsgId, events));
             if (ack) {
               setMessages((prev) => {
                 if (ackInserted) {
@@ -3472,9 +3538,12 @@ function MerchivaChatInner({
       } catch (streamErr) {
         console.warn("[Mr. Merchiva] Stream read error:", streamErr);
       }
+      // The stream is over: a tool call that never reported back is not going to now.
+      setMessages((prev) => withSettledSteps(prev, streamMsgId));
+      finishAiFocus(focusScope);
 
-      // Strip the ack sentinel from the body used for action parsing + finalize.
-      let reply = splitAck(fullReply).rest;
+      // Strip the ack sentinel and the tool-call frames from the body used for action parsing + finalize.
+      let reply = splitToolEvents(splitAck(fullReply).rest).text;
 
       // Fallback: if stream returned nothing, retry non-streaming
       if (!reply.trim()) {
@@ -3484,9 +3553,11 @@ function MerchivaChatInner({
         ));
         try {
           const fallbackPayload = {
+            token,
             message: fullText,
             history: last10,
             context: storeContext,
+            page,
             organizationId,
             lang: locale,
             memory: {
@@ -3530,6 +3601,7 @@ function MerchivaChatInner({
 
       setThinkingPhase(getThinkingLabel(text, "process", t));
       const parsed = parseAllSkills(reply);
+      finishReplyFocus(focusScope, parsed);
       const fallbackAction = parsed.actions.length === 0
         ? buildSupplierRestockFallbackAction(fullText, invItems, suppliers)
         : null;
@@ -3593,7 +3665,7 @@ function MerchivaChatInner({
       setSending(false);
       setThinkingPhase("");
     }
-  }, [sending, messages, storeContext, organizationId, bufferAndMaybeSummarize, attachedData, attachedFiles, isOwner, orgRole, userPermissions, locale, t, tx, activeSessionId, invItems, suppliers, decorateActions, getToken]);
+  }, [sending, messages, storeContext, organizationId, bufferAndMaybeSummarize, attachedData, attachedFiles, isOwner, orgRole, userPermissions, locale, t, tx, activeSessionId, invItems, suppliers, decorateActions, getToken, focusScope]);
 
   const handleApprove = useCallback(async (msgId: string, actionId: string) => {
     // Read action data from current messages state BEFORE updating
@@ -3672,6 +3744,7 @@ function MerchivaChatInner({
     const snapshot = captureUndoSnapshot(actionName, actionData as Record<string, unknown>);
 
     try {
+      focusAction(focusScope, actionName);
       await executeAction(actionData);
       console.log("[Approve] Success:", actionData.action);
       if (snapshot) undoSnapshots.current.set(actionId, snapshot);
@@ -3689,7 +3762,8 @@ function MerchivaChatInner({
         };
       }));
     }
-  }, [messages, team, staffRoles, t]);
+    finishAiFocus(focusScope);
+  }, [messages, team, staffRoles, t, focusScope]);
 
   // Reject serves two roles:
   //   • declining a still-pending proposal → just mark it rejected (no write ran)
@@ -3946,7 +4020,7 @@ function MerchivaChatInner({
           // While the main reply is still streaming, the placeholder bubble
           // has empty text and no actions/lists. Skip rendering it so the user
           // only sees the ack bubble + the bottom "thinking" spinner — the
-          // full bubble appears once on finalize.
+          // full bubble appears once on finalize. Tool steps show as they happen, text or not.
           const isEmptyMerchivaPlaceholder =
             !msg.text &&
             !msg.actions?.length &&
@@ -3956,12 +4030,14 @@ function MerchivaChatInner({
             !msg.rolesList &&
             !msg.tasksAdd?.length &&
             !msg.tasksDelete?.length &&
-            !msg.tasksList;
+            !msg.tasksList &&
+            !msg.steps?.length;
           if (isEmptyMerchivaPlaceholder) return null;
           return renderMenu(
             <ChatRow time={msg.time}>
               <Bubble>
-                <div className="text-[13.5px] text-foreground leading-[1.55]">
+                <ToolSteps steps={msg.steps} />
+                <div className={cn("text-[13.5px] text-foreground leading-[1.55]", !msg.text && !!msg.steps?.length && "hidden")}>
                   <MerchivaMarkdown content={msg.text} />
                 </div>
                 {msg.actions && msg.actions.length > 0 && (
@@ -3973,6 +4049,7 @@ function MerchivaChatInner({
                         status={act.status}
                         decision={act.decision}
                         reason={act.reason}
+                        why={act.why}
                         alreadyExecuted={msg.executed}
                         onApprove={() => handleApprove(msg.id, act.id)}
                         onReject={() => handleReject(msg.id, act.id)}
@@ -4041,6 +4118,7 @@ function MerchivaChatInner({
           );
         })}
 
+        <ToolStepsAnnouncer message={messages[messages.length - 1]} />
 
         {sending && (
           <ChatRow time="">
@@ -4179,6 +4257,7 @@ function MerchivaChatInner({
         getContext={() => ({
           history: expandHistoryFromMessages(messages).slice(-10),
           storeContext,
+          page: currentPagePayload(focusScope, t),
           memory: organizationId
             ? loadMemory(organizationId)
             : { summary: "", storeOverview: "", userPreferences: "" },

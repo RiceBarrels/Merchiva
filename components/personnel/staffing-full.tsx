@@ -70,6 +70,7 @@ import { TaskRow } from "@/components/personnel/task-row";
 import { TaskCompleteDialog } from "@/components/task-complete-dialog";
 import { useRoleTaskAssignments } from "@/lib/spacetimedb/hooks";
 import { AttendanceWeek } from "@/components/personnel/attendance";
+import { useStaffingDesktopPageContext, type ShiftDialogState } from "@/components/personnel/use-page-context";
 
 const SHIFT_COLORS: Record<ShiftType, string> = {
   morning:   "#44403c",
@@ -436,6 +437,8 @@ interface StaffingDesktopProps {
     notifyChats: string[];
   }>>;
   refreshing: boolean;
+  /** The add / edit shift dialog while it is open, for Mr. Merchiva's page context. */
+  shiftDialog: ShiftDialogState | null;
   /** Restrict which inner subtabs are shown. When set, the tab bar is hidden
    *  if only one entry remains. Used by the Personnel hub to split this page
    *  across its own top tabs (Schedule shows schedule; Roles shows
@@ -459,7 +462,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
     selectedRole, setSelectedRole, handleSelectRole, handleDeleteRole,
     setEditingRole, setRoleForm, setRoleDialog,
     setTaskDialog, setTaskForm, refreshing, myMemberId, selectedDay, setSelectedDay,
-    canManageAttendance, organizationId,
+    canManageAttendance, organizationId, shiftDialog,
     subtabs: subtabsFilter,
   } = props;
 
@@ -498,6 +501,10 @@ function StaffingDesktop(props: StaffingDesktopProps) {
   const monthYearD = formatDate(weekDates[0], { month: "long", year: "numeric" });
   const isTodayD = (d: Date) => isoDate(d) === todayStr;
   const allMembers = team.filter((m) => m.status === "active");
+  useStaffingDesktopPageContext({
+    tab: dTab, weekDates, weekShifts, members: allMembers, roles, selectedRole,
+    roleTaskCounts, statusDate, todayStr, shiftDialog,
+  });
 
   // Compute shift hours helper. Wraps past midnight — see lib/shift-time.ts.
   const shiftHours = (s: Shift) => shiftDurationHours(s.startTime, s.endTime);
@@ -1159,6 +1166,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
 
   // ─── Manager Requests ───
   const [showRequests, setShowRequests] = useState(false);
+  const mobileRequestsRef = useRef<HTMLDivElement>(null);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   // orgTimeOffRequests, orgShiftTrades managed by useStaffing hook below
 
@@ -2467,6 +2475,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
         setTaskDialog={setTaskDialog}
         setTaskForm={setTaskForm}
         refreshing={refreshing}
+        shiftDialog={addDialog ? { shift: editingShift, memberId: shiftForm.memberId, date: shiftForm.date } : null}
         subtabs={subtabs}
       />
       {/* ─── Dialogs still need to render (they are portals) ─── */}
@@ -3024,7 +3033,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                     <button
                       onClick={() => {
                         hapticLight(); setShowRequests(true); setMobileSection("schedule");
-                        setTimeout(() => document.getElementById("mobile-requests-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+                        setTimeout(() => mobileRequestsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
                       }}
                       className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-muted transition-colors"
                     >
@@ -3277,7 +3286,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
 
             {/* ── Requests Section (in Schedule tab) — managers see all, staff see trades targeted at them ── */}
             {((canEdit && (pendingTimeOff.length > 0 || pendingTrades.length > 0)) || hasTradesForMe) && (
-              <div id="mobile-requests-panel" className="border-t border-border">
+              <div ref={mobileRequestsRef} className="border-t border-border">
                 <button
                   onClick={() => setShowRequests(!showRequests)}
                   className="flex items-center gap-2 w-full px-4 py-2.5 border-b border-border"
