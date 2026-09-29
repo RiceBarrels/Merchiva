@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useTabsSnapshot } from "@/lib/browser-shell";
 
 /*
@@ -9,7 +9,8 @@ import { useTabsSnapshot } from "@/lib/browser-shell";
  * kept per user and store in localStorage, next to the persisted tabs themselves (tab ids survive
  * reloads, and reopening a closed tab usually restores its id), so a tab gets its conversation
  * back after a reload. Outside the browser shell (the legacy shell has no tabs) there is one
- * Merchiva, on the user's most recent session, as before.
+ * Merchiva, on the user's most recent session when it opens, as before; it then stays there, since
+ * every save (from any device or tab) moves some session to the top.
  *
  * A tab asks for a session only when its first message goes out, so tabs where Merchiva was merely
  * looked at leave no empty rows behind. `createAiChatSession` cannot return the new row's id, so
@@ -32,11 +33,22 @@ export type SessionDecision =
 
 /**
  * Which session a Merchiva shows. `sessions` is the user's sessions in this store, most recently
- * updated first; `tabId` is null outside the browser shell.
+ * updated first; `tabId` is null outside the browser shell, where `current` (the session it shows
+ * now) is kept until it is archived: following the latest would pull the chat into another device's
+ * or tab's conversation, and have both overwrite it.
  */
-export function resolveSession(tabId: string | null, sessions: readonly SessionRef[], map: TabSessionMap): SessionDecision {
+export function resolveSession(
+  tabId: string | null,
+  sessions: readonly SessionRef[],
+  map: TabSessionMap,
+  current: string | null = null,
+): SessionDecision {
   const latest = sessions.find((s) => !s.archived) ?? sessions[0];
-  if (tabId === null) return latest ? { kind: "use", id: latest.id, bind: false } : { kind: "create" };
+  if (tabId === null) {
+    const kept = current ? sessions.find((s) => s.id === current && !s.archived) : undefined;
+    const shown = kept ?? latest;
+    return shown ? { kind: "use", id: shown.id, bind: false } : { kind: "create" };
+  }
   const bound = map[tabId];
   if (bound && sessions.some((s) => s.id === bound)) return { kind: "use", id: bound, bind: false };
   // The first tab to open Merchiva after per-tab sessions shipped adopts the conversation the user
@@ -168,11 +180,14 @@ export function useTabChatSession(opts: {
   const scopeKey = snapshot.scope ? `${snapshot.scope.userId}:${snapshot.scope.organizationId}` : null;
   const tabId = scopeKey ? opts.tabId : null;
   const map = useSyncExternalStore(subscribe, () => readMap(scopeKey), () => EMPTY_MAP);
-  const decision = ready ? resolveSession(tabId, sessions, map) : null;
+  // The session this Merchiva resolved to last, so the tab-less one stays on it.
+  const [shown, setShown] = useState<string | null>(null);
+  const decision = ready ? resolveSession(tabId, sessions, map, shown) : null;
 
   const kind = decision?.kind ?? null;
   const decidedId = decision?.kind === "use" ? decision.id : null;
   const bind = decision?.kind === "use" && decision.bind;
+  if (decidedId && decidedId !== shown) setShown(decidedId);
 
   useEffect(() => {
     if (!scopeKey || !tabId || !bind || !decidedId) return;

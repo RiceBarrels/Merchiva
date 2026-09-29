@@ -43,6 +43,7 @@ import { actionTarget, captureRefLabels } from "@/lib/merchiva/ref-labels";
 import { actionFailureText, actionSuccessText } from "@/lib/merchiva/action-toasts";
 import { resolveShiftRoles, resolveShiftStaff } from "@/lib/merchiva/shift-refs";
 import { splitToolEvents } from "@/lib/merchiva/tool-events";
+import { finishJobMessage } from "@/lib/merchiva/job-reply";
 import { applyToolEvents, restoreSteps, settleSteps, withSettledSteps, withToolEvents } from "@/lib/merchiva/tool-steps";
 import { aiFocusScope, finishAiFocus, finishReplyFocus, focusAction, focusToolStarts, followJobFrames, jobStaleInMs, releaseJobs } from "@/lib/merchiva/tool-focus";
 import { currentPagePayload } from "@/lib/merchiva/current-page";
@@ -1427,15 +1428,16 @@ function MerchivaChatInner({
   // A chat closed mid-reply (its tab closed, the phone overlay dismissed) will never see the reply end.
   useEffect(() => () => finishAiFocus(focusScope), [focusScope]);
 
-  // Show the session's saved messages once it resolves. A session this tab just created is empty,
-  // so it never wipes what the user already sent before it arrived.
+  // Show the session's saved messages once it resolves. Only the first one this chat gets can be the
+  // session it just asked for, still empty: that one never wipes what the user sent before it arrived.
+    const first = loadedSessionRef.current === null;
   const loadedSessionRef = useRef<string | null>(null);
   useEffect(() => {
     if (!activeSessionId || loadedSessionRef.current === activeSessionId) return;
     loadedSessionRef.current = activeSessionId;
     const row = mySessions.find((s) => rowIdString(s.id) === activeSessionId);
     const saved = parseSessionMessages(row?.messages ?? "");
-    setMessages((prev) => (saved.length > 0 || prev.length === 0 ? saved : prev));
+    setMessages((prev) => (saved.length > 0 || prev.length === 0 || !first ? saved : prev));
   }, [activeSessionId, mySessions]);
 
   // Save messages on change to the SpacetimeDB session
@@ -2010,8 +2012,7 @@ function MerchivaChatInner({
       );
       setMessages((prev) => prev.map((m) => (
         m.id === msgId
-          ? {
-              ...m,
+          ? finishJobMessage(m, {
               from: parsed.actionsList && parsed.actions.length === 0 ? "system" : m.from,
               text: displayText,
               actions: parsedActions.length > 0 ? decorateActions(parsedActions) : undefined,
@@ -2023,7 +2024,7 @@ function MerchivaChatInner({
               tasksDelete: pinDeletes(parsed.tasksDelete),
               tasksList: parsed.tasksList || undefined,
               steps: settleSteps(applyToolEvents(m.steps, finalEvents)),
-            }
+            })
           : m
       )));
       // Fire-and-forget: mark consumed so we don't re-process on next render

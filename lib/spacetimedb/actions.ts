@@ -13,6 +13,7 @@ import { isOnline, mutationQueue } from "@/lib/offline";
 import { parseDeviceApps } from "@/lib/device-apps";
 import type { RoleTask, ShiftPreset } from "@/lib/types";
 import { bugDateStr, type BugContext, type BugSeverity, type BugStatus } from "@/lib/bugs";
+import { storedId } from "@/lib/merchiva/action-ids";
 import { Timestamp } from "spacetimedb";
 
 function currentLocale() {
@@ -1720,7 +1721,7 @@ export async function saveAiChatSession(
 ): Promise<void> {
   return conn().reducers.saveAiChatSession({
     organizationId: orgId(),
-    sessionId,
+    sessionId: storedId(sessionId),
     messages,
     title: title ?? undefined,
     summary: summary ?? undefined,
@@ -1729,7 +1730,7 @@ export async function saveAiChatSession(
 }
 
 export async function archiveAiChatSession(sessionId: string): Promise<void> {
-  return conn().reducers.archiveAiChatSession({ organizationId: orgId(), sessionId });
+  return conn().reducers.archiveAiChatSession({ organizationId: orgId(), sessionId: storedId(sessionId) });
 }
 
 // ─── AI background jobs (server-side generation) ───────────────────────────

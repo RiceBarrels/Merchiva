@@ -34,6 +34,26 @@ describe("resolveSession", () => {
     expect(resolveSession(null, withArchived, { "tab-a": "s1" })).toEqual({ kind: "use", id: "s2", bind: false });
     expect(resolveSession(null, [], {})).toEqual({ kind: "create" });
   });
+
+  // Every save moves its session to the top. Following the latest pulled a legacy-shell chat into
+  // the session another device or tab had just written (even an empty one it had just created), and
+  // then both overwrote it.
+  test("outside the browser shell the Merchiva stays on its session when another one becomes the latest", () => {
+    const afterOtherSave = [session("s3", 30), session("s2", 20), session("s1", 10)];
+    expect(resolveSession(null, afterOtherSave, {}, "s1")).toEqual({ kind: "use", id: "s1", bind: false });
+    expect(resolveSession(null, afterOtherSave, {}, "s2")).toEqual({ kind: "use", id: "s2", bind: false });
+  });
+
+  test("outside the browser shell the Merchiva moves to the latest only when its session is archived or gone", () => {
+    const archived = [session("s2", 20), session("s1", 10, true)];
+    expect(resolveSession(null, archived, {}, "s1")).toEqual({ kind: "use", id: "s2", bind: false });
+    expect(resolveSession(null, sessions, {}, "gone")).toEqual({ kind: "use", id: "s2", bind: false });
+    expect(resolveSession(null, [], {}, "gone")).toEqual({ kind: "create" });
+  });
+
+  test("a tab keeps its own binding, whatever it showed before", () => {
+    expect(resolveSession("tab-a", sessions, { "tab-a": "s1" }, "s2")).toEqual({ kind: "use", id: "s1", bind: false });
+  });
 });
 
 describe("claimNewSessions", () => {
