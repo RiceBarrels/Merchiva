@@ -2946,7 +2946,8 @@
       "add": "Add",
       "skip": "Skip",
       "addWithoutEvidence": "Add without evidence",
-      "createChannel": "Create a group channel"
+      "createChannel": "Create a group channel",
+      "waitingForRole": "Added once the role is confirmed"
     },
     "command": {
       "deleteRoleFailed": "Failed to delete role",
@@ -3148,7 +3149,8 @@
         "approval": "Approval required",
         "partial": "Partially automatic",
         "full": "Fully automatic"
-      }
+      },
+      "userCommand": "You typed this command, so it runs as typed."
     },
     "refs": {
       "unknown": "Not found",

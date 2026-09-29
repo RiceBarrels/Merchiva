@@ -93,9 +93,10 @@ export interface ReplyCommands {
 }
 
 /**
- * A reply finished. Role and task commands run on their own as soon as the reply renders
- * (CommandGroup / TaskDeleteGroup in the chat), without passing through an action card, so the
- * cursor goes to the Roles page for them first; then it lingers and leaves (finishAiFocus).
+ * A reply finished. Role and task commands run from their own cards as soon as the reply renders
+ * (CommandGroup / TaskDeleteGroup in the chat, when the autonomy gate lets them), not from an
+ * action card, so the cursor goes to the Roles page for them first; then it lingers and leaves
+ * (finishAiFocus).
  */
 export function finishReplyFocus(scope: string, reply?: ReplyCommands): void {
   if (reply && (reply.rolesAdd.length > 0 || reply.tasksAdd.length > 0 || reply.tasksDelete.length > 0)) {

@@ -99,8 +99,9 @@ export interface ChatMessage {
   rejectedTasks?: number[];
   // tasksDelete items the user declined at the approval step.
   cancelledDeletes?: number[];
-  // The reply to a command the user typed (`/tasks delete …`): it runs as typed,
-  // without the approval step the autonomy gate puts on Mr. Merchiva's own writes.
+  // The reply to a command the user typed (`/tasks delete …`): it still needs the
+  // permission, and then runs as typed, without the approval step the autonomy
+  // gate puts on Mr. Merchiva's own writes (lib/merchiva/role-task-gate.ts).
   fromCommand?: boolean;
   voiceCall?: VoiceCallSummary;
   // Tool calls made while writing this reply, in call order (lib/merchiva/tool-steps.ts).

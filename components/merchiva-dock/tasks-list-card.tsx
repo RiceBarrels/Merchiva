@@ -1,6 +1,8 @@
 "use client";
 
 // A role's task list, as `/tasks list <role>` shows it, with a delete per task.
+// A delete is the viewer's click, so only the permission gates it (role-task-gate.ts
+// mayRun), as on the other task cards: without staffing edit rights there is none.
 
 import { useEffect, useState } from "react";
 import { Clipboard, Trash2 } from "lucide-react";
@@ -9,11 +11,19 @@ import { useT } from "@/lib/i18n/context";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { deleteRoleTask as execDeleteRoleTask, getRoleTasks } from "@/lib/spacetimedb/actions";
+import type { AutonomyConfig } from "@/lib/merchiva/autonomy";
+import { gateRoleTaskAction, mayRun, type GateCan } from "@/lib/merchiva/role-task-gate";
 
 type ListedTask = { id: string; title: string; description: string; startTime: string | null; endTime: string | null; requiresEvidence: boolean };
 
 // `roleId` is the role's stored (hyphenated) id: role_task.roleId holds that form.
-export function TasksListInline({ roleId, roleName }: { roleId: string; roleName: string }) {
+// `autonomy` / `can`: the org's config and the viewer's permissions, as decorateActions gates with.
+export function TasksListInline({ roleId, roleName, autonomy, can }: {
+  roleId: string;
+  roleName: string;
+  autonomy: AutonomyConfig;
+  can: GateCan;
+}) {
   const t = useT();
   const [tasks, setTasks] = useState<ListedTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,15 +47,17 @@ export function TasksListInline({ roleId, roleName }: { roleId: string; roleName
     );
   }
 
-  return <TasksListCard roleName={roleName} tasks={tasks} />;
+  const canDelete = mayRun(gateRoleTaskAction("deleteRoleTask", autonomy, can));
+  return <TasksListCard roleName={roleName} tasks={tasks} canDelete={canDelete} />;
 }
 
-function TasksListCard({ roleName, tasks: initialTasks }: { roleName: string; tasks: ListedTask[] }) {
+function TasksListCard({ roleName, tasks: initialTasks, canDelete }: { roleName: string; tasks: ListedTask[]; canDelete: boolean }) {
   const t = useT();
   const [tasks, setTasks] = useState(initialTasks);
   const [deleting, setDeleting] = useState<Set<string>>(new Set());
 
   const handleDelete = async (id: string) => {
+    if (!canDelete) return;
     setDeleting((prev) => new Set(prev).add(id));
     try {
       await execDeleteRoleTask(id);
@@ -92,15 +104,17 @@ function TasksListCard({ roleName, tasks: initialTasks }: { roleName: string; ta
                   {task.startTime}–{task.endTime ?? ""}
                 </span>
               )}
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => handleDelete(task.id)}
-                disabled={deleting.has(task.id)}
-                className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
-              >
-                {deleting.has(task.id) ? <Spinner size={12} /> : <Trash2 className="h-3 w-3" />}
-              </Button>
+              {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => handleDelete(task.id)}
+                  disabled={deleting.has(task.id)}
+                  className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+                >
+                  {deleting.has(task.id) ? <Spinner size={12} /> : <Trash2 className="h-3 w-3" />}
+                </Button>
+              )}
             </div>
           ))}
         </div>

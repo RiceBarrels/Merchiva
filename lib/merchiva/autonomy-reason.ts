@@ -22,7 +22,9 @@ export type GateReason =
   /** `pct` is the change's magnitude, rounded to a whole percent. */
   | { code: "priceChangeOverCap"; pct: number; limit: number }
   | { code: "auto"; mode: AutonomyMode }
-  | { code: "unknownAction" };
+  | { code: "unknownAction" }
+  /** A command the user typed: it runs as typed, whatever the config (role-task-gate.ts). */
+  | { code: "userCommand" };
 
 /** The reason in English, for logs and tests. The card shows {@link gateReasonLabel}. */
 export function gateReasonText(why: GateReason): string {
@@ -49,6 +51,8 @@ export function gateReasonText(why: GateReason): string {
       return `auto (${why.mode})`;
     case "unknownAction":
       return "unknown action";
+    case "userCommand":
+      return "user-typed command runs as typed";
   }
 }
 
@@ -122,6 +126,8 @@ export function gateReasonLabel(
       return fmt(t("merchiva.autonomyReason.auto"), { mode: modeLabel(why.mode, t) });
     case "unknownAction":
       return t("merchiva.autonomyReason.unknownAction");
+    case "userCommand":
+      return t("merchiva.autonomyReason.userCommand");
     default:
       return null;
   }

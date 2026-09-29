@@ -2946,7 +2946,8 @@
       "add": "Ajouter",
       "skip": "Ignorer",
       "addWithoutEvidence": "Ajouter sans justificatif",
-      "createChannel": "Créer un canal de groupe"
+      "createChannel": "Créer un canal de groupe",
+      "waitingForRole": "Ajoutée une fois le poste confirmé"
     },
     "command": {
       "deleteRoleFailed": "Échec de la suppression du poste",
@@ -3148,7 +3149,8 @@
         "approval": "Approbation requise",
         "partial": "Partiellement automatique",
         "full": "Entièrement automatique"
-      }
+      },
+      "userCommand": "Vous avez saisi cette commande : elle s'exécute telle quelle."
     },
     "refs": {
       "unknown": "Introuvable",

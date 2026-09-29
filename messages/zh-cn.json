@@ -2946,7 +2946,8 @@
       "add": "添加",
       "skip": "跳过",
       "addWithoutEvidence": "不要凭证，直接添加",
-      "createChannel": "去创建群组频道"
+      "createChannel": "去创建群组频道",
+      "waitingForRole": "岗位确认后添加"
     },
     "command": {
       "deleteRoleFailed": "删除岗位失败",
@@ -3148,7 +3149,8 @@
         "approval": "需要审批",
         "partial": "部分自动",
         "full": "完全自动"
-      }
+      },
+      "userCommand": "这是你输入的命令，会按输入直接执行。"
     },
     "refs": {
       "unknown": "未找到",

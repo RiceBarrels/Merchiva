@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  AlertTriangle, ArrowLeftRight, ArrowRight, Bell, BookOpen, Calendar, CalendarX, Check, CheckCircle2,
+  ArrowLeftRight, ArrowRight, Bell, BookOpen, Calendar, CalendarX, Check, CheckCircle2,
   KeyRound, ListChecks, Mail, Package, Pencil, Plus, Tag, Ticket, Trash2, Truck, UserMinus, UserPlus, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { STATUS_TONE_CLASSES } from "@/components/ui/status-badge";
 import { GateReasonNote } from "@/components/merchiva-dock/gate-reason-note";
+import { ApproveBar, GateBadge } from "@/components/merchiva-dock/gate-controls";
 import { RolePreviewStrip, ShiftPreviewStrip, SupplierOrderPreview } from "@/components/merchiva-dock/action-previews";
 import type { GateDecision } from "@/lib/merchiva/autonomy";
 import { isUndoable } from "@/lib/merchiva/undo";
@@ -205,16 +206,8 @@ export function ActionApprovalCard({ action, onApprove, onReject, status, alread
             {displayLabel}
           </span>
         </span>
-        {denied && (
-          <span className="text-[10px] font-mono text-muted-foreground inline-flex items-center gap-1">
-            <X className="h-3 w-3" /> {tx("merchiva.ui.noPermission", "No permission")}
-          </span>
-        )}
-        {needsApproval && status === "pending" && (
-          <span className={cn("text-[10px] font-mono inline-flex items-center gap-1", isHighRisk ? "text-amber-600" : "text-muted-foreground")}>
-            <AlertTriangle className="h-3 w-3" /> {tx("merchiva.ui.needsApproval", "Needs your OK")}
-          </span>
-        )}
+        {denied && <GateBadge decision="deny" />}
+        {needsApproval && status === "pending" && <GateBadge decision="propose" warn={isHighRisk} />}
         {executing && (
           <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
             <Spinner size={12} /> {t("merchiva.ui.executing")}
@@ -263,24 +256,10 @@ export function ActionApprovalCard({ action, onApprove, onReject, status, alread
       {/* Approve / Reject buttons — shown for any "propose" decision (medium or
           high risk), not just high-risk as before. */}
       {status === "pending" && !executing && needsApproval && (
-        <div className="flex items-center gap-2 mt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { setExecuting(true); Promise.resolve(onApprove()).finally(() => setExecuting(false)); }}
-            className={cn(STATUS_TONE_CLASSES.success, "px-3 font-semibold hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900")}
-          >
-            <Check className="h-3 w-3" /> {t("merchiva.ui.confirmExecute")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onReject}
-            className="px-3 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          >
-            <X className="h-3 w-3" /> {t("merchiva.ui.cancel")}
-          </Button>
-        </div>
+        <ApproveBar
+          onApprove={() => { setExecuting(true); Promise.resolve(onApprove()).finally(() => setExecuting(false)); }}
+          onReject={onReject}
+        />
       )}
       {/* Executed: real Undo when the action is reversible, otherwise a note. */}
       {status === "approved" && !executing && (

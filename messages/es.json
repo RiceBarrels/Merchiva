@@ -2946,7 +2946,8 @@
       "add": "Agregar",
       "skip": "Omitir",
       "addWithoutEvidence": "Agregar sin evidencia",
-      "createChannel": "Crear un canal de grupo"
+      "createChannel": "Crear un canal de grupo",
+      "waitingForRole": "Se agrega cuando se confirme el puesto"
     },
     "command": {
       "deleteRoleFailed": "No se pudo eliminar el puesto",
@@ -3148,7 +3149,8 @@
         "approval": "Aprobación requerida",
         "partial": "Parcialmente automático",
         "full": "Totalmente automático"
-      }
+      },
+      "userCommand": "Escribiste este comando, así que se ejecuta tal como lo escribiste."
     },
     "refs": {
       "unknown": "No encontrado",

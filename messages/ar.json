@@ -2946,7 +2946,8 @@
       "add": "إضافة",
       "skip": "تخطٍّ",
       "addWithoutEvidence": "إضافة بدون أدلة",
-      "createChannel": "إنشاء قناة جماعية"
+      "createChannel": "إنشاء قناة جماعية",
+      "waitingForRole": "تُضاف بعد تأكيد الدور"
     },
     "command": {
       "deleteRoleFailed": "فشل حذف الدور",
@@ -3148,7 +3149,8 @@
         "approval": "الموافقة مطلوبة",
         "partial": "تلقائي جزئيًا",
         "full": "تلقائي بالكامل"
-      }
+      },
+      "userCommand": "كتبتَ هذا الأمر بنفسك، لذا يُنفَّذ كما كتبتَه."
     },
     "refs": {
       "unknown": "غير موجود",

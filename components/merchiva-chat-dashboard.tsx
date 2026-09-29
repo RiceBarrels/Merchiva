@@ -1378,9 +1378,6 @@ function MerchivaChatInner({
       deletes.length > 0 ? pinTaskDeletes(deletes, refsRef.current.rows.tasks ?? [], refsRef.current.rows.roles ?? []) : undefined,
     [],
   );
-  // Deleting a role task is medium risk: the org's autonomy config decides
-  // whether Mr. Merchiva's task-delete cards run at once or wait for a click.
-  const confirmTaskDeletes = gateAction("deleteRoleTask", {}, autonomyConfig, () => true).decision !== "auto";
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [thinkingPhase, setThinkingPhase] = useState("");
@@ -1430,10 +1427,10 @@ function MerchivaChatInner({
 
   // Show the session's saved messages once it resolves. Only the first one this chat gets can be the
   // session it just asked for, still empty: that one never wipes what the user sent before it arrived.
-    const first = loadedSessionRef.current === null;
   const loadedSessionRef = useRef<string | null>(null);
   useEffect(() => {
     if (!activeSessionId || loadedSessionRef.current === activeSessionId) return;
+    const first = loadedSessionRef.current === null;
     loadedSessionRef.current = activeSessionId;
     const row = mySessions.find((s) => rowIdString(s.id) === activeSessionId);
     const saved = parseSessionMessages(row?.messages ?? "");
@@ -2887,7 +2884,7 @@ function MerchivaChatInner({
                   const storeRoles = refs.rows.roles ?? [];
                   const matchedRole = resolveRoleRef(storeRoles, msg.tasksList);
                   return matchedRole ? (
-                    <TasksListInline roleId={storedId(matchedRole.id)} roleName={String(matchedRole.name ?? "")} />
+                    <TasksListInline roleId={storedId(matchedRole.id)} roleName={String(matchedRole.name ?? "")} autonomy={autonomyConfig} can={canForGate} />
                   ) : (
                     <div className="rounded-lg border border-border bg-muted/40 p-3 mt-2 text-[12px] text-muted-foreground">
                       {t("merchiva.command.roleNotFound").replace("{role}", roleRefLabel(storeRoles, { role: msg.tasksList }) ?? t("merchiva.refs.unknownRole"))}
@@ -2902,6 +2899,7 @@ function MerchivaChatInner({
                     storeRoles={refs.rows.roles ?? []}
                     storeTasks={refs.rows.tasks ?? []}
                     groupChats={groupChats}
+                    autonomy={autonomyConfig} can={canForGate} fromCommand={msg.fromCommand}
                     alreadyExecuted={msg.executed}
                     rejectedRoles={msg.rejectedRoles}
                     rejectedTasks={msg.rejectedTasks}
@@ -2922,8 +2920,8 @@ function MerchivaChatInner({
                     deletes={msg.tasksDelete}
                     storeRoles={refs.rows.roles ?? []}
                     storeTasks={refs.rows.tasks ?? []}
+                    autonomy={autonomyConfig} can={canForGate} fromCommand={msg.fromCommand}
                     alreadyExecuted={msg.executed}
-                    confirm={confirmTaskDeletes && !msg.fromCommand}
                     cancelled={msg.cancelledDeletes}
                     onCancel={(idx) => {
                       setMessages((prev) => prev.map((m) =>

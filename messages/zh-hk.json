@@ -2946,7 +2946,8 @@
       "add": "新增",
       "skip": "略過",
       "addWithoutEvidence": "不要憑證，直接添加",
-      "createChannel": "去創建羣組頻道"
+      "createChannel": "去創建羣組頻道",
+      "waitingForRole": "崗位確認後添加"
     },
     "command": {
       "deleteRoleFailed": "刪除職位失敗",
@@ -3148,7 +3149,8 @@
         "approval": "需要審批",
         "partial": "部分自動",
         "full": "完全自動"
-      }
+      },
+      "userCommand": "這是你輸入的命令，會按輸入直接執行。"
     },
     "refs": {
       "unknown": "未找到",

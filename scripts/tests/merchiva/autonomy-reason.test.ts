@@ -50,6 +50,7 @@ const SAMPLES: GateReason[] = [
   { code: "priceChangeOverCap", pct: 20, limit: 10 },
   { code: "auto", mode: "full" },
   { code: "unknownAction" },
+  { code: "userCommand" },
 ];
 
 const canAll = () => true;

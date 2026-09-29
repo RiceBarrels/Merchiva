@@ -3,7 +3,9 @@
 // The role and task cards Mr. Merchiva's replies render: the role list, a new
 // role and a new task (a role's task list is in tasks-list-card.tsx). Cards
 // name a role by its name — the id an action block carries is resolved by the
-// caller (role-ref.ts).
+// caller (role-ref.ts). A new role or task not added yet carries the autonomy
+// gate's decision (role-task-gate.ts): denied shows why and offers no button,
+// proposed offers Confirm / Cancel, like an action card.
 
 import Link from "next/link";
 import { Camera, Check, Clipboard, Clock, Trash2, Users } from "lucide-react";
@@ -13,6 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { RoleIcon } from "@/components/merchiva-dock/role-icon";
+import { ApproveBar, GateBadge } from "@/components/merchiva-dock/gate-controls";
+import { GateReasonNote } from "@/components/merchiva-dock/gate-reason-note";
+import type { CardGate } from "@/lib/merchiva/role-task-gate";
 import type { RoleAddCmd, TaskAddCmd } from "@/lib/merchiva/skills/types";
 
 export function RolesListCard({ roles }: { roles: Array<{ id: string; name: string; color: string; icon: string; description: string }> }) {
@@ -53,12 +58,21 @@ export function RolesListCard({ roles }: { roles: Array<{ id: string; name: stri
 
 export type RoleCardStatus = "pending" | "adding" | "added" | "rejected" | "deleting" | "not-added";
 
-export function RoleAddCard({ role, status, onDelete }: {
+export function RoleAddCard({ role, status, gate, canDelete, onApprove, onReject, onDelete }: {
   role: RoleAddCmd;
   status: RoleCardStatus;
+  // The gate's decision on adding it; only a card not added yet shows it.
+  gate: CardGate;
+  // Whether the viewer may delete the role once it is added.
+  canDelete: boolean;
+  // Confirm a proposed role, or add one that wasn't added (a restored reply, a failed write).
+  onApprove: () => void;
+  onReject: () => void;
   onDelete: () => void;
 }) {
   const t = useT();
+  const denied = (status === "pending" || status === "not-added") && gate.decision === "deny";
+  const proposed = status === "pending" && gate.decision === "propose";
   return (
     <div className={cn(
       "rounded-lg border p-3 mt-2",
@@ -71,6 +85,8 @@ export function RoleAddCard({ role, status, onDelete }: {
           <Users className="h-[10px] w-[10px]" />
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.roleAdd.tag")}</span>
         </span>
+        {denied && <GateBadge decision="deny" />}
+        {proposed && <GateBadge decision="propose" />}
         {status === "adding" && (
           <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
             <Spinner size={12} /> {t("merchiva.status.adding")}
@@ -119,7 +135,14 @@ export function RoleAddCard({ role, status, onDelete }: {
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: role.color }} />
         <span className="text-[11px] font-mono text-muted-foreground">{role.color}</span>
       </div>
-      {status === "added" && (
+      {(denied || proposed) && <GateReasonNote why={gate.why} className="mt-2.5 mb-0" />}
+      {proposed && <ApproveBar onApprove={onApprove} onReject={onReject} />}
+      {status === "not-added" && !denied && (
+        <Button size="sm" onClick={onApprove} className="px-3 mt-2.5">
+          <Check className="h-3 w-3" /> {t("merchiva.taskAdd.add")}
+        </Button>
+      )}
+      {status === "added" && canDelete && (
         <Button variant="outline" size="sm" onClick={onDelete}
           className="px-3 mt-2.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
           <Trash2 className="h-3 w-3" /> {t("common.delete")}
@@ -129,11 +152,12 @@ export function RoleAddCard({ role, status, onDelete }: {
   );
 }
 
-export type TaskCardStatus = "pending" | "adding" | "added" | "rejected" | "deleting" | "needs-chat" | "failed";
+// "waiting-role": cleared to run, but its role is one this reply creates that still waits for approval.
+export type TaskCardStatus = "pending" | "adding" | "added" | "rejected" | "deleting" | "needs-chat" | "failed" | "waiting-role";
 /** Why a task card stopped short of adding its task. */
 export type TaskCardFailure = "roleNotFound" | "addFailed" | "notAdded";
 
-export function TaskAddCard({ task, roleName, roleColor, evidence, status, failure, groupChats, selectedChats, onToggleChat, onConfirm, onRetry, onDelete }: {
+export function TaskAddCard({ task, roleName, roleColor, evidence, status, failure, gate, canDelete, groupChats, selectedChats, onToggleChat, onApprove, onConfirm, onRetry, onDelete }: {
   task: TaskAddCmd;
   // The role's name — never the id the action block carried.
   roleName: string;
@@ -143,15 +167,24 @@ export function TaskAddCard({ task, roleName, roleColor, evidence, status, failu
   evidence: boolean;
   status: TaskCardStatus;
   failure?: TaskCardFailure;
+  // The gate's decision on adding it; only a card not added yet shows it.
+  gate: CardGate;
+  // Whether the viewer may delete the task once it is added.
+  canDelete: boolean;
   groupChats: Array<{ id: string; name: string }>;
   selectedChats: string[];
   onToggleChat: (chatId: string) => void;
+  // Confirm a proposed task.
+  onApprove: () => void;
   // true: add with photo proof, sent to the selected channels; false: add without it.
   onConfirm: (withEvidence: boolean) => void;
   onRetry: () => void;
   onDelete: () => void;
 }) {
   const t = useT();
+  const denied = gate.decision === "deny"
+    && (status === "pending" || status === "needs-chat" || status === "failed" || status === "waiting-role");
+  const proposed = status === "pending" && gate.decision === "propose";
   const failureText =
     failure === "roleNotFound" ? t("merchiva.command.roleNotFound").replace("{role}", roleName)
     : failure === "addFailed" ? t("merchiva.command.addTaskFailed")
@@ -180,6 +213,8 @@ export function TaskAddCard({ task, roleName, roleColor, evidence, status, failu
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.taskAdd.tag")}</span>
         </span>
         <span className="text-[11px] text-muted-foreground truncate">→ {roleName}</span>
+        {denied && <GateBadge decision="deny" />}
+        {proposed && <GateBadge decision="propose" />}
         {status === "adding" && (
           <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
             <Spinner size={12} /> {t("merchiva.status.adding")}
@@ -198,8 +233,11 @@ export function TaskAddCard({ task, roleName, roleColor, evidence, status, failu
         {status === "rejected" && (
           <span className="text-[10.5px] font-mono text-destructive ml-auto">{t("merchiva.status.deleted")}</span>
         )}
-        {status === "needs-chat" && (
+        {status === "needs-chat" && !denied && (
           <span className="text-[10.5px] font-mono text-amber-700 ml-auto">{t("merchiva.taskAdd.chooseChat")}</span>
+        )}
+        {status === "waiting-role" && !denied && (
+          <span className="text-[10.5px] font-mono text-muted-foreground ml-auto">{t("merchiva.taskAdd.waitingForRole")}</span>
         )}
       </div>
       <div className="flex items-start gap-3 mb-2">
@@ -222,7 +260,10 @@ export function TaskAddCard({ task, roleName, roleColor, evidence, status, failu
           </span>
         )}
       </div>
-      {status === "needs-chat" && (
+      {(denied || proposed) && <GateReasonNote why={gate.why} />}
+      {proposed && <ApproveBar onApprove={onApprove} onReject={onDelete} />}
+      {status === "waiting-role" && !denied && skipButton}
+      {status === "needs-chat" && !denied && (
         // Photo proof needs a group channel to receive it, as in every task
         // editor. With none (or none wanted) the task is still added, without
         // proof — the card is never a dead end.
@@ -282,7 +323,7 @@ export function TaskAddCard({ task, roleName, roleColor, evidence, status, failu
           </div>
         </div>
       )}
-      {status === "failed" && (
+      {status === "failed" && !denied && (
         <div className="mt-2 pt-2.5 border-t border-amber-200/60 dark:border-amber-800/60">
           <div className="text-[10.5px] text-amber-800 dark:text-amber-200 mb-1.5">{failureText}</div>
           <div className="flex items-center gap-2">
@@ -293,7 +334,7 @@ export function TaskAddCard({ task, roleName, roleColor, evidence, status, failu
           </div>
         </div>
       )}
-      {status === "added" && (
+      {status === "added" && canDelete && (
         <Button variant="outline" size="sm" onClick={onDelete}
           className="px-3 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
           <Trash2 className="h-3 w-3" /> {t("common.delete")}
