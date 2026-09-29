@@ -2,12 +2,14 @@
 // updatePrice / updateProduct / deleteProduct actions end in. Read tools hand
 // the model hyphenated ids (rows.ts rowId), and so does useInventory; the
 // merge with the cached row must find the row by either form, or every partial
-// patch fails with "Cannot update inventory item without current …".
+// patch fails with "Cannot update inventory item without current …". The id sent
+// on must be the stored (hyphenated) form: the reducers' findItemInOrg matches
+// `r.id.toString() === itemId`, and the products / pricing pages hold 32-hex ids.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Uuid } from "spacetimedb";
 import { rowId } from "@/lib/merchiva/tools/rows";
-import { deleteProduct, updateInventoryItem, updateProduct } from "@/lib/spacetimedb/actions";
+import { deleteInventoryItem, deleteProduct, updateInventoryItem, updateProduct } from "@/lib/spacetimedb/actions";
 import { clearConnection, setActiveOrgId, setConnection } from "@/lib/spacetimedb/client";
 
 const ORG = "org-inventory-ids";
@@ -34,8 +36,14 @@ const calls: Record<string, unknown>[] = [];
 const fakeConn = {
   db: { inventoryItem: { iter: () => [milk][Symbol.iterator]() } },
   reducers: {
+    // Same lookup as the module's findItemInOrg: `r.id.toString() === itemId`, hyphenated only.
     updateInventoryItem: async (args: Record<string, unknown>) => {
       calls.push(args);
+      if (args.itemId !== MILK_ID.toString()) throw new Error("Record not found");
+    },
+    deleteInventoryItem: async (args: Record<string, unknown>) => {
+      calls.push(args);
+      if (args.itemId !== MILK_ID.toString()) throw new Error("Record not found");
     },
   },
 };
@@ -70,7 +78,8 @@ describe("inventory partial updates find the cached row by any id form", () => {
     await updateInventoryItem(id, { minStock: 10 });
     expect(last()).toMatchObject({
       organizationId: ORG,
-      itemId: id,
+      // Sent in the stored form: findItemInOrg matches `r.id.toString() === itemId` (hyphenated only).
+      itemId: MILK_ID.toString(),
       name: "Milk",
       minStock: 10,
       maxStock: 40,
@@ -86,6 +95,16 @@ describe("inventory partial updates find the cached row by any id form", () => {
     expect(last()).toMatchObject({ name: "Milk", retailPrice: 5, retailEnabled: true, minStock: 4 });
     await deleteProduct(rowId(milk));
     expect(last()).toMatchObject({ name: "Milk", retailEnabled: false, retailPrice: 4.5 });
+  });
+
+  test("the products and pricing pages' 32-hex ids (useProducts toHexString) reach the reducer in the stored form", async () => {
+    const pageId = MILK_ID.toHexString();
+    await updateProduct(pageId, { price: 5 });
+    expect(last()).toMatchObject({ itemId: MILK_ID.toString(), retailPrice: 5 });
+    await deleteProduct(pageId);
+    expect(last()).toMatchObject({ itemId: MILK_ID.toString(), retailEnabled: false });
+    await deleteInventoryItem(pageId);
+    expect(last()).toEqual({ organizationId: ORG, itemId: MILK_ID.toString() });
   });
 
   test("an unknown id still refuses a partial patch", async () => {

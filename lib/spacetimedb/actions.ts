@@ -307,7 +307,7 @@ function buildInventoryUpdatePayload(itemId: string, data: Record<string, any>) 
 
   return {
     organizationId,
-    itemId,
+    itemId: storedId(itemId),
     name: requiredInventoryText(value("name"), "name"),
     category: String(value("category") ?? "General").trim() || "General",
     currentStock,
@@ -383,7 +383,7 @@ export async function updateInventoryItem(itemId: string, data: any): Promise<vo
 }
 
 export async function deleteInventoryItem(itemId: string): Promise<void> {
-  return offlineAware("deleteInventoryItem", { organizationId: orgId(), itemId });
+  return offlineAware("deleteInventoryItem", { organizationId: orgId(), itemId: storedId(itemId) });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
