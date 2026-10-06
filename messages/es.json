@@ -7140,5 +7140,34 @@
       "slotSurface": "Fondo secundario",
       "slotAccent": "Color de énfasis {n}"
     }
+  },
+  "invite": {
+    "teamInvitation": "Invitación de equipo",
+    "invitedTitle": "¡Te han invitado!",
+    "joinOrg": "Únete a {org} en Merchiva",
+    "joinTeam": "Únete a un equipo en Merchiva",
+    "yourRole": "Tu rol:",
+    "signedInAs": "Sesión iniciada como {email}",
+    "accept": "Aceptar invitación",
+    "joining": "Uniéndote…",
+    "connecting": "Conectando…",
+    "signInTitle": "Te han invitado a unirte a un equipo",
+    "signInDesc": "Inicia sesión o crea una cuenta con el correo al que se envió la invitación.",
+    "signIn": "Iniciar sesión para aceptar",
+    "createAccount": "Crear una cuenta",
+    "welcome": "¡Bienvenido!",
+    "joined": "Te has unido a {org}. Llevándote allí…",
+    "joinedTeam": "Te has unido al equipo. Llevándote allí…",
+    "errorTitle": "No se puede aceptar esta invitación",
+    "errInvalid": "Este enlace de invitación no es válido. Pide a quien te invitó que envíe uno nuevo.",
+    "errUsed": "Esta invitación ya se usó. Si no fuiste tú, pide una nueva.",
+    "errExpired": "Esta invitación caducó. Pide a quien te invitó que envíe una nueva.",
+    "errWrongEmail": "Esta invitación se envió a otro correo. Inicia sesión con el correo que la recibió.",
+    "errAlreadyMember": "Ya eres miembro de esta tienda.",
+    "errEmailTaken": "Tu correo está vinculado a otra cuenta de Merchiva. Inicia sesión con esa cuenta para aceptar.",
+    "errNotConnected": "Aún conectando. Espera un momento e inténtalo de nuevo.",
+    "errFailed": "No se pudo aceptar la invitación. Inténtalo de nuevo.",
+    "useAnotherAccount": "Iniciar sesión con otra cuenta",
+    "goToDashboard": "Ir al panel"
   }
 }

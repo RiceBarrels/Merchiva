@@ -7140,5 +7140,34 @@
       "slotSurface": "Secondary background",
       "slotAccent": "Accent {n}"
     }
+  },
+  "invite": {
+    "teamInvitation": "Team invitation",
+    "invitedTitle": "You're invited!",
+    "joinOrg": "Join {org} on Merchiva",
+    "joinTeam": "Join a team on Merchiva",
+    "yourRole": "Your role:",
+    "signedInAs": "Signed in as {email}",
+    "accept": "Accept invitation",
+    "joining": "Joining…",
+    "connecting": "Connecting…",
+    "signInTitle": "You're invited to join a team",
+    "signInDesc": "Sign in or create an account with the email address the invitation was sent to.",
+    "signIn": "Sign in to accept",
+    "createAccount": "Create an account",
+    "welcome": "Welcome aboard!",
+    "joined": "You've joined {org}. Taking you there…",
+    "joinedTeam": "You've joined the team. Taking you there…",
+    "errorTitle": "Can't accept this invitation",
+    "errInvalid": "This invitation link isn't valid. Ask the person who invited you to send a new one.",
+    "errUsed": "This invitation has already been used. If that wasn't you, ask for a new one.",
+    "errExpired": "This invitation has expired. Ask the person who invited you to send a new one.",
+    "errWrongEmail": "This invitation was sent to a different email address. Sign in with the address it was sent to.",
+    "errAlreadyMember": "You're already a member of this store.",
+    "errEmailTaken": "Your email address is linked to another Merchiva account. Sign in with that account to accept.",
+    "errNotConnected": "Still connecting. Wait a moment and try again.",
+    "errFailed": "Couldn't accept the invitation. Please try again.",
+    "useAnotherAccount": "Sign in with another account",
+    "goToDashboard": "Go to dashboard"
   }
 }

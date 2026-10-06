@@ -1,33 +1,43 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+// /invite/[token]: accept an org invitation.
+//
+// The page cannot look the invitation up first: org_invitation is readable only
+// by members of the org that sent it, and the invitee is not one yet. It used
+// to try anyway, find nothing, and call every invitation "invalid or already
+// accepted". Now it offers Accept straight away and lets the module decide
+// (token, expiry, address — lib/spacetimedb/actions/invite.ts). The store name
+// comes from the email's link (`?org=`) and is display-only: the token alone
+// decides which store is joined, at which role. The role is not shown before
+// joining — a link can say anything, and "Your role: Owner" is the one claim
+// worth faking.
+
+import { useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, AlertTriangle, Users } from "lucide-react";
 import { MerchivaLogo } from "@/components/logo";
 import { useAuth } from "@/lib/auth/context";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useT } from "@/lib/i18n/context";
+import { fmt } from "@/lib/i18n/fmt";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
-import { getInvitationByToken } from "@/lib/db/team";
-import { acceptInvitation } from "@/lib/spacetimedb/actions";
+import { SpacetimeProvider, useSpacetimeStatus } from "@/lib/spacetimedb/provider";
+import { acceptInvitationAs, InviteError, type InviteErrorCode } from "@/lib/spacetimedb/actions/invite";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
-import type { OrgInvitation } from "@/lib/types";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
-export default function InvitePage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
+/** Display-only hint from the invitation email's link. */
+function useLinkHints(): { org: string } {
+  const [hints] = useState(() => {
+    if (typeof window === "undefined") return { org: "" };
+    return { org: (new URLSearchParams(window.location.search).get("org") ?? "").trim().slice(0, 80) };
+  });
+  return hints;
+}
+
+export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const { isLoaded, isSignedIn } = useAuth();
 
@@ -38,14 +48,7 @@ export default function InvitePage({
       </div>
     );
   }
-
-  // Not signed in — show sign-in / sign-up prompt directly.
-  // We can't fetch invitation details without an active SpacetimeDB connection.
-  if (!isSignedIn) {
-    return <SignInPrompt token={token} />;
-  }
-
-  // Signed in — mount SpacetimeProvider so useTable / getInvitationByToken work.
+  if (!isSignedIn) return <SignInPrompt token={token} />;
   return (
     <SpacetimeProvider>
       <InviteInner token={token} />
@@ -53,30 +56,41 @@ export default function InvitePage({
   );
 }
 
+function Brand() {
+  const t = useT();
+  return (
+    <div className="flex items-center gap-2.5">
+      <MerchivaLogo size={36} fg="var(--primary-foreground)" bg="var(--primary)" rounded />
+      <div>
+        <p className="font-bold text-base leading-none">Merchiva</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">{t("invite.teamInvitation")}</p>
+      </div>
+    </div>
+  );
+}
+
 function SignInPrompt({ token }: { token: string }) {
-  const returnTo = `/invite/${token}`;
+  const t = useT();
+  const hints = useLinkHints();
+  const returnTo = typeof window === "undefined" ? `/invite/${token}` : `${window.location.pathname}${window.location.search}`;
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="space-y-3 pb-4">
-          <div className="flex items-center gap-2.5">
-            <MerchivaLogo size={36} fg="var(--primary-foreground)" bg="var(--primary)" rounded />
-            <div>
-              <p className="font-bold text-base leading-none">Merchiva</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Team invitation</p>
-            </div>
-          </div>
+          <Brand />
           <div className="space-y-1">
-            <CardTitle className="text-lg">You&apos;re invited to join a team</CardTitle>
-            <CardDescription>Sign in or create an account to view and accept this invitation.</CardDescription>
+            <CardTitle className="text-lg">
+              {hints.org ? fmt(t("invite.joinOrg"), { org: hints.org }) : t("invite.signInTitle")}
+            </CardTitle>
+            <CardDescription>{t("invite.signInDesc")}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
           <Link href={`/login?next=${encodeURIComponent(returnTo)}`} className="block">
-            <Button className="w-full">Sign in to accept</Button>
+            <Button className="w-full">{t("invite.signIn")}</Button>
           </Link>
           <Link href={`/signup?next=${encodeURIComponent(returnTo)}`} className="block">
-            <Button variant="outline" className="w-full">Create an account</Button>
+            <Button variant="outline" className="w-full">{t("invite.createAccount")}</Button>
           </Link>
         </CardContent>
       </Card>
@@ -84,73 +98,59 @@ function SignInPrompt({ token }: { token: string }) {
   );
 }
 
+const ERROR_KEY: Record<InviteErrorCode, string> = {
+  invalid: "invite.errInvalid",
+  used: "invite.errUsed",
+  expired: "invite.errExpired",
+  wrongEmail: "invite.errWrongEmail",
+  alreadyMember: "invite.errAlreadyMember",
+  emailTaken: "invite.errEmailTaken",
+  notConnected: "invite.errNotConnected",
+  failed: "invite.errFailed",
+};
+
+/** These cannot be retried: show them in place of the invitation. */
+const FINAL: ReadonlySet<InviteErrorCode> = new Set(["invalid", "used", "expired", "alreadyMember"]);
+
 function InviteInner({ token }: { token: string }) {
+  const t = useT();
   const router = useRouter();
   const { user } = useAuth();
-  const userEmail = user?.email ?? null;
-
-  const [invitation, setInvitation] = useState<OrgInvitation | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { connected } = useSpacetimeStatus();
+  const hints = useLinkHints();
+  const [orgRows] = useTable(tables.organization);
   const [accepting, setAccepting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ code: InviteErrorCode; detail: string } | null>(null);
+  const [joinedOrgId, setJoinedOrgId] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Subscribe to invitations so the table has rows by the time we look.
-  const [invRows, invReady] = useTable(tables.orgInvitation);
-  const [orgRows] = useTable(tables.organization);
-
-  const orgName = invitation
-    ? (orgRows || []).find((o) => o.id.toString() === invitation.organizationId)?.name ?? ""
-    : "";
-
-  useEffect(() => {
-    if (!invReady) return;
-
-    (async () => {
-      const inv = await getInvitationByToken(token);
-      if (!inv) {
-        setError("This invitation is invalid or has already been accepted.");
-        setLoading(false);
-        return;
-      }
-      if (new Date(inv.expiresAt) < new Date()) {
-        setError("This invitation has expired. Please ask the owner to send a new one.");
-        setLoading(false);
-        return;
-      }
-      setInvitation(inv);
-      setLoading(false);
-    })().catch(() => {
-      setError("Failed to load invitation.");
-      setLoading(false);
-    });
-    // Re-run when subscription table contents change
-  }, [token, invReady, invRows]);
+  const joinedName = joinedOrgId ? orgRows.find((o) => o.id.toString() === joinedOrgId)?.name ?? "" : "";
+  const here = typeof window === "undefined" ? `/invite/${token}` : `${window.location.pathname}${window.location.search}`;
+  const anotherAccount = `/login?addAccount=1&next=${encodeURIComponent(here)}`;
 
   const handleAccept = async () => {
-    if (!invitation) return;
     setAccepting(true);
     setError(null);
     try {
-      await acceptInvitation(token);
+      const name = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
+      const orgId = await acceptInvitationAs(token, user?.email ?? null, name);
+      if (orgId) {
+        // Land in the store just joined, not whichever one was open last.
+        try { localStorage.setItem("active_org_id", orgId); } catch {}
+      }
+      setJoinedOrgId(orgId);
       setSuccess(true);
       setTimeout(() => router.push("/choose"), 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to accept invitation. Please try again.");
+      const code = err instanceof InviteError ? err.code : "failed";
+      setError({ code, detail: err instanceof Error ? err.message : String(err) });
     } finally {
       setAccepting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-        <Spinner size={24} className="text-muted-foreground" />
-      </div>
-    );
-  }
-
   if (success) {
+    const org = joinedName || hints.org;
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
         <Card className="w-full max-w-sm text-center">
@@ -158,9 +158,9 @@ function InviteInner({ token }: { token: string }) {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 mx-auto">
               <CheckCircle2 className="h-6 w-6 text-emerald-600" />
             </div>
-            <h2 className="font-bold text-lg">Welcome aboard!</h2>
+            <h2 className="font-bold text-lg">{t("invite.welcome")}</h2>
             <p className="text-sm text-muted-foreground">
-              You&apos;ve joined <strong>{orgName}</strong>. Redirecting to dashboard…
+              {org ? fmt(t("invite.joined"), { org }) : t("invite.joinedTeam")}
             </p>
           </CardContent>
         </Card>
@@ -168,7 +168,7 @@ function InviteInner({ token }: { token: string }) {
     );
   }
 
-  if (error && !invitation) {
+  if (error && FINAL.has(error.code)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
         <Card className="w-full max-w-sm">
@@ -176,10 +176,10 @@ function InviteInner({ token }: { token: string }) {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 mx-auto">
               <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
-            <h2 className="font-bold text-lg">Invalid Invitation</h2>
-            <p className="text-sm text-muted-foreground">{error}</p>
+            <h2 className="font-bold text-lg">{t("invite.errorTitle")}</h2>
+            <p className="text-sm text-muted-foreground">{t(ERROR_KEY[error.code])}</p>
             <Link href="/choose" className="text-sm font-medium underline underline-offset-4 text-muted-foreground">
-              Go to dashboard
+              {t("invite.goToDashboard")}
             </Link>
           </CardContent>
         </Card>
@@ -191,62 +191,48 @@ function InviteInner({ token }: { token: string }) {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="space-y-3 pb-4">
-          <div className="flex items-center gap-2.5">
-            <MerchivaLogo size={36} fg="var(--primary-foreground)" bg="var(--primary)" rounded />
-            <div>
-              <p className="font-bold text-base leading-none">Merchiva</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Team invitation</p>
-            </div>
-          </div>
+          <Brand />
           <div className="space-y-1">
-            <CardTitle className="text-xl">You&apos;re invited!</CardTitle>
+            <CardTitle className="text-xl">{t("invite.invitedTitle")}</CardTitle>
             <CardDescription>
-              Join <strong>{orgName || "a team"}</strong> on Merchiva
+              {hints.org ? fmt(t("invite.joinOrg"), { org: hints.org }) : t("invite.joinTeam")}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {invitation && (
-            <div className="rounded-[0.3rem] bg-muted/50 border border-border p-4 space-y-2">
+          <div className="rounded-[0.3rem] bg-muted/50 border border-border p-4 space-y-2">
+            {hints.org && (
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{orgName}</span>
+                <span className="text-sm font-medium">{hints.org}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Your role:</span>
-                <Badge variant="secondary" className="capitalize">{invitation.role}</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Invited:</span>
-                <span className="text-sm">{invitation.email}</span>
-              </div>
+            )}
+            {user?.email && (
+              <p className="text-sm text-muted-foreground">
+                {fmt(t("invite.signedInAs"), { email: user.email })}
+              </p>
+            )}
+          </div>
+
+          {error && (
+            <div className="space-y-2 rounded-[0.3rem] bg-destructive/10 px-3 py-2">
+              <p className="text-sm text-destructive">{t(ERROR_KEY[error.code])}</p>
+              {error.code === "failed" && error.detail && (
+                <p className="font-mono text-[11px] text-destructive/80 break-words">{error.detail}</p>
+              )}
             </div>
           )}
 
-          {userEmail && invitation && userEmail.toLowerCase() !== invitation.email.toLowerCase() && (
-            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-[0.3rem] px-3 py-2">
-              This invite was sent to <strong>{invitation.email}</strong> but you&apos;re signed in as <strong>{userEmail}</strong>.
-            </p>
-          )}
-
-          {error && (
-            <p className="text-sm text-destructive rounded-[0.3rem] bg-destructive/10 px-3 py-2">
-              {error}
-            </p>
-          )}
-
-          <Button
-            onClick={handleAccept}
-            disabled={accepting}
-            className="w-full gap-2"
-          >
-            {accepting ? (
-              <Spinner size={16} />
-            ) : (
-              <CheckCircle2 className="h-4 w-4" />
-            )}
-            {accepting ? "Joining…" : "Accept invitation"}
+          <Button onClick={handleAccept} disabled={accepting || !connected} className="w-full gap-2">
+            {accepting || !connected ? <Spinner size={16} /> : <CheckCircle2 className="h-4 w-4" />}
+            {accepting ? t("invite.joining") : !connected ? t("invite.connecting") : t("invite.accept")}
           </Button>
+
+          {(error?.code === "wrongEmail" || error?.code === "emailTaken") && (
+            <Link href={anotherAccount} className="block">
+              <Button variant="outline" className="w-full">{t("invite.useAnotherAccount")}</Button>
+            </Link>
+          )}
         </CardContent>
       </Card>
     </div>

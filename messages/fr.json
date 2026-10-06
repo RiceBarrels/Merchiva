@@ -7140,5 +7140,34 @@
       "slotSurface": "Arrière-plan secondaire",
       "slotAccent": "Couleur d'accent {n}"
     }
+  },
+  "invite": {
+    "teamInvitation": "Invitation d'équipe",
+    "invitedTitle": "Vous êtes invité !",
+    "joinOrg": "Rejoindre {org} sur Merchiva",
+    "joinTeam": "Rejoindre une équipe sur Merchiva",
+    "yourRole": "Votre rôle :",
+    "signedInAs": "Connecté en tant que {email}",
+    "accept": "Accepter l'invitation",
+    "joining": "Adhésion…",
+    "connecting": "Connexion…",
+    "signInTitle": "Vous êtes invité à rejoindre une équipe",
+    "signInDesc": "Connectez-vous ou créez un compte avec l'adresse e-mail qui a reçu l'invitation.",
+    "signIn": "Se connecter pour accepter",
+    "createAccount": "Créer un compte",
+    "welcome": "Bienvenue !",
+    "joined": "Vous avez rejoint {org}. Redirection…",
+    "joinedTeam": "Vous avez rejoint l'équipe. Redirection…",
+    "errorTitle": "Impossible d'accepter cette invitation",
+    "errInvalid": "Ce lien d'invitation n'est pas valide. Demandez à la personne qui vous a invité d'en envoyer un nouveau.",
+    "errUsed": "Cette invitation a déjà été utilisée. Si ce n'était pas vous, demandez-en une nouvelle.",
+    "errExpired": "Cette invitation a expiré. Demandez à la personne qui vous a invité d'en envoyer une nouvelle.",
+    "errWrongEmail": "Cette invitation a été envoyée à une autre adresse e-mail. Connectez-vous avec l'adresse qui l'a reçue.",
+    "errAlreadyMember": "Vous êtes déjà membre de ce magasin.",
+    "errEmailTaken": "Votre adresse e-mail est liée à un autre compte Merchiva. Connectez-vous avec ce compte pour accepter.",
+    "errNotConnected": "Connexion en cours. Patientez un instant et réessayez.",
+    "errFailed": "Impossible d'accepter l'invitation. Réessayez.",
+    "useAnotherAccount": "Se connecter avec un autre compte",
+    "goToDashboard": "Aller au tableau de bord"
   }
 }

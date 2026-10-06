@@ -7140,5 +7140,34 @@
       "slotSurface": "次要背景",
       "slotAccent": "強調色 {n}"
     }
+  },
+  "invite": {
+    "teamInvitation": "團隊邀請",
+    "invitedTitle": "你收到了邀請！",
+    "joinOrg": "加入 Merchiva 上的 {org}",
+    "joinTeam": "加入 Merchiva 上的團隊",
+    "yourRole": "你的角色：",
+    "signedInAs": "當前登入：{email}",
+    "accept": "接受邀請",
+    "joining": "正在加入…",
+    "connecting": "正在連線…",
+    "signInTitle": "你被邀請加入一個團隊",
+    "signInDesc": "請用收到邀請的信箱登入或註冊賬號。",
+    "signIn": "登入並接受",
+    "createAccount": "建立賬號",
+    "welcome": "歡迎加入！",
+    "joined": "你已加入 {org}，正在前往…",
+    "joinedTeam": "你已加入團隊，正在前往…",
+    "errorTitle": "無法接受這個邀請",
+    "errInvalid": "這個邀請連結無效。請讓邀請你的人重新發送一次。",
+    "errUsed": "這個邀請已經被使用過。如果不是你本人，請讓對方重新邀請。",
+    "errExpired": "這個邀請已過期。請讓邀請你的人重新發送一次。",
+    "errWrongEmail": "這個邀請是發給另一個信箱的。請用收到邀請的那個信箱登入。",
+    "errAlreadyMember": "你已經是這家店的成員了。",
+    "errEmailTaken": "你的信箱已關聯另一個 Merchiva 賬號。請用那個賬號登入後再接受。",
+    "errNotConnected": "還在連線中，請稍等片刻再試。",
+    "errFailed": "接受邀請失敗，請重試。",
+    "useAnotherAccount": "用其他賬號登入",
+    "goToDashboard": "前往首頁"
   }
 }

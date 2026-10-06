@@ -7140,5 +7140,34 @@
       "slotSurface": "次要背景",
       "slotAccent": "强调色 {n}"
     }
+  },
+  "invite": {
+    "teamInvitation": "团队邀请",
+    "invitedTitle": "你收到了邀请！",
+    "joinOrg": "加入 Merchiva 上的 {org}",
+    "joinTeam": "加入 Merchiva 上的团队",
+    "yourRole": "你的角色：",
+    "signedInAs": "当前登录：{email}",
+    "accept": "接受邀请",
+    "joining": "正在加入…",
+    "connecting": "正在连接…",
+    "signInTitle": "你被邀请加入一个团队",
+    "signInDesc": "请用收到邀请的邮箱登录或注册账号。",
+    "signIn": "登录并接受",
+    "createAccount": "创建账号",
+    "welcome": "欢迎加入！",
+    "joined": "你已加入 {org}，正在前往…",
+    "joinedTeam": "你已加入团队，正在前往…",
+    "errorTitle": "无法接受这个邀请",
+    "errInvalid": "这个邀请链接无效。请让邀请你的人重新发送一次。",
+    "errUsed": "这个邀请已经被使用过。如果不是你本人，请让对方重新邀请。",
+    "errExpired": "这个邀请已过期。请让邀请你的人重新发送一次。",
+    "errWrongEmail": "这个邀请是发给另一个邮箱的。请用收到邀请的那个邮箱登录。",
+    "errAlreadyMember": "你已经是这家店的成员了。",
+    "errEmailTaken": "你的邮箱已关联另一个 Merchiva 账号。请用那个账号登录后再接受。",
+    "errNotConnected": "还在连接中，请稍等片刻再试。",
+    "errFailed": "接受邀请失败，请重试。",
+    "useAnotherAccount": "用其他账号登录",
+    "goToDashboard": "前往首页"
   }
 }
