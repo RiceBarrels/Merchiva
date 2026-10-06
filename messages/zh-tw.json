@@ -61,7 +61,7 @@
       "advanced": "高階"
     },
     "usage": "AI 用量",
-    "apps": "裝置應用",
+    "apps": "外掛",
     "docs": "文件",
     "bugs": "問題反饋",
     "notifications": "通知",
@@ -5000,16 +5000,50 @@
       "drive": "店面的檔案、相片、試算表和簡報，全都集中在一處。"
     },
     "appStore": {
-      "hint": "選擇這家店使用哪些功能。新增後的應用程式會同時出現在後台、門市平板和員工手機上；必備應用程式一律開啟。",
-      "available": "可新增的應用程式",
+      "hint": "選擇這家店使用哪些功能。安裝後的外掛會同時出現在後台、門市平板和員工手機上；內建外掛一律開啟。",
+      "available": "可安裝的外掛",
       "included": "每台裝置都內建",
-      "add": "新增",
+      "add": "安裝",
       "remove": "移除",
-      "added": "已新增應用程式",
-      "removed": "已移除應用程式",
+      "added": "外掛已安裝",
+      "removed": "外掛已移除",
       "failed": "儲存失敗，請再試一次。",
       "alwaysOn": "一律開啟",
-      "empty": "沒有更多可新增的應用程式。"
+      "empty": "沒有更多可安裝的外掛。"
+    },
+    "pluginStore": {
+      "searchPlaceholder": "搜尋外掛",
+      "clearSearch": "清除搜尋",
+      "tabDiscover": "發現",
+      "tabInstalled": "已安裝",
+      "featured": "精選",
+      "categoriesLabel": "分類",
+      "all": "全部",
+      "categories": {
+        "team": "團隊",
+        "operations": "門市營運",
+        "sales": "銷售與報表",
+        "files": "檔案與文件",
+        "essentials": "基礎功能"
+      },
+      "resultsCount": "{n} 個結果",
+      "noResults": "沒有找到與「{q}」相關的外掛",
+      "noResultsHint": "換個詞試試，或者按分類瀏覽。",
+      "open": "開啟",
+      "installed": "已安裝",
+      "back": "全部外掛",
+      "category": "分類",
+      "runsOn": "適用於",
+      "whoCanUse": "誰可以使用",
+      "everyone": "所有人",
+      "managersOnly": "店主和經理",
+      "needsAccess": "需要{section}權限",
+      "builtInNote": "每台裝置都內建，無法移除。",
+      "preview": "預覽",
+      "about": "關於此外掛",
+      "addedByStore": "本店已安裝",
+      "noneInstalled": "還沒有安裝可選外掛。",
+      "browse": "瀏覽外掛"
     }
   },
   "storeDevice": {
@@ -5193,13 +5227,13 @@
     }
   },
   "deviceApps": {
-    "title": "裝置應用程式",
-    "subtitle": "門市平板和員工手機上已新增 {n} / {total} 個可選應用程式",
+    "title": "外掛",
+    "subtitle": "已安裝 {n} / {total} 個可選外掛",
     "surfaceStore": "門市",
     "surfacePersonal": "手機",
     "surfaceManager": "後台",
     "notEnabled": "這家店尚未開啟這個功能。",
-    "openStore": "到裝置應用程式開啟"
+    "openStore": "去外掛裡開啟"
   },
   "devicePermissions": {
     "title": "Merchiva 需要以下權限",

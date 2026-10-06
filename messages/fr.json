@@ -61,7 +61,7 @@
       "advanced": "Advanced"
     },
     "usage": "Utilisation IA",
-    "apps": "Apps appareil",
+    "apps": "Extensions",
     "docs": "Documents",
     "bugs": "Bugs",
     "notifications": "Notifications",
@@ -5000,16 +5000,50 @@
       "drive": "Les fichiers, photos, feuilles de calcul et présentations de votre magasin, au même endroit."
     },
     "appStore": {
-      "hint": "Choisissez les fonctions utilisées par ce magasin. Une app installée apparaît dans le back-office, sur la tablette du magasin et sur les téléphones de l'équipe ; les apps obligatoires sont toujours actives.",
-      "available": "Apps disponibles",
-      "included": "Incluses sur chaque appareil",
-      "add": "Ajouter",
+      "hint": "Choisissez les fonctions utilisées par ce magasin. Une extension installée apparaît dans le back-office, sur la tablette du magasin et sur les téléphones de l'équipe ; les extensions intégrées sont toujours actives.",
+      "available": "Extensions disponibles",
+      "included": "Intégrées à chaque appareil",
+      "add": "Installer",
       "remove": "Retirer",
-      "added": "App ajoutée",
-      "removed": "App retirée",
+      "added": "Extension installée",
+      "removed": "Extension retirée",
       "failed": "Enregistrement impossible. Réessayez.",
       "alwaysOn": "Toujours active",
-      "empty": "Rien d'autre à ajouter."
+      "empty": "Rien d'autre à installer."
+    },
+    "pluginStore": {
+      "searchPlaceholder": "Rechercher des extensions",
+      "clearSearch": "Effacer la recherche",
+      "tabDiscover": "Découvrir",
+      "tabInstalled": "Installées",
+      "featured": "À la une",
+      "categoriesLabel": "Catégories",
+      "all": "Toutes",
+      "categories": {
+        "team": "Équipe",
+        "operations": "Opérations",
+        "sales": "Ventes et rapports",
+        "files": "Fichiers et documents",
+        "essentials": "Essentiels"
+      },
+      "resultsCount": "{n} résultats",
+      "noResults": "Aucune extension ne correspond à « {q} »",
+      "noResultsHint": "Essayez un autre mot ou parcourez les catégories.",
+      "open": "Ouvrir",
+      "installed": "Installée",
+      "back": "Toutes les extensions",
+      "category": "Catégorie",
+      "runsOn": "Fonctionne sur",
+      "whoCanUse": "Qui peut l'utiliser",
+      "everyone": "Tout le monde",
+      "managersOnly": "Propriétaires et gérants",
+      "needsAccess": "Accès {section}",
+      "builtInNote": "Intégrée à chaque appareil. Elle ne peut pas être retirée.",
+      "preview": "Aperçu",
+      "about": "À propos de cette extension",
+      "addedByStore": "Installées par votre magasin",
+      "noneInstalled": "Aucune extension facultative installée pour l'instant.",
+      "browse": "Parcourir les extensions"
     }
   },
   "storeDevice": {
@@ -5193,13 +5227,13 @@
     }
   },
   "deviceApps": {
-    "title": "Apps des appareils",
-    "subtitle": "{n} app(s) optionnelle(s) sur {total} sur la tablette du magasin et les téléphones de l'équipe",
+    "title": "Extensions",
+    "subtitle": "{n} extensions facultatives installées sur {total}",
     "surfaceStore": "Magasin",
     "surfacePersonal": "Téléphone",
     "surfaceManager": "Back-office",
     "notEnabled": "Cette fonction n'est pas encore activée pour votre magasin.",
-    "openStore": "L'activer dans Apps appareil"
+    "openStore": "Activez-la dans Extensions"
   },
   "devicePermissions": {
     "title": "Merchiva a besoin de quelques autorisations",

@@ -61,7 +61,7 @@
       "advanced": "Advanced"
     },
     "usage": "Uso de IA",
-    "apps": "Apps de dispositivo",
+    "apps": "Complementos",
     "docs": "Documentos",
     "bugs": "Errores",
     "notifications": "Notificaciones",
@@ -5000,16 +5000,50 @@
       "drive": "Archivos, fotos, hojas de cálculo y presentaciones de tu tienda en un solo lugar."
     },
     "appStore": {
-      "hint": "Elige qué funciones usa esta tienda. Una app instalada aparece en el panel de gestión, en la tablet de la tienda y en los móviles del personal; las apps obligatorias están siempre activas.",
-      "available": "Apps disponibles",
-      "included": "Incluidas en todos los dispositivos",
-      "add": "Añadir",
+      "hint": "Elige qué funciones usa esta tienda. Un complemento instalado aparece en el panel de gestión, en la tableta de la tienda y en los teléfonos del personal; los complementos integrados están siempre activos.",
+      "available": "Complementos disponibles",
+      "included": "Integrados en todos los dispositivos",
+      "add": "Instalar",
       "remove": "Quitar",
-      "added": "App añadida",
-      "removed": "App quitada",
+      "added": "Complemento instalado",
+      "removed": "Complemento eliminado",
       "failed": "No se pudo guardar. Inténtalo de nuevo.",
       "alwaysOn": "Siempre activa",
-      "empty": "No hay nada más que añadir."
+      "empty": "No hay nada más que instalar."
+    },
+    "pluginStore": {
+      "searchPlaceholder": "Buscar complementos",
+      "clearSearch": "Borrar búsqueda",
+      "tabDiscover": "Descubrir",
+      "tabInstalled": "Instalados",
+      "featured": "Destacados",
+      "categoriesLabel": "Categorías",
+      "all": "Todos",
+      "categories": {
+        "team": "Equipo",
+        "operations": "Operaciones",
+        "sales": "Ventas e informes",
+        "files": "Archivos y documentos",
+        "essentials": "Esenciales"
+      },
+      "resultsCount": "{n} resultados",
+      "noResults": "Ningún complemento coincide con «{q}»",
+      "noResultsHint": "Prueba con otra palabra o explora las categorías.",
+      "open": "Abrir",
+      "installed": "Instalado",
+      "back": "Todos los complementos",
+      "category": "Categoría",
+      "runsOn": "Funciona en",
+      "whoCanUse": "Quién puede usarlo",
+      "everyone": "Todos",
+      "managersOnly": "Propietarios y gerentes",
+      "needsAccess": "Acceso a {section}",
+      "builtInNote": "Integrado en todos los dispositivos. No se puede eliminar.",
+      "preview": "Vista previa",
+      "about": "Acerca de este complemento",
+      "addedByStore": "Instalados por tu tienda",
+      "noneInstalled": "Todavía no hay complementos opcionales instalados.",
+      "browse": "Explorar complementos"
     }
   },
   "storeDevice": {
@@ -5193,13 +5227,13 @@
     }
   },
   "deviceApps": {
-    "title": "Apps de dispositivo",
-    "subtitle": "{n} de {total} apps opcionales en la tablet de la tienda y los móviles del personal",
+    "title": "Complementos",
+    "subtitle": "{n} de {total} complementos opcionales instalados",
     "surfaceStore": "Tienda",
     "surfacePersonal": "Móvil",
     "surfaceManager": "Gestión",
     "notEnabled": "Esta función aún no está activada para tu tienda.",
-    "openStore": "Actívala en Apps de dispositivo"
+    "openStore": "Actívalo en Complementos"
   },
   "devicePermissions": {
     "title": "Merchiva necesita algunos permisos",

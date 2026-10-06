@@ -61,7 +61,7 @@
       "advanced": "高级"
     },
     "usage": "AI 用量",
-    "apps": "设备应用",
+    "apps": "插件",
     "docs": "文档",
     "bugs": "问题反馈",
     "notifications": "通知",
@@ -5000,16 +5000,50 @@
       "drive": "门店的文件、照片、表格和演示文稿，集中在一处。"
     },
     "appStore": {
-      "hint": "选择这家店使用哪些功能。添加后的应用会同时出现在后台、门店平板和员工手机上；必备应用始终开启。",
-      "available": "可添加的应用",
-      "included": "每台设备都自带",
-      "add": "添加",
+      "hint": "选择这家店使用哪些功能。安装后的插件会同时出现在后台、门店平板和员工手机上；内置插件始终开启。",
+      "available": "可安装的插件",
+      "included": "每台设备都内置",
+      "add": "安装",
       "remove": "移除",
-      "added": "已添加应用",
-      "removed": "已移除应用",
+      "added": "插件已安装",
+      "removed": "插件已移除",
       "failed": "保存失败，请重试。",
       "alwaysOn": "始终开启",
-      "empty": "没有更多可添加的应用。"
+      "empty": "没有更多可安装的插件。"
+    },
+    "pluginStore": {
+      "searchPlaceholder": "搜索插件",
+      "clearSearch": "清除搜索",
+      "tabDiscover": "发现",
+      "tabInstalled": "已安装",
+      "featured": "精选",
+      "categoriesLabel": "分类",
+      "all": "全部",
+      "categories": {
+        "team": "团队",
+        "operations": "门店运营",
+        "sales": "销售与报表",
+        "files": "文件与文档",
+        "essentials": "基础功能"
+      },
+      "resultsCount": "{n} 个结果",
+      "noResults": "没有找到与“{q}”相关的插件",
+      "noResultsHint": "换个词试试，或者按分类浏览。",
+      "open": "打开",
+      "installed": "已安装",
+      "back": "全部插件",
+      "category": "分类",
+      "runsOn": "适用于",
+      "whoCanUse": "谁可以使用",
+      "everyone": "所有人",
+      "managersOnly": "店主和经理",
+      "needsAccess": "需要{section}权限",
+      "builtInNote": "每台设备都内置，无法移除。",
+      "preview": "预览",
+      "about": "关于此插件",
+      "addedByStore": "本店已安装",
+      "noneInstalled": "还没有安装可选插件。",
+      "browse": "浏览插件"
     }
   },
   "storeDevice": {
@@ -5193,13 +5227,13 @@
     }
   },
   "deviceApps": {
-    "title": "设备应用",
-    "subtitle": "门店平板和员工手机上已添加 {n} / {total} 个可选应用",
+    "title": "插件",
+    "subtitle": "已安装 {n} / {total} 个可选插件",
     "surfaceStore": "门店",
     "surfacePersonal": "手机",
     "surfaceManager": "后台",
     "notEnabled": "这家店还没有开启这个功能。",
-    "openStore": "去设备应用里开启"
+    "openStore": "去插件里开启"
   },
   "devicePermissions": {
     "title": "Merchiva 需要以下权限",

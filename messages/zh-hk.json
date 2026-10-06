@@ -61,7 +61,7 @@
       "advanced": "高級"
     },
     "usage": "AI 用量",
-    "apps": "裝置應用",
+    "apps": "插件",
     "docs": "文檔",
     "bugs": "問題反饋",
     "notifications": "通知",
@@ -5000,16 +5000,50 @@
       "drive": "店舖的檔案、相片、試算表及簡報，集中於一處。"
     },
     "appStore": {
-      "hint": "選擇這家店使用邊啲功能。新增後的應用程式會同時出現在後台、分店平板和員工手機上；必備應用程式一律開啟。",
-      "available": "可新增的應用程式",
-      "included": "每部裝置都內建",
-      "add": "新增",
+      "hint": "選擇這家店使用哪些功能。安裝後的插件會同時出現在後台、分店平板和員工手機上；內置插件一律開啟。",
+      "available": "可安裝的插件",
+      "included": "每台裝置都內置",
+      "add": "安裝",
       "remove": "移除",
-      "added": "已新增應用程式",
-      "removed": "已移除應用程式",
+      "added": "插件已安裝",
+      "removed": "插件已移除",
       "failed": "儲存失敗，請再試一次。",
       "alwaysOn": "一律開啟",
-      "empty": "冇更多可新增的應用程式。"
+      "empty": "沒有更多可安裝的插件。"
+    },
+    "pluginStore": {
+      "searchPlaceholder": "搜索插件",
+      "clearSearch": "清除搜索",
+      "tabDiscover": "發現",
+      "tabInstalled": "已安裝",
+      "featured": "精選",
+      "categoriesLabel": "分類",
+      "all": "全部",
+      "categories": {
+        "team": "團隊",
+        "operations": "分店運營",
+        "sales": "銷售與報表",
+        "files": "文件與文檔",
+        "essentials": "基礎功能"
+      },
+      "resultsCount": "{n} 個結果",
+      "noResults": "沒有找到與「{q}」相關的插件",
+      "noResultsHint": "換個詞試試，或者按分類瀏覽。",
+      "open": "打開",
+      "installed": "已安裝",
+      "back": "全部插件",
+      "category": "分類",
+      "runsOn": "適用於",
+      "whoCanUse": "誰可以使用",
+      "everyone": "所有人",
+      "managersOnly": "店主和經理",
+      "needsAccess": "需要{section}權限",
+      "builtInNote": "每台裝置都內置，無法移除。",
+      "preview": "預覽",
+      "about": "關於此插件",
+      "addedByStore": "本店已安裝",
+      "noneInstalled": "還沒有安裝可選插件。",
+      "browse": "瀏覽插件"
     }
   },
   "storeDevice": {
@@ -5193,13 +5227,13 @@
     }
   },
   "deviceApps": {
-    "title": "裝置應用程式",
-    "subtitle": "分店平板和員工手機上已新增 {n} / {total} 個可選應用程式",
+    "title": "插件",
+    "subtitle": "已安裝 {n} / {total} 個可選插件",
     "surfaceStore": "分店",
     "surfacePersonal": "手機",
     "surfaceManager": "後台",
     "notEnabled": "這家店仲未開啟呢個功能。",
-    "openStore": "到裝置應用程式開啟"
+    "openStore": "去插件裏開啟"
   },
   "devicePermissions": {
     "title": "Merchiva 需要以下權限",

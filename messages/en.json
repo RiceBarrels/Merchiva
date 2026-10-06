@@ -61,7 +61,7 @@
       "advanced": "Advanced"
     },
     "usage": "AI Usage",
-    "apps": "Device apps",
+    "apps": "Plugins",
     "docs": "Docs",
     "bugs": "Bugs",
     "notifications": "Notifications",
@@ -5000,16 +5000,50 @@
       "drive": "Files, photos, sheets and slides for your store in one place."
     },
     "appStore": {
-      "hint": "Pick which features this store uses. An installed app shows up in the manager back office, on the store tablet and on staff phones; required apps are always on.",
-      "available": "Available apps",
-      "included": "Included on every device",
-      "add": "Add",
+      "hint": "Pick which features this store uses. An installed plugin shows up in the manager back office, on the store tablet and on staff phones; built-in plugins are always on.",
+      "available": "Available plugins",
+      "included": "Built into every device",
+      "add": "Install",
       "remove": "Remove",
-      "added": "App added",
-      "removed": "App removed",
+      "added": "Plugin installed",
+      "removed": "Plugin removed",
       "failed": "Could not save. Try again.",
       "alwaysOn": "Always on",
-      "empty": "Nothing else to add."
+      "empty": "Nothing else to install."
+    },
+    "pluginStore": {
+      "searchPlaceholder": "Search plugins",
+      "clearSearch": "Clear search",
+      "tabDiscover": "Discover",
+      "tabInstalled": "Installed",
+      "featured": "Featured",
+      "categoriesLabel": "Categories",
+      "all": "All",
+      "categories": {
+        "team": "Team",
+        "operations": "Operations",
+        "sales": "Sales & reports",
+        "files": "Files & documents",
+        "essentials": "Essentials"
+      },
+      "resultsCount": "{n} results",
+      "noResults": "No plugins match “{q}”",
+      "noResultsHint": "Try another word, or browse the categories.",
+      "open": "Open",
+      "installed": "Installed",
+      "back": "All plugins",
+      "category": "Category",
+      "runsOn": "Runs on",
+      "whoCanUse": "Who can use it",
+      "everyone": "Everyone",
+      "managersOnly": "Owners and managers",
+      "needsAccess": "{section} access",
+      "builtInNote": "Built into every device. It can't be removed.",
+      "preview": "Preview",
+      "about": "About this plugin",
+      "addedByStore": "Installed by your store",
+      "noneInstalled": "No optional plugins installed yet.",
+      "browse": "Browse plugins"
     }
   },
   "storeDevice": {
@@ -5193,13 +5227,13 @@
     }
   },
   "deviceApps": {
-    "title": "Device apps",
-    "subtitle": "{n} of {total} optional apps on the store tablet and staff phones",
+    "title": "Plugins",
+    "subtitle": "{n} of {total} optional plugins installed",
     "surfaceStore": "Store",
     "surfacePersonal": "Phone",
     "surfaceManager": "Manager",
     "notEnabled": "This feature isn't turned on for your store yet.",
-    "openStore": "Turn it on in Device apps"
+    "openStore": "Turn it on in Plugins"
   },
   "devicePermissions": {
     "title": "Merchiva needs a few permissions",
