@@ -65,7 +65,16 @@ export function useChannels(opts: UseChannelsOptions): UseChannelsResult {
   const [memberRows, membersReady] = useTable(tables.chatMember);
   const [messageRows, messagesReady] = useTable(tables.chatMessage);
   const [orgMemberRows, orgReady] = useTable(tables.orgMember);
+  // Thread replies and deleted thread parents (spacetimedb/src/chat/tables.ts)
+  // belong to the full channel page; the walkie list shows the main flow only.
+  const [extRows] = useTable(tables.chatMessageExt);
   const [activeIndexState, setActiveIndexState] = useState(0);
+
+  const hiddenIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of extRows) if (e.threadParentId || e.deletedAt != null) set.add(e.messageId);
+    return set;
+  }, [extRows]);
 
   // userId hex → display name within this org.
   const nameByUser = useMemo(() => {
@@ -124,7 +133,7 @@ export function useChannels(opts: UseChannelsOptions): UseChannelsResult {
 
   const messages = useMemo<ChannelMessage[]>(() => {
     if (!activeChannel) return [];
-    const rows = messageRows.filter((r) => r.conversationId === activeChannel.id);
+    const rows = messageRows.filter((r) => r.conversationId === activeChannel.id && !hiddenIds.has(r.id.toString()));
     const mapped = rows.map<ChannelMessage>((r) => {
       const senderId = idHex(r.senderId);
       const isMerchiva = r.isMerchiva === true;
@@ -151,7 +160,7 @@ export function useChannels(opts: UseChannelsOptions): UseChannelsResult {
     });
     mapped.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     return mapped;
-  }, [messageRows, activeChannel, nameByUser, meUserId, t]);
+  }, [messageRows, activeChannel, nameByUser, meUserId, t, hiddenIds]);
 
   const setActiveIndex = useCallback((i: number) => {
     setActiveIndexState((prev) => {

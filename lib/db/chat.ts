@@ -250,19 +250,8 @@ export async function sendMessage(
   };
 }
 
-export async function uploadChatFile(
-  file: File
-): Promise<{ url: string; type: string; name: string }> {
-  // UploadThing does not depend on Supabase — keep as-is
-  const { uploadFiles } = await import("@/lib/uploadthing");
-  const [res] = await uploadFiles("generalFile", { files: [file] });
-
-  let type = "file";
-  if (file.type.startsWith("image/")) type = "image";
-  else if (file.type.startsWith("video/")) type = "video";
-
-  return { url: res.ufsUrl, type, name: file.name };
-}
+// Moved to lib/chat/upload.ts; re-exported for the remaining legacy importers.
+export { uploadChatFile } from "@/lib/chat/upload";
 
 // ─── Reactions ──────────────────────────────────────────────────────────────
 

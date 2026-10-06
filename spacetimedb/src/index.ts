@@ -16,6 +16,9 @@ import { schema, t, table, SenderError, Range } from 'spacetimedb/server';
 import { Identity, Timestamp, Uuid } from 'spacetimedb';
 import { pagePresenceTable } from './presence/tables';
 import { definePagePresenceReducers } from './presence/reducers';
+import { chatChannelInfoTable, chatMemberStateTable, chatMessageExtTable, chatReactionTable } from './chat/tables';
+import { defineChatReducers, deleteChatMessageCascade, notifyChatMessage, rekeyChatIdentity } from './chat/reducers';
+import { isChannelManagerRole } from './chat/logic';
 import {
   driveItemTable, driveOrgStateTable, driveAdminIndexTable, documentReaderIndexTable, driveUsageTable,
   driveStarTable, driveNoticeAckTable, driveServiceReaderTable, driveBlobGcTable, documentEditLeaseTable,
@@ -2519,6 +2522,12 @@ const spacetimedb = schema({
   // for older clients (scripts/tests/drive/client-compat-schema.test.ts).
   documentFile: documentFileTable,
   deviceLoginRequester: deviceLoginRequesterTable,
+  // Channel side tables (./chat/tables.ts): chat_message / chat_conversation are
+  // frozen for older clients, like document above.
+  chatReaction: chatReactionTable,
+  chatMessageExt: chatMessageExtTable,
+  chatChannelInfo: chatChannelInfoTable,
+  chatMemberState: chatMemberStateTable,
 });
 
 export default spacetimedb;
@@ -2645,6 +2654,8 @@ const RLS_SELF_SCOPED: Array<[table: string, column: string]> = [
   ['user_briefing_pref', 'userId'],
   ['member_punch_code', 'userId'],
   ['device_operator_session', 'identity'],
+  // Read position, mute and star of one member in one conversation.
+  ['chat_member_state', 'userId'],
   // device_login_request is self-scoped too, but through a join: see
   // rls_device_login_request_requester below.
 ];
@@ -2842,6 +2853,22 @@ rlsRules.rls_chat_member_peers = spacetimedb.clientVisibilityFilter.sql(
 rlsRules.rls_chat_message_mine = spacetimedb.clientVisibilityFilter.sql(
   `SELECT msg.* FROM chat_message msg ` +
   `JOIN chat_membership_index ci ON msg.conversationId = ci.conversationId ` +
+  `WHERE ci.userId = :sender`
+);
+// The channel side tables (./chat/tables.ts) follow chat_message: members only.
+rlsRules.rls_chat_reaction_mine = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT r.* FROM chat_reaction r ` +
+  `JOIN chat_membership_index ci ON r.conversationId = ci.conversationId ` +
+  `WHERE ci.userId = :sender`
+);
+rlsRules.rls_chat_message_ext_mine = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT e.* FROM chat_message_ext e ` +
+  `JOIN chat_membership_index ci ON e.conversationId = ci.conversationId ` +
+  `WHERE ci.userId = :sender`
+);
+rlsRules.rls_chat_channel_info_mine = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT c.* FROM chat_channel_info c ` +
+  `JOIN chat_membership_index ci ON c.conversationId = ci.conversationId ` +
   `WHERE ci.userId = :sender`
 );
 
@@ -3076,7 +3103,9 @@ export const loginWithPassword = spacetimedb.reducer(
       ctx.db.timeOffRequest.id.update({ ...r, userId: newIdentity });
     }
 
-    // Migrate chat memberships
+    // Migrate chat memberships (read / mute / star state and reactions first:
+    // rekeyChatIdentity finds them through the old identity's memberships).
+    rekeyChatIdentity(ctx, oldIdentity, newIdentity);
     for (const cm of [...ctx.db.chatMember.byUserId.filter(oldIdentity)]) {
       ctx.db.chatMember.id.update({ ...cm, userId: newIdentity });
       syncChatMembershipIndex(ctx, { ...cm, userId: newIdentity });
@@ -5293,6 +5322,32 @@ export const createConversation = spacetimedb.reducer(
   (ctx, { organizationId, type, name, memberUserIds }) => {
     const member = findActiveMember(ctx, organizationId);
 
+    const senderHex = ctx.sender.toString();
+    const requested: string[] = memberUserIds ? JSON.parse(memberUserIds) : [];
+    const allHex = Array.from(new Set([senderHex, ...requested.map((hex) => new Identity(hex).toString())]));
+
+    // Group channels are joined by invitation from an owner or manager only.
+    // A direct message is exactly two people. Everyone has to be an active
+    // member of this organization: the list is caller-supplied, and chat RLS
+    // is membership-scoped, so an outsider added here would read the chat.
+    if (type === 'group') {
+      if (!isChannelManagerRole(member.role)) unauthorized('Only an owner or manager can create a channel');
+    } else if (type === 'direct') {
+      if (allHex.length !== 2) throw new SenderError('A direct message is between two people');
+    } else {
+      throw new SenderError('Unknown conversation type');
+    }
+    const orgIdentities = new Set(
+      [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+        .filter(m => m.status === 'active')
+        .map(m => m.userId.toString()),
+    );
+    for (const hex of allHex) {
+      if (hex !== senderHex && !orgIdentities.has(hex)) {
+        throw new SenderError('Can only add members of this organization');
+      }
+    }
+
     const convId = ctx.newUuidV4();
     ctx.db.chatConversation.insert({
       id: convId,
@@ -5304,10 +5359,6 @@ export const createConversation = spacetimedb.reducer(
       updatedAt: ctx.timestamp,
       merchivaEnabled: undefined,
     });
-
-    const senderHex = ctx.sender.toString();
-    const requested: string[] = memberUserIds ? JSON.parse(memberUserIds) : [];
-    const allHex = Array.from(new Set([senderHex, ...requested]));
 
     for (const hex of allHex) {
       const cmId = ctx.newUuidV4();
@@ -5362,31 +5413,11 @@ export const sendMessage = spacetimedb.reducer(
       ctx.db.chatConversation.insert({ ...conv, updatedAt: ctx.timestamp });
     }
 
-    // Fan out notification rows for every other member of the conversation.
+    // Fan out notification rows for every other member of the conversation
+    // (skipping those who muted it, unless named with @Name — ./chat/reducers.ts).
     // The client (web push) and Tauri bridge both subscribe to this table and
     // surface OS-level alerts when a row arrives for the local identity.
-    if (conv) {
-      const senderName = [...ctx.db.orgMember.byUserId.filter(ctx.sender)]
-        .find(m => m.organizationId === conv.organizationId)?.displayName ?? 'New message';
-      const preview = content.length > 140 ? content.slice(0, 137) + '...' : content;
-      const body = (attachmentUrl && !content) ? '[attachment]' : preview;
-
-      const members = [...ctx.db.chatMember.byConversationId.filter(conversationId)];
-      for (const m of members) {
-        if (m.userId.toString() === ctx.sender.toString()) continue;
-        ctx.db.notification.insert({
-          id: ctx.newUuidV4(),
-          organizationId: conv.organizationId,
-          targetId: m.userId,
-          type: 'team',
-          title: senderName,
-          body,
-          link: '/manager/channel',
-          read: false,
-          createdAt: ctx.timestamp,
-        });
-      }
-    }
+    if (conv) notifyChatMessage(ctx, conv, conversationId, content, !!attachmentUrl);
   }
 );
 
@@ -6091,6 +6122,14 @@ export const addMembersToConversation = spacetimedb.reducer(
       .some(m => m.conversationId === conversationId);
     if (!callerMembership) unauthorized('Not a conversation member');
 
+    // Only group channels take new members, and only on an owner's or
+    // manager's invitation — nobody joins a channel on their own.
+    const target = [...ctx.db.chatConversation.iter()].find(c => c.id.toString() === conversationId);
+    if (!target) throw new SenderError('Conversation not found');
+    if (target.type !== 'group') throw new SenderError('Only channels take new members');
+    const inviter = findActiveMember(ctx, target.organizationId);
+    if (!isChannelManagerRole(inviter.role)) unauthorized('Only an owner or manager can add members');
+
     // Everyone added has to be an active member of the conversation's own
     // organization. `userIds` is a caller-supplied list of identity hexes and
     // was inserted unchecked, so an outsider — including someone from another
@@ -6146,7 +6185,9 @@ export const deleteMessage = spacetimedb.reducer(
       unauthorized('Can only delete your own messages');
     }
 
-    ctx.db.chatMessage.delete(message);
+    // Also drops its reactions and side row; a thread parent with replies
+    // stays as a tombstone (./chat/reducers.ts).
+    deleteChatMessageCascade(ctx, message);
   }
 );
 
@@ -9944,6 +9985,14 @@ export const {
 // PAGE PRESENCE REDUCERS (./presence/reducers.ts)
 // ═══════════════════════════════════════════════════════════════════════════════
 export const { upsertPagePresence, removePagePresence } = definePagePresenceReducers(spacetimedb, { t, SenderError });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHANNEL REDUCERS (./chat/reducers.ts)
+// ═══════════════════════════════════════════════════════════════════════════════
+export const {
+  toggleChatReaction, editChatMessage, sendThreadReply, setChatMessagePinned, setChannelTopic,
+  markChatRead, setChatMuted, setChatStarred, leaveConversation, removeConversationMember,
+} = defineChatReducers(spacetimedb, { t, SenderError, Identity, findById });
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // BUG REPORT REDUCERS

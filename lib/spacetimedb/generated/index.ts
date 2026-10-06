@@ -135,6 +135,7 @@ import DisconnectCloverReducer from "./disconnect_clover_reducer";
 import DisconnectScheduleIntegrationReducer from "./disconnect_schedule_integration_reducer";
 import DismissNotificationReducer from "./dismiss_notification_reducer";
 import DuplicateDocumentReducer from "./duplicate_document_reducer";
+import EditChatMessageReducer from "./edit_chat_message_reducer";
 import EditDocumentCommentReducer from "./edit_document_comment_reducer";
 import EmptyDriveTrashReducer from "./empty_drive_trash_reducer";
 import FinalizeAiJobReducer from "./finalize_ai_job_reducer";
@@ -143,12 +144,14 @@ import GradeTrainingObjectiveReducer from "./grade_training_objective_reducer";
 import GrantDocumentAccessReducer from "./grant_document_access_reducer";
 import HeartbeatSheetLeaseReducer from "./heartbeat_sheet_lease_reducer";
 import InviteToOrgReducer from "./invite_to_org_reducer";
+import LeaveConversationReducer from "./leave_conversation_reducer";
 import LeaveOrgReducer from "./leave_org_reducer";
 import LogSupplierMessageReducer from "./log_supplier_message_reducer";
 import LoginWithPasswordReducer from "./login_with_password_reducer";
 import ManagerRecordPunchReducer from "./manager_record_punch_reducer";
 import ManagerSetPunchWindowReducer from "./manager_set_punch_window_reducer";
 import MarkAllNotificationsReadReducer from "./mark_all_notifications_read_reducer";
+import MarkChatReadReducer from "./mark_chat_read_reducer";
 import MarkNotificationReadReducer from "./mark_notification_read_reducer";
 import MigrateMoneyV1Reducer from "./migrate_money_v_1_reducer";
 import MigrateOwnerPermissionsV1Reducer from "./migrate_owner_permissions_v_1_reducer";
@@ -174,6 +177,7 @@ import RegisterCustomerReducer from "./register_customer_reducer";
 import RegisterDeviceReducer from "./register_device_reducer";
 import RegisterServiceIdentityReducer from "./register_service_identity_reducer";
 import ReleaseSheetLeaseReducer from "./release_sheet_lease_reducer";
+import RemoveConversationMemberReducer from "./remove_conversation_member_reducer";
 import RemoveDocumentPresenceReducer from "./remove_document_presence_reducer";
 import RemovePagePresenceReducer from "./remove_page_presence_reducer";
 import RemoveStoreDeviceReducer from "./remove_store_device_reducer";
@@ -199,6 +203,7 @@ import SavePushSubscriptionReducer from "./save_push_subscription_reducer";
 import SaveSheetVersionReducer from "./save_sheet_version_reducer";
 import SendMerchivaMessageReducer from "./send_merchiva_message_reducer";
 import SendMessageReducer from "./send_message_reducer";
+import SendThreadReplyReducer from "./send_thread_reply_reducer";
 import ServiceAckDriveBlobGcReducer from "./service_ack_drive_blob_gc_reducer";
 import ServiceCommitDriveUploadReducer from "./service_commit_drive_upload_reducer";
 import ServiceCreateNotificationReducer from "./service_create_notification_reducer";
@@ -219,6 +224,10 @@ import ServiceSetScheduleIntegrationReducer from "./service_set_schedule_integra
 import SetAiUsageQuotaReducer from "./set_ai_usage_quota_reducer";
 import SetAssistantConfigReducer from "./set_assistant_config_reducer";
 import SetBetaFeaturesReducer from "./set_beta_features_reducer";
+import SetChannelTopicReducer from "./set_channel_topic_reducer";
+import SetChatMessagePinnedReducer from "./set_chat_message_pinned_reducer";
+import SetChatMutedReducer from "./set_chat_muted_reducer";
+import SetChatStarredReducer from "./set_chat_starred_reducer";
 import SetConversationMerchivaReducer from "./set_conversation_merchiva_reducer";
 import SetDeviceAppsReducer from "./set_device_apps_reducer";
 import SetDocumentFolderReducer from "./set_document_folder_reducer";
@@ -230,6 +239,7 @@ import SetScheduleIntegrationReducer from "./set_schedule_integration_reducer";
 import SetSupplierInboundPrefixReducer from "./set_supplier_inbound_prefix_reducer";
 import SetUserAdminReducer from "./set_user_admin_reducer";
 import SkipRoleTaskReducer from "./skip_role_task_reducer";
+import ToggleChatReactionReducer from "./toggle_chat_reaction_reducer";
 import ToggleDocumentStarReducer from "./toggle_document_star_reducer";
 import ToggleDriveStarReducer from "./toggle_drive_star_reducer";
 import ToggleTodoReducer from "./toggle_todo_reducer";
@@ -284,10 +294,14 @@ import AiUsageRow from "./ai_usage_table";
 import AiUsageQuotaRow from "./ai_usage_quota_table";
 import BlogPostRow from "./blog_post_table";
 import BugReportRow from "./bug_report_table";
+import ChatChannelInfoRow from "./chat_channel_info_table";
 import ChatConversationRow from "./chat_conversation_table";
 import ChatMemberRow from "./chat_member_table";
+import ChatMemberStateRow from "./chat_member_state_table";
 import ChatMembershipIndexRow from "./chat_membership_index_table";
 import ChatMessageRow from "./chat_message_table";
+import ChatMessageExtRow from "./chat_message_ext_table";
+import ChatReactionRow from "./chat_reaction_table";
 import CouponRow from "./coupon_table";
 import DailyBriefingRow from "./daily_briefing_table";
 import DesignRow from "./design_table";
@@ -457,6 +471,17 @@ const tablesSchema = __schema({
       { name: 'bug_report_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, BugReportRow),
+  chatChannelInfo: __table({
+    name: 'chat_channel_info',
+    indexes: [
+      { accessor: 'conversationId', name: 'chat_channel_info_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_channel_info_conversation_id_key', constraint: 'unique', columns: ['conversationId'] },
+    ],
+  }, ChatChannelInfoRow),
   chatConversation: __table({
     name: 'chat_conversation',
     indexes: [
@@ -488,6 +513,23 @@ const tablesSchema = __schema({
       { name: 'chat_member_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ChatMemberRow),
+  chatMemberState: __table({
+    name: 'chat_member_state',
+    indexes: [
+      { accessor: 'byConversationId', name: 'chat_member_state_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+      { accessor: 'id', name: 'chat_member_state_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byUserId', name: 'chat_member_state_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_member_state_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChatMemberStateRow),
   chatMembershipIndex: __table({
     name: 'chat_membership_index',
     indexes: [
@@ -519,6 +561,40 @@ const tablesSchema = __schema({
       { name: 'chat_message_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ChatMessageRow),
+  chatMessageExt: __table({
+    name: 'chat_message_ext',
+    indexes: [
+      { accessor: 'byConversationId', name: 'chat_message_ext_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+      { accessor: 'messageId', name: 'chat_message_ext_message_id_idx_btree', algorithm: 'btree', columns: [
+        'messageId',
+      ] },
+      { accessor: 'byThreadParentId', name: 'chat_message_ext_thread_parent_id_idx_btree', algorithm: 'btree', columns: [
+        'threadParentId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_message_ext_message_id_key', constraint: 'unique', columns: ['messageId'] },
+    ],
+  }, ChatMessageExtRow),
+  chatReaction: __table({
+    name: 'chat_reaction',
+    indexes: [
+      { accessor: 'byConversationId', name: 'chat_reaction_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+      { accessor: 'id', name: 'chat_reaction_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byMessageId', name: 'chat_reaction_message_id_idx_btree', algorithm: 'btree', columns: [
+        'messageId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_reaction_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChatReactionRow),
   coupon: __table({
     name: 'coupon',
     indexes: [
@@ -1792,6 +1868,7 @@ const reducersSchema = __reducers(
   __reducerSchema("disconnect_schedule_integration", DisconnectScheduleIntegrationReducer),
   __reducerSchema("dismiss_notification", DismissNotificationReducer),
   __reducerSchema("duplicate_document", DuplicateDocumentReducer),
+  __reducerSchema("edit_chat_message", EditChatMessageReducer),
   __reducerSchema("edit_document_comment", EditDocumentCommentReducer),
   __reducerSchema("empty_drive_trash", EmptyDriveTrashReducer),
   __reducerSchema("finalize_ai_job", FinalizeAiJobReducer),
@@ -1800,12 +1877,14 @@ const reducersSchema = __reducers(
   __reducerSchema("grant_document_access", GrantDocumentAccessReducer),
   __reducerSchema("heartbeat_sheet_lease", HeartbeatSheetLeaseReducer),
   __reducerSchema("invite_to_org", InviteToOrgReducer),
+  __reducerSchema("leave_conversation", LeaveConversationReducer),
   __reducerSchema("leave_org", LeaveOrgReducer),
   __reducerSchema("log_supplier_message", LogSupplierMessageReducer),
   __reducerSchema("login_with_password", LoginWithPasswordReducer),
   __reducerSchema("manager_record_punch", ManagerRecordPunchReducer),
   __reducerSchema("manager_set_punch_window", ManagerSetPunchWindowReducer),
   __reducerSchema("mark_all_notifications_read", MarkAllNotificationsReadReducer),
+  __reducerSchema("mark_chat_read", MarkChatReadReducer),
   __reducerSchema("mark_notification_read", MarkNotificationReadReducer),
   __reducerSchema("migrate_money_v_1", MigrateMoneyV1Reducer),
   __reducerSchema("migrate_owner_permissions_v_1", MigrateOwnerPermissionsV1Reducer),
@@ -1831,6 +1910,7 @@ const reducersSchema = __reducers(
   __reducerSchema("register_device", RegisterDeviceReducer),
   __reducerSchema("register_service_identity", RegisterServiceIdentityReducer),
   __reducerSchema("release_sheet_lease", ReleaseSheetLeaseReducer),
+  __reducerSchema("remove_conversation_member", RemoveConversationMemberReducer),
   __reducerSchema("remove_document_presence", RemoveDocumentPresenceReducer),
   __reducerSchema("remove_page_presence", RemovePagePresenceReducer),
   __reducerSchema("remove_store_device", RemoveStoreDeviceReducer),
@@ -1856,6 +1936,7 @@ const reducersSchema = __reducers(
   __reducerSchema("save_sheet_version", SaveSheetVersionReducer),
   __reducerSchema("send_merchiva_message", SendMerchivaMessageReducer),
   __reducerSchema("send_message", SendMessageReducer),
+  __reducerSchema("send_thread_reply", SendThreadReplyReducer),
   __reducerSchema("service_ack_drive_blob_gc", ServiceAckDriveBlobGcReducer),
   __reducerSchema("service_commit_drive_upload", ServiceCommitDriveUploadReducer),
   __reducerSchema("service_create_notification", ServiceCreateNotificationReducer),
@@ -1876,6 +1957,10 @@ const reducersSchema = __reducers(
   __reducerSchema("set_ai_usage_quota", SetAiUsageQuotaReducer),
   __reducerSchema("set_assistant_config", SetAssistantConfigReducer),
   __reducerSchema("set_beta_features", SetBetaFeaturesReducer),
+  __reducerSchema("set_channel_topic", SetChannelTopicReducer),
+  __reducerSchema("set_chat_message_pinned", SetChatMessagePinnedReducer),
+  __reducerSchema("set_chat_muted", SetChatMutedReducer),
+  __reducerSchema("set_chat_starred", SetChatStarredReducer),
   __reducerSchema("set_conversation_merchiva", SetConversationMerchivaReducer),
   __reducerSchema("set_device_apps", SetDeviceAppsReducer),
   __reducerSchema("set_document_folder", SetDocumentFolderReducer),
@@ -1887,6 +1972,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_supplier_inbound_prefix", SetSupplierInboundPrefixReducer),
   __reducerSchema("set_user_admin", SetUserAdminReducer),
   __reducerSchema("skip_role_task", SkipRoleTaskReducer),
+  __reducerSchema("toggle_chat_reaction", ToggleChatReactionReducer),
   __reducerSchema("toggle_document_star", ToggleDocumentStarReducer),
   __reducerSchema("toggle_drive_star", ToggleDriveStarReducer),
   __reducerSchema("toggle_todo", ToggleTodoReducer),

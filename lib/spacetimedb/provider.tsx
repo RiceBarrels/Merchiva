@@ -186,6 +186,21 @@ function presenceSubscriptions(orgId: string): string[] {
   return [`SELECT * FROM page_presence WHERE organization_id = '${orgId}'`];
 }
 
+/**
+ * Channel side tables (spacetimedb/src/chat/tables.ts), on their own for the
+ * same reason as bug reports: a module without them loses only reactions,
+ * threads, pins, topics and read state, never the org batch. RLS narrows each
+ * to conversations the user is in (chat_member_state: the user's own rows).
+ */
+function chatSideSubscriptions(): string[] {
+  return [
+    "SELECT * FROM chat_reaction",
+    "SELECT * FROM chat_message_ext",
+    "SELECT * FROM chat_channel_info",
+    "SELECT * FROM chat_member_state",
+  ];
+}
+
 interface SpacetimeProviderProps {
   children: ReactNode;
 }
@@ -404,6 +419,16 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
               .subscribe(presenceSubscriptions(bootOrgId));
           } catch (err) {
             console.warn("[SpacetimeDB] Page presence subscription failed:", err);
+          }
+          try {
+            conn
+              .subscriptionBuilder()
+              .onError(() =>
+                console.warn("[SpacetimeDB] chat side-table subscription failed — is the module published?"),
+              )
+              .subscribe(chatSideSubscriptions());
+          } catch (err) {
+            console.warn("[SpacetimeDB] Chat side-table subscription failed:", err);
           }
         }
       })

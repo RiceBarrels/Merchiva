@@ -104,6 +104,15 @@ export const BugReport = __t.object("BugReport", {
 });
 export type BugReport = __Infer<typeof BugReport>;
 
+export const ChatChannelInfo = __t.object("ChatChannelInfo", {
+  conversationId: __t.string(),
+  organizationId: __t.string(),
+  topic: __t.string(),
+  updatedBy: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type ChatChannelInfo = __Infer<typeof ChatChannelInfo>;
+
 export const ChatConversation = __t.object("ChatConversation", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -123,6 +132,16 @@ export const ChatMember = __t.object("ChatMember", {
   joinedAt: __t.timestamp(),
 });
 export type ChatMember = __Infer<typeof ChatMember>;
+
+export const ChatMemberState = __t.object("ChatMemberState", {
+  id: __t.string(),
+  conversationId: __t.string(),
+  userId: __t.identity(),
+  lastReadAt: __t.timestamp(),
+  muted: __t.bool(),
+  starred: __t.bool(),
+});
+export type ChatMemberState = __Infer<typeof ChatMemberState>;
 
 export const ChatMembershipIndex = __t.object("ChatMembershipIndex", {
   chatMemberId: __t.string(),
@@ -145,6 +164,27 @@ export const ChatMessage = __t.object("ChatMessage", {
   voiceTranscript: __t.option(__t.string()),
 });
 export type ChatMessage = __Infer<typeof ChatMessage>;
+
+export const ChatMessageExt = __t.object("ChatMessageExt", {
+  messageId: __t.string(),
+  conversationId: __t.string(),
+  threadParentId: __t.string(),
+  editedAt: __t.option(__t.timestamp()),
+  pinnedBy: __t.string(),
+  pinnedAt: __t.option(__t.timestamp()),
+  deletedAt: __t.option(__t.timestamp()),
+});
+export type ChatMessageExt = __Infer<typeof ChatMessageExt>;
+
+export const ChatReaction = __t.object("ChatReaction", {
+  id: __t.uuid(),
+  conversationId: __t.string(),
+  messageId: __t.string(),
+  userId: __t.identity(),
+  emoji: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type ChatReaction = __Infer<typeof ChatReaction>;
 
 export const Coupon = __t.object("Coupon", {
   id: __t.uuid(),
