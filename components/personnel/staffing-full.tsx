@@ -1735,7 +1735,6 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           ).sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99")),
         }));
       } else {
-        const taskId = uuid();
         await addRoleTask({
           roleId: selectedRole.id,
           organizationId: organizationId ?? null,
@@ -1747,11 +1746,15 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           requiresEvidence: taskForm.requiresEvidence,
           notifyChats: taskForm.notifyChats,
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const newTask: any = { id: taskId, roleId: selectedRole.id, title: taskForm.title, description: taskForm.description, startTime: taskForm.hasTime ? taskForm.startTime : null, endTime: taskForm.hasTime ? taskForm.endTime : null, sortOrder: existing.length, requiresEvidence: taskForm.requiresEvidence, notifyChats: taskForm.notifyChats };
+        // The module assigns the id, so re-read the role's tasks rather than
+        // caching a client-made id: editing or deleting it would fail with
+        // "Role task not found". The reducer promise resolves after the
+        // client cache has the new row.
+        const fresh = await getRoleTasks(selectedRole.id);
+        setCache(`role_tasks_${selectedRole.id}`, fresh);
         setRoleTasksCache((prev) => ({
           ...prev,
-          [selectedRole.id]: [...existing, newTask].sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99")),
+          [selectedRole.id]: fresh.sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99")),
         }));
       }
       setTaskDialog({ open: false, task: null });
