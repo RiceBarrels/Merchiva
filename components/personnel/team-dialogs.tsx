@@ -12,7 +12,6 @@ import { defaultPermissions, getInvitations } from "@/lib/db/team";
 import { useOrgInvitations, useOrgMembers } from "@/lib/spacetimedb/hooks";
 import { fmt } from "@/components/personnel/team/data";
 import { usePermissions } from "@/lib/context/permissions";
-import { useAuth } from "@/lib/auth/context";
 import type { Permissions } from "@/lib/types";
 import { useT } from "@/lib/i18n/context";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { timestampToMsOrNull } from "@/lib/spacetimedb/timestamp";
 import { cn } from "@/lib/utils";
+import { sendInviteEmail } from "@/lib/team/invite-email";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -166,10 +166,7 @@ export function InviteMemberDialog({
   orgId: string;
 }) {
   const t = useT();
-  const { currentOrg, isOwner } = usePermissions();
-  const { user } = useAuth();
-  const orgName = currentOrg?.name ?? null;
-  const userEmail = user?.email ?? null;
+  const { isOwner } = usePermissions();
   // Generated rows are structurally compatible with the *RowLike shapes.
   const [rawMembers] = useOrgMembers();
   const [rawInvitations] = useOrgInvitations();
@@ -216,23 +213,10 @@ export function InviteMemberDialog({
       }
 
       if (token) {
-        try {
-          const res = await fetch("/api/team/send-invite-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: v,
-              token,
-              orgName: orgName || "your team",
-              inviterEmail: userEmail || "a teammate",
-              role,
-            }),
-          });
-          if (res.ok) toast.success(t("personnel.team.toastInviteSent"));
-          else toast.warning(t("personnel.team.toastInviteEmailFailed"));
-        } catch {
-          toast.warning(t("personnel.team.toastInviteEmailFailed"));
-        }
+        // The server reads the address, role and store from the invitation itself.
+        const sent = await sendInviteEmail(token);
+        if (sent.ok) toast.success(t("personnel.team.toastInviteSent"));
+        else toast.warning(t("personnel.team.toastInviteEmailFailed"));
       } else {
         // The invitation was created; only the email lookup timed out.
         toast.warning(t("personnel.team.toastInviteEmailFailed"));
@@ -422,29 +406,9 @@ export function EditMemberDialog({
 
 // ── Helpers for callers ─────────────────────────────────────────────────────
 
-export async function resendInviteEmail(args: {
-  email: string;
-  token: string;
-  role: string;
-  orgName: string | null;
-  inviterEmail: string | null;
-}): Promise<boolean> {
-  try {
-    const res = await fetch("/api/team/send-invite-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: args.email,
-        token: args.token,
-        orgName: args.orgName || "your team",
-        inviterEmail: args.inviterEmail || "a teammate",
-        role: args.role,
-      }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+/** Resends an invitation's email. The server reads everything but the token from the invitation itself. */
+export async function resendInviteEmail(args: { token: string }): Promise<boolean> {
+  return (await sendInviteEmail(args.token)).ok;
 }
 
 export async function cancelPendingInvite(id: string): Promise<boolean> {

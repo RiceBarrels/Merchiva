@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { workos, clientId } from "@/lib/auth/workos";
+import { safeNextPath } from "@/lib/auth/safe-next";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
       const parsed = JSON.parse(
         Buffer.from(state, "base64url").toString("utf-8"),
       );
-      if (parsed.redirectTo) redirectTo = parsed.redirectTo;
+      redirectTo = safeNextPath(parsed.redirectTo);
       if (
         parsed.client === "desktop" ||
         parsed.client === "electron" ||

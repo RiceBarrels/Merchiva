@@ -35,7 +35,7 @@ const ACTION_META: Record<string, { icon: ReactNode; fields: string[]; risk?: "l
   approveShiftTrade:   { icon: <ArrowLeftRight className="h-3 w-3" />, fields: ["tradeId", "approved"] },
   // Staff
   addStaffMember:      { icon: <UserPlus className="h-3 w-3" />, fields: ["name", "role", "hourlyRate"] },
-  inviteTeamMember:    { icon: <Mail className="h-3 w-3" />, fields: ["email", "role", "orgName"] },
+  inviteTeamMember:    { icon: <Mail className="h-3 w-3" />, fields: ["email", "role"] },
   updateStaffMember:   { icon: <Pencil className="h-3 w-3" />, fields: ["staffMemberId", "name", "role", "hourlyRate"] },
   deleteStaffMember:   { icon: <UserMinus className="h-3 w-3" />, fields: ["staffMemberId"], risk: "high" },
   // The code is the member's clock-in PIN: shown masked (MASKED below).

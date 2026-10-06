@@ -53,7 +53,9 @@ describe("the main prompt, tools on", () => {
     const rules = rulesOf(text);
     expect(rules).not.toContain("LIVE STORE DATA");
     expect(rules).toContain("existing team members — viewTeam or the names proposeSchedule returns");
-    expect(rules).toContain("orgName = the STORE OVERVIEW's Store line");
+    // The invite email reads the store and inviter from the database as the caller; the model passes neither.
+    expect(rules).not.toContain("orgName");
+    expect(rules).toContain("The email names the store and the inviter by itself.");
     expect(text).not.toContain("LIVE STORE DATA:\n");
   });
 });

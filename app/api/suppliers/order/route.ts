@@ -7,12 +7,58 @@
 // connection (see lib/spacetimedb/actions.ts → recordSupplierOrder). We moved
 // the reducer write off this route because the server-side HTTP RPC reused a
 // stale localStorage token and failed with "ExpiredSignature" on long sessions.
+//
+// Who may send, and to whom: this route used to need no sign-in and took the
+// recipient, supplier, store name and Reply-To from the body — anyone could
+// mail any address from our sender, and naming a real store id handed back that
+// store's private supplier inbox as Reply-To. Now the caller's own token
+// (Authorization: Bearer) must belong to an owner or manager of the store, as
+// recordSupplierOrder requires, and the supplier's address, names and language
+// and the store's name are read from the database AS the caller (RLS-scoped
+// /sql). Only the order itself (items, notes, amounts) comes from the body,
+// shortened, and a store sends at most ORG_SENDS_PER_HOUR per hour from one
+// server instance (best-effort, in memory).
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { handleOptions, jsonWithCors } from "@/lib/api-cors";
+import { requestToken, verifyActiveMember } from "@/lib/auth/verify-member";
 import { sendSupplierPOEmail, type SupplierPOItem } from "@/lib/email/resend";
 import { getServiceConn, getSupplierInboundAddressForOrg } from "@/lib/spacetimedb/service-client";
+import { spacetimeSql } from "@/lib/spacetimedb/sql";
+import { firstRow, SQL_UUID_RE, sqlOptionString } from "@/lib/spacetimedb/sql-values";
 
 export const runtime = "nodejs";
+export const OPTIONS = handleOptions;
+
+const MAX_ITEMS = 100;
+const MAX_ITEM_TEXT = 120;
+const MAX_NOTES = 1000;
+const ORG_SENDS_PER_HOUR = 30;
+const HOUR_MS = 60 * 60 * 1000;
+const sendsByOrg = new Map<string, number[]>();
+
+/** Records a send for `organizationId`; false when it already sent ORG_SENDS_PER_HOUR in the last hour. */
+function takeOrgSend(organizationId: string, now: number): boolean {
+  const recent = (sendsByOrg.get(organizationId) ?? []).filter((at) => now - at < HOUR_MS);
+  if (recent.length >= ORG_SENDS_PER_HOUR) {
+    sendsByOrg.set(organizationId, recent);
+    return false;
+  }
+  recent.push(now);
+  sendsByOrg.set(organizationId, recent);
+  return true;
+}
+
+const clip = (v: unknown, max: number): string => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+
+/** Text fields of an item, shortened; numbers pass through. */
+function clipItem(item: SupplierPOItem): SupplierPOItem {
+  const out: SupplierPOItem = { ...item };
+  for (const key of ["name", "itemName", "productName", "inventoryItemName", "item", "unit", "eachUnit"] as const) {
+    if (typeof out[key] === "string") (out as unknown as Record<string, unknown>)[key] = clip(out[key], MAX_ITEM_TEXT);
+  }
+  return out;
+}
 
 interface OrderBody {
   organizationId: string;
@@ -86,47 +132,86 @@ function summarize(items: SupplierPOItem[], total: number, currency: string, lan
 }
 
 export async function POST(req: NextRequest) {
+  const caller = requestToken(undefined, req.headers.get("authorization"));
+  if (!caller) return jsonWithCors(req, { error: "Sign in required" }, { status: 401 });
+
   let body: OrderBody;
   try {
     body = (await req.json()) as OrderBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return jsonWithCors(req, { error: "Invalid JSON" }, { status: 400 });
   }
 
-  const {
-    organizationId,
-    supplierId,
-    supplierName,
-    supplierEmail,
-    contactName,
-    orgName,
-    items,
-    notes,
-    replyTo,
-    supplierLanguage,
-  } = body;
-
-  if (!organizationId || !supplierId || !Array.isArray(items) || items.length === 0) {
-    return NextResponse.json(
-      { error: "Missing organizationId, supplierId, or items" },
-      { status: 400 },
-    );
+  const { organizationId, supplierId, supplierLanguage } = body;
+  if (!organizationId || !supplierId || !Array.isArray(body.items) || body.items.length === 0) {
+    return jsonWithCors(req, { error: "Missing organizationId, supplierId, or items" }, { status: 400 });
   }
+  // Both are spliced into SQL text below: uuids only.
+  if (!SQL_UUID_RE.test(organizationId) || !SQL_UUID_RE.test(supplierId)) {
+    return jsonWithCors(req, { error: "Invalid organizationId or supplierId" }, { status: 400 });
+  }
+  if (body.items.length > MAX_ITEMS) {
+    return jsonWithCors(req, { error: `At most ${MAX_ITEMS} items per order` }, { status: 400 });
+  }
+  const items = body.items.map(clipItem);
   if (items.some((item) => !rawItemName(item))) {
-    return NextResponse.json({ error: "Every supplier order item must include a name" }, { status: 400 });
+    return jsonWithCors(req, { error: "Every supplier order item must include a name" }, { status: 400 });
+  }
+  const notes = body.notes ? clip(body.notes, MAX_NOTES) : null;
+
+  // The caller must manage this store (recordSupplierOrder refuses staff too).
+  const member = await verifyActiveMember(caller, organizationId);
+  if (!member.ok) return jsonWithCors(req, { error: member.error }, { status: member.status });
+  if (member.access.role !== "owner" && member.access.role !== "manager") {
+    return jsonWithCors(req, { error: "Owner or manager required" }, { status: 403 });
+  }
+
+  // Recipient, names and language from the store's own supplier row, read as the caller.
+  let supplierName = "";
+  let supplierEmail: string | null = null;
+  let contactName: string | null = null;
+  let storedLanguage: string | null = null;
+  let orgName = "";
+  let callerEmail: string | null = null;
+  try {
+    const [supplierRow, orgRow, meRow] = await Promise.all([
+      spacetimeSql(
+        `SELECT name, email, contact_name, language FROM supplier WHERE id = '${supplierId}' AND organization_id = '${organizationId}'`,
+        { token: caller },
+      ).then(firstRow),
+      spacetimeSql(`SELECT name FROM organization WHERE org_id_text = '${organizationId}'`, { token: caller }).then(firstRow),
+      spacetimeSql(
+        `SELECT email FROM org_member WHERE organization_id = '${organizationId}' AND user_id = :sender AND status = 'active'`,
+        { token: caller },
+      ).then(firstRow),
+    ]);
+    if (!supplierRow) return jsonWithCors(req, { error: "Supplier not found" }, { status: 404 });
+    supplierName = typeof supplierRow[0] === "string" ? supplierRow[0] : "";
+    supplierEmail = sqlOptionString(supplierRow[1]);
+    contactName = sqlOptionString(supplierRow[2]);
+    storedLanguage = sqlOptionString(supplierRow[3]);
+    orgName = typeof orgRow?.[0] === "string" ? orgRow[0] : "";
+    callerEmail = typeof meRow?.[0] === "string" && meRow[0].trim() ? meRow[0].trim() : null;
+  } catch (err) {
+    if (err instanceof Error && /SQL failed \((401|403)\)/.test(err.message)) {
+      return jsonWithCors(req, { error: "Invalid or expired token" }, { status: 401 });
+    }
+    console.error("[suppliers/order] supplier lookup failed:", err);
+    return jsonWithCors(req, { error: "Supplier lookup unavailable" }, { status: 503 });
   }
 
   const currency = body.currency || "$";
   const subtotal = Number(body.subtotal ?? 0);
   const tax = Number(body.tax ?? 0);
   const total = Number(body.total ?? subtotal + tax);
-  const language = normalizeSupplierLanguage(supplierLanguage);
+  const language = normalizeSupplierLanguage(storedLanguage ?? supplierLanguage);
   const summary = summarize(items, total, currency, language);
 
   // Reply-to: route supplier replies to the store's fixed inbound inbox so
   // Mr. Merchiva can carry on the conversation. Otherwise fall back to the
-  // manager's address.
-  let effectiveReplyTo = replyTo ?? null;
+  // caller's own address, from their membership row. Looked up only now, after
+  // the caller proved they manage this store.
+  let effectiveReplyTo = callerEmail;
   try {
     const conn = await getServiceConn();
     effectiveReplyTo = (await getSupplierInboundAddressForOrg(conn, organizationId)) ?? effectiveReplyTo;
@@ -138,7 +223,9 @@ export async function POST(req: NextRequest) {
   //    just flips `emailed` to false so the order is saved as a draft.
   let emailed = false;
   let emailError: string | null = null;
-  if (supplierEmail) {
+  if (supplierEmail && !takeOrgSend(organizationId, Date.now())) {
+    emailError = "Too many supplier emails from this store; try again later";
+  } else if (supplierEmail) {
     try {
       await sendSupplierPOEmail({
         to: supplierEmail,
@@ -148,7 +235,7 @@ export async function POST(req: NextRequest) {
         items,
         total,
         currency,
-        notes: notes ?? null,
+        notes,
         replyTo: effectiveReplyTo,
         language,
       });
@@ -164,7 +251,7 @@ export async function POST(req: NextRequest) {
   //    still enforced there by the reducer's ctx.sender). When !emailed the
   //    order is saved as a draft and the reducer escalates to managers — nothing
   //    is silently dropped.
-  return NextResponse.json({
+  return jsonWithCors(req, {
     ok: true,
     emailed,
     emailError,

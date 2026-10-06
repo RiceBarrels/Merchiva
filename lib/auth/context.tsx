@@ -12,6 +12,7 @@ import {
 import type { ReactNode } from "react";
 import { apiUrl } from "@/lib/api-client";
 import { SHELL_SIGN_OUT_EVENT } from "@/lib/browser-shell/shell-dom";
+import { registerAuthTokenGetter } from "@/lib/auth/token-bridge";
 
 export interface AuthUser {
   id: string;
@@ -291,6 +292,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     return refreshingRef.current;
   }, [doRefresh]);
+
+  // Non-React callers (lib/auth/token-bridge.ts) get tokens through the same refreshing getter.
+  useEffect(() => registerAuthTokenGetter(getToken), [getToken]);
 
   // Keep the WorkOS session alive for as long as the app is installed/open.
   // Access tokens live ~5 min, so any getToken() after that rotates the

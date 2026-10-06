@@ -275,18 +275,8 @@ register({
       description: "Role to invite as: 'staff' (default), 'manager', or 'owner'. Only owners can invite managers.",
       enum: ["staff", "manager", "owner"],
     },
-    orgName: {
-      type: "string",
-      required: false,
-      description:
-        "Display name of the organization, used in the invite email: the STORE OVERVIEW's Store line; without tools, LIVE STORE DATA storeName.",
-    },
-    inviterEmail: {
-      type: "string",
-      required: false,
-      description:
-        "Email of the person sending the invite (you, the current user). The email greeting uses this — read it from the conversation if known; otherwise the placeholder 'a teammate' is used.",
-    },
+    // No store name or inviter: /api/team/send-invite-email reads both from the
+    // database as the caller, so the email cannot claim to be from anyone else.
   },
   requiredPermission: { section: "team", action: "edit" },
   riskLevel: "medium",
@@ -332,17 +322,10 @@ register({
       );
     }
 
-    const orgName = String(p.orgName ?? "your team");
-    const inviterEmail = String(p.inviterEmail ?? "a teammate");
-    const res = await fetch("/api/team/send-invite-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: email, token, orgName, inviterEmail, role }),
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new Error(`Email send failed: ${detail.slice(0, 200)}`);
-    }
+    // The server reads the address, role, store and inviter from the invitation itself.
+    const { sendInviteEmail } = await import("@/lib/team/invite-email");
+    const sent = await sendInviteEmail(token);
+    if (!sent.ok) throw new Error(`Email send failed: ${sent.error.slice(0, 200)}`);
   },
 });
 
@@ -1017,17 +1000,6 @@ register({
     // The stored form, for the email route and the purchase_order row.
     const supplierId = storedId(supplier.id);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const org = [...(conn.db as any).organization.iter()].find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (o: any) => o.id?.toString?.() === organizationId,
-    );
-    const meHex = conn.identity?.toHexString?.();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const me = [...(conn.db as any).user.iter()].find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (u: any) => u.identity?.toHexString?.() === meHex,
-    );
 
     const items = Array.isArray(p.items)
       ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1064,23 +1036,24 @@ register({
     // 1) Server route sends the PO email (server-only Resend) and returns the
     //    summary + whether it actually emailed.
     const supplierName = String(supplier.name ?? "");
-    const res = await fetch("/api/suppliers/order", {
+    // The route reads the supplier's address and names, the store name and the
+    // Reply-To from the database as the caller; only the order itself goes over.
+    const { currentAuthToken } = await import("@/lib/auth/token-bridge");
+    const { apiUrl } = await import("@/lib/api-client");
+    const authToken = await currentAuthToken();
+    if (!authToken) throw new Error("Sign in again to send the order.");
+    const res = await fetch(apiUrl("/api/suppliers/order"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
       body: JSON.stringify({
         organizationId,
         supplierId,
-        supplierName,
-        supplierEmail: supplier.email ?? null,
-        contactName: supplier.contactName ?? null,
-        orgName: org?.name ?? null,
         items,
         supplierLanguage: normalizeSupplierLanguage(p.supplierLanguage ?? supplier.language),
         subtotal,
         tax,
         total,
         notes: p.notes ? String(p.notes) : null,
-        replyTo: me?.email ?? null,
       }),
     });
     if (!res.ok) {

@@ -309,7 +309,7 @@ RULES:
 - Be concise: use bullet points, mono numbers, short sentences
 - If data is missing, say so honestly
 - IMPORTANT: When scheduling shifts, you can ONLY assign shifts to existing team members — ${sources.roster}. The staffName in addShift MUST exactly match a name there. If the user asks to schedule a shift for someone not on the team, say so and show the current team roster so they can pick a valid name or add the person first. memberId is optional — the system resolves it from staffName.
-- TEAM MEMBERSHIP: To add a person to the team, prefer **inviteTeamMember(email, role, orgName?, inviterEmail?)** — this sends an email invite with a sign-up link. Use this when the user gives an email address ("invite alice@example.com as a manager"). Only fall back to **addStaffMember(name, role, hourlyRate?)** when you only have a name (e.g. for placeholders / contractors who won't log in). For inviteTeamMember, always pass orgName = ${sources.storeName} so the email reads naturally.
+- TEAM MEMBERSHIP: To add a person to the team, prefer **inviteTeamMember(email, role)** — this sends an email invite with a sign-up link. Use this when the user gives an email address ("invite alice@example.com as a manager"). Only fall back to **addStaffMember(name, role, hourlyRate?)** when you only have a name (e.g. for placeholders / contractors who won't log in). The email names the store and the inviter by itself.
 - IMPORTANT: When scheduling shifts for multiple days (e.g. "next week Mon-Fri"), output ONE \`\`\`action block PER DAY. Each day needs its own separate addShift action with the specific date. Never combine multiple days into one action.
 - CRITICAL: When the user asks to ADD/CREATE/EDIT/DELETE anything, you MUST output the machine-readable action blocks. NEVER just describe what you would do. Output the actual \`\`\`action blocks.
 - Your earlier replies in this conversation may end with a line "[Cards in this reply — …]": the app wrote it from that reply's action blocks, so you know what you proposed. Never write such a line yourself; write action blocks.
@@ -373,7 +373,7 @@ User: "邀请 alice@example.com 当 manager"
 (has an email — use inviteTeamMember so an actual invite email goes out)
 Correct response:
 \`\`\`action
-{"action":"inviteTeamMember","email":"alice@example.com","role":"manager","orgName":"BJ Cafe"}
+{"action":"inviteTeamMember","email":"alice@example.com","role":"manager"}
 \`\`\`
 邀请已发送，对方会收到一封带注册链接的邮件，7 天内有效。
 

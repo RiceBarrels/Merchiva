@@ -278,12 +278,20 @@ export async function sendTeamInviteEmail({
   phone?: string;
 }) {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  // Escape phone for safe HTML rendering since it comes from user input.
-  const safePhone = phone
-    ? phone.replace(/[<>&"']/g, (c) =>
-        ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c] ?? c),
-      )
-    : null;
+  // Every value is user-chosen (store name, display name, phone): escape them
+  // all for the HTML, and keep the subject on one line.
+  const safePhone = phone ? esc(phone) : null;
+  // Store and display names are free text anyone can set: keep them short, on one line.
+  const short = (s: string) => {
+    const one = s.replace(/\s+/g, " ").trim();
+    return one.length > 60 ? `${one.slice(0, 59)}…` : one;
+  };
+  const safeInviter = esc(short(inviterEmail));
+  const safeOrg = esc(short(orgName));
+  // A fixed word, never the stored text: inviteToOrg accepts any role string.
+  const safeRole = ({ owner: "Owner", manager: "Manager", staff: "Staff" } as Record<string, string>)[role] ?? "Team member";
+  const safeUrl = esc(inviteUrl);
+  const subjectOrg = short(orgName);
   const phoneLine = safePhone
     ? `
         <p style="color: #78716c; font-size: 13px; line-height: 1.5; margin: 16px 0 0;">
@@ -293,7 +301,7 @@ export async function sendTeamInviteEmail({
   const { error } = await resend.emails.send({
     from: FROM,
     to,
-    subject: `You're invited to join ${orgName} on Merchiva`,
+    subject: `You're invited to join ${subjectOrg} on Merchiva`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
         <div style="margin-bottom: 32px;">
@@ -302,9 +310,9 @@ export async function sendTeamInviteEmail({
         </div>
         <h1 style="font-size: 22px; font-weight: 700; color: #1c1917; margin: 0 0 8px;">You're invited!</h1>
         <p style="color: #57534e; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
-          <strong>${inviterEmail}</strong> has invited you to join <strong>${orgName}</strong> on Merchiva as a <strong style="text-transform: capitalize;">${role}</strong>.
+          <strong>${safeInviter}</strong> has invited you to join <strong>${safeOrg}</strong> on Merchiva as a <strong style="text-transform: capitalize;">${safeRole}</strong>.
         </p>
-        <a href="${inviteUrl}" style="display: inline-block; background: #1c1917; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 14px;">
+        <a href="${safeUrl}" style="display: inline-block; background: #1c1917; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 14px;">
           Accept Invitation
         </a>${phoneLine}
         <p style="color: #a8a29e; font-size: 13px; line-height: 1.5; margin: 24px 0 0;">
