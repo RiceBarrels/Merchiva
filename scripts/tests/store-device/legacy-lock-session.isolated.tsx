@@ -1,6 +1,6 @@
 // Isolated fixture for scripts/tests/store-device/legacy-lock-session.test.ts — NOT auto-discovered
 // by `bun test`. The legacy store-machine lock under /manager (components/store-device-lock.tsx)
-// unlocks through `resolveDeviceOperator`, which leaves the tablet's identity a server-side
+// unlocks through `resolveDeviceOperatorAttempt`, which leaves the tablet's identity a server-side
 // `device_operator_session` that lets Drive act for that person for up to 12 h. This checks that
 // the lock deletes it through `clearDeviceOperator()` whenever it waits for a PIN — after the
 // autolock, a log-out, a reload, store mode switched back on, or a PIN answer that came too late —
@@ -103,16 +103,21 @@ mock.module("@/lib/spacetimedb/actions", () => ({
     if (!connected) return Promise.reject(new Error("not connected"));
     return roundTrip(() => setSessions([]));
   },
-  resolveDeviceOperator: (code: string) => {
+}));
+// The rate-limited check answers in a row instead of throwing; a miss also drops the session.
+mock.module("@/lib/spacetimedb/actions/pin", () => ({
+  attemptOperatorPin: async (code: string) => {
     resolveCalls += 1;
-    if (!connected) return Promise.reject(new Error("not connected"));
-    return roundTrip(() => {
+    if (!connected) return { outcome: "error", message: "not connected" };
+    let ok = false;
+    await roundTrip(() => {
       const session = PINS[code];
-      if (!session) throw new Error("PIN_NOT_RECOGNIZED");
-      setSessions([session]);
+      ok = !!session;
+      setSessions(session ? [session] : []);
     });
+    return ok ? { outcome: "ok" } : { outcome: "wrong", lockedUntilMs: null };
   },
-  recordPunch: () => Promise.reject(new Error("NEEDS_EXPLICIT_ACTION")),
+  recordOperatorPunch: () => Promise.reject(new Error("NEEDS_EXPLICIT_ACTION")),
 }));
 mock.module("@/lib/context/permissions", () => ({ usePermissions: () => ({ organizationId: "org-1" }) }));
 mock.module("@/lib/store-machine-mode", () => ({

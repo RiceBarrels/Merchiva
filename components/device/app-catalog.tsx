@@ -12,14 +12,14 @@
 import { useMemo, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import {
-  BookingsIcon, BugIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DocsIcon, DriveIcon, InventoryIcon,
-  NotificationsIcon, PayIcon, ProductsIcon, SalesIcon, ScheduleIcon, StoreSettingsIcon, TasksIcon,
-  TrainingIcon, type AppIcon,
+  BookingsIcon, BugIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DocsIcon, DriveIcon, FormsIcon, InventoryIcon,
+  NotificationsIcon, PayIcon, ProductsIcon, SalesIcon, ScheduleIcon, SheetsIcon, SlidesIcon, StoreSettingsIcon,
+  TasksIcon, TrainingIcon, type AppIcon,
 } from "./app-icons";
 import type { Permissions } from "@/lib/types";
 import { usePermissions } from "@/lib/context/permissions";
 import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
-import { isDeviceAppInstalled } from "@/lib/device-apps";
+import { isDeviceAppInstalled, type EditorKind } from "@/lib/device-apps";
 import { DEFAULT_DEVICE_APPS } from "./apps-grid";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -55,6 +55,10 @@ export interface CatalogApp {
   lite?: ComponentType<LiteAppProps>;
   /** Show the manager page as-is (kiosk-style UIs such as the POS terminal). */
   keepManagerPage?: boolean;
+  /** An editor plugin: no tile of its own; it opens and creates its kind of
+   *  file inside Drive on every surface (Drive's device app hosts its
+   *  editor). Listed in the plugin store. */
+  editor?: EditorKind;
   /** Tile colour on the grid (every app gets its own). */
   color?: TileColor;
   /** Dark tile (legacy; prefer `color`). */
@@ -138,25 +142,32 @@ export const APP_CATALOG: CatalogApp[] = [
     pages: [
       { route: "/manager/reviews", component: lazy(() => import("@/app/manager/reviews/page")) },
     ] },
+  // Forms: checklists, reports and surveys. Owners and managers build them on
+  // /manager/forms (by role); the device apps only fill them in, through our own
+  // lite renderer. Optional: the feature stays dark until the org installs it.
+  { id: "forms", icon: FormsIcon, route: "/manager/forms", color: "teal", permissionKey: "dashboard", surfaces: ["store", "personal"],
+    component: lazy(() => import("@/app/manager/forms/page")),
+    lite: lite(() => import("./apps/forms").then((m) => m.FormsLite)) },
   { id: "channel", icon: ChannelIcon, route: "/manager/channel", color: "cyan", permissionKey: "staffing", surfaces: ["store", "personal"],
     component: lazy(() => import("@/app/manager/channel/page")) },
-  // Docs is the one app whose device version is not a lite rewrite: the panel
-  // renders the manager's own Docs screens in their phone layout (see
-  // ./apps/docs). Installing it turns the manager page on too
-  // (lib/device-apps.ts → MANAGER_ROUTE_APPS).
-  { id: "docs", icon: DocsIcon, route: "/manager/docs", color: "amber", permissionKey: "dashboard", surfaces: ["store", "personal"], dockOn: ["store", "personal"],
-    component: lazy(() => import("@/app/manager/docs/page")),
-    lite: lite(() => import("./apps/docs").then((m) => m.DocsLite)) },
-  // Drive: every file the store keeps — uploads and folders, plus the Docs,
-  // Sheets and Slides documents and read-only views of files other apps
-  // stored. The Sheets / Slides editors are pages of this app
-  // (/manager/drive/sheet, /manager/drive/slides): prefix matching gives them
-  // to Drive here and in lib/device-apps.ts → MANAGER_ROUTE_APPS, so
-  // installing Drive turns them on. The device panel is a lite app that hosts
-  // the editors' phone layouts, like Docs (./apps/drive).
-  { id: "drive", icon: DriveIcon, route: "/manager/drive", color: "violet", permissionKey: "dashboard", surfaces: ["store", "personal"],
+  // Files: Drive is the one place every file lives, and it is built in
+  // (lib/device-apps.ts → REQUIRED_DEVICE_APPS). Docs, Sheets and Slides are
+  // editor plugins (`editor`): no tile of their own, every file is found in
+  // Drive, and Drive's device panel hosts their phone layouts (./apps/drive).
+  // Installing one turns its manager routes on (MANAGER_ROUTE_APPS); its
+  // `component` is the editor page, for link interception.
+  { id: "docs", icon: DocsIcon, route: "/manager/docs/edit", color: "amber", permissionKey: "dashboard", surfaces: ["store", "personal"], editor: "doc",
+    component: lazy(() => import("@/app/manager/docs/edit/page")) },
+  // Drive: every file the store keeps — uploads and folders, the Docs, Sheets
+  // and Slides documents, and read-only views of files other apps stored. It
+  // takes the dock spot Docs had.
+  { id: "drive", icon: DriveIcon, route: "/manager/drive", color: "violet", permissionKey: "dashboard", surfaces: ["store", "personal"], dockOn: ["store", "personal"],
     component: lazy(() => import("@/app/manager/drive/page")),
     lite: lite(() => import("./apps/drive").then((m) => m.DriveLite)) },
+  { id: "sheets", icon: SheetsIcon, route: "/manager/drive/sheet", color: "lime", permissionKey: "dashboard", surfaces: ["store", "personal"], editor: "sheet",
+    component: lazy(() => import("@/app/manager/drive/sheet/page")) },
+  { id: "slides", icon: SlidesIcon, route: "/manager/drive/slides", color: "fuchsia", permissionKey: "dashboard", surfaces: ["store", "personal"], editor: "slides",
+    component: lazy(() => import("@/app/manager/drive/slides/page")) },
   // Bug tracker: on every device by default (REQUIRED_DEVICE_APPS) and gated by
   // nothing — reporting a problem with Merchiva must never depend on a
   // permission or on someone having installed the app first. Triage is on the
@@ -241,9 +252,11 @@ export interface CatalogActor {
 }
 
 /** Whether a catalog app can appear on a surface at all (has a device UI
- *  and is listed for the surface). Permission / role and install state are
- *  checked separately. */
+ *  and is listed for the surface). Editor plugins never get a tile: their
+ *  files open from Drive. Permission / role and install state are checked
+ *  separately. */
 export function catalogAppOnSurface(a: CatalogApp, surface: "store" | "personal"): boolean {
+  if (a.editor) return false;
   if (!a.lite && !a.keepManagerPage) return false;
   if (!a.surfaces.includes(surface)) return false;
   return true;

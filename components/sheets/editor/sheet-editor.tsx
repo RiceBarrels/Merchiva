@@ -253,7 +253,7 @@ interface SheetEditorBodyProps {
 
 function SheetEditorBody({ leaseLost, onDismissLeaseLost, onReady, onBlocked, lossy }: SheetEditorBodyProps) {
   const { t } = useI18n();
-  const { facade, host, mobile, panel, ui, dispatch } = useSheetEditor();
+  const { doc, facade, host, mobile, panel, ui, dispatch } = useSheetEditor();
   const preview = useSheetVersionPreview();
   // Univer failed to mount: the host shows "Couldn't open" + Retry, which the skeleton must not cover.
   const [hostFailed, setHostFailed] = useState(false);
@@ -261,7 +261,7 @@ function SheetEditorBody({ leaseLost, onDismissLeaseLost, onReady, onBlocked, lo
   const gridLoading = !hostFailed && (!host || (facade.loadState === "loading" && !facade.reloading));
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col bg-background" data-sheet-editor="">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col bg-background" data-sheet-editor="" data-no-sidebar-swipe>
       {mobile ? <MobileSheetHeader /> : <SheetHeader />}
       <SheetBanners leaseLost={leaseLost} onDismissLeaseLost={onDismissLeaseLost} />
       <VersionPreviewBar preview={preview} />
@@ -275,6 +275,7 @@ function SheetEditorBody({ leaseLost, onDismissLeaseLost, onReady, onBlocked, lo
             onReady={onReady}
             onFailed={setHostFailed}
             onBlocked={onBlocked}
+            organizationId={doc.organizationId}
           />
           {gridLoading && facade.loadState !== "load_failed" && <SheetSkeleton chrome={false} className="absolute inset-0 z-10" />}
         </div>

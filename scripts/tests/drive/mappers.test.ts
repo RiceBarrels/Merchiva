@@ -4,7 +4,10 @@
 
 import { describe, expect, test } from "bun:test";
 import { docFileType, mapDocuments } from "@/lib/docs/mappers";
-import { mapDriveItem, mapDriveNoticeAck, mapDriveStar, mapDriveUsage, toDriveUsageView } from "@/lib/drive/mappers";
+import {
+  mapAppFile, mapDocumentSize, mapDriveItem, mapDriveNoticeAck, mapDriveStar, mapDriveUsage, mapOrgStorageUsage, storageBreakdown,
+  toDriveUsageView,
+} from "@/lib/drive/mappers";
 import { DRIVE_DEFAULT_QUOTA_BYTES } from "@/lib/drive/rules";
 
 const ts = (ms: number) => ({ toDate: () => new Date(ms) });
@@ -100,9 +103,57 @@ describe("usage", () => {
   test("toDriveUsageView: the default quota unless support set an override; null before the row exists", () => {
     expect(toDriveUsageView(mapDriveUsage(row))).toEqual({
       usedBytes: 700, reservedBytes: 300, quotaBytes: DRIVE_DEFAULT_QUOTA_BYTES, fileCount: 4, sheetBytes: 50,
+      breakdown: { files: 1000, documents: 0, sheets: 50, apps: 0, total: 1050, quota: DRIVE_DEFAULT_QUOTA_BYTES },
     });
     expect(toDriveUsageView(mapDriveUsage({ ...row, quotaBytesOverride: BigInt(5_000) }))?.quotaBytes).toBe(5_000);
     expect(toDriveUsageView(null)).toBeNull();
+    expect(toDriveUsageView(null, null)).toBeNull();
+  });
+
+  const orgRow = { organizationId: "org-1", docBytes: BigInt(2_000), docCount: 3, appBytes: BigInt(400), appFileCount: 7, updatedAt: ts(8) };
+
+  test("mapOrgStorageUsage", () => {
+    expect(mapOrgStorageUsage(orgRow)).toEqual({
+      organizationId: "org-1", docBytes: 2_000, docCount: 3, appBytes: 400, appFileCount: 7, updatedAt: new Date(8),
+    });
+    expect(mapOrgStorageUsage({})).toMatchObject({ organizationId: "", docBytes: 0, appBytes: 0, updatedAt: new Date(0) });
+  });
+
+  test("storageBreakdown: Drive files (stored + reserved), documents, sheets and app files, against the quota", () => {
+    expect(storageBreakdown(mapDriveUsage(row), mapOrgStorageUsage(orgRow))).toEqual({
+      files: 1000, documents: 2_000, sheets: 50, apps: 400, total: 3_450, quota: DRIVE_DEFAULT_QUOTA_BYTES,
+    });
+    const override = mapDriveUsage({ ...row, quotaBytesOverride: BigInt(9_000) });
+    expect(storageBreakdown(override, null)).toEqual({ files: 1000, documents: 0, sheets: 50, apps: 0, total: 1050, quota: 9_000 });
+    expect(storageBreakdown(null, null)).toEqual({ files: 0, documents: 0, sheets: 0, apps: 0, total: 0, quota: DRIVE_DEFAULT_QUOTA_BYTES });
+  });
+
+  test("toDriveUsageView: documents and app files count before any Drive upload made a drive_usage row", () => {
+    const view = toDriveUsageView(null, mapOrgStorageUsage(orgRow));
+    expect(view).toEqual({
+      usedBytes: 0, reservedBytes: 0, quotaBytes: DRIVE_DEFAULT_QUOTA_BYTES, fileCount: 0, sheetBytes: 0,
+      breakdown: { files: 0, documents: 2_000, sheets: 0, apps: 400, total: 2_400, quota: DRIVE_DEFAULT_QUOTA_BYTES },
+    });
+    expect(toDriveUsageView(mapDriveUsage(row), mapOrgStorageUsage(orgRow))?.breakdown.total).toBe(3_450);
+  });
+});
+
+describe("storage accounting rows", () => {
+  test("mapAppFile: lowercased key hash; an unknown source counts as other", () => {
+    const hash = "AB".repeat(32);
+    const raw = { keyHash: hash, organizationId: "org-1", source: "doc_image", sizeBytes: BigInt(1_234), mimeType: "image/png", createdAt: ts(3) };
+    expect(mapAppFile(raw)).toEqual({
+      keyHash: hash.toLowerCase(), organizationId: "org-1", source: "doc_image", sizeBytes: 1_234, mimeType: "image/png", createdAt: new Date(3),
+    });
+    expect(mapAppFile({ ...raw, source: "website" }).source).toBe("other");
+    expect(mapAppFile({ ...raw, sizeBytes: BigInt(-1) }).sizeBytes).toBe(0);
+  });
+
+  test("mapDocumentSize: lowercased document id", () => {
+    const raw = { documentId: ITEM_ID.toUpperCase(), organizationId: "org-1", fileType: "doc", bytes: BigInt(90), versionBytes: BigInt(10), updatedAt: ts(4) };
+    expect(mapDocumentSize(raw)).toEqual({
+      documentId: ITEM_ID, organizationId: "org-1", fileType: "doc", bytes: 90, versionBytes: 10, updatedAt: new Date(4),
+    });
   });
 });
 

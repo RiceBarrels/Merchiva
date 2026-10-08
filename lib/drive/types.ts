@@ -9,6 +9,8 @@
 // Limits, blob keys and names live in lib/drive/rules.ts (the client twin of the
 // module's drive/logic.ts), roles in lib/drive/access.ts.
 
+import type { AppFileSource } from "@/lib/storage/sources";
+
 export type DriveSpace = "my" | "store";
 export type DriveItemKind = "folder" | "file";
 export type DriveItemStatus = "pending" | "ready";
@@ -71,7 +73,7 @@ export interface DriveUsage {
   itemCount: number;
   /** 0 = none: the org has DRIVE_DEFAULT_QUOTA_BYTES. */
   quotaBytesOverride: number;
-  /** Spreadsheet storage, shown separately and not counted against the quota. */
+  /** Spreadsheet storage; counts toward the quota with everything else (StorageBreakdown). */
   sheetBytes: number;
   measuredBytes: number;
   measuredCount: number;
@@ -79,8 +81,64 @@ export interface DriveUsage {
   updatedAt: Date;
 }
 
-/** What the storage meter shows. */
-export interface DriveUsageView { usedBytes: number; reservedBytes: number; quotaBytes: number; fileCount: number; sheetBytes: number }
+/** The org's `org_storage_usage` row: what Docs, Slides and the other apps store (Drive files and Sheets are in `drive_usage`). */
+export interface OrgStorageUsage {
+  organizationId: string;
+  /** Docs and Slides content plus their kept versions. */
+  docBytes: number;
+  docCount: number;
+  /** Files uploaded from the other apps (chat, tasks, images in documents, …): the `app_file` rows. */
+  appBytes: number;
+  appFileCount: number;
+  updatedAt: Date;
+}
+
+/** One `app_file` row: a file an app uploaded, keyed by the SHA-256 hex of its UploadThing key (lib/storage). */
+export interface AppFileRecord {
+  keyHash: string;
+  organizationId: string;
+  /** An APP_FILE_SOURCES value; unknown sources map to "other". */
+  source: AppFileSource;
+  sizeBytes: number;
+  mimeType: string;
+  createdAt: Date;
+}
+
+/** One `document_size` row (RLS: only documents the reader may open). */
+export interface DocumentSize {
+  documentId: string;
+  organizationId: string;
+  fileType: string;
+  /** The document's current content plus its kept versions (the module writes `live + versionBytes`). */
+  bytes: number;
+  /** Its kept versions, a part of `bytes`. */
+  versionBytes: number;
+  updatedAt: Date;
+}
+
+/** Everything the store keeps, by kind; `total` is what counts against `quota`, as in the module. */
+export interface StorageBreakdown {
+  /** Drive files: stored plus reserved by pending uploads. */
+  files: number;
+  /** Docs, Slides and Forms (org_storage_usage.docBytes); null when not measured (a module without the table). */
+  documents: number | null;
+  sheets: number;
+  /** Files stored by the other apps; null when not measured. */
+  apps: number | null;
+  /** The measured parts only. */
+  total: number;
+  quota: number;
+}
+
+/** What the storage meter shows. `usedBytes` / `reservedBytes` are Drive files only; `breakdown.total` is everything. */
+export interface DriveUsageView {
+  usedBytes: number;
+  reservedBytes: number;
+  quotaBytes: number;
+  fileCount: number;
+  sheetBytes: number;
+  breakdown: StorageBreakdown;
+}
 
 export interface DriveStar { id: string; itemId: string; organizationId: string; memberId: string; createdAt: Date }
 

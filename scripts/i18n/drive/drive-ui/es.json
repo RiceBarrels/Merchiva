@@ -9,7 +9,7 @@
       "drive": "Archivos"
     },
     "catalogDesc": {
-      "drive": "Archivos, fotos, hojas de cálculo y presentaciones de tu tienda en un solo lugar."
+      "drive": "Todos los archivos de tu tienda en un solo lugar: archivos subidos, fotos y los documentos, hojas de cálculo y presentaciones creados con complementos de edición."
     },
     "lite": {
       "drive": {
@@ -361,7 +361,7 @@
       "openIn": "Abrir en {app}",
       "count": "{count} archivos",
       "countOne": "1 archivo",
-      "notIncluded": "No se incluyen: enlaces de recibos escritos en Finanzas, imágenes dentro de documentos y del texto de las lecciones, ni archivos adjuntos enviados a Mr. Merchiva.",
+      "notIncluded": "Los enlaces de recibos escritos en Finanzas y los enlaces pegados a mano no los guarda Merchiva, así que no cuentan.",
       "sources": {
         "chat": "Chat",
         "tasks": "Tareas",

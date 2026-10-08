@@ -178,6 +178,20 @@ describe("uploadAssets", () => {
     expect(touched).toBe(false);
   });
 
+  test("a store out of storage fails the import with [drive.quota_exceeded], no retry, the queue not tried", async () => {
+    let calls = 0;
+    const refused = async (): Promise<string> => {
+      calls++;
+      throw new Error("Upload failed", { cause: new Error("[drive.quota_exceeded] This store is out of storage") });
+    };
+    const assets = Array.from({ length: 8 }, (_, i) => pending(`q${i}`, SAMPLES[0][1]));
+    const err = await uploadAssets(assets, () => {}, undefined, refused).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toStartWith("[drive.quota_exceeded]");
+    // At most the first concurrent batch reached the route; nothing retried a quota refusal.
+    expect(calls).toBeLessThanOrEqual(3);
+  });
+
   test("an image over 8 MB that cannot be re-encoded here is imageTooLarge", async () => {
     const big = new Uint8Array(8 * 1024 * 1024 + 16);
     big.set(PNG_BYTES.subarray(0, 8));

@@ -4,11 +4,16 @@
 // from 90% and red once full. Used counts the pending uploads too (their bytes are reserved
 // against the quota). The total is the org's effective quota (support override, else the
 // default; lib/drive/rules.ts effectiveQuotaBytes, applied by toDriveUsageView), which is
-// never 0 — the "no quota" line is only a guard. Docs, Sheets and Slides don't count, which
-// the tooltip says. Nothing renders until the usage row has loaded.
+// never 0 — the "no quota" line is only a guard. Used is everything the store keeps — uploads,
+// Docs, Slides and Forms, Sheets and files in other apps (StorageBreakdown.total) — which the
+// popover says and breaks down. A popover, not a tooltip: it opens on hover, but also on a tap
+// (touch screens) and on Enter / Space (a role=button trigger, a labelled dialog that screen
+// readers reach). Parts the module does not measure read "—", and then the popover does not
+// claim to cover everything. Nothing renders until the usage row has loaded.
 
+import { storageBreakdownComplete, storageBreakdownRows } from "@/components/drive/model/storage-breakdown";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { STATUS_TONE_TEXT } from "@/components/ui/status-badge";
 import { formatDriveBytes } from "@/lib/drive/format";
@@ -44,14 +49,20 @@ export function StorageMeter({ usage, compact = false, className }: StorageMeter
       ? fmt(t("drive.storage.usedNoQuota"), { used: usedText })
       : fmt(t("drive.storage.used"), { used: usedText, total: formatDriveBytes(total, locale) });
   const status = level === "full" ? t("drive.storage.full") : level === "warning" ? t("drive.storage.almostFull") : null;
+  const rows = storageBreakdownRows(usage);
 
   return (
-    <Tooltip>
-      <TooltipTrigger
+    <Popover>
+      <PopoverTrigger
+        nativeButton={false}
+        openOnHover
         render={
           <div
-            tabIndex={0}
-            className={cn("block rounded outline-none focus-visible:ring-3 focus-visible:ring-ring/50", compact ? "space-y-1" : "space-y-1.5", className)}
+            className={cn(
+              "block cursor-default rounded outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              compact ? "space-y-1" : "space-y-1.5",
+              className,
+            )}
           />
         }
       >
@@ -65,8 +76,21 @@ export function StorageMeter({ usage, compact = false, className }: StorageMeter
             {status}
           </p>
         )}
-      </TooltipTrigger>
-      <TooltipContent side="top">{t("drive.storage.excludesDocs")}</TooltipContent>
-    </Tooltip>
+      </PopoverTrigger>
+      <PopoverContent side="top" aria-label={t("drive.storage.breakdown.title")} className="max-w-72 p-2.5 text-[12px]">
+        <div data-drive-storage-breakdown className="space-y-1.5">
+          {storageBreakdownComplete(rows) && <p className="text-muted-foreground">{t("drive.storage.includesEverything")}</p>}
+          <p className="font-medium">{t("drive.storage.breakdown.title")}</p>
+          <dl className="grid grid-cols-[minmax(0,1fr)_max-content] gap-x-3 gap-y-0.5">
+            {rows.map((row) => (
+              <div key={row.part} className="contents">
+                <dt className="truncate">{t(row.labelKey)}</dt>
+                <dd className="text-end font-mono tabular-nums">{row.bytes === null ? "—" : formatDriveBytes(row.bytes, locale)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

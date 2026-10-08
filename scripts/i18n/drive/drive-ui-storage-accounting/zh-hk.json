@@ -1,0 +1,32 @@
+{
+  "drive": {
+    "storage": {
+      "breakdown": {
+        "title": "儲存空間使用情況",
+        "files": "上載的檔案",
+        "documents": "文檔、簡報及表單",
+        "sheets": "試算表",
+        "apps": "其他應用程式中的檔案"
+      },
+      "includesEverything": "店舖保存的所有內容均計入儲存空間：上載的檔案、文檔、試算表、簡報、表單及其他應用程式中的檔案。"
+    },
+    "apps": {
+      "bytesSource": {
+        "doc_image": "文檔中的圖片",
+        "sheet_image": "試算表中的圖片",
+        "slides_image": "簡報中的圖片",
+        "logo": "店舖標誌",
+        "avatar": "個人資料相片",
+        "other": "其他檔案"
+      },
+      "storageTotal": "其他應用程式中儲存了 {size}",
+      "bytesNotListed": "{source}：你無法在此開啟的檔案",
+      "notStoredHere": "包括你無法在此開啟的檔案，例如其他人的聊天附件。",
+      "sources": {
+        "forms": "表單"
+      },
+      "countForms": "{count} 個表單",
+      "countFormsOne": "1 個表單"
+    }
+  }
+}

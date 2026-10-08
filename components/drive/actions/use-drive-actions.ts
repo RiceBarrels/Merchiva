@@ -19,7 +19,7 @@ import type { DriveDropHandlers } from "@/components/drive/list/use-entry-dnd";
 import type { ActionContext, DriveAction, DriveBulkAction } from "@/components/drive/model/actions";
 import type { DriveTree } from "@/components/drive/model/entries";
 import { canDropOn, MOVE_BLOCK_I18N, moveRoots, planMove, type MoveActor, type MovePlan } from "@/components/drive/model/move";
-import type { DriveDocKind, DriveEntry, DriveMoveTarget, FileEntry } from "@/components/drive/model/types";
+import { isRecordEntry, type DriveDocKind, type DriveEntry, type DriveMoveTarget, type FileEntry } from "@/components/drive/model/types";
 import type { DriveEntryActions } from "@/components/drive/preview/open-entry";
 import type { DriveUrlState } from "@/components/drive/use-drive-url-state";
 import { dateKey } from "@/lib/date-key";
@@ -33,6 +33,7 @@ import { driveWriteErrorKey, runDriveWrite, type DriveWrite, type DriveWriteResu
 import { entryHref, folderParams, isDocEntry } from "./entry-links";
 import { docCreateErrorMessage, docTargetOf, openAsTargetOf, openFileAs } from "./open-as";
 import { useDriveDialogs, type DriveDialogs } from "./use-drive-dialogs";
+import type { EditorGate } from "./use-editor-gate";
 
 export type { DriveDialogTarget, DriveNameTarget } from "./use-drive-dialogs";
 
@@ -48,6 +49,8 @@ export interface UseDriveActionsOptions {
   members: readonly { id: string; name: string; active: boolean }[];
   /** Touch "Select": enters selection mode with the entry. */
   onSelect?(key: string): void;
+  /** Asks to download a missing editor plugin before a document opens or a file is opened as one; default: none. */
+  gate?: Pick<EditorGate, "ensureEditor" | "isInstalled">;
   /** How long a reducer call may go unanswered; default REDUCER_TIMEOUT_MS. */
   timeoutMs?: number;
   t: (key: string) => string;
@@ -70,6 +73,7 @@ export interface DriveActions extends DriveEntryActions, DriveDialogs {
 }
 
 const NO_MOVES = { toStore: false, toMy: false };
+const NO_GATE: Pick<EditorGate, "ensureEditor" | "isInstalled"> = { ensureEditor: (_kind, _mode, then) => then(), isInstalled: () => true };
 const OPEN_AS_KIND: Partial<Record<DriveAction, DriveDocKind>> = { openAsDoc: "doc", openAsSheet: "sheet", openAsSlides: "slides" };
 
 const isDownloadable = (entry: DriveEntry): entry is DownloadableEntry => entry.type === "file" || entry.type === "virtual";
@@ -101,6 +105,7 @@ function entryMoves(entry: DriveEntry, tree: DriveTree, actor: MoveActor): Entry
 
 export function useDriveActions(opts: UseDriveActionsOptions): DriveActions {
   const { tree, actor, ctx, url, openUrl, loader, organizationId, members, onSelect, timeoutMs, t, locale } = opts;
+  const { ensureEditor, isInstalled: editorInstalled } = opts.gate ?? NO_GATE;
   const [running, setRunning] = useState<ReadonlyMap<string, DriveAction>>(new Map());
   const inflight = useRef(new Set<string>());
 
@@ -246,11 +251,21 @@ export function useDriveActions(opts: UseDriveActionsOptions): DriveActions {
 
   const openInPlace = useCallback(
     (entry: DriveEntry): boolean => {
+      // A document whose editor plugin is missing asks to download it instead of following its link.
+      if (isDocEntry(entry)) {
+        if (editorInstalled(entry.type)) return false;
+        ensureEditor(entry.type, "open", () => openUrl(documentFileHref(entry.doc), "current"));
+        return true;
+      }
+      if (isRecordEntry(entry)) {
+        openUrl(entry.href, "current");
+        return true;
+      }
       if (entry.type !== "file" && entry.type !== "virtual") return false;
       url.go({ preview: entry.key });
       return true;
     },
-    [url],
+    [url, editorInstalled, ensureEditor, openUrl],
   );
 
   const moveFor = useCallback((entry: DriveEntry) => entryMoves(entry, tree, moveActor), [tree, moveActor]);
@@ -274,10 +289,12 @@ export function useDriveActions(opts: UseDriveActionsOptions): DriveActions {
       switch (action) {
         case "open":
           if (entry.type === "folder") url.go(folderParams(entry, actor.memberId));
-          else if (isDocEntry(entry)) openUrl(documentFileHref(entry.doc), "current");
+          else if (isDocEntry(entry)) ensureEditor(entry.type, "open", () => openUrl(documentFileHref(entry.doc), "current"));
+          else if (isRecordEntry(entry)) openUrl(entry.href, "current");
           return;
         case "openNewTab":
-          openUrl(hrefFor(entry), "new-foreground");
+          if (isDocEntry(entry)) ensureEditor(entry.type, "open", () => openUrl(hrefFor(entry), "new-foreground"));
+          else openUrl(hrefFor(entry), "new-foreground");
           return;
         case "preview":
         case "details":
@@ -291,7 +308,8 @@ export function useDriveActions(opts: UseDriveActionsOptions): DriveActions {
         case "openAsSheet":
         case "openAsSlides": {
           const kind = OPEN_AS_KIND[action];
-          if (entry.type === "file" && kind) once(entry.key, action, () => openAs(entry, kind));
+          // Gated before the bytes are fetched and the import creates a document.
+          if (entry.type === "file" && kind) ensureEditor(kind, "open", () => once(entry.key, action, () => openAs(entry, kind)));
           return;
         }
         case "openOriginal":
@@ -331,7 +349,7 @@ export function useDriveActions(opts: UseDriveActionsOptions): DriveActions {
           return;
       }
     },
-    [url, actor.memberId, openUrl, hrefFor, once, downloadDeps, t, openAs, openRename, openMove, tree, moveActor, startMove, openShare, write, onSelect, trash, restore, openRemove],
+    [url, actor.memberId, ensureEditor, openUrl, hrefFor, once, downloadDeps, t, openAs, openRename, openMove, tree, moveActor, startMove, openShare, write, onSelect, trash, restore, openRemove],
   );
 
   const runBulk = useCallback(

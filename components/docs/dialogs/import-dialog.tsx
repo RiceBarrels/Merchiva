@@ -12,7 +12,7 @@
  * Behaviour:
  * 1. "Choose file" opens a hidden `<input type="file" accept={IMPORT_ACCEPT}>`; a file can also be dropped on the
  *    drop area.
- * 2. `validateImportFile`, then `importAsNewDocument(file, { t, locale, placement })`, with a Loader2 progress state
+ * 2. `validateImportFile`, then `importAsNewDocument(file, { t, locale, organizationId, placement })`, with a Loader2 progress state
  *    (`docs.import.importing`). `placement` (`useDocCreatePlacement()`) is set only in a device panel on /store, where
  *    the new document belongs to the PIN operator.
  * 3. After success: `docs.import.warnings` if `result.warnings > 0`; `docs.import.imagesSkipped` if `result.skippedImages > 0`.
@@ -35,6 +35,7 @@ import {
   importErrorMessageKey,
   validateImportFile,
 } from "@/lib/docs/import";
+import { usePermissions } from "@/lib/context/permissions";
 import { useI18n } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +52,7 @@ function hasFiles(event: React.DragEvent): boolean {
 export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogProps): React.JSX.Element {
   const { t, locale } = useI18n();
   const placement = useDocCreatePlacement();
+  const { organizationId } = usePermissions();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -63,7 +65,7 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
     try {
       const invalid = validateImportFile(file);
       if (invalid) throw new DocImportError(invalid);
-      const { documentId, result } = await importAsNewDocument(file, { t, locale, placement });
+      const { documentId, result } = await importAsNewDocument(file, { t, locale, organizationId: organizationId ?? "", placement });
       if (result.warnings > 0) toast(t("docs.import.warnings"));
       if (result.skippedImages > 0) toast.warning(t("docs.import.imagesSkipped"));
       onImported(documentId);

@@ -5,7 +5,9 @@
 // trailing slash; Next and the browser shell canonicalize that, so links are
 // always written without one — the same shape as the server's `docLink`.
 
-export const DOCS_HOME_HREF = "/manager/docs";
+// The Docs home is folded into Drive: its link is Drive's documents view (driveKindHref("doc")), written out here
+// because lib/drive/hrefs.ts imports this file. /manager/docs still redirects there for old links.
+export const DOCS_HOME_HREF = "/manager/drive?space=recent&type=doc";
 export const DOCS_EDIT_PATH = "/manager/docs/edit";
 
 export interface DocumentHrefOptions {

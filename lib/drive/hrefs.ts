@@ -18,7 +18,9 @@ export const SLIDES_EDIT_PATH = "/manager/drive/slides";
 // The Drive home's URL codec (drive-ui §6.1, components/drive/model/url-state.ts) drops defaults and unknown values;
 // driveHref writes only what that codec keeps.
 const DRIVE_SECTIONS: ReadonlySet<string> = new Set(["my", "store", "shared", "recent", "starred", "trash", "apps", "members"]);
-const DRIVE_SOURCES: ReadonlySet<string> = new Set(["chat", "tasks", "inventory", "training", "products", "bugs", "profile"]);
+const DRIVE_SOURCES: ReadonlySet<string> = new Set(["chat", "tasks", "inventory", "training", "products", "bugs", "profile", "forms"]);
+const DRIVE_TYPES: ReadonlySet<string> = new Set(["folder", "doc", "sheet", "slides", "image", "pdf", "video", "audio", "other"]);
+const DRIVE_QUERY_MAX = 200;
 const ENTRY_PREVIEW_RE = /^(item|doc):([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
 const VIRTUAL_PREVIEW_RE = /^v:[a-z]+:[A-Za-z0-9-]{1,80}(:\d{1,3})?$/;
 
@@ -29,21 +31,38 @@ function previewParam(value: string): string {
 }
 
 /**
- * Drive home URL: `/manager/drive[?space=…&folder=…&member=…&source=…&preview=…]`. Defaults (`space=my`, '') and
- * values the home would ignore (unknown section or source, a folder / member that is not a uuid, a malformed
- * preview key) are left out.
+ * Drive home URL: `/manager/drive[?space=…&folder=…&member=…&source=…&type=…&q=…&preview=…]`. Defaults (`space=my`,
+ * `type=all`, '') and values the home would ignore (unknown section, source or type, a folder / member that is not a
+ * uuid, a blank query, a malformed preview key) are left out; the query is trimmed and capped like the home's.
  */
-export function driveHref(params: { space?: string; folder?: string; member?: string; source?: string; preview?: string } = {}): string {
+export function driveHref(
+  params: { space?: string; folder?: string; member?: string; source?: string; type?: string; q?: string; preview?: string } = {},
+): string {
   const search = new URLSearchParams();
   const space = params.space ?? "";
   if (space !== "my" && DRIVE_SECTIONS.has(space)) search.set("space", space);
   if (params.folder && isDocumentId(params.folder)) search.set("folder", params.folder.toLowerCase());
   if (params.member && isDocumentId(params.member)) search.set("member", params.member.toLowerCase());
   if (params.source && DRIVE_SOURCES.has(params.source)) search.set("source", params.source);
+  if (params.type && DRIVE_TYPES.has(params.type)) search.set("type", params.type);
+  const q = (params.q ?? "").trim().slice(0, DRIVE_QUERY_MAX);
+  if (q) search.set("q", q);
   const preview = params.preview ? previewParam(params.preview) : "";
   if (preview) search.set("preview", preview);
   const query = search.toString();
   return query ? `${DRIVE_HOME_HREF}?${query}` : DRIVE_HOME_HREF;
+}
+
+/** Drive's view of one editor's files: recent first, filtered to that kind (where an editor plugin's "Open" lands). */
+export function driveKindHref(kind: "doc" | "sheet" | "slides"): string {
+  return driveHref({ space: "recent", type: kind });
+}
+
+const DOCS_HOME_SCOPES: ReadonlySet<string> = new Set(["recent", "starred", "trash"]);
+
+/** Where an old Docs home link (`/manager/docs?scope=…&q=…`) lands: Drive's documents view in the same space. */
+export function docsHomeRedirectHref(scope: string | null, q: string | null): string {
+  return driveHref({ space: scope && DOCS_HOME_SCOPES.has(scope) ? scope : "recent", type: "doc", q: q ?? "" });
 }
 
 /** `<path>?id=<id>[&comment=…][&version=…][&new=1]`: the same parameters, in the same order, as documentHref. */

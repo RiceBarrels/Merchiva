@@ -19,6 +19,7 @@ import { useWorkspaceActions } from "@/components/browser-shell/shared/workspace
 import { StoreLogo } from "@/components/store-picker";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
+  anyDocumentEditorAllowed,
   dispositionFromKeyboard,
   dispositionFromPointer,
   getRouteAccess,
@@ -32,7 +33,7 @@ import {
   useTabsSnapshot,
   type OpenDisposition,
 } from "@/lib/browser-shell";
-import { DOCS_HOME_HREF, documentHref } from "@/lib/docs/hrefs";
+import { DOCS_EDIT_PATH, documentHref } from "@/lib/docs/hrefs";
 import type { RecentDocumentItem } from "@/lib/docs/types";
 import { useT } from "@/lib/i18n/context";
 import { createDocument } from "@/lib/spacetimedb/actions";
@@ -109,7 +110,8 @@ export function Omnibox() {
   const addressPath = address.startsWith(ADDRESS_HOST) ? address.slice(ADDRESS_HOST.length) : address;
   const query = editing && draft !== null ? draft : "";
   const value = editing && draft !== null ? draft : address;
-  const docsAllowed = getRouteAccess(DOCS_HOME_HREF, ctx) === "allowed";
+  const docsAllowed = anyDocumentEditorAllowed(ctx);
+  const newDocAllowed = ctx.appsReady && getRouteAccess(DOCS_EDIT_PATH, ctx) === "allowed";
   const idleWithAddress = !editing && address !== "";
 
   useImperativeHandle(
@@ -272,6 +274,7 @@ export function Omnibox() {
 
   const popupOptions: OmniboxResultOptions & { onRun: typeof run } = {
     docsAllowed,
+    newDocAllowed,
     bookmarksBarVisible: barVisible,
     isNewTabPage: presentation.isNewTab,
     openedAt: editing?.openedAt ?? 0,
@@ -356,7 +359,7 @@ interface OmniboxPopupProps extends OmniboxResultOptions {
   onRun(item: OmniboxItem, disposition: OpenDisposition): void;
 }
 
-/** Mounted only while the omnibox is open and Docs is allowed: the only place the chrome subscribes to docs. */
+/** Mounted only while the omnibox is open and some document editor is allowed: the only place the chrome subscribes to docs. */
 function OmniboxPopupWithDocs(props: Omit<OmniboxPopupProps, "docs">) {
   const { items } = useRecentDocuments(RECENT_DOCS_LIMIT);
   return <OmniboxPopup {...props} docs={items} />;

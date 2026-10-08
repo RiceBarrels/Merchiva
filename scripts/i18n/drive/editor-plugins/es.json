@@ -1,0 +1,37 @@
+{
+  "device": {
+    "catalog": {
+      "docs": "Documentos",
+      "sheets": "Hojas de cálculo",
+      "slides": "Presentaciones"
+    },
+    "catalogDesc": {
+      "docs": "Documentos para tu tienda: escribe en Archivos y abre archivos .docx.",
+      "sheets": "Hojas de cálculo para tu tienda: abre archivos .xlsx y .csv y crea otras nuevas en Archivos.",
+      "slides": "Presentaciones para tu tienda: abre archivos .pptx y crea otras nuevas en Archivos."
+    }
+  },
+  "docs": {
+    "editor": {
+      "backToDocs": "Volver a Archivos"
+    },
+    "homeTooltip": "Archivos"
+  },
+  "pluginInstall": {
+    "missingTitle": "El complemento {app} no está instalado",
+    "openBody": "Descarga {app} para abrir este archivo. El complemento se activa para toda la tienda: el panel de gestión, la tableta de la tienda y los teléfonos del personal.",
+    "createBody": "Descarga {app} para crear esto. El complemento se activa para toda la tienda: el panel de gestión, la tableta de la tienda y los teléfonos del personal.",
+    "pageBody": "Esta página forma parte del complemento {app}. Descárgalo para usarlo aquí y en los dispositivos de tu tienda.",
+    "askManager": "Pide a un propietario o a un gerente que descargue {app} desde Complementos.",
+    "download": "Descargar",
+    "downloading": "Descargando…",
+    "installed": "El complemento {app} está listo",
+    "failed": "No se pudo descargar {app}. Inténtalo de nuevo.",
+    "openPlugins": "Abrir Complementos",
+    "notNow": "Ahora no",
+    "offline": "Estás sin conexión. Conéctate para descargar complementos.",
+    "downloadFirst": "Descárgalo primero",
+    "askOtherDevice": "La cuenta de esta tableta no puede descargar complementos. Descarga {app} desde Complementos en la oficina o en tu propio teléfono.",
+    "notInstalled": "No instalado"
+  }
+}

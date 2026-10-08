@@ -26,6 +26,7 @@ import type { ColorValue, StarterThemeId } from "@/lib/slides/model/types";
 import { LAYOUTS, LAYOUT_LABEL_KEYS, layoutPlaceholders, type StarterLayout } from "@/lib/slides/themes/layouts";
 import { STARTER_THEMES, STARTER_THEME_IDS, THEME_LABEL_KEYS } from "@/lib/slides/themes/themes";
 import { cn } from "@/lib/utils";
+import { appUploadErrorKeyOr } from "@/lib/storage/app-upload";
 
 /** Theme previews are this wide (two per row in the 320 px panel). */
 const THEME_THUMB_PX = 136;
@@ -109,7 +110,7 @@ export function ThemePanel({ panelWrite }: ThemePanelProps) {
       write((ydoc) => setSlidesProps(ydoc, ids, { background: { t: "image", src, mode: "cover" } }));
     } catch (err) {
       console.error("[slides] background upload failed", err);
-      toast.error(t("docs.image.failed"), { id });
+      toast.error(t(appUploadErrorKeyOr(err, "docs.image.failed")), { id });
     } finally {
       setUploading(false);
     }

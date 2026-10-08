@@ -230,6 +230,11 @@ export function useDriveItemRows(organizationId: string | null, enabled = true) 
 export function useDriveUsageRows(organizationId: string | null, enabled = true) { return useScopedDocTable("driveUsage", "organizationId", organizationId, enabled); }
 export function useDriveStarRows(organizationId: string | null, enabled = true) { return useScopedDocTable("driveStar", "organizationId", organizationId, enabled); }
 export function useDriveNoticeAckRows(organizationId: string | null, enabled = true) { return useScopedDocTable("driveNoticeAck", "organizationId", organizationId, enabled); }
+// Storage accounting (app_file, org_storage_usage, document_size): same guard and org scope, probed apart from
+// Drive (lib/drive/queries.ts storageProbeQueries). Mapping: lib/spacetimedb/hooks/useDriveStorage.ts.
+export function useAppFileRows(organizationId: string | null, enabled = true) { return useScopedDocTable("appFile", "organizationId", organizationId, enabled); }
+export function useOrgStorageUsageRows(organizationId: string | null, enabled = true) { return useScopedDocTable("orgStorageUsage", "organizationId", organizationId, enabled); }
+export function useDocumentSizeRows(organizationId: string | null, enabled = true) { return useScopedDocTable("documentSize", "organizationId", organizationId, enabled); }
 /* eslint-enable */
 
 // ── Punch-in codes / device operator ─────────────────────────────────────────

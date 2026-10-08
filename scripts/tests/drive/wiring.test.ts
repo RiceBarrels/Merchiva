@@ -1,7 +1,7 @@
-// Drive's three-surface wiring (drive-ui.md §15, CONTRACTS §2.12): the device catalog entry that puts the lite app on
-// /store and /personal and lists it in /manager/apps, the manager routes the app owns (the Sheets / Slides editors
-// included), the route registry rows, the search exclusions, the legacy bottom bar, the page guards, and the labels
-// every one of those shows.
+// Drive's three-surface wiring (drive-ui.md §15, CONTRACTS §2.12): the built-in device catalog entry that puts the
+// lite app on /store and /personal (and in their docks), the editor routes it hands to the Docs / Sheets / Slides
+// plugins, the route registry rows, the search exclusions, the legacy nav, the page guards, and the labels every one
+// of those shows. The editor plugins themselves are covered by scripts/tests/device/editor-plugins.test.ts.
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -12,7 +12,7 @@ import {
   catalogAppOnSurface,
   catalogPageForRoute,
 } from "@/components/device/app-catalog";
-import { APP_ICONS, DriveIcon } from "@/components/device/app-icons";
+import { APP_ICONS, DocsIcon, DriveIcon, SheetsIcon, SlidesIcon } from "@/components/device/app-icons";
 import { NOT_SEARCHABLE } from "@/lib/browser-shell/access";
 import { ROUTES, matchRoute } from "@/lib/browser-shell/routes";
 import {
@@ -28,8 +28,12 @@ import { LOCALES, MESSAGES_DIR, flattenMessages, leavesOf, loadFragments } from 
 const ROOT = join(import.meta.dir, "..", "..", "..");
 const source = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
-const EDITOR_URLS = ["/manager/drive/sheet?id=1", "/manager/drive/slides?id=1&slide=2"];
-const DRIVE_URLS = ["/manager/drive", "/manager/drive/", "/manager/drive?space=store&folder=f", ...EDITOR_URLS];
+const DRIVE_URLS = ["/manager/drive", "/manager/drive/", "/manager/drive?space=store&folder=f", "/manager/drive?type=doc"];
+/** Editor routes under Drive and the plugin that owns each. */
+const EDITOR_URLS: ReadonlyArray<readonly [string, string]> = [
+  ["/manager/drive/sheet?id=1", "sheets"],
+  ["/manager/drive/slides?id=1&slide=2", "slides"],
+];
 
 /** The `{ id: "drive", … }` object literal of APP_CATALOG, cut out of the source by brace depth. */
 function catalogEntrySource(id: string): string {
@@ -45,7 +49,7 @@ function catalogEntrySource(id: string): string {
 }
 
 describe("device catalog", () => {
-  test("Drive is one catalog app on both device surfaces, gated by dashboard like Docs", () => {
+  test("Drive is one catalog app on both device surfaces, gated by dashboard and docked", () => {
     const drive = catalogApp("drive");
     expect(drive).not.toBeNull();
     if (!drive) return;
@@ -59,16 +63,18 @@ describe("device catalog", () => {
     // Visibility is gated by permission and install state, never by role or a missing surface.
     expect(drive.managerOnly).toBeUndefined();
     expect(drive.keepManagerPage).toBeUndefined();
-    // The editors are reached by prefix matching, not as sibling pages; no dock slot.
+    // The editors are their own plugins, not sibling pages; Drive took the dock spot Docs had.
     expect(drive.pages).toBeUndefined();
-    expect(drive.dockOn).toBeUndefined();
+    expect(drive.editor).toBeUndefined();
+    expect(drive.dockOn).toEqual(["store", "personal"]);
     expect(drive.dock).toBeUndefined();
     expect(drive.component).toBeDefined();
     expect(drive.lite).toBeDefined();
     expect(catalogAppOnSurface(drive, "store")).toBe(true);
     expect(catalogAppOnSurface(drive, "personal")).toBe(true);
-    // Docs stays its own app.
-    expect(catalogApp("docs")?.route).toBe("/manager/docs");
+    // Docs stays its own app (an editor plugin now).
+    expect(catalogApp("docs")?.route).toBe("/manager/docs/edit");
+    expect(catalogApp("docs")?.dockOn).toBeUndefined();
   });
 
   test("the lazy loaders open the Drive manager page and the DriveLite panel", () => {
@@ -81,19 +87,23 @@ describe("device catalog", () => {
     expect(liteSource).toMatch(/export function DriveLite\(\{[^}]*\}: LiteAppProps\)/);
   });
 
-  test("/manager/apps offers Drive as an optional app", () => {
-    // app-store.tsx lists every catalog app that has a device UI.
+  test("Drive is built in: required on every surface and never stored", () => {
+    // app-store.tsx lists every catalog app that has a device UI; a required one shows as always on.
     expect(APP_CATALOG.filter((app) => app.lite || app.keepManagerPage).map((app) => app.id)).toContain("drive");
-    expect(isRequiredDeviceApp("drive")).toBe(false);
-    expect((REQUIRED_DEVICE_APPS as readonly string[]).includes("drive")).toBe(false);
-    // Installing stores the id on settings.deviceApps; required ids would be dropped here.
-    expect(parseDeviceApps(JSON.stringify(["docs", "drive"]))).toEqual(["docs", "drive"]);
+    expect(isRequiredDeviceApp("drive")).toBe(true);
+    expect((REQUIRED_DEVICE_APPS as readonly string[]).includes("drive")).toBe(true);
+    // Writes drop required ids, so "drive" never reaches settings.deviceApps again.
+    expect(parseDeviceApps(JSON.stringify(["docs", "drive"]))).toEqual(["docs"]);
   });
 
-  test("links to Drive pages resolve to the Drive app's main page", () => {
+  test("links to the Drive home resolve to Drive; editor links to their plugin", () => {
     for (const url of DRIVE_URLS) {
       expect(catalogAppForRoute(url)?.id).toBe("drive");
       expect(catalogPageForRoute(url)?.page.route).toBe("/manager/drive");
+    }
+    for (const [url, plugin] of EDITOR_URLS) {
+      expect(catalogAppForRoute(url)?.id).toBe(plugin);
+      expect(catalogPageForRoute(url)?.page.route).toBe(url.split("?")[0]);
     }
     expect(catalogAppForRoute("/manager/docs/edit?id=1")?.id).toBe("docs");
     expect(catalogAppForRoute("/manager/drivers")).toBeNull();
@@ -101,25 +111,33 @@ describe("device catalog", () => {
 });
 
 describe("route ownership", () => {
-  test("installing Drive turns on the home page and both editors", () => {
-    expect(MANAGER_ROUTE_APPS["/manager/drive"]).toBe("drive");
+  test("the Drive home is always on; each editor turns on with its own plugin", () => {
+    expect(MANAGER_ROUTE_APPS["/manager/drive"]).toBeUndefined();
     for (const url of DRIVE_URLS) {
-      expect(appForManagerRoute(url)).toBe("drive");
+      expect(appForManagerRoute(url)).toBeNull();
+      expect(isManagerRouteEnabled(url, [])).toBe(true);
+    }
+    for (const [url, plugin] of EDITOR_URLS) {
+      expect(appForManagerRoute(url)).toBe(plugin);
       expect(isManagerRouteEnabled(url, [])).toBe(false);
-      expect(isManagerRouteEnabled(url, ["docs"])).toBe(false);
-      expect(isManagerRouteEnabled(url, ["drive"])).toBe(true);
-      expect(isManagerRouteEnabled(url, new Set(["drive"]))).toBe(true);
+      // A bare "drive" in a list is no longer enough: only the settings-row reader expands it (legacy orgs).
+      expect(isManagerRouteEnabled(url, ["drive", "docs"])).toBe(false);
+      expect(isManagerRouteEnabled(url, [plugin])).toBe(true);
+      expect(isManagerRouteEnabled(url, new Set([plugin]))).toBe(true);
+      // The owning app id is the catalog id, so the store entry and the route turn on together.
+      expect(catalogApp(plugin)?.route).toBe(url.split("?")[0]);
     }
     expect(appForManagerRoute("/manager/drivers")).toBeNull();
     expect(appForManagerRoute("/manager/docs/edit")).toBe("docs");
-    expect(isManagerRouteEnabled("/manager/docs", ["drive"])).toBe(false);
-    // The owning app id is the catalog id, so the tile and the routes turn on together.
-    expect(catalogApp(appForManagerRoute("/manager/drive") ?? "")?.route).toBe("/manager/drive");
+    expect(isManagerRouteEnabled("/manager/docs/edit", ["sheets", "slides"])).toBe(false);
+    // The old Docs home is an always-on alias of Drive's documents view.
+    expect(appForManagerRoute("/manager/docs")).toBeNull();
+    expect(isManagerRouteEnabled("/manager/docs", [])).toBe(true);
   });
 });
 
 describe("route registry", () => {
-  test("the Drive home is a listed section; its editors are unlisted children", () => {
+  test("the Drive home is a listed section; the Docs alias and every editor are unlisted children", () => {
     const home = matchRoute("/manager/drive?space=my");
     expect(home?.prefix).toBe("/manager/drive");
     expect(home?.exact).toBe(true);
@@ -135,6 +153,7 @@ describe("route registry", () => {
     const sheet = matchRoute("/manager/drive/sheet?id=1&new=1");
     expect(sheet?.prefix).toBe("/manager/drive/sheet");
     expect(sheet?.titleKey).toBe("nav.sheets");
+    expect(sheet?.icon).toBe(SheetsIcon);
     expect(sheet?.listed).toBe(false);
     expect(sheet?.parent).toBe("/manager/drive");
     expect(sheet?.mobileChrome).toBe("docked");
@@ -144,13 +163,27 @@ describe("route registry", () => {
     const slides = matchRoute("/manager/drive/slides?id=1&present=1");
     expect(slides?.prefix).toBe("/manager/drive/slides");
     expect(slides?.titleKey).toBe("nav.slides");
+    expect(slides?.icon).toBe(SlidesIcon);
     expect(slides?.listed).toBe(false);
     expect(slides?.parent).toBe("/manager/drive");
     expect(slides?.mobileChrome).toBe("docked");
     expect(slides?.previewKind).toBe("doc");
     expect(slides?.volatileParams).toEqual(["new", "slide", "version", "present"]);
 
-    for (const row of [home, sheet, slides]) expect(row?.permissionKey).toBe("dashboard");
+    // The old Docs home is an alias of Drive's documents view, no longer a section of its own.
+    const docsHome = matchRoute("/manager/docs");
+    expect(docsHome?.prefix).toBe("/manager/docs");
+    expect(docsHome?.listed).toBe(false);
+    expect(docsHome?.section).toBeUndefined();
+    expect(docsHome?.parent).toBe("/manager/drive");
+    const docEditor = matchRoute("/manager/docs/edit?id=1");
+    expect(docEditor?.prefix).toBe("/manager/docs/edit");
+    expect(docEditor?.icon).toBe(DocsIcon);
+    expect(docEditor?.listed).toBe(false);
+    expect(docEditor?.parent).toBe("/manager/drive");
+
+    for (const row of [home, sheet, slides, docsHome, docEditor]) expect(row?.permissionKey).toBe("dashboard");
+    expect(home?.keywords).toEqual(expect.arrayContaining(["docs", "documents", "spreadsheets", "presentations"]));
     expect(matchRoute("/manager/drive/other")).toBeNull();
   });
 
@@ -169,13 +202,19 @@ describe("route registry", () => {
 });
 
 describe("legacy shell", () => {
-  test("the bottom bar lists Drive after Docs, gated like its route", () => {
+  const DRIVE_ROW = `{ labelKey: "nav.drive", href: "/manager/drive", icon: DriveIcon, permissionKey: "dashboard" }`;
+
+  test("the bottom bar lists Drive and no Docs row, gated like its route", () => {
     const text = source("components/bottom-bar.tsx");
-    const docs = text.indexOf(`{ labelKey: "nav.docs", href: "/manager/docs"`);
-    const drive = text.indexOf(`{ labelKey: "nav.drive", href: "/manager/drive", icon: DriveIcon, permissionKey: "dashboard" }`);
-    expect(docs).toBeGreaterThan(-1);
-    expect(drive).toBeGreaterThan(docs);
+    expect(text).toContain(DRIVE_ROW);
+    expect(text).not.toContain(`href: "/manager/docs"`);
     expect(text).toMatch(/import \{[^}]*\bDriveIcon\b[^}]*\} from "@\/components\/device\/app-icons"/);
+  });
+
+  test("the legacy sidebar's files row is Drive", () => {
+    const text = source("components/sidebar.tsx");
+    expect(text).toContain(DRIVE_ROW);
+    expect(text).not.toContain(`href: "/manager/docs"`);
   });
 });
 
@@ -183,7 +222,7 @@ describe("labels", () => {
   test("every label the wiring shows exists in all 8 locales (messages or a Drive fragment)", () => {
     const keys = new Set(["device.catalog.drive", "device.catalogDesc.drive", "nav.drive"]);
     for (const row of ROUTES) if (row.prefix === "/manager/drive" || row.parent === "/manager/drive") keys.add(row.titleKey);
-    expect([...keys].sort()).toEqual(["device.catalog.drive", "device.catalogDesc.drive", "nav.drive", "nav.sheets", "nav.slides"]);
+    expect([...keys].sort()).toEqual(["device.catalog.drive", "device.catalogDesc.drive", "nav.docs", "nav.drive", "nav.sheets", "nav.slides"]);
 
     const fragments = loadFragments();
     const missing: string[] = [];

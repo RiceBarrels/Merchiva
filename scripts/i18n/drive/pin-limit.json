@@ -1,0 +1,117 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "PIN limiter — punch-PIN attempt limit: lockout notice, no-answer, code in use, managers' unlock",
+  "note": "Keys used by lib/pin-attempt.ts (pinNotice / ownCodeNotice / pinErrorKey) and components/personnel/team/pin-lockouts.tsx.",
+  "owned": [
+    "pinLimit"
+  ],
+  "extends": null,
+  "overwrites": [],
+  "allowSameAsEn": [],
+  "locales": {
+    "en": {
+      "pinLimit": {
+        "locked": "Too many wrong PINs. PIN entry is paused for {minutes} min. Log in with your phone instead, or ask a manager to unlock it.",
+        "noAnswer": "No answer from the server. Check the connection and try again.",
+        "codeInUse": "That code is already in use at this store. Choose another one.",
+        "clear": "Unlock PIN entry",
+        "clearHint": "PIN entry paused after too many wrong PINs?",
+        "cleared": "PIN entry is unlocked for this store.",
+        "clearFailed": "Couldn't unlock PIN entry.",
+        "noOperator": "Log in again to punch: this tablet no longer knows who is using it.",
+        "lockedNow": "Too many wrong PINs. PIN entry is paused for now. Log in with your phone instead, or ask a manager to unlock it."
+      }
+    },
+    "zh-cn": {
+      "pinLimit": {
+        "locked": "错误的 PIN 次数过多，PIN 输入已暂停 {minutes} 分钟。请改用手机扫码登录，或请经理解锁。",
+        "noAnswer": "服务器没有响应。请检查网络后重试。",
+        "codeInUse": "这个代码在本店已被使用，请换一个。",
+        "clear": "解锁 PIN 输入",
+        "clearHint": "PIN 错误次数过多导致暂停？",
+        "cleared": "本店的 PIN 输入已解锁。",
+        "clearFailed": "无法解锁 PIN 输入。",
+        "noOperator": "请重新登录后再打卡：这台平板已不知道当前是谁在使用。",
+        "lockedNow": "错误的 PIN 太多，PIN 输入已暂停。请改用手机登录，或请经理解锁。"
+      }
+    },
+    "zh-tw": {
+      "pinLimit": {
+        "locked": "錯誤的 PIN 次數過多，PIN 輸入已暫停 {minutes} 分鐘。請改用手機掃描登入，或請經理解鎖。",
+        "noAnswer": "伺服器沒有回應。請檢查網路後再試一次。",
+        "codeInUse": "這個代碼在本店已被使用，請換一個。",
+        "clear": "解鎖 PIN 輸入",
+        "clearHint": "PIN 錯誤次數過多導致暫停？",
+        "cleared": "本店的 PIN 輸入已解鎖。",
+        "clearFailed": "無法解鎖 PIN 輸入。",
+        "noOperator": "請重新登入後再打卡：這台平板已不知道目前是誰在使用。",
+        "lockedNow": "錯誤的 PIN 太多，PIN 輸入已暫停。請改用手機登入，或請經理解鎖。"
+      }
+    },
+    "zh-hk": {
+      "pinLimit": {
+        "locked": "錯誤的 PIN 次數過多，PIN 輸入已暫停 {minutes} 分鐘。請改用手機掃描登入，或請經理解鎖。",
+        "noAnswer": "伺服器沒有回應。請檢查網絡後再試。",
+        "codeInUse": "這個代碼在本店已被使用，請換另一個。",
+        "clear": "解鎖 PIN 輸入",
+        "clearHint": "PIN 錯誤次數太多而暫停？",
+        "cleared": "本店的 PIN 輸入已解鎖。",
+        "clearFailed": "未能解鎖 PIN 輸入。",
+        "noOperator": "請重新登入後再打卡：這部平板已不知道現在是誰在使用。",
+        "lockedNow": "錯誤的 PIN 太多，PIN 輸入已暫停。請改用手機登入，或請經理解鎖。"
+      }
+    },
+    "es": {
+      "pinLimit": {
+        "locked": "Demasiados PIN incorrectos. La entrada de PIN está en pausa durante {minutes} min. Inicia sesión con tu teléfono o pide a un encargado que la desbloquee.",
+        "noAnswer": "El servidor no responde. Revisa la conexión e inténtalo de nuevo.",
+        "codeInUse": "Ese código ya se usa en esta tienda. Elige otro.",
+        "clear": "Desbloquear PIN",
+        "clearHint": "¿Entrada de PIN en pausa por demasiados errores?",
+        "cleared": "La entrada de PIN está desbloqueada en esta tienda.",
+        "clearFailed": "No se pudo desbloquear la entrada de PIN.",
+        "noOperator": "Vuelve a iniciar sesión para fichar: esta tableta ya no sabe quién la está usando.",
+        "lockedNow": "Demasiados PIN incorrectos. La entrada de PIN está en pausa por ahora. Inicia sesión con tu teléfono o pide a un gerente que la desbloquee."
+      }
+    },
+    "fr": {
+      "pinLimit": {
+        "locked": "Trop de PIN erronés. La saisie du PIN est suspendue pendant {minutes} min. Connectez-vous avec votre téléphone ou demandez à un responsable de la débloquer.",
+        "noAnswer": "Le serveur ne répond pas. Vérifiez la connexion et réessayez.",
+        "codeInUse": "Ce code est déjà utilisé dans ce magasin. Choisissez-en un autre.",
+        "clear": "Débloquer la saisie du PIN",
+        "clearHint": "Saisie du PIN suspendue après trop d'erreurs ?",
+        "cleared": "La saisie du PIN est débloquée pour ce magasin.",
+        "clearFailed": "Impossible de débloquer la saisie du PIN.",
+        "noOperator": "Reconnectez-vous pour pointer : cette tablette ne sait plus qui l’utilise.",
+        "lockedNow": "Trop de codes PIN erronés. La saisie du PIN est suspendue pour le moment. Connectez-vous avec votre téléphone ou demandez à un responsable de la débloquer."
+      }
+    },
+    "ar": {
+      "pinLimit": {
+        "locked": "أُدخل رمز PIN خاطئ مرات كثيرة. تم إيقاف إدخال PIN مؤقتًا لمدة {minutes} دقيقة. سجّل الدخول بهاتفك بدلًا من ذلك، أو اطلب من المدير إلغاء القفل.",
+        "noAnswer": "لا يوجد رد من الخادم. تحقق من الاتصال وحاول مرة أخرى.",
+        "codeInUse": "هذا الرمز مستخدم بالفعل في هذا المتجر. اختر رمزًا آخر.",
+        "clear": "إلغاء قفل إدخال PIN",
+        "clearHint": "هل توقف إدخال PIN بعد أخطاء كثيرة؟",
+        "cleared": "تم إلغاء قفل إدخال PIN لهذا المتجر.",
+        "clearFailed": "تعذّر إلغاء قفل إدخال PIN.",
+        "noOperator": "سجّل الدخول مرة أخرى لتسجيل الحضور: لم يعد هذا الجهاز اللوحي يعرف من يستخدمه.",
+        "lockedNow": "عدد كبير جدًا من أرقام PIN الخاطئة. تم إيقاف إدخال PIN مؤقتًا. سجّل الدخول من هاتفك بدلًا من ذلك، أو اطلب من مدير إلغاء القفل."
+      }
+    },
+    "hi": {
+      "pinLimit": {
+        "locked": "बहुत बार गलत PIN डाला गया। PIN डालना {minutes} मिनट के लिए रोका गया है। इसके बजाय अपने फ़ोन से लॉग इन करें, या किसी मैनेजर से इसे अनलॉक करवाएँ।",
+        "noAnswer": "सर्वर से कोई जवाब नहीं मिला। कनेक्शन जाँचें और फिर से कोशिश करें।",
+        "codeInUse": "यह कोड इस स्टोर में पहले से इस्तेमाल हो रहा है। कोई दूसरा चुनें।",
+        "clear": "PIN डालना अनलॉक करें",
+        "clearHint": "बहुत सारे गलत PIN के बाद PIN डालना रुक गया?",
+        "cleared": "इस स्टोर के लिए PIN डालना अनलॉक हो गया है।",
+        "clearFailed": "PIN डालना अनलॉक नहीं हो सका।",
+        "noOperator": "पंच करने के लिए फिर से लॉग इन करें: यह टैबलेट अब नहीं जानता कि इसे कौन इस्तेमाल कर रहा है।",
+        "lockedNow": "बहुत सारे गलत PIN। PIN डालना अभी रोका गया है। इसके बजाय अपने फ़ोन से लॉग इन करें, या किसी मैनेजर से इसे अनलॉक करने को कहें।"
+      }
+    }
+  }
+}

@@ -1,6 +1,5 @@
-// lib/url-state/query-sync.ts over the Drive codec: the scenarios of
-// scripts/tests/docs/home-query-sync.test.ts (the Docs home's own copy of the algorithm),
-// with `space` in place of the Docs `scope`, plus the Drive-only folder rule.
+// lib/url-state/query-sync.ts over the Drive codec: the search box's draft, debounce and echo
+// scenarios with `space` as the scope param, plus the Drive-only folder rule.
 import { describe, expect, test } from "bun:test";
 import { DRIVE_CODEC, type DriveUrlParams } from "@/components/drive/model/url-state";
 import type { DriveSection } from "@/components/drive/model/types";

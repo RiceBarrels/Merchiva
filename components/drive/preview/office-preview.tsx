@@ -3,7 +3,7 @@
 // Word-processor, spreadsheet and presentation files: Drive does not draw them, but opens a copy
 // in its own editor ("Open as Doc / Sheet / Slides", which creates a new document and leaves the
 // original here). The offer comes from the entry's actions only, so it is absent where the
-// module would refuse it, offline, or for a Doc while the Docs app is not installed.
+// module would refuse it or offline; a missing editor plugin is asked for when it runs.
 
 import { FilePlusCorner } from "lucide-react";
 import { Button } from "@/components/ui/button";

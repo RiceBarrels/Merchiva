@@ -121,7 +121,7 @@ describe("index.ts hooks (sheets.md §3.8, DS §6.8, U7)", () => {
     const runtime = file.statements.filter(ts.isImportDeclaration)
       .filter((s) => !s.importClause?.isTypeOnly)
       .map((s) => (s.moduleSpecifier as ts.StringLiteral).text);
-    expect(runtime.sort()).toEqual(["./context", "./logic", "./sheet-logic"]);
+    expect(runtime.sort()).toEqual(["./context", "./logic", "./sheet-logic", "./storage"]);
   });
 });
 

@@ -30,6 +30,7 @@ import { DOC_ERROR_I18N_KEYS, docErrorCode } from "@/lib/docs/errors";
 import type { HeaderFooterVariant } from "@/lib/docs/header-footer";
 import { defaultPageSetup, normalizePageSetup, type DocPageSetup } from "@/lib/docs/page-setup";
 import type { DocErrorCode } from "@/lib/docs/types";
+import { isQuotaExceededError } from "@/lib/storage/quota-error";
 
 import { decodeImportText } from "./decode";
 
@@ -229,7 +230,8 @@ export async function importFile(file: File, deps: ImportFileDeps): Promise<Impo
       skippedImages: skippedImages + prepared.skippedImages,
     };
   } catch (err) {
-    throw asImportError(err);
+    // An image refused for a full store: say so, not "the import failed".
+    throw asImportError(err, isQuotaExceededError(err) ? "appUpload.quotaExceeded" : null);
   }
 }
 
@@ -240,7 +242,7 @@ export async function importFile(file: File, deps: ImportFileDeps): Promise<Impo
  */
 export async function importAsNewDocument(
   file: File,
-  deps: { t: (key: string) => string; locale: string; placement?: DocPlacement | null },
+  deps: { t: (key: string) => string; locale: string; organizationId: string; placement?: DocPlacement | null },
 ): Promise<{ documentId: string; result: ImportResult }> {
   const problem = validateImportFile(file);
   if (problem) throw new DocImportError(problem);
@@ -253,7 +255,8 @@ export async function importAsNewDocument(
   }
   const [{ uploadDocImage }, { createDocumentFromContent, placedCreateErrorKey }] = modules;
 
-  const result = await importFile(file, { t: deps.t, locale: deps.locale, uploadImage: uploadDocImage });
+  const uploadImage = (image: File) => uploadDocImage(image, deps.organizationId);
+  const result = await importFile(file, { t: deps.t, locale: deps.locale, uploadImage });
   try {
     const documentId = await createDocumentFromContent({
       title: result.title,

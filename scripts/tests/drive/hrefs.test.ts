@@ -3,12 +3,14 @@
 
 import { describe, expect, test } from "bun:test";
 import { DOCS_EDIT_PATH, documentHref } from "@/lib/docs/hrefs";
+import { mergeDriveSearch, parseDriveParams } from "@/components/drive/model/url-state";
 import {
   DRIVE_HOME_HREF,
   SHEET_EDIT_PATH,
   SLIDES_EDIT_PATH,
   documentFileHref,
   driveHref,
+  driveKindHref,
   parseEditorHref,
   sheetHref,
   slidesHref,
@@ -43,6 +45,9 @@ describe("driveHref", () => {
       "/manager/drive?space=apps&source=chat&preview=v%3Achat%3Aabc-123%3A2",
     );
     expect(driveHref({ preview: `ITEM:${ID.toUpperCase()}` })).toBe(`/manager/drive?preview=item%3A${ID}`);
+    expect(driveHref({ space: "apps", source: "forms", preview: `v:forms:${ID}` })).toBe(
+      `/manager/drive?space=apps&source=forms&preview=v%3Aforms%3A${ID}`,
+    );
   });
 
   test("drops what the home would ignore", () => {
@@ -58,6 +63,41 @@ describe("driveHref", () => {
     const href = driveHref({ space: "store", folder: FOLDER, preview: `item:${ID}` });
     const params = new URL(href, "https://app.local").searchParams;
     expect([...params.entries()]).toEqual([["space", "store"], ["folder", FOLDER], ["preview", `item:${ID}`]]);
+  });
+
+  test("type filter: one of the home's kinds, never the default", () => {
+    for (const type of ["folder", "doc", "sheet", "slides", "image", "pdf", "video", "audio", "other"]) {
+      expect(driveHref({ type })).toBe(`/manager/drive?type=${type}`);
+    }
+    for (const type of ["all", "", "docs", "Sheet", "spreadsheet"]) expect(driveHref({ type })).toBe(DRIVE_HOME_HREF);
+  });
+
+  test("search query: trimmed, written when non-empty, capped at the home's 200 characters", () => {
+    expect(driveHref({ q: "  opening checklist " })).toBe("/manager/drive?q=opening+checklist");
+    expect(driveHref({ q: "   " })).toBe(DRIVE_HOME_HREF);
+    expect(driveHref({ q: "" })).toBe(DRIVE_HOME_HREF);
+    const long = new URL(driveHref({ q: "x".repeat(250) }), "https://app.local").searchParams.get("q");
+    expect(long).toBe("x".repeat(200));
+    expect(new URL(driveHref({ q: "a&b=c#d" }), "https://app.local").searchParams.get("q")).toBe("a&b=c#d");
+  });
+
+  test("type and q sit in the codec's order: space, folder, member, source, type, q, preview", () => {
+    const href = driveHref({ preview: `doc:${ID}`, q: "menu", type: "doc", folder: FOLDER, space: "store" });
+    expect(href).toBe(`/manager/drive?space=store&folder=${FOLDER}&type=doc&q=menu&preview=doc%3A${ID}`);
+  });
+
+  test("driveKindHref: Drive's recent view of one editor's files", () => {
+    expect(driveKindHref("doc")).toBe("/manager/drive?space=recent&type=doc");
+    expect(driveKindHref("sheet")).toBe("/manager/drive?space=recent&type=sheet");
+    expect(driveKindHref("slides")).toBe("/manager/drive?space=recent&type=slides");
+  });
+
+  test("the home's URL codec reads type and q back, and writes the same string", () => {
+    const href = driveHref({ space: "recent", type: "sheet", q: "rota" });
+    const search = href.slice(href.indexOf("?"));
+    const params = parseDriveParams(new URLSearchParams(search));
+    expect([params.space, params.type, params.q]).toEqual(["recent", "sheet", "rota"]);
+    expect(mergeDriveSearch("", { space: "recent", type: "sheet", q: "rota" })).toBe(search);
   });
 });
 

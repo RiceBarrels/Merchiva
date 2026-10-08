@@ -1,10 +1,13 @@
 // components/drive/model/virtual-sources.ts — "Stored in apps": the read-only links other apps keep.
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { Identity, Timestamp, Uuid } from "spacetimedb";
 import { previewParam } from "@/components/drive/model/url-state";
 import { VIRTUAL_SOURCE_IDS } from "@/components/drive/model/types";
-import { VIRTUAL_SOURCES, buildVirtualEntries, parseEvidenceJson, type VirtualInput } from "@/components/drive/model/virtual-sources";
+import { isRecordEntry, type VirtualEntry } from "@/components/drive/model/types";
+import { VIRTUAL_SOURCES, appFileSizeOf, buildVirtualEntries, parseEvidenceJson, type VirtualFormInput, type VirtualInput } from "@/components/drive/model/virtual-sources";
+import { formEditHref } from "@/components/forms/list/status";
+import { appFileKeyHash } from "@/lib/storage/uploadthing-key";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 const OTHER_ORG = "22222222-2222-4222-8222-222222222222";
@@ -34,9 +37,17 @@ function input(patch: Partial<VirtualInput> = {}): VirtualInput {
 describe("VIRTUAL_SOURCES", () => {
   test("one per source id, with copy keys that exist and gates as specified", () => {
     expect(VIRTUAL_SOURCES.map((s) => s.id)).toEqual([...VIRTUAL_SOURCE_IDS]);
-    const en = JSON.parse(readFileSync("scripts/i18n/drive/drive-ui/en.json", "utf8")) as Record<string, unknown>;
-    const lookup = (key: string) => key.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], en);
-    for (const s of VIRTUAL_SOURCES) expect(typeof lookup(s.labelKey)).toBe("string");
+    // The forms source's copy waits in a draft until the i18n step merges it into messages/*.json.
+    const trees = ["scripts/i18n/drive/drive-ui/en.json", "scripts/i18n/forms-drafts/drive-source.en.json", "messages/en.json"]
+      .filter((path) => existsSync(path))
+      .map((path) => JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>);
+    const lookup = (key: string) => trees
+      .map((tree) => key.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], tree))
+      .find((value) => typeof value === "string");
+    for (const s of VIRTUAL_SOURCES) {
+      expect(typeof lookup(s.labelKey)).toBe("string");
+      if (s.countKey) for (const key of [s.countKey, `${s.countKey}One`]) expect(typeof lookup(key)).toBe("string");
+    }
     const by = Object.fromEntries(VIRTUAL_SOURCES.map((s) => [s.id, s.requires]));
     expect(by.chat).toEqual({ permission: "staffing", hideOnStore: true });
     expect(by.inventory).toEqual({ permission: "inventory" });
@@ -44,6 +55,7 @@ describe("VIRTUAL_SOURCES", () => {
     expect(by.tasks).toEqual({ appRoute: "/manager/personnel/roles" });
     expect(by.training).toEqual({ appRoute: "/manager/personnel/training" });
     expect(by.bugs).toEqual({});
+    expect(by.forms).toEqual({ appRoute: "/manager/forms" });
   });
 });
 
@@ -99,6 +111,21 @@ describe("chat", () => {
       expect(previewParam(e.key)).toBe(e.key);
       expect(e.location).toBeNull();
     }
+  });
+
+  test("sizes: an UploadThing file by its key hash; another link, or one not recorded, has none", () => {
+    const rows = [
+      msg(conv, { attachmentUrl: "https://utfs.io/f/abc", attachmentType: "image", attachmentName: "Menu photo", createdAt: T(3_000) }),
+      msg(conv, { attachmentUrl: "https://app1.ufs.sh/f/unrecorded", attachmentType: "image", createdAt: T(2_000) }),
+      msg(conv, { attachmentUrl: "https://x.test/f/abc", attachmentType: "image", createdAt: T(1_000) }),
+    ];
+    const appFileSizes = new Map([[appFileKeyHash("abc") ?? "", { sizeBytes: 2048, source: "chat" as const, mimeType: "image/png" }]]);
+    const sized = buildVirtualEntries("chat", input({ chatConversations: [conv], chatMessages: rows, appFileSizes }));
+    expect(sized.map((e) => e.sizeBytes)).toEqual([2048, null, null]);
+    expect(appFileSizeOf("https://utfs.io/f/abc", appFileSizes)).toBe(2048);
+    expect(appFileSizeOf("abc", appFileSizes)).toBeNull();
+    // Without the lookups (an older module) every size is unknown.
+    expect(buildVirtualEntries("chat", input({ chatConversations: [conv], chatMessages: rows })).map((e) => e.sizeBytes)).toEqual([null, null, null]);
   });
 
   test("a conversation without a name is named after the other people in it", () => {
@@ -223,5 +250,56 @@ describe("profile", () => {
     for (const e of entries) expect(previewParam(e.key)).toBe(e.key);
     const store = buildVirtualEntries("profile", input({ organizations: [org], users: [me], storeIdentity: true }));
     expect(store.map((e) => e.name)).toEqual(["Store logo"]);
+  });
+});
+
+describe("forms", () => {
+  const F1 = uuid();
+  const F2 = uuid();
+  const F3 = uuid();
+  const form = (id: string, patch: Partial<VirtualFormInput["form"]> = {}): VirtualFormInput["form"] => ({
+    id, organizationId: ORG, title: "Opening checklist", kind: "checklist", ownerMemberId: BEN.id, updatedAt: new Date(1_000), ...patch,
+  });
+  const meta = (patch: Partial<NonNullable<VirtualFormInput["meta"]>> = {}): NonNullable<VirtualFormInput["meta"]> => ({
+    responseCount: 3, answerBytes: 1_200, fileBytes: 800, lastResponseAt: new Date(5_000), ...patch,
+  });
+  const formsInput = (forms: VirtualFormInput[], patch: Partial<VirtualInput> = {}) => input({
+    forms,
+    formHref: (id) => formEditHref(id, "responses"),
+    labels: {
+      untitledAttachment: "Attachment", storeLogo: "Store logo", profilePhoto: "Your profile photo", photoN: "{name} · photo {n}",
+      untitledForm: "Untitled form", formKinds: { checklist: "Checklist", survey: "Survey" }, responsesN: "{n} responses",
+    },
+    ...patch,
+  });
+
+  test("one record per form whose counters the viewer can read, newest activity first", () => {
+    const entries = buildVirtualEntries("forms", formsInput([
+      { form: form(F1), meta: meta() },
+      { form: form(F2, { title: " ", kind: "survey", ownerMemberId: ANA.id, updatedAt: new Date(9_000) }), meta: meta({ responseCount: 1, answerBytes: 10, fileBytes: 0, lastResponseAt: null }) },
+      // No form_meta: not a Drive admin, so no entry.
+      { form: form(F3), meta: null },
+      { form: form(uuid(), { organizationId: OTHER_ORG }), meta: meta() },
+    ]));
+    expect(entries.map((e) => [e.key, e.name, e.group, e.note, e.sizeBytes, e.updatedAt, e.ownerName, e.isMine])).toEqual([
+      [`v:forms:${F2}`, "Untitled form", "Survey", "1 responses", 10, 9_000, "Ana", true],
+      [`v:forms:${F1}`, "Opening checklist", "Checklist", "3 responses", 2_000, 5_000, "Ben", false],
+    ]);
+    const [, first] = entries as [VirtualEntry, VirtualEntry];
+    expect(first.href).toBe(`/manager/forms/edit?id=${F1}&view=responses`);
+    expect(first.url).toBe("");
+    expect(first.access.canOpen).toBe(true);
+    expect(first.access.canDownload).toBe(false);
+    expect(first.originRoute).toBe("/manager/forms");
+    expect(isRecordEntry(first)).toBe(true);
+    for (const e of entries) expect(previewParam(e.key)).toBe(e.key);
+  });
+
+  test("no forms, or no link builder: no entries; file links are not records", () => {
+    expect(buildVirtualEntries("forms", input())).toEqual([]);
+    expect(buildVirtualEntries("forms", input({ forms: [{ form: form(F1), meta: meta() }] }))).toEqual([]);
+    const bug = { id: U(uuid()), organizationId: ORG, reporterMemberId: ANA.id, title: "Crash", screenshotUrl: "https://x.test/a.png", createdAt: T(2) };
+    const [link] = buildVirtualEntries("bugs", input({ bugReports: [bug] }));
+    expect(link && isRecordEntry(link)).toBe(false);
   });
 });

@@ -2,8 +2,7 @@
 // the page's hook drives it (the Drive home: components/drive/use-drive-url-state.ts) and
 // scripts/tests/drive/query-sync.test.ts exercises it.
 //
-// The algorithm of components/docs/home/query-sync.ts, generalized over a SearchCodec (the
-// Docs home keeps its own copy):
+// The algorithm, generic over a SearchCodec:
 //
 //   - The box keeps a local draft so typing never waits for the URL; the URL follows after a
 //     short debounce.

@@ -7,7 +7,8 @@ import type { StoreMember } from "./use-org-members";
 export interface PunchPromptProps {
   /** Member who just logged in and is not punched in; null hides the prompt. */
   member: StoreMember | null;
-  /** PIN they logged in with — `recordPunch` validates it server-side. */
+  /** PIN they logged in with; null after a QR log-in. The punch goes through
+   *  `recordOperatorPunch` (the tablet's resolved operator), never this PIN. */
   code: string | null;
   onDone: () => void;
 }

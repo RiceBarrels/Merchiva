@@ -9,6 +9,7 @@ import {
   DirectoryIcon,
   DocsIcon,
   DriveIcon,
+  FormsIcon,
   InventoryIcon,
   NotificationsIcon,
   PayIcon,
@@ -17,6 +18,8 @@ import {
   SalesIcon,
   ScheduleIcon,
   SettingsIcon,
+  SheetsIcon,
+  SlidesIcon,
   TasksIcon,
   TrainingIcon,
   type AppIcon,
@@ -29,15 +32,15 @@ export const NewTabIcon: AppIcon = function NewTabIcon({ className }) {
 };
 
 /**
- * Route registry. Listed sections mirror components/sidebar.tsx navItems plus Docs, Drive and
- * Settings; unlisted rows cover every other app/manager page.
+ * Route registry. Listed sections mirror components/sidebar.tsx navItems plus Settings;
+ * unlisted rows cover every other app/manager page.
  *
  * Every `permissionKey` equals the page's `<PermissionGuard section>` (verified with grep):
  *   inventory, inventory/waste, suppliers → inventory · sales, reports, finances → sales ·
  *   products, pricing → products · personnel/layout → staffing, personnel/team page → team ·
  *   channel → staffing · bookings, reviews, api-settings, settings/billing → settings.
  * Exceptions (no page guard): /manager/dashboard uses `dashboard` like the sidebar
- * (sidebar.tsx:86); docs and drive (incl. its Sheets/Slides editors) use `dashboard` (plan D39);
+ * (sidebar.tsx:86); docs and drive (incl. the Docs/Sheets/Slides editors) use `dashboard` (plan D39);
  * /manager/apps uses `settings` like the
  * sidebar (the page itself checks canManageDeviceApps); settings, usage (redirects to
  * settings), subscribe and new-tab have no guard — and neither does /manager, which is only
@@ -58,14 +61,16 @@ export const ROUTES: readonly RouteDef[] = [
     keywords: ["dashboard", "overview", "briefing"],
   },
   // ── Docs ────────────────────────────────────────────────────────────────
+  // Drive is the one entry for files: the old Docs home is an alias of Drive's documents view, and
+  // the Docs editor (an editor plugin, like Sheets and Slides) belongs to the Drive section.
   {
     prefix: "/manager/docs", exact: true, titleKey: "nav.docs", icon: DocsIcon, permissionKey: "dashboard",
-    listed: true, section: true, previewKind: "grid",
+    listed: false, parent: "/manager/drive", previewKind: "grid",
     keywords: ["docs", "documents", "notes", "write", "files"],
   },
   {
     prefix: "/manager/docs/edit", titleKey: "nav.docs", icon: DocsIcon, permissionKey: "dashboard",
-    listed: false, parent: "/manager/docs", mobileChrome: "docked", previewKind: "doc",
+    listed: false, parent: "/manager/drive", mobileChrome: "docked", previewKind: "doc",
     volatileParams: ["new", "comment", "version"],
   },
   // ── Drive ───────────────────────────────────────────────────────────────
@@ -73,20 +78,35 @@ export const ROUTES: readonly RouteDef[] = [
     prefix: "/manager/drive", exact: true, titleKey: "nav.drive", icon: DriveIcon, permissionKey: "dashboard",
     listed: true, section: true, previewKind: "grid",
     // Folder / preview / member params are navigation state the page restores; none is one-shot.
-    // The Sheets and Slides editors are unsearchable (they need an id), so their names lead here.
+    // The editors are unsearchable (they need an id), so their names lead here.
     keywords: [
-      "drive", "files", "folders", "uploads", "storage", "photos", "spreadsheets", "presentations",
-      "sheets", "slides", "decks",
+      "drive", "files", "folders", "uploads", "storage", "photos", "docs", "documents", "spreadsheets",
+      "presentations", "sheets", "slides", "decks",
     ],
   },
   {
-    prefix: "/manager/drive/sheet", titleKey: "nav.sheets", icon: DriveIcon, permissionKey: "dashboard",
+    prefix: "/manager/drive/sheet", titleKey: "nav.sheets", icon: SheetsIcon, permissionKey: "dashboard",
     listed: false, parent: "/manager/drive", mobileChrome: "docked", previewKind: "grid", volatileParams: ["new", "version"],
   },
   {
-    prefix: "/manager/drive/slides", titleKey: "nav.slides", icon: DriveIcon, permissionKey: "dashboard",
+    prefix: "/manager/drive/slides", titleKey: "nav.slides", icon: SlidesIcon, permissionKey: "dashboard",
     listed: false, parent: "/manager/drive", mobileChrome: "docked", previewKind: "doc",
     volatileParams: ["new", "slide", "version", "present"],
+  },
+  // ── Forms ───────────────────────────────────────────────────────────────
+  // Guarded by `dashboard` like Drive and Bugs; builder controls follow the role (owner/manager).
+  {
+    prefix: "/manager/forms", exact: true, titleKey: "nav.forms", icon: FormsIcon, permissionKey: "dashboard",
+    listed: true, section: true, previewKind: "list",
+    keywords: ["forms", "survey", "checklist", "questionnaire", "inspection", "incident", "feedback"],
+  },
+  {
+    prefix: "/manager/forms/edit", titleKey: "nav.forms", icon: FormsIcon, permissionKey: "dashboard",
+    listed: false, parent: "/manager/forms", previewKind: "form",
+  },
+  {
+    prefix: "/manager/forms/fill", titleKey: "nav.forms", icon: FormsIcon, permissionKey: "dashboard",
+    listed: false, parent: "/manager/forms", previewKind: "form",
   },
   // ── Inventory ───────────────────────────────────────────────────────────
   {

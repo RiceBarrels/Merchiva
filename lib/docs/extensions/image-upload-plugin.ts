@@ -6,6 +6,7 @@ import { Extension, type Editor } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { docImageProblemKey, validateDocImage } from "@/lib/docs/uploads";
+import { appUploadErrorKeyOr } from "@/lib/storage/app-upload";
 
 export interface ImageUploadOptions {
   /** Uploads a file and resolves to its hosted URL. */
@@ -78,11 +79,11 @@ function beginUpload(view: EditorView, file: File, pos: number, options: ImageUp
       }
       view.dispatch(tr);
     })
-    .catch(() => {
+    .catch((err: unknown) => {
       if (!view.isDestroyed) {
         view.dispatch(view.state.tr.setMeta(uploadPluginKey, { remove: { id } } satisfies UploadMeta).setMeta("addToHistory", false));
       }
-      options.onError?.("docs.image.failed");
+      options.onError?.(appUploadErrorKeyOr(err, "docs.image.failed"));
     });
 }
 

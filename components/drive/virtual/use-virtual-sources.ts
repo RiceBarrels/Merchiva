@@ -11,9 +11,12 @@
 
 import { useMemo } from "react";
 import { useDriveActor } from "@/components/drive/drive-actor";
+import { formEditHref } from "@/components/forms/list/status";
 import type { VirtualEntry, VirtualSourceId } from "@/components/drive/model/types";
 import { VIRTUAL_SOURCES, buildVirtualEntries, type VirtualInput, type VirtualSourceMeta } from "@/components/drive/model/virtual-sources";
 import { usePermissions } from "@/lib/context/permissions";
+import { FORM_KINDS } from "@/lib/forms/types";
+import type { AppFileSize } from "@/lib/drive/storage-rows";
 import { useI18n } from "@/lib/i18n/context";
 import {
   useBugReports,
@@ -31,11 +34,14 @@ import {
   useUsers,
 } from "@/lib/spacetimedb/hooks";
 import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
+import { useForms } from "@/lib/spacetimedb/hooks/useForms";
 import { visibleVirtualSources } from "./visible-sources";
 
 export interface VirtualSourceSummary {
   meta: VirtualSourceMeta;
   count: number;
+  /** Bytes of the listed files (appStorageSummary's tile total); null when one of their sizes is unknown. */
+  listedBytes: number | null;
   /** When the newest file was added (epoch ms); null when there is none. */
   latest: number | null;
 }
@@ -43,6 +49,8 @@ export interface VirtualSourceSummary {
 export interface UseVirtualSourcesOptions {
   /** A source: its entries (and every visible source's summary). "" or "summary": the summaries only. null: nothing is built. */
   enabledSource: VirtualSourceId | "" | "summary" | null;
+  /** useDrive().appFileSizes, for each entry's size; omitted, sizes are unknown. */
+  appFileSizes?: ReadonlyMap<string, AppFileSize>;
 }
 
 export interface UseVirtualSourcesResult {
@@ -65,9 +73,10 @@ function identityHex(value: unknown): string {
 }
 
 const NO_SOURCES: VirtualSourceSummary[] = [];
+const formHref = (formId: string): string => formEditHref(formId, "responses");
 const NO_ENTRIES: VirtualEntry[] = [];
 
-export function useVirtualSources({ enabledSource }: UseVirtualSourcesOptions): UseVirtualSourcesResult {
+export function useVirtualSources({ enabledSource, appFileSizes }: UseVirtualSourcesOptions): UseVirtualSourcesResult {
   const { t, locale } = useI18n();
   const { can, organizationId } = usePermissions();
   const actor = useDriveActor();
@@ -85,6 +94,7 @@ export function useVirtualSources({ enabledSource }: UseVirtualSourcesOptions): 
   const [bugReports, bugsReady] = useBugReports();
   const [organizations, organizationsReady] = useOrganizations();
   const [users, usersReady] = useUsers();
+  const { forms, isReady: formsReady } = useForms();
 
   const onStore = actor.surface === "store";
   // `can` is a new function on every render, so the gate is keyed by its result.
@@ -102,6 +112,7 @@ export function useVirtualSources({ enabledSource }: UseVirtualSourcesOptions): 
     products: itemsReady,
     bugs: bugsReady,
     profile: organizationsReady && usersReady,
+    forms: formsReady,
   };
   const ready = organizationId !== null && actor.ready && appsReady && membersReady && visible.every((meta) => rowsReady[meta.id]);
 
@@ -117,6 +128,9 @@ export function useVirtualSources({ enabledSource }: UseVirtualSourcesOptions): 
       storeLogo: t("drive.apps.storeLogo"),
       profilePhoto: t("drive.apps.profilePhoto"),
       photoN: t("drive.apps.photoN"),
+      untitledForm: t("forms.templates.blank.untitled"),
+      formKinds: Object.fromEntries(FORM_KINDS.map((kind) => [kind, t(`forms.kind.${kind}`)])),
+      responsesN: t("forms.list.responses"),
     }),
     [t],
   );
@@ -144,15 +158,18 @@ export function useVirtualSources({ enabledSource }: UseVirtualSourcesOptions): 
       bugReports,
       organizations,
       users,
+      forms,
+      formHref,
       labels,
       locale,
+      appFileSizes,
     };
     for (const meta of visible) out.set(meta.id, buildVirtualEntries(meta.id, input));
     return out;
   }, [
     enabled, organizationId, actor.memberId, actor.canViewAll, onStore, myIdentityHex, members, visible, labels, locale,
     chatConversations, chatMessages, chatMembers, roleTasks, taskAssignments, inventoryTransactions, inventoryItems,
-    trainingObjectives, bugReports, organizations, users,
+    trainingObjectives, bugReports, organizations, users, forms, appFileSizes,
   ]);
 
   const sources = useMemo((): VirtualSourceSummary[] => {
@@ -161,7 +178,15 @@ export function useVirtualSources({ enabledSource }: UseVirtualSourcesOptions): 
       const list = bySource.get(meta.id) ?? NO_ENTRIES;
       // Entries come newest first.
       const newest = list[0]?.updatedAt ?? 0;
-      return { meta, count: list.length, latest: newest > 0 ? newest : null };
+      let listedBytes: number | null = 0;
+      for (const entry of list) {
+        if (typeof entry.sizeBytes !== "number") {
+          listedBytes = null;
+          break;
+        }
+        listedBytes += entry.sizeBytes;
+      }
+      return { meta, count: list.length, listedBytes, latest: newest > 0 ? newest : null };
     });
   }, [enabled, visible, bySource]);
 

@@ -202,7 +202,9 @@ export function BugsLite({ surface, isManager }: LiteAppProps) {
                   ? "device.lite.bugs.titleRequired"
                   : draft.error === "upload"
                     ? "device.lite.bugs.uploadFailed"
-                    : "device.lite.bugs.failed",
+                    : draft.error === "quota"
+                      ? "appUpload.quotaExceeded"
+                      : "device.lite.bugs.failed",
               )}
             </p>
           )}

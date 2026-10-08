@@ -174,6 +174,32 @@ export const DRIVE_FAKE_TABLES: readonly FakeTableDef[] = [
   { accessor: "documentVersionState", primaryKey: "versionId", indexes: { byDocumentId: "documentId", byOrganizationId: "organizationId" } },
   // A document's Drive type and folder (drive/document-file.ts); no row = a text document at its space's root.
   { accessor: "documentFile", primaryKey: "documentId", indexes: { byOrganizationId: "organizationId" } },
+  // Storage accounting beyond Blob uploads (drive/storage.ts).
+  { accessor: "appFile", primaryKey: "keyHash", indexes: { byOrganizationId: "organizationId" } },
+  { accessor: "appFilePrivate", primaryKey: "keyHash", indexes: { byOrganizationId: "organizationId" } },
+  { accessor: "appUploadHold", primaryKey: "id", autoInc: true, indexes: { byOrganizationId: "organizationId" } },
+  { accessor: "orgStorageUsage", primaryKey: "organizationId", indexes: {} },
+  { accessor: "documentSize", primaryKey: "documentId", indexes: { byOrganizationId: "organizationId" } },
+  // The columns serviceBackfillAppFiles scans for UploadThing URLs (drive/storage-backfill.ts).
+  { accessor: "chatConversation", primaryKey: "id", indexes: { byOrganizationId: "organizationId" } },
+  { accessor: "chatMessage", primaryKey: "id", indexes: { byConversationId: "conversationId" } },
+  { accessor: "roleTaskAssignment", primaryKey: "id", indexes: { byOrganizationId: "organizationId", byMemberId: "memberId", byTaskId: "taskId" } },
+  { accessor: "inventoryTransaction", primaryKey: "id", indexes: { byOrganizationId: "organizationId", byItemId: "itemId" } },
+  { accessor: "inventoryItem", primaryKey: "id", indexes: { byOrganizationId: "organizationId" } },
+  { accessor: "trainingDay", primaryKey: "id", indexes: { byOrganizationId: "organizationId" } },
+  { accessor: "trainingObjective", primaryKey: "id", indexes: { byOrganizationId: "organizationId", byDayId: "dayId" } },
+  // Forms (spacetimedb/src/forms/tables.ts)
+  { accessor: "form", primaryKey: "id", indexes: { byOrganizationId: "organizationId", byOwnerMemberId: "ownerMemberId", byAdminScope: "adminScope" } },
+  { accessor: "formMeta", primaryKey: "formId", indexes: { byOrganizationId: "organizationId", byOwnerMemberId: "ownerMemberId", byAdminScope: "adminScope" } },
+  { accessor: "formResponse", primaryKey: "id", indexes: {
+    byOrganizationId: "organizationId", byFormId: "formId", byAdminScope: "adminScope", byFormOwnerMemberId: "formOwnerMemberId",
+    byRespondentMemberId: "respondentMemberId",
+  } },
+  { accessor: "formAssignment", primaryKey: "id", indexes: { byOrganizationId: "organizationId", byFormId: "formId", byMemberId: "memberId" } },
+  { accessor: "formCompletion", primaryKey: "id", indexes: { byOrganizationId: "organizationId", byFormId: "formId", byMemberId: "memberId" } },
+  { accessor: "formPublic", primaryKey: "token", indexes: { byScope: "scope", byFormId: "formId" } },
+  { accessor: "formResponseReview", primaryKey: "responseId", indexes: { byFormId: "formId", byAdminScope: "adminScope" } },
+  { accessor: "formPeriodMark", primaryKey: "id", indexes: { byFormId: "formId" } },
 ];
 
 /** Index / primary-key comparison key: bigints, identities (by hex) and everything else by string form. */

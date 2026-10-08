@@ -9,7 +9,7 @@ import { DRIVE_TRASH_RETENTION_MS } from "@/lib/drive/rules";
  * copy says who the product shows a file to and adds that management can see it. It never says a file is
  * "only yours" or "hidden".
  *
- * Scope: the drive-ui subtrees and leaves plus its two overwrites, as they will ship (messages/, replaced by the
+ * Scope: the drive-ui subtrees and leaves plus its overwrites, as they will ship (messages/, replaced by the
  * fragment value where a fragment defines the key). drive.disclosure.* is out of scope: it is integration-legal's
  * reviewed legal copy (drive-disclosure.json), and it is accurate at the data layer (C1).
  *
@@ -29,7 +29,7 @@ const DRIVE_UI_OWNED = [
   "drive.apps", "drive.members", "drive.storage", "drive.kind", "device.lite.drive", "nav.drive", "nav.sheets",
   "nav.slides", "device.catalog.drive", "device.catalogDesc.drive", "personnel.team.permissionSection.drive",
 ];
-const DRIVE_UI_OVERWRITES = ["docs.share.managersNote", "docs.share.visibilityPrivate"];
+const DRIVE_UI_OVERWRITES = ["docs.share.managersNote", "docs.share.visibilityPrivate", "device.catalogDesc.drive", "drive.apps.notIncluded"];
 
 const underPrefix = (key: string, prefix: string) => key === prefix || key.startsWith(`${prefix}.`);
 const inScope = (key: string) => DRIVE_UI_OVERWRITES.includes(key) || DRIVE_UI_OWNED.some((p) => underPrefix(key, p));

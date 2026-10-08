@@ -7,7 +7,7 @@ import { importSpecifiers, readSources } from "./import-graph";
 
 /*
  * Packages that must never ship (integration-legal §3): Univer Pro and the advanced / collaboration presets,
- * HyperFormula, Handsontable, the npm `xlsx` package, and the unlicensed `buffers` / `binary` chain that the
+ * HyperFormula, Handsontable, the npm `xlsx` package, the form library's commercial Creator / Analytics / PDF, and the unlicensed `buffers` / `binary` chain that the
  * unzipper override removes.
  */
 
@@ -18,10 +18,10 @@ const forbidden = (name: string) => FORBIDDEN_PACKAGES.some((re) => re.test(name
 
 describe("forbidden packages", () => {
   test("the patterns catch what they must and nothing else", () => {
-    for (const name of ["@univerjs-pro/license", "@univerjs/preset-sheets-advanced", "@univerjs/preset-sheets-collaboration", "hyperformula", "handsontable", "@handsontable/react", "xlsx"]) {
+    for (const name of ["@univerjs-pro/license", "@univerjs/preset-sheets-advanced", "@univerjs/preset-sheets-collaboration", "hyperformula", "handsontable", "@handsontable/react", "xlsx", "survey-creator-core", "survey-creator-react", "survey-creator", "surveyjs-editor", "survey-analytics", "survey-pdf"]) {
       expect(forbidden(name)).toBe(true);
     }
-    for (const name of ["@univerjs/presets", "@univerjs/preset-sheets-core", "@univerjs/preset-sheets-sort", "exceljs", "xlsx-js-style"]) {
+    for (const name of ["@univerjs/presets", "@univerjs/preset-sheets-core", "@univerjs/preset-sheets-sort", "exceljs", "xlsx-js-style", "survey-core", "survey-react-ui", "survey-creators", "surveyjs-widgets"]) {
       expect(forbidden(name)).toBe(false);
     }
   });
@@ -58,9 +58,11 @@ describe("forbidden packages", () => {
   });
 
   test("the specifier patterns also catch deep imports", () => {
-    for (const spec of ["@univerjs-pro/sheets", "xlsx/dist/xlsx.full.min.js", "hyperformula/es", "@univerjs/preset-sheets-advanced/lib/index.css"]) {
+    for (const spec of ["@univerjs-pro/sheets", "xlsx/dist/xlsx.full.min.js", "hyperformula/es", "@univerjs/preset-sheets-advanced/lib/index.css", "survey-creator-react", "survey-creator", "survey-creator/survey-creator.css", "surveyjs-editor", "survey-analytics/survey.analytics.css", "survey-pdf"]) {
       expect(FORBIDDEN_IMPORT_SPECIFIERS.some((re) => re.test(spec))).toBe(true);
     }
-    expect(FORBIDDEN_IMPORT_SPECIFIERS.some((re) => re.test("@univerjs/preset-sheets-core/lib/index.css"))).toBe(false);
+    for (const spec of ["@univerjs/preset-sheets-core/lib/index.css", "survey-core", "survey-core/survey-core.min.css", "survey-react-ui"]) {
+      expect(FORBIDDEN_IMPORT_SPECIFIERS.some((re) => re.test(spec))).toBe(false);
+    }
   });
 });

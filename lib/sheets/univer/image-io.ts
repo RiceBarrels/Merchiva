@@ -12,6 +12,15 @@ import { Subject } from "rxjs";
 import { uploadDocImage, validateDocImage } from "@/lib/docs/uploads";
 
 export class MerchivaImageIoService implements IImageIoService {
+  /**
+   * `organizationId`: the sheet's store, whose storage quota each image counts toward. `onUploadError` sees an
+   * upload's own failure (appUploadErrorKey reads it) before Univer's generic error is raised.
+   */
+  constructor(
+    readonly organizationId: string,
+    private readonly onUploadError?: (err: unknown) => void,
+  ) {}
+
   private waitCount = 0;
   private readonly changes = new Subject<number>();
   readonly change$ = this.changes.asObservable();
@@ -42,8 +51,9 @@ export class MerchivaImageIoService implements IImageIoService {
       if (problem === "tooLarge") throw new Error(ImageUploadStatusType.ERROR_EXCEED_SIZE);
       let url: string;
       try {
-        url = await uploadDocImage(imageFile);
-      } catch {
+        url = await uploadDocImage(imageFile, this.organizationId, "sheet_image");
+      } catch (err) {
+        this.onUploadError?.(err);
         throw new Error(ImageUploadStatusType.ERROR_IMAGE);
       }
       return {

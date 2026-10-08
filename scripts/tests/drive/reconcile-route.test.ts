@@ -118,6 +118,7 @@ describe("GET /api/cron/drive-reconcile", () => {
     const summary = await summaryOf(await s.handler(cron()));
     expect(summary).toEqual({
       mode: "dry_run", orgs: 1, blobs: 5, bytes: 4077, sentKeys: 0, braked: [], alert: false, stoppedEarly: false,
+      storageRecomputed: false,
     });
     expect(s.calls).toHaveLength(0);
     expect(s.lists).toEqual([
@@ -136,7 +137,7 @@ describe("GET /api/cron/drive-reconcile", () => {
   test("live: only the org's own Drive keys older than a day are sent, then the org is finished with the listing totals", async () => {
     const s = setup(ONE_ORG, { config: { reconcileLive: true } });
     const summary = await summaryOf(await s.handler(cron()));
-    expect(s.calls.map((c) => c.key)).toEqual(["enqueueOrphans", "finishReconcile"]);
+    expect(s.calls.map((c) => c.key)).toEqual(["enqueueOrphans", "finishReconcile", "recomputeStorage"]);
     expect(s.calls[0].args.organizationId).toBe(ORG);
     expect(sent(s.calls[0].args)).toEqual([
       { k: keyOf(ORG, 1), s: 1000, u: OLD },
@@ -145,6 +146,7 @@ describe("GET /api/cron/drive-reconcile", () => {
     expect(s.calls[1].args).toEqual({ organizationId: ORG, measuredBytes: 4077, measuredCount: 5 });
     expect(summary).toEqual({
       mode: "live", orgs: 1, blobs: 5, bytes: 4077, sentKeys: 2, braked: [], alert: false, stoppedEarly: false,
+      storageRecomputed: true,
     });
   });
 
@@ -160,7 +162,7 @@ describe("GET /api/cron/drive-reconcile", () => {
     expect(s.lists.filter((l) => l.mode === "folded").map((l) => l.cursor)).toEqual([undefined, "1"]);
     expect(s.calls.map((c) => [c.key, c.args.organizationId])).toEqual([
       ["enqueueOrphans", ORG], ["enqueueOrphans", ORG], ["finishReconcile", ORG],
-      ["enqueueOrphans", OTHER_ORG], ["finishReconcile", OTHER_ORG],
+      ["enqueueOrphans", OTHER_ORG], ["finishReconcile", OTHER_ORG], ["recomputeStorage", ""],
     ]);
     expect(s.calls[2].args).toEqual({ organizationId: ORG, measuredBytes: 60, measuredCount: 3 });
     expect(summary).toMatchObject({ orgs: 2, blobs: 4, bytes: 100, sentKeys: 3 });
@@ -184,7 +186,7 @@ describe("GET /api/cron/drive-reconcile", () => {
     const summary = await summaryOf(await s.handler(cron()));
     expect(s.lists.filter((l) => l.prefix === `org/${ORG}/`)).toHaveLength(1);
     expect(s.calls.map((c) => [c.key, c.args.organizationId])).toEqual([
-      ["enqueueOrphans", ORG], ["enqueueOrphans", THIRD_ORG], ["finishReconcile", THIRD_ORG],
+      ["enqueueOrphans", ORG], ["enqueueOrphans", THIRD_ORG], ["finishReconcile", THIRD_ORG], ["recomputeStorage", ""],
     ]);
     expect(summary.braked).toEqual([ORG]);
     expect(summary.sentKeys).toBe(1);
@@ -210,6 +212,19 @@ describe("GET /api/cron/drive-reconcile", () => {
     expect(s.logs.some((l) => l.level === "error" && l.event === "drive.reconcile.report_failed")).toBe(true);
   });
 
+  test("a failed storage recompute is logged at error level and does not fail the run", async () => {
+    const s = setup(ONE_ORG, {
+      config: { reconcileLive: true },
+      onCall: (key) => {
+        if (key === "recomputeStorage") throw reducerError("service_recompute_storage", 500, "boom");
+      },
+    });
+    const summary = await summaryOf(await s.handler(cron()));
+    expect(summary).toMatchObject({ mode: "live", orgs: 1, storageRecomputed: false });
+    expect(s.calls.map((c) => c.key)).toEqual(["enqueueOrphans", "finishReconcile", "recomputeStorage"]);
+    expect(s.logs.find((l) => l.event === "drive.reconcile.recompute_failed")?.level).toBe("error");
+  });
+
   test("a store larger than DRIVE_PLATFORM_ALERT_BYTES raises the alert at error level", async () => {
     const over = setup(ONE_ORG, { config: { platformAlertBytes: 4000 } });
     expect((await summaryOf(await over.handler(cron()))).alert).toBe(true);
@@ -233,6 +248,10 @@ describe("GET /api/cron/drive-reconcile", () => {
     const summary = await summaryOf(await s.handler(cron()));
     expect(summary.stoppedEarly).toBe(true);
     expect(s.calls.some((c) => c.key === "finishReconcile")).toBe(false);
+    // The storage recompute reads the database only: it still runs, once, last.
+    expect(s.calls.filter((c) => c.key === "recomputeStorage").map((c) => c.args)).toEqual([{ organizationId: "" }]);
+    expect(s.calls.at(-1)?.key).toBe("recomputeStorage");
+    expect(summary.storageRecomputed).toBe(true);
     expect(s.lists.some((l) => l.prefix === `org/${THIRD_ORG}/`)).toBe(false);
   });
 

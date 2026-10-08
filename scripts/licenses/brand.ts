@@ -7,7 +7,7 @@
 export const BRAND_TERMS_CI = /\b(excel|powerpoint|univer)\b/i;
 
 /** Case-sensitive: "google", "microsoft" never appear as ordinary words, and lowercase "keynote" is an ordinary noun. */
-export const BRAND_TERMS_CS = /\b(Google|Microsoft|Keynote|iWork)\b/;
+export const BRAND_TERMS_CS = /\b(Google|Microsoft|Keynote|iWork|SurveyJS)\b/;
 // "Numbers" is deliberately not matched: it is an ordinary English word, capitalized at the start of a
 // sentence. The product name is still forbidden; reviewers catch it.
 

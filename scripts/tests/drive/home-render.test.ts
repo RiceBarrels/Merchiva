@@ -5,7 +5,7 @@
 //
 // The fixtures replace modules with `mock.module`, which would leak into other test files sharing this process, so
 // each runs in a child process: home-render.isolated.tsx once per scenario, home/actions.isolated.tsx,
-// home/editors.isolated.ts and home/storage-status.isolated.tsx once each.
+// home/editors.isolated.ts, home/storage-status.isolated.tsx and home/storage-meter.isolated.tsx once each.
 
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
@@ -13,7 +13,7 @@ import { join } from "node:path";
 const ROOT = join(import.meta.dir, "..", "..", "..");
 const SCENARIOS = [
   "checking", "not_published", "offline", "empty-my", "items-grid", "items-list", "trash-empty", "search-no-matches",
-  "members", "apps-summary", "needs-ack", "storage-off", "storage-off-items",
+  "members", "apps-summary", "needs-ack", "storage-off", "storage-off-items", "plugin-missing",
 ] as const;
 
 function run(fixture: string, env: Record<string, string> = {}): { exitCode: number | null; output: string } {
@@ -49,4 +49,8 @@ test("drive editors: create and open-as through the editors' modules (isolated f
 
 test("drive storage status: screens follow the tab's shared answer (isolated fixture)", () => {
   expectGreen(run("./scripts/tests/drive/home/storage-status.isolated.tsx"));
+}, 60_000);
+
+test("drive storage meter: the total of everything against the quota, broken down (isolated fixture)", () => {
+  expectGreen(run("./scripts/tests/drive/home/storage-meter.isolated.tsx"));
 }, 60_000);

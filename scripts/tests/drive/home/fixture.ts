@@ -5,7 +5,7 @@
 //
 // Imported only by the isolated fixtures (child processes); it installs no mock itself.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildDriveEntries, buildDriveTree, type DriveTree } from "@/components/drive/model/entries";
 import type { DriveEntry } from "@/components/drive/model/types";
@@ -13,6 +13,8 @@ import { docAccessFromRole, docRoleFor } from "@/lib/docs/access";
 import type { DocumentMeta } from "@/lib/docs/types";
 import { resolveDriveItemAccess, type DriveClientActor } from "@/lib/drive/access";
 import type { DriveItem, DriveUsageView } from "@/lib/drive/types";
+import type { AppFileSize } from "@/lib/drive/storage-rows";
+import type { AppFileSource } from "@/lib/storage/sources";
 import { flattenMessages, leavesOf, loadFragments } from "@/scripts/i18n/drive/fragment";
 
 const ROOT = join(import.meta.dir, "..", "..", "..", "..");
@@ -92,6 +94,10 @@ export interface FixtureOptions {
   isReady?: boolean;
   usage?: DriveUsageView | null;
   starredItemIds?: string[];
+  /** document id → stored bytes (useDrive().documentSizes). */
+  documentSizes?: [string, number][];
+  /** Bytes per app source (useDrive().appBytesBySource). */
+  appBytesBySource?: [AppFileSource, number][];
 }
 
 export const CLIENT_ACTOR: DriveClientActor = { organizationId: ORG, memberId: ME, role: "owner", gate: true, canViewAll: true, canEditAll: true };
@@ -133,7 +139,13 @@ export function driveData(opts: FixtureOptions = {}) {
     grants: [],
     starredItemIds: new Set(opts.starredItemIds ?? []),
     starredDocumentIds: new Set<string>(),
-    usage: opts.usage ?? { usedBytes: 4096, reservedBytes: 0, quotaBytes: 10 * 1024 ** 3, fileCount: 2, sheetBytes: 0 },
+    usage: opts.usage ?? {
+      usedBytes: 4096, reservedBytes: 0, quotaBytes: 10 * 1024 ** 3, fileCount: 2, sheetBytes: 0,
+      breakdown: { files: 4096, documents: 0, sheets: 0, apps: 0, total: 4096, quota: 10 * 1024 ** 3 },
+    },
+    documentSizes: new Map<string, number>(opts.documentSizes ?? []),
+    appFileSizes: new Map<string, AppFileSize>(),
+    appBytesBySource: new Map<AppFileSource, number>(opts.appBytesBySource ?? []),
     accessForItem: (item: DriveItem) => resolveDriveItemAccess(item, CLIENT_ACTOR),
     accessForDocument,
   };
@@ -165,10 +177,16 @@ export function entryOf(tree: DriveTree, key: string): DriveEntry {
   return entry;
 }
 
+/** Forms' Drive copy still waiting in its English draft for the i18n step (absent once merged). */
+const FORMS_DRIVE_DRAFT = join(ROOT, "scripts", "i18n", "forms-drafts", "drive-source.en.json");
+
 /** English copy: messages/en.json overlaid with every Drive fragment's en leaves; an unknown key reads "!key". */
 export function translator(): (key: string) => string {
   const en = flattenMessages(JSON.parse(readFileSync(join(ROOT, "messages", "en.json"), "utf8")));
   for (const fragment of loadFragments()) for (const [key, value] of leavesOf(fragment, "en")) en.set(key, value);
+  if (existsSync(FORMS_DRIVE_DRAFT)) {
+    for (const [key, value] of flattenMessages(JSON.parse(readFileSync(FORMS_DRIVE_DRAFT, "utf8")))) if (!en.has(key)) en.set(key, value);
+  }
   return (key: string) => en.get(key) ?? `!${key}`;
 }
 

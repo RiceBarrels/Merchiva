@@ -1,0 +1,7 @@
+{
+  "appUpload": {
+    "quotaExceeded": "店面的儲存空間已滿。請在雲端硬碟中刪除檔案以釋出空間。",
+    "failed": "無法上傳檔案，請再試一次。",
+    "signInRequired": "請重新登入後再上傳檔案。"
+  }
+}

@@ -198,7 +198,7 @@ describe("the editor's Univer configuration against the installed presets", () =
     const opened: string[] = [];
     const desktop = buildSheetPresets({
       container: {} as HTMLElement, layout: "desktop", ribbon: "simple", worker: null, popupRootId: "sheet-popups",
-      disableAutoFocus: false, onOpenUrl: (url) => opened.push(url),
+      disableAutoFocus: false, onOpenUrl: (url) => opened.push(url), organizationId: "org-1",
     });
     const mobile = swapToMobile(desktop);
 
@@ -225,8 +225,12 @@ describe("the editor's Univer configuration against the installed presets", () =
     urlHandler.navigateToOtherWebsite("javascript:alert(1)");
     urlHandler.navigateToOtherWebsite("https://example.com/menu");
     expect(opened).toEqual(["https://example.com/menu"]);
-    const override = configOf(mobile, m.drawing.UniverDrawingPlugin)?.override;
-    expect(override).toEqual([[m.presets.IImageIoService, { useClass: MerchivaImageIoService }]]);
+    // Our image store, built per sheet with the sheet's store (its images count toward that store's storage).
+    const override = configOf(mobile, m.drawing.UniverDrawingPlugin)?.override as Array<[unknown, { useFactory(): unknown }]>;
+    expect(override.map(([id]) => id)).toEqual([m.presets.IImageIoService]);
+    const service = override[0][1].useFactory();
+    expect(service).toBeInstanceOf(MerchivaImageIoService);
+    expect((service as InstanceType<typeof MerchivaImageIoService>).organizationId).toBe("org-1");
   });
 
   test("withPluginConfig merges into every entry of one plugin, in place, without touching the preset it got", async () => {

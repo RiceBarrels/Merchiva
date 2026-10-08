@@ -49,8 +49,8 @@ export function ReportBugDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const pickScreenshot = async (file: File | undefined) => {
     if (fileRef.current) fileRef.current.value = "";
     if (!file) return;
-    const ok = await draft.attach(file);
-    if (!ok) toast.error(t("bugs.uploadFailed"));
+    const problem = await draft.attach(file);
+    if (problem) toast.error(t(problem === "quota" ? "appUpload.quotaExceeded" : "bugs.uploadFailed"));
   };
 
   return (

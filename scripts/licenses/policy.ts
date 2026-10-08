@@ -140,6 +140,12 @@ export const FORBIDDEN_PACKAGES: readonly RegExp[] = [
   /^handsontable$/,
   /^@handsontable\//,
   /^xlsx$/,
+  // The form library's commercial siblings (Creator, Analytics, PDF): their tarball LICENSE is the vendor's EULA.
+  // `survey-creator` and `surveyjs-editor` are the legacy Creator packages, also commercial.
+  /^survey-creator(-|$)/,
+  /^surveyjs-editor$/,
+  /^survey-analytics$/,
+  /^survey-pdf$/,
 ];
 
 /** Never imported from app/ components/ lib/ spacetimedb/src/ cli/ (matched against the import specifier). */
@@ -150,6 +156,10 @@ export const FORBIDDEN_IMPORT_SPECIFIERS: readonly RegExp[] = [
   /^handsontable(\/|$)/,
   /^@handsontable\//,
   /^xlsx(\/|$)/,
+  /^survey-creator(-|\/|$)/,
+  /^surveyjs-editor(\/|$)/,
+  /^survey-analytics(\/|$)/,
+  /^survey-pdf(\/|$)/,
 ];
 
 /** Office dependencies pinned to an exact version in package.json, and resolved to it in bun.lock. */
@@ -172,6 +182,8 @@ export const PINNED_VERSIONS: Readonly<Record<string, string>> = {
   "react-moveable": "0.56.0",
   "react-selecto": "1.26.3",
   rxjs: "7.8.2",
+  "survey-core": "3.1.2",
+  "survey-react-ui": "3.1.2",
 };
 
 /** package.json `overrides` that must stay: https (empty placeholder pulled in by pptxgenjs), unzipper (drops `buffers`). */
@@ -182,6 +194,9 @@ export const PINNED_OVERRIDES: Readonly<Record<string, string>> = {
 
 /** Every lock package in `scope` moves in lockstep at `version`, except the listed ones. */
 export const UNIVER_LOCKSTEP = { scope: "@univerjs/", version: "1.0.2", except: ["@univerjs/icons"] } as const;
+
+/** The form library's packages move in lockstep: survey-core logs an error when survey-react-ui differs. */
+export const SURVEYJS_LOCKSTEP = { packages: ["survey-core", "survey-react-ui"], version: "3.1.2" } as const;
 
 /** Floors for every lock entry of a name, nested copies included. pptxtojson ≤ 0.1.2 was GPL-3.0 / AGPL-3.0. */
 export const MIN_VERSIONS: Readonly<Record<string, string>> = {

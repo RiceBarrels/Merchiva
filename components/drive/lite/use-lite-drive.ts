@@ -5,7 +5,8 @@
 // app makes, each announced with a toast. Shared by every lite screen through the router's context.
 //
 // Writes go through the manager's runners, so both surfaces behave alike: runDriveWrite names the actor
-// (`actingMemberId` on /store) and bounds the reply; New ▸ Doc / Sheet / Slides and "Open as …" go through
+// (`actingMemberId` on /store) and bounds the reply; New ▸ Doc / Sheet / Slides, a Doc from a template and
+// "Open as …" go through
 // lib/drive/editors.ts, timed from the moment their create is sent; uploads through useDriveCreate's
 // uploadFiles (preflight, then the tab's queue); "Save to phone" through startDownload, straight from the tap.
 // One change runs at a time (`busy`), which keeps a slow tablet from sending a second tap twice.
@@ -27,10 +28,12 @@ import { moveRoots, type MoveActor } from "@/components/drive/model/move";
 import type { DriveDocKind, DriveEntry, DriveMoveTarget, DriveSection, FileEntry } from "@/components/drive/model/types";
 import type { DroppedFile } from "@/components/drive/model/upload-plan";
 import { usePreviewLoader } from "@/components/drive/preview/open-entry";
+import { useDocTemplateNames, type StoreTemplateId } from "@/components/drive/store-templates";
 import { useDriveData, type DriveData } from "@/components/drive/use-drive-data";
 import { dateKey } from "@/lib/date-key";
+import type { EditorKind } from "@/lib/device-apps";
 import { isOrgAdminRole } from "@/lib/drive/access";
-import { createDriveDoc, DRIVE_IMPORT_FAILED_KEY } from "@/lib/drive/editors";
+import { createDriveDoc, createDriveDocFromTemplate, DRIVE_IMPORT_FAILED_KEY } from "@/lib/drive/editors";
 import { documentFileHref } from "@/lib/drive/hrefs";
 import type { DriveUploadEntry, DriveUploadQueue } from "@/lib/drive/upload-queue";
 import type { DriveUrlLoader } from "@/lib/drive/url-loader";
@@ -40,11 +43,12 @@ import { fmt } from "@/lib/i18n/fmt";
 import { useLiveSpacetimeConnection, useSignedInMember } from "@/lib/spacetimedb/hooks/useDocs";
 import { setCurrentOperator } from "@/lib/store-device-lock";
 import { isOperatorError } from "./lite-actions";
+import type { LiteEditorGate } from "./lite-install-drawer";
 
 export interface UseLiteDriveOptions {
   organizationId: string;
-  /** The Docs app is installed for the store: text documents open and can be created. */
-  docsInstalled: boolean;
+  /** The editor plugins' gate (lite-install-drawer.tsx): New and "Open as …" ask for a missing one first. */
+  editors: LiteEditorGate;
   /** The panel's opener: a new document opens its editor on top. */
   openInPanel: DocsOpenUrl;
   /** The section of the screen on top ("Added to My files" shows only away from My files). */
@@ -64,7 +68,10 @@ export interface LiteDrive {
   uploads: readonly DriveUploadEntry[];
   queue: DriveUploadQueue;
   offline: boolean;
-  docsInstalled: boolean;
+  /** Whether `kind`'s editor plugin is installed (true while the install state loads). */
+  editorInstalled(kind: EditorKind): boolean;
+  /** Runs `then` once `kind`'s editor plugin is installed: now, or after the download drawer installs it. */
+  ensureEditor(kind: EditorKind, mode: "open" | "create", then: () => void): void;
   /** The module has no Drive yet. */
   notPublished: boolean;
   /** Rows, the actor or the members are still on their way. */
@@ -84,6 +91,8 @@ export interface LiteDrive {
   /** Runs a write and says how it went; resolves true when everything landed. Never rejects. */
   runWrite(write: DriveWrite, success: LiteSuccess, undo?: () => void): Promise<boolean>;
   createDocument(kind: DriveDocKind, target: DriveMoveTarget): void;
+  /** New ▸ Doc from a template: a Doc filled from a store template, gated like createDocument. */
+  createFromTemplate(templateId: StoreTemplateId, target: DriveMoveTarget): void;
   uploadFiles(files: readonly DroppedFile[], target: DriveMoveTarget): void;
   openAs(entry: FileEntry, kind: DriveDocKind): void;
   /** "Save to phone": call straight from the tap. */
@@ -94,13 +103,16 @@ export interface LiteDrive {
 
 const NO_MOVES = { toStore: false, toMy: false };
 
-export function useLiteDrive({ organizationId, docsInstalled, openInPanel, section, showMyFiles }: UseLiteDriveOptions): LiteDrive {
+export function useLiteDrive({ organizationId, editors, openInPanel, section, showMyFiles }: UseLiteDriveOptions): LiteDrive {
   const { t, locale } = useI18n();
   const { entries: allUploads, queue } = useDriveUploads();
   const data = useDriveData({ localUploadIds: queue.localItemIds() });
   const { actor, drive, tree, members } = data;
+  // On /store the actor is the PIN operator, so a template signs with their name.
+  const templateNames = useDocTemplateNames(data.memberNames, actor.memberId);
   const signedIn = useSignedInMember();
   const offline = useLiveSpacetimeConnection() === null;
+  const { isInstalled: editorInstalled, ensureEditor } = editors;
   const loader = usePreviewLoader();
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -155,7 +167,7 @@ export function useLiteDrive({ organizationId, docsInstalled, openInPanel, secti
     [actor.memberId, actor.role, actor.canEditAll, actor.acting, tabletId, signedIn.role, staffTablet, activeIds],
   );
 
-  const ctx = useMemo((): ActionContext => ({ surface, docsInstalled, section, offline }), [surface, docsInstalled, section, offline]);
+  const ctx = useMemo((): ActionContext => ({ surface, section, offline }), [surface, section, offline]);
 
   const movesFor = useCallback(
     (entry: DriveEntry) => {
@@ -192,7 +204,6 @@ export function useLiteDrive({ organizationId, docsInstalled, openInPanel, secti
     actorMemberId: actor.memberId,
     section,
     usage: drive.usage,
-    docsInstalled,
     queue,
     openUrl: openInPanel,
     showMyFiles,
@@ -202,36 +213,46 @@ export function useLiteDrive({ organizationId, docsInstalled, openInPanel, secti
 
   const createDocument = useCallback(
     (kind: DriveDocKind, target: DriveMoveTarget) => {
-      if (kind === "doc" && !docsInstalled) {
-        toast(t("device.lite.drive.docsOff"));
-        return;
-      }
-      if (!start()) return;
-      withReducerTimeoutFrom((sent) => createDriveDoc(kind, docTargetOf(target, organizationId, actingMemberId), { t, locale, beforeCreate: sent }))
-        .then((documentId) => openInPanel(documentFileHref({ id: documentId, fileType: kind }, { isNew: true }), "current"))
-        .catch((err: unknown) => showError(err, docCreateErrorMessage(err, t, "drive.home.errors.createFailed")))
-        .finally(finish);
+      ensureEditor(kind, "create", () => {
+        if (!start()) return;
+        withReducerTimeoutFrom((sent) => createDriveDoc(kind, docTargetOf(target, organizationId, actingMemberId), { t, locale, beforeCreate: sent }))
+          .then((documentId) => openInPanel(documentFileHref({ id: documentId, fileType: kind }, { isNew: true }), "current"))
+          .catch((err: unknown) => showError(err, docCreateErrorMessage(err, t, "drive.home.errors.createFailed")))
+          .finally(finish);
+      });
     },
-    [docsInstalled, start, finish, organizationId, actingMemberId, t, locale, openInPanel, showError],
+    [ensureEditor, start, finish, organizationId, actingMemberId, t, locale, openInPanel, showError],
+  );
+
+  const createFromTemplate = useCallback(
+    (templateId: StoreTemplateId, target: DriveMoveTarget) => {
+      ensureEditor("doc", "create", () => {
+        if (!start()) return;
+        const docTarget = docTargetOf(target, organizationId, actingMemberId);
+        withReducerTimeoutFrom((sent) => createDriveDocFromTemplate(templateId, docTarget, { t, locale, ...templateNames, beforeCreate: sent }))
+          .then((documentId) => openInPanel(documentFileHref({ id: documentId, fileType: "doc" }, { isNew: true }), "current"))
+          .catch((err: unknown) => showError(err, docCreateErrorMessage(err, t, "drive.home.errors.createFailed")))
+          .finally(finish);
+      });
+    },
+    [ensureEditor, start, finish, organizationId, actingMemberId, t, locale, templateNames, openInPanel, showError],
   );
 
   const openAs = useCallback(
     (entry: FileEntry, kind: DriveDocKind) => {
-      if (kind === "doc" && !docsInstalled) {
-        toast(t("device.lite.drive.docsOff"));
-        return;
-      }
-      if (!start()) return;
-      const target = docTargetOf(openAsTargetOf(entry, tree, actor.memberId), organizationId, actingMemberId);
-      const toastId = toast.loading(t("drive.preview.importing"));
-      openFileAs(entry, kind, { loader, target, t, locale, openUrl: openInPanel })
-        .catch((err: unknown) => showError(err, docCreateErrorMessage(err, t, DRIVE_IMPORT_FAILED_KEY)))
-        .finally(() => {
-          toast.dismiss(toastId);
-          finish();
-        });
+      ensureEditor(kind, "open", () => {
+        if (!start()) return;
+        const target = docTargetOf(openAsTargetOf(entry, tree, actor.memberId), organizationId, actingMemberId);
+        const toastId = toast.loading(t("drive.preview.importing"));
+        openFileAs(entry, kind, { loader, target, t, locale, openUrl: openInPanel })
+          .catch((err: unknown) => showError(err, docCreateErrorMessage(err, t, DRIVE_IMPORT_FAILED_KEY)))
+          .finally(() => {
+            toast.dismiss(toastId);
+            finish();
+          });
+      });
     },
-    [docsInstalled, start, finish, tree, actor.memberId, organizationId, actingMemberId, loader, t, locale, openInPanel, showError],
+    [ensureEditor, start, finish, tree, actor.memberId, organizationId, actingMemberId, loader, t, locale, openInPanel, showError],
   );
 
   const download = useCallback(
@@ -244,12 +265,12 @@ export function useLiteDrive({ organizationId, docsInstalled, openInPanel, secti
   const { uploadFiles } = create;
   return useMemo(
     (): LiteDrive => ({
-      data, surface, organizationId, uploads, queue, offline, docsInstalled, notPublished, loading, staffTablet, ctx, moveActor,
-      loader, busy, relogin, movesFor, runWrite, createDocument, uploadFiles, openAs, download, showError,
+      data, surface, organizationId, uploads, queue, offline, editorInstalled, ensureEditor, notPublished, loading, staffTablet, ctx, moveActor,
+      loader, busy, relogin, movesFor, runWrite, createDocument, createFromTemplate, uploadFiles, openAs, download, showError,
     }),
     [
-      data, surface, organizationId, uploads, queue, offline, docsInstalled, notPublished, loading, staffTablet, ctx, moveActor,
-      loader, busy, relogin, movesFor, runWrite, createDocument, uploadFiles, openAs, download, showError,
+      data, surface, organizationId, uploads, queue, offline, editorInstalled, ensureEditor, notPublished, loading, staffTablet, ctx, moveActor,
+      loader, busy, relogin, movesFor, runWrite, createDocument, createFromTemplate, uploadFiles, openAs, download, showError,
     ],
   );
 }

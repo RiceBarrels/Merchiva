@@ -1,8 +1,12 @@
 // Uploads a chat attachment (UploadThing) and classifies it for chat_message.attachmentType.
 
-export async function uploadChatFile(file: File): Promise<{ url: string; type: string; name: string }> {
-  const { uploadFiles } = await import("@/lib/uploadthing");
-  const [res] = await uploadFiles("generalFile", { files: [file] });
+/** `organizationId` is the store the chat belongs to; the upload counts toward its storage quota. */
+export async function uploadChatFile(
+  file: File,
+  organizationId: string,
+): Promise<{ url: string; type: string; name: string }> {
+  const { uploadAppFiles } = await import("@/lib/storage/app-upload");
+  const [res] = await uploadAppFiles("generalFile", { files: [file], organizationId, source: "chat" });
 
   let type = "file";
   if (file.type.startsWith("image/")) type = "image";

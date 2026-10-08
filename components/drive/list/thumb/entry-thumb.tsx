@@ -15,7 +15,7 @@ import { invalidateSharedDriveUrls } from "@/lib/drive/url-loader";
 import { useDriveUrl } from "@/lib/drive/use-drive-url";
 import { cn } from "@/lib/utils";
 
-/** A document's first words on an always-light "paper" sheet, at double size scaled to half (as doc-card.tsx). */
+/** A document's first words on an always-light "paper" sheet, at double size scaled to half. */
 function DocPaper({ title, excerpt }: { title: string; excerpt: string }) {
   const text = excerpt.trim();
   return (

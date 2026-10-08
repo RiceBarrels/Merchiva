@@ -6,7 +6,9 @@ import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { clearAppMode } from "@/lib/app-mode";
 import { setCurrentOperator } from "@/lib/store-device-lock";
 import { DeviceDrawer, PinPad } from "@/components/device";
-import { verifyManagerPin } from "@/lib/spacetimedb/actions";
+import { attemptManagerPin } from "@/lib/spacetimedb/actions/pin";
+import { pinNotice } from "@/lib/pin-attempt";
+import { fmt } from "@/lib/i18n/fmt";
 
 /**
  * Drops this device out of store mode: forgets the app mode + operator and
@@ -26,15 +28,17 @@ export interface ExitStoreDrawerProps {
 }
 
 /** Manager-PIN gate in front of `leaveStoreMode()`. The PIN is checked by the
- *  `verifyManagerPin` reducer — the tablet cannot read anyone's code. */
+ *  `verifyManagerPinAttempt` reducer — the tablet cannot read anyone's code. */
 export function ExitStoreDrawer({ open, onOpenChange, cancelLabel, onCancel }: ExitStoreDrawerProps) {
   const t = useT();
 
   const handlePin = async (pin: string) => {
-    try {
-      await verifyManagerPin(pin);
-    } catch {
+    // Rate limited: a wrong PIN is counted, so the answer is a row, not a throw.
+    const answer = await attemptManagerPin(pin);
+    if (answer.outcome !== "ok") {
       hapticError();
+      const notice = pinNotice(answer);
+      if (notice) toast.error(fmt(t(notice.key), notice.vars));
       return false;
     }
     hapticSuccess();

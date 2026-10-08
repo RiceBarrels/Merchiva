@@ -13,6 +13,9 @@ import { hapticError, hapticLight, hapticSuccess } from "@/lib/haptics";
 import { QrCodeView, PinPad, fmtMMSS, useNow } from "@/components/device";
 import { isManagerRole, type StoreMember } from "./use-org-members";
 import { usePinOperator } from "./use-pin-operator";
+import { rememberOperatorGrant } from "@/lib/spacetimedb/actions/pin";
+import { pinNotice } from "@/lib/pin-attempt";
+import { fmt } from "@/lib/i18n/fmt";
 import { ExitStoreDrawer } from "./exit-store-drawer";
 
 const QR_TTL_SECONDS = 60;
@@ -101,6 +104,7 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
   const t = useT();
   const [pinMode, setPinMode] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  const [pinMessage, setPinMessage] = useState<string | null>(null);
   const resolveOperator = usePinOperator(organizationId);
   const { value, secondsLeft, refreshing, refresh, approved } = useDeviceLoginQr(organizationId, deviceId, active && !pinMode);
 
@@ -114,6 +118,8 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
   useEffect(() => {
     if (!approved || !approvedMember || handledRef.current === approved.requestId) return;
     handledRef.current = approved.requestId;
+    // The request id is this log-in's grant: punches name it (recordOperatorPunch).
+    rememberOperatorGrant(approved.requestId);
     consumeDeviceLogin(approved.requestId).catch(console.error);
     hapticSuccess();
     const id = setTimeout(() => onLogin(approvedMember, null), 900);
@@ -124,18 +130,22 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
   // signed-in account — so the database answers who it belongs to.
   const handlePin = useCallback(
     async (pin: string) => {
-      const resolved = await resolveOperator(pin);
-      const member = resolved ? members.find((m) => m.id === resolved.memberId) ?? null : null;
+      const { answer, operator } = await resolveOperator(pin);
+      const member = operator ? members.find((m) => m.id === operator.memberId) ?? null : null;
       if (!member) {
         hapticError();
+        // Wrong PINs are rate limited: say when entry is paused, or that no answer came.
+        const notice = pinNotice(answer);
+        setPinMessage(notice ? fmt(t(notice.key), notice.vars) : null);
         return false;
       }
       hapticSuccess();
+      setPinMessage(null);
       setPinMode(false);
       onLogin(member, pin);
       return true;
     },
-    [members, onLogin, resolveOperator],
+    [members, onLogin, resolveOperator, t],
   );
 
   const handleSos = useCallback(() => {
@@ -197,9 +207,10 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
             <span className="block text-[13px] text-muted-foreground mt-1">{t("storeDevice.enterPinSub")}</span>
           </div>
           <PinPad size={compact ? "md" : "lg"} onComplete={handlePin} className={compact ? "mt-5" : "mt-8"} />
+          {pinMessage && <p role="alert" className="mt-3 text-center text-[13px] text-destructive">{pinMessage}</p>}
           <button
             type="button"
-            onClick={() => { hapticLight(); setPinMode(false); }}
+            onClick={() => { hapticLight(); setPinMode(false); setPinMessage(null); }}
             className={cn("h-11 w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors", compact ? "mt-4" : "mt-auto")}
           >
             {t("storeDevice.back")}
@@ -214,7 +225,7 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
             {t("storeDevice.emergency")}
           </button>
           {/* Always offered: whether the PIN belongs to a manager is decided by
-              the `verifyManagerPin` reducer, not by anything this device can read. */}
+              the `verifyManagerPinAttempt` reducer, not by anything this device can read. */}
           <button
             type="button"
             onClick={() => { hapticLight(); setExitOpen(true); }}

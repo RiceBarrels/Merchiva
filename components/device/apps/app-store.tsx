@@ -9,6 +9,7 @@
 import { useMemo } from "react";
 import { useT } from "@/lib/i18n/context";
 import { REQUIRED_DEVICE_APPS } from "@/lib/device-apps";
+import { driveKindHref } from "@/lib/drive/hrefs";
 import { pluginCategory, type PluginCategory } from "@/lib/plugin-store";
 import type { Permissions } from "@/lib/types";
 import { APP_CATALOG } from "../app-catalog";
@@ -56,11 +57,12 @@ export function useDeviceAppEntries(): DeviceAppEntry[] {
       out.push({ id: x.id, name: t(x.nameKey), description: desc(x.id), icon: APP_ICONS[x.id], color: x.color, required: true, surfaces: ["store", "personal"], category: pluginCategory(x.id) });
     }
     for (const a of APP_CATALOG) {
-      if (!a.lite && !a.keepManagerPage) continue;
+      if (!a.lite && !a.keepManagerPage && !a.editor) continue;
+      // An editor plugin has no tile: it works inside Drive on every surface, so "Open" lands on Drive's view of its files.
       out.push({
         id: a.id, name: t(`device.catalog.${a.id}`), description: desc(a.id), icon: a.icon, color: a.color ?? "slate",
-        required: required.has(a.id), surfaces: ["manager", ...a.surfaces], category: pluginCategory(a.id),
-        route: a.route, permissionKey: a.permissionKey, managerOnly: a.managerOnly,
+        required: required.has(a.id), surfaces: a.editor ? ["manager", "store", "personal"] : ["manager", ...a.surfaces], category: pluginCategory(a.id),
+        route: a.editor ? driveKindHref(a.editor) : a.route, permissionKey: a.permissionKey, managerOnly: a.managerOnly,
       });
     }
     return out;

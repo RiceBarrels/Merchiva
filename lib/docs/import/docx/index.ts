@@ -21,6 +21,7 @@
 import type { HeaderFooterVariant } from "@/lib/docs/header-footer";
 import type { DocPageSetup } from "@/lib/docs/page-setup";
 
+import { isQuotaExceededError, rethrowIfQuotaExceeded } from "@/lib/storage/quota-error";
 import { createLimiter, IMPORT_SKIPPED_IMAGE_ATTR, toUploadableImage } from "../images";
 
 import { renderBlocks } from "./blocks";
@@ -92,7 +93,10 @@ function titleFromCoreProperties(zip: DocxZip): string | null {
   return text || null;
 }
 
-/** Uploads what the walk collected, at most `UPLOAD_CONCURRENCY` at a time. Null means "left out". */
+/**
+ * Uploads what the walk collected, at most `UPLOAD_CONCURRENCY` at a time. Null means "left out". A store out of
+ * storage is not a left-out image: the first refusal stops the rest and fails the import with `[drive.quota_exceeded]`.
+ */
 async function uploadImages(
   jobs: readonly ImageJob[],
   uploadImage: (file: File) => Promise<string>,
@@ -100,17 +104,20 @@ async function uploadImages(
   const limit = createLimiter(UPLOAD_CONCURRENCY);
   const urls: (string | null)[] = new Array<string | null>(jobs.length).fill(null);
   let skipped = 0;
+  let outOfRoom: unknown = null;
   await Promise.all(
     jobs.map(async (job, index) => {
       try {
         const file = await toUploadableImage(new Blob([job.bytes], { type: job.contentType }), job.name);
         if (!file) throw new Error(`Unsupported image type ${job.contentType}`);
-        urls[index] = await limit(() => uploadImage(file));
-      } catch {
-        skipped += 1;
+        urls[index] = await limit(() => (outOfRoom === null ? uploadImage(file) : Promise.reject(outOfRoom)));
+      } catch (err) {
+        if (isQuotaExceededError(err)) outOfRoom ??= err;
+        else skipped += 1;
       }
     }),
   );
+  rethrowIfQuotaExceeded(outOfRoom);
   return { urls, skipped };
 }
 

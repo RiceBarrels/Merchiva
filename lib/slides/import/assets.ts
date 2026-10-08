@@ -6,6 +6,7 @@
 // bytes are released after its upload, so peak memory is about three images.
 import { createLimiter, toUploadableImage } from "@/lib/docs/import/images";
 import { DOC_IMAGE_MAX_BYTES } from "@/lib/docs/uploads";
+import { isQuotaExceededError, rethrowIfQuotaExceeded } from "@/lib/storage/quota-error";
 
 import { assetKeyOf, type ExtractedAsset } from "./dedupe-assets";
 import { isAbortError, throwIfAborted } from "./errors";
@@ -139,6 +140,7 @@ export async function uploadAssets(
   const failures = new Map<string, AssetFailure>();
   const limit = createLimiter(CONCURRENCY);
   let done = 0;
+  let outOfRoom: unknown = null;
   onProgress(0, assets.length);
   await Promise.all(
     assets.map((asset) =>
@@ -153,10 +155,15 @@ export async function uploadAssets(
           let url: string | null = null;
           for (let attempt = 0; attempt < 2 && url === null; attempt++) {
             throwIfAborted(signal);
+            rethrowIfQuotaExceeded(outOfRoom);
             try {
               url = await upload(file);
             } catch (err) {
               if (isAbortError(err)) throw err;
+              // A full store fails the import with [drive.quota_exceeded] rather than leave the image out,
+              // and the images still queued are not tried.
+              if (isQuotaExceededError(err)) outOfRoom ??= err;
+              rethrowIfQuotaExceeded(err);
             }
           }
           if (url === null) failures.set(asset.key, "imageUploadFailed");

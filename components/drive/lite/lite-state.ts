@@ -7,6 +7,7 @@
 import {
   VIRTUAL_SOURCE_IDS, type DriveDocKind, type DriveSection, type FolderEntry, type VirtualSourceId,
 } from "@/components/drive/model/types";
+import type { EditorKind } from "@/lib/device-apps";
 import { parseEditorHref } from "@/lib/drive/hrefs";
 
 /** The home screen's places: My files, Store, documents shared with me, and (admins) the team's files. */
@@ -137,9 +138,13 @@ export function replaceTop(stack: readonly LiteDriveScreen[], screen: LiteDriveS
   return stack.length > 0 ? [...stack.slice(0, -1), screen] : [screen];
 }
 
-/** Whether `url` opens a text document while the Docs app is not installed (the panel then says so and stays). */
-export function blockedByDocs(url: string, docsInstalled: boolean): boolean {
-  return !docsInstalled && parseEditorHref(url)?.kind === "doc";
+/**
+ * The editor `url` opens when that editor's plugin is not installed (the panel then asks to download it and stays);
+ * null when `url` is no editor link or its editor is installed.
+ */
+export function blockedEditor(url: string, isInstalled: (kind: EditorKind) => boolean): EditorKind | null {
+  const kind = parseEditorHref(url)?.kind ?? null;
+  return kind && !isInstalled(kind) ? kind : null;
 }
 
 /** Whether an editor link carries `new=1` (lib/drive/hrefs.ts documentFileHref with `isNew`). */
@@ -153,9 +158,9 @@ function linkIsNew(url: string): boolean {
  * - an editor link opens that editor on top (the same document already on top stays; an editor on top that points
  *   elsewhere, such as a wrong-type notice's "Open", is replaced, so Back never returns to it); `new=1` marks the
  *   screen `isNew`, since a panel has no URL to keep it in;
- * - any other `/manager` link (Drive home, Docs home, the editors' Back) returns to the last home screen;
+ * - any other `/manager` link (Drive home, the /manager/docs alias, the editors' Back) returns to the last home screen;
  * - anything else leaves the stack as it is (a device never leaves its panel).
- * The caller checks blockedByDocs first.
+ * The caller checks blockedEditor first.
  */
 export function openUrlInStack(stack: readonly LiteDriveScreen[], url: string): LiteDriveScreen[] {
   const target = parseEditorHref(url);

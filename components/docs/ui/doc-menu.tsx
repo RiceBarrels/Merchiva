@@ -147,6 +147,8 @@ function DocMenuShortcut({ className, ...props }: React.ComponentProps<"span">) 
 export interface DocMenuItemExtraProps {
   /** Pre-formatted shortcut hint (see `lib/docs/shortcut-label.ts`). */
   shortcut?: string;
+  /** A short prose note at the trailing end (already translated); unlike `shortcut` it follows the text direction. */
+  hint?: string;
   /** Leading icon (`size-4`). */
   icon?: IconComponent;
   /** Destructive styling (delete, move to trash). */
@@ -161,6 +163,7 @@ function DocMenuItem({
   className,
   children,
   shortcut,
+  hint,
   icon,
   destructive = false,
   inset = false,
@@ -177,6 +180,14 @@ function DocMenuItem({
     >
       <ItemLeading icon={icon} inset={inset} destructive={destructive} />
       <span className="min-w-0 flex-1 truncate">{children}</span>
+      {hint ? (
+        <span
+          dir="auto"
+          className="ms-auto shrink-0 ps-6 text-[11px] text-muted-foreground group-data-highlighted/doc-menu-item:text-accent-foreground"
+        >
+          {hint}
+        </span>
+      ) : null}
       {shortcut ? <DocMenuShortcut>{shortcut}</DocMenuShortcut> : null}
     </MenuPrimitive.Item>
   );

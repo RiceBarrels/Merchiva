@@ -7,6 +7,7 @@ import {
   NOT_SEARCHABLE,
   ROUTES,
   getRouteAccess,
+  openableDocuments,
   listNavSections,
   matchRoute,
   parseOmniboxInput,
@@ -292,8 +293,11 @@ export function buildOmniboxGroups(query: string, sources: OmniboxSources, text:
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export interface OmniboxResultOptions {
-  /** `getRouteAccess("/manager/docs") === "allowed"`. */
+  /** Some document editor plugin is open to this person (anyDocumentEditorAllowed); each document is listed only
+   *  when its own editor is (openableDocuments). */
   readonly docsAllowed: boolean;
+  /** New document (a Doc) is offered: Docs is open to this person and the install state has loaded. */
+  readonly newDocAllowed: boolean;
   readonly bookmarksBarVisible: boolean;
   /** The active tab shows the New Tab page ("Bookmark this tab" is hidden there). */
   readonly isNewTabPage: boolean;
@@ -319,7 +323,7 @@ export function useOmniboxResults(
   const newTabShortcut = useShortcutLabel("newTab");
   const reopenShortcut = useShortcutLabel("reopenClosedTab");
   const toggleBarShortcut = useShortcutLabel("toggleBookmarksBar");
-  const { docsAllowed, bookmarksBarVisible, isNewTabPage, openedAt } = opts;
+  const { docsAllowed, newDocAllowed, bookmarksBarVisible, isNewTabPage, openedAt } = opts;
 
   const pageSources = useMemo(() => {
     const navSections = listNavSections(ctx);
@@ -392,7 +396,7 @@ export function useOmniboxResults(
     const actions: OmniboxActionSource[] = [
       { id: "new-tab", title: t("browser.actions.newTab"), icon: Plus, shortcut: newTabShortcut ?? undefined, keywords: ["new tab", "open"] },
     ];
-    if (docsAllowed) {
+    if (newDocAllowed) {
       actions.push({ id: "new-document", title: t("browserDesktop.actions.newDocument"), icon: FilePlus, keywords: ["new document", "doc", "create", "write"] });
     }
     actions.push(
@@ -421,7 +425,7 @@ export function useOmniboxResults(
         tabs,
         sections: pageSources.sections,
         pages: pageSources.pages,
-        docs: docsAllowed ? docs : [],
+        docs: docsAllowed ? openableDocuments(docs, ctx) : [],
         stores: organizations.filter((org) => org.id !== currentOrg?.id),
         actions,
         closed,
@@ -458,6 +462,7 @@ export function useOmniboxResults(
     reopenShortcut,
     toggleBarShortcut,
     docsAllowed,
+    newDocAllowed,
     bookmarksBarVisible,
     isNewTabPage,
     openedAt,

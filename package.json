@@ -27,6 +27,7 @@
     "tauri:build": "tauri build",
     "tauri:icon": "tauri icon",
     "check:rls": "bun scripts/check-rls-coverage.ts",
+    "check:setup": "bun scripts/check-setup-state.ts",
     "check:licenses": "bun scripts/licenses/generate.ts --check",
     "licenses": "bun scripts/licenses/generate.ts",
     "migrate:security": "bun scripts/migrate-security-v1.ts"
@@ -124,6 +125,8 @@
     "spacetimedb": "^2.10.1",
     "square": "^44.0.1",
     "stripe": "^22.1.1",
+    "survey-core": "3.1.2",
+    "survey-react-ui": "3.1.2",
     "tailwind-merge": "^3.5.0",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",

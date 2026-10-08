@@ -1,5 +1,4 @@
-// Docs in a device panel and the editor routes: DocsLite (operator, notice gate, who the Docs reducers write for,
-// another file type's link), DocEditorRoute (another file type, not found, "just created", old version links),
+// The editor routes: DocEditorRoute (another file type, not found, "just created", old version links),
 // SheetEditorRoute and SlidesEditorRoute before and after a document's type is known, and the share dialog's
 // owner-only "General access" rule.
 //
@@ -11,7 +10,6 @@ import { join } from "node:path";
 
 const ROOT = join(import.meta.dir, "..", "..", "..");
 const FIXTURES = [
-  "./scripts/tests/docs-home/docs-lite.isolated.tsx",
   "./scripts/tests/docs-home/editor-route.isolated.tsx",
   "./scripts/tests/docs-home/typed-routes.isolated.tsx",
   "./scripts/tests/docs-home/share-dialog.isolated.tsx",

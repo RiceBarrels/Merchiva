@@ -1,6 +1,8 @@
 // Drive UI model: "Stored in apps" — photos and files other Merchiva apps keep as links
 // (chat attachments, task and inventory evidence, training media, product images, bug
-// screenshots, the store logo and your profile photo), listed read-only beside Drive.
+// screenshots, the store logo and your profile photo), listed read-only beside Drive, plus one
+// record entry per form (Forms keeps its answers as rows, not files): it opens the form's
+// responses on /manager instead of a preview.
 //
 // Pure (no React). Rows arrive as the provider already subscribes them, untyped: every field
 // is read through the local guards below, never `any`. The page hook
@@ -11,15 +13,19 @@
 
 import { fileKindOf, type DriveFileKind } from "@/lib/drive/file-kinds";
 import { mimeFromExtension, normalizeDriveMime } from "@/lib/drive/rules";
+import type { AppFileSize } from "@/lib/drive/storage-rows";
 import { fmt } from "@/lib/i18n/fmt";
+import { appFileKeyHash, uploadThingKeyOf } from "@/lib/storage/uploadthing-key";
 import type { Permissions } from "@/lib/types";
 import type { DriveEntryAccess, VirtualEntry, VirtualSourceId } from "./types";
 
 export interface VirtualSourceMeta {
   id: VirtualSourceId;
   labelKey: string;
-  icon: "MessageSquare" | "ListChecks" | "Package" | "GraduationCap" | "Tag" | "Bug" | "UserCircle";
+  icon: "MessageSquare" | "ListChecks" | "Package" | "GraduationCap" | "Tag" | "Bug" | "UserCircle" | "ClipboardList";
   originRoute: string;
+  /** The tile's count message base (countKey); default "drive.apps.count" ("{count} files"). */
+  countKey?: string;
   /** permission: `can(permission, "view")`; appRoute: its app is installed; hideOnStore: not on the shared tablet. */
   requires: { permission?: keyof Permissions; appRoute?: string; hideOnStore?: boolean };
 }
@@ -33,7 +39,15 @@ export const VIRTUAL_SOURCES: readonly VirtualSourceMeta[] = [
   { id: "bugs", labelKey: "drive.apps.sources.bugs", icon: "Bug", originRoute: "/manager/bugs", requires: {} },
   // The store logo shows everywhere; the profile photo (the signed-in account's) is left out on /store by the mapper.
   { id: "profile", labelKey: "drive.apps.sources.profile", icon: "UserCircle", originRoute: "/manager/settings", requires: {} },
+  // Records, not files: only Drive admins can read form_meta, so everyone else gets no entries (RLS decides).
+  { id: "forms", labelKey: "drive.apps.sources.forms", icon: "ClipboardList", originRoute: "/manager/forms", countKey: "drive.apps.countForms", requires: { appRoute: "/manager/forms" } },
 ];
+
+/** A form and its counters as useForms() lists them (`meta` is null for anyone but a Drive admin). */
+export interface VirtualFormInput {
+  form: { id: string; organizationId: string; title: string; kind: string; ownerMemberId: string; updatedAt: Date };
+  meta: { responseCount: number; answerBytes: number; fileBytes: number; lastResponseAt: Date | null } | null;
+}
 
 export interface VirtualInput {
   organizationId: string;
@@ -56,8 +70,18 @@ export interface VirtualInput {
   bugReports: readonly unknown[];
   organizations: readonly unknown[];
   users: readonly unknown[];
+  /** useForms().forms; absent: no form entries. */
+  forms?: readonly VirtualFormInput[];
+  /** A form's edit page on its responses view (components/forms/list/status.ts formEditHref(id, "responses")). */
+  formHref?: (formId: string) => string;
+  /** useDrive().appFileSizes: sizes of the files Merchiva stores, by appFileKeyHash(url). Absent: sizes unknown. */
+  appFileSizes?: ReadonlyMap<string, AppFileSize>;
   /** Resolved strings: drive.apps.untitledAttachment, storeLogo, profilePhoto, photoN ("{name} · photo {n}"). */
-  labels: { untitledAttachment: string; storeLogo: string; profilePhoto: string; photoN: string };
+  labels: {
+    untitledAttachment: string; storeLogo: string; profilePhoto: string; photoN: string;
+    /** forms.templates.blank.untitled; forms.kind.<kind> by kind. */
+    untitledForm?: string; formKinds?: Readonly<Record<string, string>>; responsesN?: string;
+  };
   /** App locale, for joining participant names. */
   locale?: string;
 }
@@ -192,6 +216,15 @@ interface Link {
   isMine?: boolean;
 }
 
+/** The recorded size of an UploadThing file; null for any other link (Merchiva does not store it) or an unrecorded one. */
+export function appFileSizeOf(url: string, sizes: ReadonlyMap<string, AppFileSize> | undefined): number | null {
+  if (!sizes || sizes.size === 0) return null;
+  // Only an UploadThing file URL has a key; a bare string that happens to look like one is not a link.
+  const key = uploadThingKeyOf(url);
+  const hash = key ? appFileKeyHash(key) : null;
+  return hash ? (sizes.get(hash)?.sizeBytes ?? null) : null;
+}
+
 function toEntries(source: VirtualSourceId, input: VirtualInput, links: readonly Link[]): VirtualEntry[] {
   const meta = VIRTUAL_SOURCES.find((s) => s.id === source);
   const names = new Map(input.members.map((m) => [m.id, m.name]));
@@ -219,6 +252,7 @@ function toEntries(source: VirtualSourceId, input: VirtualInput, links: readonly
       ...linkKind(link.declared, link.name, link.url),
       group: link.group,
       originRoute: meta?.originRoute ?? null,
+      sizeBytes: appFileSizeOf(link.url, input.appFileSizes),
     });
   }
   return out.sort((a, b) => b.updatedAt - a.updatedAt || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
@@ -365,6 +399,56 @@ export function profileImageEntries(input: VirtualInput): VirtualEntry[] {
   return toEntries("profile", input, links);
 }
 
+const RECORD_ACCESS: DriveEntryAccess = Object.freeze({ ...READ_ONLY, canDownload: false });
+
+/**
+ * One record entry per form whose counters (form_meta) the viewer can read — Drive admins, which includes every
+ * form builder; anyone else has no meta and gets no entries. Its size is the stored answer text plus the files
+ * attached to the answers (answerBytes + fileBytes). Those files are respondents' Drive items, already in their My
+ * files and counted in the Drive quota; only the answer text is stored here. Opening it goes to the form's
+ * responses on /manager.
+ */
+export function formRecordEntries(input: VirtualInput): VirtualEntry[] {
+  const { formHref } = input;
+  if (!formHref) return [];
+  const names = new Map(input.members.map((m) => [m.id, m.name]));
+  const org = input.organizationId.toLowerCase();
+  const out: VirtualEntry[] = [];
+  for (const { form, meta } of input.forms ?? []) {
+    const id = form.id.toLowerCase();
+    if (!meta || form.organizationId.toLowerCase() !== org || !ROW_ID_RE.test(id)) continue;
+    const owner = form.ownerMemberId.toLowerCase();
+    const updatedAt = Math.max(timeOf(form.updatedAt), timeOf(meta.lastResponseAt));
+    const count = Math.max(0, meta.responseCount);
+    out.push({
+      key: `v:forms:${id}`,
+      id,
+      name: form.title.trim() || (input.labels.untitledForm ?? input.labels.untitledAttachment),
+      createdAt: updatedAt,
+      updatedAt,
+      ownerMemberId: owner,
+      ownerName: owner ? (names.get(owner) ?? null) : null,
+      isMine: !!input.actorMemberId && owner === input.actorMemberId,
+      starred: false,
+      trashedAt: null,
+      openedAt: null,
+      location: null,
+      access: RECORD_ACCESS,
+      type: "virtual",
+      source: "forms",
+      url: "",
+      fileKind: "other",
+      mimeType: OCTET,
+      group: input.labels.formKinds?.[form.kind] ?? "",
+      originRoute: "/manager/forms",
+      sizeBytes: Math.max(0, meta.answerBytes) + Math.max(0, meta.fileBytes),
+      href: formHref(id),
+      note: input.labels.responsesN ? fmt(input.labels.responsesN, { n: count }) : String(count),
+    });
+  }
+  return out.sort((a, b) => b.updatedAt - a.updatedAt || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+}
+
 const MAPPERS: Readonly<Record<VirtualSourceId, (input: VirtualInput) => VirtualEntry[]>> = {
   chat: chatAttachmentEntries,
   tasks: taskEvidenceEntries,
@@ -373,6 +457,7 @@ const MAPPERS: Readonly<Record<VirtualSourceId, (input: VirtualInput) => Virtual
   products: productImageEntries,
   bugs: bugScreenshotEntries,
   profile: profileImageEntries,
+  forms: formRecordEntries,
 };
 
 /** The read-only entries of one source, newest first. */

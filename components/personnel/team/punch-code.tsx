@@ -7,7 +7,9 @@
 // not even as the owner. A manager therefore gets two things here — whether a
 // code exists (`org_member.hasPunchCode`, the colleague-visible half) and the
 // ability to set a new one. The digits themselves are never shown to anyone but
-// their owner, and `setPunchInCode` rejects a duplicate within the store.
+// their owner, and a code already used within the store is refused. Because
+// "already in use" names a colleague's PIN, every set goes through the
+// rate-limited `setMemberPunchInCode`; clearing (`setPunchInCode`) tests nothing.
 
 import { useState } from "react";
 import { toast } from "sonner";
@@ -19,6 +21,10 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n/context";
 import { setPunchInCode } from "@/lib/spacetimedb/actions";
+import { setMemberPunchCode } from "@/lib/spacetimedb/actions/pin";
+import { ownCodeNotice } from "@/lib/pin-attempt";
+import { fmt } from "@/lib/i18n/fmt";
+import { PinLockoutsButton } from "./pin-lockouts";
 import { usePunchCode } from "@/lib/spacetimedb/hooks/usePunchCode";
 
 const k = (key: string) => `personnel.team.punch.${key}`;
@@ -56,7 +62,10 @@ export function PunchCodeField({ memberId, isMe, hasCode, canEdit, disabled = fa
     }
     setBusy(true);
     try {
-      await setPunchInCode(memberId, draft);
+      // Answered through pin_attempt_result: a code in use is a colleague's PIN,
+      // counted as a guess for anyone but an owner (setMemberPunchInCode).
+      const notice = ownCodeNotice(await setMemberPunchCode(memberId, draft));
+      if (notice) throw new Error(fmt(t(notice.key), notice.vars));
       hapticSuccess();
       toast.success(t(k("saved")));
       setEditing(false);
@@ -150,6 +159,7 @@ export function PunchCodeField({ memberId, isMe, hasCode, canEdit, disabled = fa
       <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground">
         {isMe ? t(k("hintSelf")) : t(k("hintOther"))}
       </p>
+      {isMe && <PinLockoutsButton />}
     </div>
   );
 }

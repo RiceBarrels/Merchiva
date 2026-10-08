@@ -17,8 +17,6 @@ export type DriveAction =
 
 export interface ActionContext {
   surface: DriveSurface;
-  /** The Docs app is installed: text documents open, and files can be opened as a Doc. */
-  docsInstalled: boolean;
   section: DriveSection;
   /** No SpacetimeDB connection: nothing that writes is offered. */
   offline: boolean;
@@ -37,8 +35,11 @@ const MANAGER_ONLY: ReadonlySet<DriveAction> = new Set<DriveAction>(["openNewTab
 
 const OPEN_AS: Readonly<Record<"doc" | "sheet" | "slides", DriveAction>> = { doc: "openAsDoc", sheet: "openAsSheet", slides: "openAsSlides" };
 
-/** Opening: a text document needs the Docs app; Sheets and Slides open in Drive's own editors. */
-function openGroup(entry: DriveEntry, ctx: ActionContext): DriveAction[] {
+/**
+ * Opening. Offered whenever access allows, whether or not the editor plugin is installed: the runner asks to
+ * download a missing plugin first (components/drive/actions/use-editor-gate.ts) instead of the menu hiding it.
+ */
+function openGroup(entry: DriveEntry): DriveAction[] {
   const a = entry.access;
   switch (entry.type) {
     case "folder":
@@ -46,18 +47,19 @@ function openGroup(entry: DriveEntry, ctx: ActionContext): DriveAction[] {
     case "doc":
     case "sheet":
     case "slides":
-      return a.canOpen && (entry.type !== "doc" || ctx.docsInstalled) ? ["open", "openNewTab"] : [];
+      return a.canOpen ? ["open", "openNewTab"] : [];
     case "file": {
       const out: DriveAction[] = [];
       if (a.canOpen) out.push("preview");
       if (a.canDownload) out.push("download");
       const into = a.canOpen ? importTargetOf(entry.mimeType, entry.name) : null;
-      if (into && (into !== "doc" || ctx.docsInstalled)) out.push(OPEN_AS[into]);
+      if (into) out.push(OPEN_AS[into]);
       return out;
     }
     case "virtual": {
       const out: DriveAction[] = [];
-      if (a.canOpen) out.push("preview");
+      // A record (a form) opens its /manager page; a file link previews.
+      if (a.canOpen) out.push(...(entry.href ? (["open", "openNewTab"] as const) : (["preview"] as const)));
       if (a.canDownload) out.push("download");
       if (entry.originRoute) out.push("openOriginal");
       return out;
@@ -66,12 +68,10 @@ function openGroup(entry: DriveEntry, ctx: ActionContext): DriveAction[] {
 }
 
 /** Where a trashed entry can still be looked at: files preview, documents open read-only; folders not at all. */
-function trashedOpen(entry: DriveEntry, ctx: ActionContext): DriveAction[] {
+function trashedOpen(entry: DriveEntry): DriveAction[] {
   if (!entry.access.canOpen) return [];
   if (entry.type === "file") return ["preview"];
-  if (entry.type === "doc" || entry.type === "sheet" || entry.type === "slides") {
-    return entry.type !== "doc" || ctx.docsInstalled ? ["open"] : [];
-  }
+  if (entry.type === "doc" || entry.type === "sheet" || entry.type === "slides") return ["open"];
   return [];
 }
 
@@ -87,7 +87,7 @@ export function driveActionGroups(entry: DriveEntry, ctx: ActionContext, move: {
     const destructive: DriveAction[] = [];
     if (a.canRestore) destructive.push("restore");
     if (a.canDeleteForever) destructive.push("deleteForever");
-    groups = [trashedOpen(entry, ctx), destructive];
+    groups = [trashedOpen(entry), destructive];
   } else {
     const edit: DriveAction[] = [];
     if (a.canRename) edit.push("rename");
@@ -99,7 +99,7 @@ export function driveActionGroups(entry: DriveEntry, ctx: ActionContext, move: {
     if (a.canStar) edit.push(entry.starred ? "unstar" : "star");
     edit.push("details");
     if (ctx.touch) edit.push("select");
-    groups = [openGroup(entry, ctx), edit, a.canTrash ? ["trash"] : []];
+    groups = [openGroup(entry), edit, a.canTrash ? ["trash"] : []];
   }
   const lite = ctx.surface !== "manager";
   return groups

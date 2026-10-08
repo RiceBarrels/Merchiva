@@ -8,10 +8,12 @@ import { useState } from "react";
 import { EntryIcon } from "@/components/drive/list/entry-icon";
 import { EntryMenu } from "@/components/drive/list/entry-menu";
 import type { DriveAction } from "@/components/drive/model/actions";
+import { entrySizeText } from "@/components/drive/model/entry-size";
 import type { DriveView, VirtualEntry } from "@/components/drive/model/types";
 import type { DriveEntryActions } from "@/components/drive/preview/open-entry";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Num } from "@/components/ui/num";
+import { useI18n } from "@/lib/i18n/context";
 import { useDateFormat } from "@/lib/i18n/use-date-format";
 import { cn } from "@/lib/utils";
 
@@ -75,11 +77,12 @@ function Thumb({ entry }: { entry: VirtualEntry }) {
   );
 }
 
-function metaText(entry: VirtualEntry, date: string): string {
-  return [entry.ownerName, date].filter((part) => !!part).join(" · ");
+function metaText(entry: VirtualEntry, date: string, size: string | null): string {
+  return [entry.ownerName, entry.note, date, size].filter((part) => !!part).join(" · ");
 }
 
 function GridItem({ entry, onPick, actions }: ItemProps) {
+  const { locale } = useI18n();
   const formatDate = useDateFormat();
   const date = entry.updatedAt > 0 ? formatDate(entry.updatedAt, DATE) : "";
   return (
@@ -90,7 +93,7 @@ function GridItem({ entry, onPick, actions }: ItemProps) {
         </span>
         <span className="block min-w-0 px-2.5 py-2">
           <span dir="auto" className="block truncate text-[13px] font-medium">{entry.name}</span>
-          <span className="block truncate text-xs text-muted-foreground">{metaText(entry, date)}</span>
+          <span className="block truncate text-xs text-muted-foreground">{metaText(entry, date, entrySizeText(entry, locale))}</span>
         </span>
       </button>
       <ItemMenu entry={entry} actions={actions} className="absolute end-1 top-1 bg-background/80" />
@@ -99,8 +102,10 @@ function GridItem({ entry, onPick, actions }: ItemProps) {
 }
 
 function ListItem({ entry, onPick, actions }: ItemProps) {
+  const { locale } = useI18n();
   const formatDate = useDateFormat();
   const date = entry.updatedAt > 0 ? formatDate(entry.updatedAt, DATE) : "";
+  const size = entrySizeText(entry, locale);
   return (
     <li className="flex items-center gap-2 px-3 py-1.5 transition-colors hover:bg-muted/50">
       <button type="button" onClick={() => onPick(entry)} className="flex min-w-0 flex-1 items-center gap-3 py-0.5 text-start">
@@ -108,6 +113,7 @@ function ListItem({ entry, onPick, actions }: ItemProps) {
         <span dir="auto" className="min-w-0 flex-1 truncate text-sm">{entry.name}</span>
         {entry.ownerName && <span dir="auto" className="hidden w-40 truncate text-xs text-muted-foreground sm:block">{entry.ownerName}</span>}
         {date && <Num size="xs" muted value={date} className="shrink-0" />}
+        <Num size="xs" muted value={size ?? "—"} className="hidden w-16 shrink-0 text-end sm:block" />
       </button>
       <ItemMenu entry={entry} actions={actions} />
     </li>

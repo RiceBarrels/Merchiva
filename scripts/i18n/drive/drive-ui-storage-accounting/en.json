@@ -1,0 +1,32 @@
+{
+  "drive": {
+    "storage": {
+      "breakdown": {
+        "title": "What's using storage",
+        "files": "Uploaded files",
+        "documents": "Documents, presentations and forms",
+        "sheets": "Spreadsheets",
+        "apps": "Files in other apps"
+      },
+      "includesEverything": "Everything your store keeps counts toward storage: uploads, documents, spreadsheets, presentations, forms and files in other apps."
+    },
+    "apps": {
+      "bytesSource": {
+        "doc_image": "Images in documents",
+        "sheet_image": "Images in spreadsheets",
+        "slides_image": "Images in presentations",
+        "logo": "Store logo",
+        "avatar": "Profile photos",
+        "other": "Other files"
+      },
+      "storageTotal": "{size} stored in other apps",
+      "bytesNotListed": "{source}: files you can't open here",
+      "notStoredHere": "Includes files you can't open here, such as other people's chat attachments.",
+      "sources": {
+        "forms": "Forms"
+      },
+      "countForms": "{count} forms",
+      "countFormsOne": "1 form"
+    }
+  }
+}

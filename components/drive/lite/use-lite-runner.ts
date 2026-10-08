@@ -1,7 +1,8 @@
 "use client";
 
 // What a tap does in the Drive lite app (drive-ui §14.3–§14.4): opening an entry (a folder in its tab, a file in
-// its preview screen, a Doc, Sheet or Slides file in its editor inside the panel), and each row of the actions
+// its preview screen, a Doc, Sheet or Slides file in its editor inside the panel, once that editor's plugin is
+// installed — lite-install-drawer.tsx asks for it first), and each row of the actions
 // drawer. Anything that changes something is asked again when it can't be undone from here (delete, delete
 // forever) or changes who can see it (share with the store, move back to my files); the rest runs at once.
 //
@@ -27,7 +28,7 @@ export interface LiteRunner {
 
 export function useLiteRunner(drive: LiteDrive, nav: LiteNav, panels: LitePanels): LiteRunner {
   const t = useT();
-  const { data, docsInstalled, moveActor, runWrite, download, openAs } = drive;
+  const { data, ensureEditor, moveActor, runWrite, download, openAs } = drive;
   const actorMemberId = data.actor.memberId;
   const { tree } = data;
 
@@ -39,17 +40,21 @@ export function useLiteRunner(drive: LiteDrive, nav: LiteNav, panels: LitePanels
           return;
         case "doc":
         case "sheet":
-        case "slides":
-          if (entry.type === "doc" && !docsInstalled) toast(t("device.lite.drive.docsOff"));
-          else nav.push({ kind: "editor", docKind: entry.type, id: entry.id });
+        case "slides": {
+          const docKind = entry.type;
+          ensureEditor(docKind, "open", () => nav.push({ kind: "editor", docKind, id: entry.id }));
           return;
+        }
         case "file":
-        case "virtual":
           nav.push({ kind: "preview", key: entry.key });
+          return;
+        case "virtual":
+          // A record (a form) opens a /manager page, which the lite apps cannot reach: it is shown, never opened.
+          if (!entry.href) nav.push({ kind: "preview", key: entry.key });
           return;
       }
     },
-    [nav, actorMemberId, docsInstalled, t],
+    [nav, actorMemberId, ensureEditor],
   );
 
   const act = useCallback(
@@ -59,7 +64,7 @@ export function useLiteRunner(drive: LiteDrive, nav: LiteNav, panels: LitePanels
           openEntry(entry);
           return;
         case "preview":
-          if (entry.type === "file" || entry.type === "virtual") nav.push({ kind: "preview", key: entry.key });
+          if (entry.type === "file" || (entry.type === "virtual" && !entry.href)) nav.push({ kind: "preview", key: entry.key });
           return;
         case "details":
           panels.openDetails(entry);

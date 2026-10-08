@@ -3,6 +3,8 @@
 import { useRef, useState, DragEvent } from "react";
 import { Upload, X, Image as ImageIcon } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing";
+import { appUploadErrorKey } from "@/lib/storage/app-upload";
+import { useAppUploadProps } from "@/lib/storage/use-app-upload";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -18,20 +20,22 @@ interface ImageUploadProps {
   className?: string;
 }
 
-export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
+export function ImageUpload({ value, orgId, onChange, className }: ImageUploadProps) {
   const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
+  const upload = useAppUploadProps("products", orgId || null);
   const { startUpload, isUploading } = useUploadThing("siteImage", {
+    headers: upload.headers,
     onClientUploadComplete: (res) => {
       if (res?.[0]) {
         onChange(res[0].ufsUrl);
         if (navigator.vibrate) navigator.vibrate(30);
       }
     },
-    onUploadError: (err) => setError(err.message),
+    onUploadError: (err) => setError(t(appUploadErrorKey(err))),
   });
 
   async function handleFile(file: File) {
@@ -44,7 +48,8 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
       setError(t("components.imageUpload.fileTooLarge"));
       return;
     }
-    await startUpload([file]);
+    if (!upload.input) return;
+    await startUpload([file], upload.input);
   }
 
   function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {

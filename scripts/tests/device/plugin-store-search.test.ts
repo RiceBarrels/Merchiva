@@ -67,7 +67,7 @@ describe("searchPlugins", () => {
 
 describe("plugin categories", () => {
   test("every required and known app id has a real category", () => {
-    const known = [...REQUIRED_DEVICE_APPS, "requests", "tasks", "training", "pay", "products", "sales", "bookings", "docs", "drive", "sheets", "slides"];
+    const known = [...REQUIRED_DEVICE_APPS, "requests", "tasks", "training", "pay", "products", "sales", "bookings", "docs", "drive", "sheets", "slides", "forms"];
     for (const id of known) expect(PLUGIN_CATEGORIES).toContain(pluginCategory(id));
   });
 

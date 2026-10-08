@@ -7,8 +7,8 @@
 // all (the file store is unavailable), the drag shows why and is refused (dropEffect "none");
 // a drop the browser delivers anyway says it again.
 //
-// Structure of components/docs/home/import-drop-zone.tsx: dragenter/dragleave fire for every
-// child element, so a depth counter tells when the pointer really left.
+// dragenter/dragleave fire for every child element, so a depth counter tells when the pointer
+// really left.
 
 import { useRef, useState } from "react";
 import { Ban, FileUp } from "lucide-react";

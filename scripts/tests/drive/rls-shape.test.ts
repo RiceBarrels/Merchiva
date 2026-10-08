@@ -75,6 +75,7 @@ const READER_TABLES: Pair[] = [
   ["document_version", "documentId"],
   ["document_version_state", "documentId"],
   ["document_file", "documentId"],
+  ["document_size", "documentId"],
 ];
 const RULE_FREE_JOIN_TARGETS = [
   "org_membership_index",
@@ -97,6 +98,9 @@ const NEW_TABLES = [
   "document_edit_lease",
   "document_version_state",
   "document_file",
+  "app_file",
+  "org_storage_usage",
+  "document_size",
 ];
 
 describe("Drive rules", () => {
@@ -126,8 +130,8 @@ describe("Drive rules", () => {
     );
   });
 
-  test("drive_star and drive_usage are org-scoped on organizationId", () => {
-    for (const table of ["drive_star", "drive_usage"]) {
+  test("drive_star, drive_usage, app_file and org_storage_usage are org-scoped on organizationId", () => {
+    for (const table of ["drive_star", "drive_usage", "app_file", "org_storage_usage"]) {
       expect(rls.orgScoped).toContain(table);
       expect(rls.rules[`rls_${table}_member`]).toBe(
         `SELECT x.* FROM ${table} x JOIN org_membership_index mi ON x.organizationId = mi.organizationId ` +
@@ -152,21 +156,26 @@ describe("Drive rules", () => {
     expect(rulesOn("drive_blob_gc")).toEqual(["rls_drive_blob_gc_service"]);
     expect(rulesOn("drive_usage")).toEqual(["rls_drive_usage_member", "rls_drive_usage_service"]);
     expect(rulesOn("drive_star")).toEqual(["rls_drive_star_member"]);
+    // Storage ledger: org-readable (sizes only — app_file never holds a key, URL or name), no service rule.
+    expect(rulesOn("app_file")).toEqual(["rls_app_file_member"]);
+    expect(rulesOn("org_storage_usage")).toEqual(["rls_org_storage_usage_member"]);
+    expect(rulesOn("document_size")).toEqual(["rls_document_size_reader"]);
     expect(rulesOn("drive_org_state")).toEqual([]);
   });
 
-  test("the service identity reads only drive_blob_gc and drive_usage, through drive_service_reader", () => {
+  // form_public (the Forms public link) is the one approved extension of U14; scripts/tests/forms/rls-shape.test.ts.
+  test("the service identity reads only drive_blob_gc, drive_usage and form_public, through drive_service_reader", () => {
     const viaServiceReader = Object.values(rls.rules)
       .filter((sql) => /\bJOIN drive_service_reader\b/.test(sql))
       .map(baseTable)
       .sort();
-    expect(viaServiceReader).toEqual(["drive_blob_gc", "drive_usage"]);
+    expect(viaServiceReader).toEqual(["drive_blob_gc", "drive_usage", "form_public"]);
     for (const sql of Object.values(rls.rules)) expect(sql).not.toContain("service_identity");
   });
 });
 
 describe("Docs-family reader rules", () => {
-  test("RLS_DOC_READER_SCOPED lists the 11 Docs-family tables", () => {
+  test("RLS_DOC_READER_SCOPED lists the 12 Docs-family tables", () => {
     expect(rls.readerScoped).toEqual(READER_TABLES);
   });
 
@@ -178,8 +187,8 @@ describe("Docs-family reader rules", () => {
     }
   });
 
-  test("the lease and version-state tables are reader-scoped only, never org-scoped", () => {
-    for (const table of ["document_edit_lease", "document_version_state"]) {
+  test("the lease, version-state and size tables are reader-scoped only, never org-scoped", () => {
+    for (const table of ["document_edit_lease", "document_version_state", "document_size"]) {
       expect(orgScopedNames).not.toContain(table);
       expect(rls.rules[`rls_${table}_member`]).toBeUndefined();
     }
@@ -404,7 +413,7 @@ const REJECTED: Array<{ when: string; out: string[]; edits: Edits }> = [
 describe("check:rls", () => {
   test("passes on the real module source", () => {
     const { code, out } = runChecker();
-    expect(out).toContain("11 reader-scoped");
+    expect(out).toContain("12 reader-scoped");
     expect(out).toContain("Every public table is covered by a row-level-security rule.");
     expect(code).toBe(0);
   });
@@ -447,5 +456,27 @@ describe("check:rls", () => {
     const { code, out } = alreadyPhaseB ? runChecker() : checkMutated({ "index.ts": removeFromOrgList });
     expect(out).toContain("Every public table is covered by a row-level-security rule.");
     expect(code).toBe(0);
+  });
+});
+
+describe("storage tables (drive/storage.ts)", () => {
+  test("columns are plain types; every filter / join / rule column is a non-option string", () => {
+    expect(columnsOf(TABLES_SRC, "app_file")).toEqual([
+      ["keyHash", "t.string().primaryKey()"], ["organizationId", "t.string()"], ["source", "t.string()"],
+      ["sizeBytes", "t.u64()"], ["mimeType", "t.string()"], ["createdAt", "t.timestamp()"],
+    ]);
+    expect(columnsOf(TABLES_SRC, "org_storage_usage")).toEqual([
+      ["organizationId", "t.string().primaryKey()"], ["docBytes", "t.u64()"], ["docCount", "t.u32()"],
+      ["appBytes", "t.u64()"], ["appFileCount", "t.u32()"], ["updatedAt", "t.timestamp()"],
+    ]);
+    expect(columnsOf(TABLES_SRC, "document_size")).toEqual([
+      ["documentId", "t.string().primaryKey()"], ["organizationId", "t.string()"], ["fileType", "t.string()"],
+      ["bytes", "t.u64()"], ["versionBytes", "t.u64()"], ["updatedAt", "t.timestamp()"],
+    ]);
+  });
+
+  test("app_file never stores a key, URL or file name: org-wide rows carry only the key's hash", () => {
+    const names = columnsOf(TABLES_SRC, "app_file").map(([name]) => name.toLowerCase());
+    for (const banned of ["key", "filekey", "url", "name", "filename"]) expect(names).not.toContain(banned);
   });
 });

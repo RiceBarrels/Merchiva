@@ -1,5 +1,6 @@
-// Every static i18n key the docs home and its dialogs render, inside the WP-6 namespaces,
-// exists in all 8 locale files (after `bun scripts/i18n/docs-home.ts`).
+// Every static i18n key the docs home's remaining helpers and the Docs dialogs render, inside the
+// WP-6 namespaces, exists in all 8 locale files (after `bun scripts/i18n/docs-home.ts`). The Docs
+// home itself was folded into Drive; /manager/docs (page.tsx) now only redirects there.
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -26,17 +27,7 @@ const SOURCES = [
   "components/docs/dialogs/make-private-dialog.tsx",
   "components/docs/dialogs/open-document-dialog.tsx",
   "components/docs/dialogs/rename-dialog.tsx",
-  "components/docs/dialogs/delete-forever-dialog.tsx",
   "app/manager/docs/page.tsx",
-];
-
-/** Keys built from template literals in the sources. */
-const DYNAMIC_KEYS = [
-  ...["today", "week", "month", "earlier"].map((g) => `docs.home.group.${g}`),
-  ...["anyone", "me", "notMe"].map((o) => `docs.home.owner.${o}`),
-  ...["modified", "opened", "created", "title"].map((s) => `docs.home.sort.${s}`),
-  ...["modified", "opened", "created", "trashed"].map((k) => `docs.home.meta.${k}`),
-  ...["modified", "opened", "created"].map((k) => `docs.home.col.${k}`),
 ];
 
 function staticKeys(): string[] {
@@ -54,10 +45,10 @@ function lookup(tree: unknown, path: string): unknown {
 }
 
 describe("docs home i18n", () => {
-  const owned = [...staticKeys(), ...DYNAMIC_KEYS].filter((key) => OWNED.some((o) => key === o || key.startsWith(`${o}.`)));
+  const owned = staticKeys().filter((key) => OWNED.some((o) => key === o || key.startsWith(`${o}.`)));
 
   test("sources reference owned keys", () => {
-    expect(owned.length).toBeGreaterThan(100);
+    expect(owned.length).toBeGreaterThan(50);
   });
 
   for (const locale of LOCALES) {

@@ -7,7 +7,7 @@ import { brandViolation } from "../../licenses/brand";
  * Drive UI copy names no third-party product (drive-ui.md §17, CONTRACTS C32). The check is brandViolation from
  * scripts/licenses/brand.ts, the one rule the fragment validator and the legal branding test also use.
  *
- * Scope: the drive-ui subtrees and leaves plus its two overwrites, in all 8 locales, as they will ship: the
+ * Scope: the drive-ui subtrees and leaves plus its overwrites, in all 8 locales, as they will ship: the
  * messages/ value, replaced by the fragment value where a fragment defines the key (drive-ui, or a
  * drive-ui-<unit> fragment extending it). Before the i18n merge that is the fragment; after it, both agree.
  *
@@ -27,7 +27,8 @@ const DRIVE_UI_OWNED = [
   "drive.apps", "drive.members", "drive.storage", "drive.kind", "device.lite.drive", "nav.drive", "nav.sheets",
   "nav.slides", "device.catalog.drive", "device.catalogDesc.drive", "personnel.team.permissionSection.drive",
 ];
-const DRIVE_UI_OVERWRITES = ["docs.share.managersNote", "docs.share.visibilityPrivate"];
+// device.catalogDesc.drive is also owned: it is listed because its merged value was reworded (editor plugins).
+const DRIVE_UI_OVERWRITES = ["docs.share.managersNote", "docs.share.visibilityPrivate", "device.catalogDesc.drive", "drive.apps.notIncluded"];
 
 const underPrefix = (key: string, prefix: string) => key === prefix || key.startsWith(`${prefix}.`);
 const inScope = (key: string) => DRIVE_UI_OVERWRITES.includes(key) || DRIVE_UI_OWNED.some((p) => underPrefix(key, p));

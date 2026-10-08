@@ -98,6 +98,20 @@ export const UPSTREAM: Readonly<Record<string, UpstreamLicense>> = {
     copyright: ["Copyright (c) the is-node-process authors (https://github.com/mswjs/is-node-process)"],
     source: "https://github.com/mswjs/is-node-process (MIT per package.json; no license file and no copyright line upstream)",
   },
+  // Checked 2026-10-06 against the installed 3.1.2 bundle headers. Keyed by exact version: an upgrade must re-read
+  // the header (the copyright years move with each release).
+  "survey-core@3.1.2": {
+    license: "MIT",
+    copyright: ["Copyright (c) 2015-2026 Devsoft Baltic OÜ"],
+    source:
+      "bundle header of survey.core.js (tarball ships no license file); terms: https://github.com/surveyjs/survey-library/blob/master/LICENSE",
+  },
+  "survey-react-ui@3.1.2": {
+    license: "MIT",
+    copyright: ["Copyright (c) 2015-2026 Devsoft Baltic OÜ"],
+    source:
+      "bundle header of survey-react-ui.js (tarball ships no license file); terms: https://github.com/surveyjs/survey-library/blob/master/LICENSE",
+  },
 
   // Inlined in exceljs/dist/exceljs.bare.min.js and installed nowhere.
   "crypto-browserify": { license: "MIT", copyright: ["Copyright (c) 2013 Dominic Tarr"], source: npmLicense("crypto-browserify@3.12.0") },

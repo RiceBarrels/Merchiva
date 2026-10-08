@@ -10,7 +10,10 @@ import {
   setCurrentOperator,
   getCurrentOperator,
 } from "@/lib/store-device-lock";
-import { clearDeviceOperator, recordPunch, resolveDeviceOperator } from "@/lib/spacetimedb/actions";
+import { clearDeviceOperator } from "@/lib/spacetimedb/actions";
+import { attemptOperatorPin, recordOperatorPunch } from "@/lib/spacetimedb/actions/pin";
+import { pinNotice } from "@/lib/pin-attempt";
+import { fmt } from "@/lib/i18n/fmt";
 import { useT } from "@/lib/i18n/context";
 import { hapticSuccess, hapticMedium, hapticLight } from "@/lib/haptics";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -24,6 +27,9 @@ interface MemberRow {
 }
 
 const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"] as const;
+
+/** Longer than attemptOperatorPin's own 6 s deadline, so its answer (or "timeout") always lands first. */
+const PIN_LOCK_BACKSTOP_MS = 9000;
 
 /** Delete this tablet's `device_operator_session` so Drive stops acting for the
  *  last operator. Every unlock resolves the PIN and writes a new one. */
@@ -82,7 +88,7 @@ export function StoreDeviceLock() {
   const [storeMachine] = useStoreMachineMode();
   const [deviceName] = useDeviceName();
   const [memberRows] = useTable(tables.orgMember);
-  // Written by the `resolveDeviceOperator` reducer; RLS scopes it to this
+  // Written by the `resolveDeviceOperatorAttempt` reducer; RLS scopes it to this
   // device's identity, so it only ever holds this tablet's own result.
   const [operatorRows] = useTable(tables.deviceOperatorSession);
 
@@ -240,12 +246,13 @@ export function StoreDeviceLock() {
   // Unlocking is a two-step handshake because SpacetimeDB reducers cannot
   // return a value.
   //
-  //   1. 4 digits entered  → call `resolveDeviceOperator(code)`. The module
-  //      matches the PIN against `member_punch_code` (which this tablet cannot
-  //      read) and, on success, writes the operator to
-  //      `device_operator_session` for this identity. A PIN that matches
-  //      nobody rejects the call and writes nothing.
-  //   2. The call succeeded → read the operator from the session row. The SDK
+  //   1. 4 digits entered  → `attemptOperatorPin(code)`. The module matches
+  //      the PIN against `member_punch_code` (which this tablet cannot read)
+  //      and, on success, writes the operator to `device_operator_session` for
+  //      this identity. The check is rate limited, so the answer is a
+  //      `pin_attempt_result` row: "wrong" (counted; any earlier session is
+  //      dropped) or "locked" (paused, nothing compared) unlock nobody.
+  //   2. The answer is "ok" → read the operator from the session row. The SDK
   //      applies the caller's own row change to the client cache before it
   //      settles the reducer promise, so the row is the one this attempt wrote.
   //
@@ -255,6 +262,7 @@ export function StoreDeviceLock() {
   // any PIN, as the operator who left it.
   const [awaitingSince, setAwaitingSince] = useState<number | null>(null);
   const [resolvedAttempt, setResolvedAttempt] = useState<number | null>(null);
+  const latestAttempt = useRef<number | null>(null);
 
   useEffect(() => {
     if (!locked || stage !== "entry" || pin.length !== 4) return;
@@ -262,18 +270,25 @@ export function StoreDeviceLock() {
     const attempt = Date.now();
     setStage("verifying");
     setAwaitingSince(attempt);
-    void resolveDeviceOperator(code).then(
-      () => setResolvedAttempt(attempt),
-      () => {
-        hapticMedium();
-        setError(t("lock.pinNotRecognized"));
-        // Clear the digits with the stage: back at "entry" with 4 digits still
-        // in `pin`, this effect would submit the same wrong PIN again.
-        setPin("");
-        setStage("entry");
-        setAwaitingSince(null);
-      },
-    );
+    latestAttempt.current = attempt;
+    const refuse = (message: string) => {
+      // An answer that lands after the keypad gave up (the timeout below) must
+      // not wipe what is being typed now.
+      if (latestAttempt.current !== attempt) return;
+      latestAttempt.current = null;
+      hapticMedium();
+      setError(message);
+      // Clear the digits with the stage: back at "entry" with 4 digits still
+      // in `pin`, this effect would submit the same wrong PIN again.
+      setPin("");
+      setStage("entry");
+      setAwaitingSince(null);
+    };
+    void attemptOperatorPin(code).then((answer) => {
+      if (answer.outcome === "ok") return setResolvedAttempt(attempt);
+      const notice = pinNotice(answer);
+      refuse(notice ? fmt(t(notice.key), notice.vars) : t("lock.pinNotRecognized"));
+    });
   }, [pin, locked, stage, t]);
 
   useEffect(() => {
@@ -291,7 +306,6 @@ export function StoreDeviceLock() {
       status: "active",
       displayName: session.memberName,
     };
-    const code = pin;
 
     // Set operator first so any reducer kicked off below tags rows with the
     // correct identity (e.g. inventory actions read this from localStorage).
@@ -304,7 +318,8 @@ export function StoreDeviceLock() {
       //   on shift     → NEEDS_EXPLICIT_ACTION (we ignore, treat as plain unlock)
       let action: string | null = null;
       try {
-        await recordPunch(code, "auto");
+        // For the operator the session row names: the PIN is never re-sent.
+        await recordOperatorPunch("auto");
         action = "in"; // optimistic — server logged it
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -324,19 +339,24 @@ export function StoreDeviceLock() {
       setPunchedAction(action);
       setStage("success");
     })();
-  }, [stage, awaitingSince, resolvedAttempt, operatorRows, organizationId, pin]);
+  }, [stage, awaitingSince, resolvedAttempt, operatorRows, organizationId]);
 
   // A resolve that never streams back must not strand the keypad in
-  // "verifying" — fall back to the normal error path after a few seconds.
+  // "verifying". attemptOperatorPin answers within its own 6 s (a missing answer
+  // is "timeout", worded by pinNotice above), so this backstop runs later and
+  // only catches an "ok" whose session row never arrived: no answer, never
+  // "PIN not recognized" — the PIN may well be right.
   useEffect(() => {
     if (stage !== "verifying" || awaitingSince === null) return;
     const id = setTimeout(() => {
+      latestAttempt.current = null;
       setAwaitingSince(null);
       hapticMedium();
-      setError(t("lock.pinNotRecognized"));
+      const notice = pinNotice({ outcome: "timeout" });
+      setError(notice ? fmt(t(notice.key), notice.vars) : t("lock.pinNotRecognized"));
       setPin("");
       setStage("entry");
-    }, 6000);
+    }, PIN_LOCK_BACKSTOP_MS);
     return () => clearTimeout(id);
   }, [stage, awaitingSince, t]);
 

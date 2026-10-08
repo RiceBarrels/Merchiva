@@ -4,10 +4,10 @@
  * `/manager/docs/edit` loader (docs-editor-ui spec §4.1). Imports no Tiptap/Yjs: the editor chunk loads through
  * `next/dynamic` with `ssr: false` only once the document resolves and the member can view it.
  *
- * States: invalid id → replace to Docs home · backend not published · loading · waiting (a just-created row may
- * not have streamed in yet, 5 s grace) · not found (which also covers "not shared with you": a document the member
+ * States: invalid id → replace to DOCS_HOME_HREF (Drive's documents view) · backend not published · loading ·
+ * waiting (a just-created row may not have streamed in yet, 5 s grace) · not found (which also covers "not shared with you": a document the member
  * may not open is never sent to them) · another file type (a spreadsheet or deck: the /manager route replaces the
- * URL with its own editor, a panel shows a notice that opens it, or leads back to Docs when the panel's host has no
+ * URL with its own editor, a panel shows a notice that opens it, or leads back to Drive when the panel's host has no
  * editor for it; Tiptap never binds to their Y.Doc) · no access · ready.
  * The tab title is set here, so it appears before the editor chunk loads. The management notice gates the ready
  * editor on /manager; a device panel's lite host has gated already.
@@ -52,9 +52,9 @@ export interface DocEditorRouteProps {
   /** Force the mobile layout (see `DocEditorProps.mobile`). */
   mobile?: boolean;
   /**
-   * Panels only: whether the host's opener (`DocsOpenProvider`) can show a spreadsheet or presentation. DocsLite
-   * cannot and passes false, so a non-doc id offers the way back to Docs instead of an "Open" that would do nothing.
-   * Default true: a host that maps every editor link to a screen of its own.
+   * Panels only: whether the host's opener (`DocsOpenProvider`) can show a spreadsheet or presentation. A host
+   * that cannot passes false, so a non-doc id offers the way back instead of an "Open" that would do nothing.
+   * Default true: a host that maps every editor link to a screen of its own (the Drive panel does).
    */
   opensOtherFileTypes?: boolean;
   /**

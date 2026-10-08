@@ -14,6 +14,7 @@ import {
   Bug,
   ChevronRight,
   CircleUser,
+  ClipboardList,
   EyeOff,
   GraduationCap,
   ListChecks,
@@ -26,13 +27,17 @@ import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconTile } from "@/components/ui/icon-tile";
+import { appBytesRowLabel, appStorageSummary, type AppStorageSummary } from "@/components/drive/model/app-storage";
 import { countKey } from "@/components/drive/model/plural";
 import type { DriveView, VirtualEntry, VirtualSourceId } from "@/components/drive/model/types";
 import type { VirtualSourceMeta } from "@/components/drive/model/virtual-sources";
+import { appBytesRowIcon } from "@/components/drive/nav/section-meta";
 import type { DriveEntryActions } from "@/components/drive/preview/open-entry";
+import { formatDriveBytes } from "@/lib/drive/format";
 import { useI18n } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
 import { useDateFormat } from "@/lib/i18n/use-date-format";
+import type { AppFileSource } from "@/lib/storage/sources";
 import { cn } from "@/lib/utils";
 import { VirtualEntries } from "./apps-entries";
 import type { VirtualSourceSummary } from "./use-virtual-sources";
@@ -45,6 +50,7 @@ const SOURCE_ICONS: Readonly<Record<VirtualSourceMeta["icon"], LucideIcon>> = {
   Tag,
   Bug,
   UserCircle: CircleUser,
+  ClipboardList,
 };
 
 /** The icon of an app source (also for the lite app's source rows). */
@@ -57,6 +63,8 @@ export interface AppsViewProps {
   source: VirtualSourceId | "";
   /** useVirtualSources(...).sources: the sources this person may see. */
   sources: readonly VirtualSourceSummary[];
+  /** useDrive().appBytesBySource: bytes per app over every app file of the store (totals only). */
+  appBytes?: ReadonlyMap<AppFileSource, number>;
   /** The source's files as the listing shows them (search and type filter applied), newest first. */
   entries: readonly VirtualEntry[];
   /** useVirtualSources(...).ready. */
@@ -114,14 +122,22 @@ function EntriesSkeleton({ view }: { view: DriveView }) {
   );
 }
 
-function SourceTiles({ sources, onPick }: { sources: readonly VirtualSourceSummary[]; onPick(source: VirtualSourceId): void }) {
-  const { t } = useI18n();
+interface SourceTilesProps {
+  sources: readonly VirtualSourceSummary[];
+  summary: AppStorageSummary;
+  onPick(source: VirtualSourceId): void;
+}
+
+function SourceTiles({ sources, summary, onPick }: SourceTilesProps) {
+  const { t, locale } = useI18n();
   const formatDate = useDateFormat();
   return (
     <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
       {sources.map(({ meta, count, latest }) => {
         const Icon = SOURCE_ICONS[meta.icon];
-        const parts = [fmt(t(countKey("drive.apps.count", count)), { count })];
+        const parts = [fmt(t(countKey(meta.countKey ?? "drive.apps.count", count)), { count })];
+        const bytes = summary.bySource.get(meta.id);
+        if (bytes) parts.push(formatDriveBytes(bytes, locale));
         if (latest !== null) parts.push(fmt(t("drive.apps.latest"), { date: formatDate(latest, { dateStyle: "medium" }) }));
         return (
           <li key={meta.id}>
@@ -140,18 +156,38 @@ function SourceTiles({ sources, onPick }: { sources: readonly VirtualSourceSumma
           </li>
         );
       })}
+      {summary.rows.map((row) => (
+        <li key={row.id} data-drive-app-bytes={row.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
+          <IconTile icon={appBytesRowIcon(row)} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium">{appBytesRowLabel(row, t)}</span>
+            <span className="block truncate font-mono text-xs text-muted-foreground tabular-nums">{formatDriveBytes(row.bytes, locale)}</span>
+          </span>
+        </li>
+      ))}
     </ul>
   );
 }
 
-export function AppsView({ source, sources, entries, ready, view = "grid", onPick, onOpenOrigin, actions = null, className }: AppsViewProps) {
-  const { t } = useI18n();
+const NO_APP_BYTES: ReadonlyMap<AppFileSource, number> = new Map();
+
+export function AppsView({
+  source, sources, appBytes = NO_APP_BYTES, entries, ready, view = "grid", onPick, onOpenOrigin, actions = null, className,
+}: AppsViewProps) {
+  const { t, locale } = useI18n();
 
   if (source === "") {
+    const summary = appStorageSummary(appBytes, sources.map((s) => ({ id: s.meta.id, listedBytes: s.listedBytes })));
     return (
       <div className={cn("space-y-4", className)}>
         <p className="text-sm text-muted-foreground">{t("drive.apps.description")}</p>
-        {ready ? <SourceTiles sources={sources} onPick={onPick} /> : <SourcesSkeleton />}
+        {ready && summary.total > 0 && (
+          <div data-drive-apps-total className="space-y-0.5">
+            <p className="text-sm font-medium">{fmt(t("drive.apps.storageTotal"), { size: formatDriveBytes(summary.total, locale) })}</p>
+            <p className="text-xs text-muted-foreground">{t("drive.apps.notStoredHere")}</p>
+          </div>
+        )}
+        {ready ? <SourceTiles sources={sources} summary={summary} onPick={onPick} /> : <SourcesSkeleton />}
         <p className="text-xs leading-relaxed text-muted-foreground">{t("drive.apps.notIncluded")}</p>
       </div>
     );

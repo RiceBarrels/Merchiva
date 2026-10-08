@@ -125,6 +125,8 @@ export interface SignedInMember {
   memberId: string | null;
   /** That member's role; null until known. */
   role: OrgRole | null;
+  /** That member's own stored `settings.edit` grant (what setDeviceApps accepts from a non-manager). */
+  settingsEdit: boolean;
   ready: boolean;
 }
 
@@ -146,8 +148,19 @@ export function useSignedInMember(): SignedInMember {
   }, [identity, organizationId, members]);
   const memberId = row ? idString(row.id) : null;
   const role = row && ORG_ROLES.includes(row.role) ? (row.role as OrgRole) : null;
+  const settingsEdit = useMemo(() => storedSettingsEdit(row?.permissions), [row?.permissions]);
   const ready = membersReady || memberId !== null;
-  return useMemo(() => ({ memberId, role, ready }), [memberId, role, ready]);
+  return useMemo(() => ({ memberId, role, settingsEdit, ready }), [memberId, role, settingsEdit, ready]);
+}
+
+/** `settings.edit` from a member's stored permissions JSON, read the way the setDeviceApps reducer reads it. */
+function storedSettingsEdit(json: string | undefined): boolean {
+  if (!json) return false;
+  try {
+    return (JSON.parse(json) as { settings?: { edit?: unknown } }).settings?.edit === true;
+  } catch {
+    return false;
+  }
 }
 
 /** The panel's member under a DriveActorOverrideContext (the PIN operator on /store), else the signed-in member. */

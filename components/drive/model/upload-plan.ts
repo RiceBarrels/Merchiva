@@ -6,7 +6,7 @@
 // same-named existing ones, and hands the files to the upload queue.
 
 import { dateKey } from "@/lib/date-key";
-import type { DriveUsageView } from "@/lib/drive/types";
+import { storageUsedBytes, type StorageFiguresInput } from "@/lib/drive/storage-figures";
 import { fmt } from "@/lib/i18n/fmt";
 import { cleanDriveName } from "@/lib/drive/rules";
 import { cleanEntryName } from "./names";
@@ -102,12 +102,13 @@ export type UploadRejection = { file: File; reason: "tooLarge" | "empty" | "quot
 /**
  * Splits a batch into files to upload and files refused before any request: empty files and
  * files over `maxFileBytes` are refused one by one. When `quotaBytes` > 0 (0 = no limit) and the
- * accepted files don't fit next to what is used and reserved, the whole batch is refused with
+ * accepted files don't fit next to everything the store keeps (the usage breakdown's total: Drive
+ * files stored and reserved, documents, sheets, app files), the whole batch is refused with
  * `quota` (files already refused keep their own reason). The server checks again.
  */
 export function preflightUploads(
   files: readonly File[],
-  usage: Pick<DriveUsageView, "usedBytes" | "reservedBytes"> | null,
+  usage: Omit<StorageFiguresInput, "quotaBytes"> | null,
   quotaBytes: number,
   maxFileBytes: number,
 ): { accepted: File[]; rejected: UploadRejection[] } {
@@ -122,7 +123,7 @@ export function preflightUploads(
       batchBytes += file.size;
     }
   }
-  const used = (usage?.usedBytes ?? 0) + (usage?.reservedBytes ?? 0);
+  const used = usage ? storageUsedBytes(usage) : 0;
   const overQuota = quotaBytes > 0 && fitting.length > 0 && used + batchBytes > quotaBytes;
   if (overQuota) for (const file of fitting) reasons.set(file, "quota");
   const accepted = overQuota ? [] : fitting;

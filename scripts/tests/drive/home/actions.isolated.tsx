@@ -5,10 +5,11 @@
 // real entry tree of home/fixture.ts: downloads start inside the click and "Save next" saves one file per click; trash
 // toasts "Undo", which restores; drops that can't happen say why and a space change asks first; rename and New folder
 // go through their dialog, and what lands in My files from Recent says so; "Open as …" imports and opens the new file;
-// a create whose reply never comes (once sent) ends with the "no answer" copy instead of spinning forever.
+// a create whose reply never comes (once sent) ends with the "no answer" copy instead of spinning forever; a missing
+// editor plugin (use-editor-gate.ts) is asked for before anything opens, imports or is created.
 
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { createElement as h } from "react";
+import { createElement as h, useMemo, useSyncExternalStore } from "react";
 import { folderContainer } from "@/components/drive/model/entries";
 import type { DriveEntry, DriveSection } from "@/components/drive/model/types";
 import { documentFileHref } from "@/lib/drive/hrefs";
@@ -92,7 +93,12 @@ mock.module("@/lib/drive/editors", () => ({
   },
   createDriveDoc: async (kind: string, target: unknown, ctx: { beforeCreate?: () => void }) => {
     calls.push({ name: "createDriveDoc", args: [kind, target] });
+    if (createHold) await createHold;
     return hang === "none" ? uuid(902) : stall(ctx);
+  },
+  createDriveDocFromTemplate: async (templateId: string, target: unknown, ctx: { beforeCreate?: () => void }) => {
+    calls.push({ name: "createDriveDocFromTemplate", args: [templateId, target] });
+    return hang === "none" ? uuid(903) : stall(ctx);
   },
   driveEditorErrorMessage: (err: unknown, t: (k: string) => string, fallback: string) => (err instanceof FakeEditorError ? err.userMessage : t(fallback)),
 }));
@@ -103,9 +109,44 @@ mock.module("@/lib/drive/download", () => ({
   },
 }));
 
+// The org has only Slides: Docs and Sheets are missing. install() succeeds, but the page keeps the old install
+// state until it re-renders (as when the settings row has not streamed back yet).
+// A test may add to `streamed` (and call `restream`) to stand for that row arriving and re-rendering the page.
+const pluginInstalls: string[] = [];
+const streamed = new Set<string>();
+let streamVersion = 0;
+let streamReady = true;
+const streamListeners = new Set<() => void>();
+const restream = () => {
+  streamVersion += 1;
+  for (const listener of streamListeners) listener();
+};
+let createHold: Promise<void> | null = null;
+mock.module("@/components/plugins/use-plugin-install", () => ({
+  usePluginInstall: () => {
+    const version = useSyncExternalStore(
+      (listener) => (streamListeners.add(listener), () => void streamListeners.delete(listener)),
+      () => streamVersion,
+    );
+    const ready = version >= 0 && streamReady;
+    const isInstalled = useMemo(
+      () => (appId: string) => appId === "slides" || appId === "drive" || (version >= 0 && streamed.has(appId)),
+      [version],
+    );
+    return {
+      ready,
+      isInstalled,
+      canInstall: true,
+      savingId: null,
+      install: async (appId: string) => (pluginInstalls.push(appId), true),
+    };
+  },
+}));
+
 const { render } = await import("ink-testing-library");
 const { useDriveActions } = await import("@/components/drive/actions/use-drive-actions");
 const { useDriveCreate } = await import("@/components/drive/actions/use-drive-create");
+const { useEditorGate, useGatedOpenUrl } = await import("@/components/drive/actions/use-editor-gate");
 const { withReducerTimeoutFrom } = await import("@/components/drive/actions/drive-writes");
 
 const FOLDER = uuid(1);
@@ -154,7 +195,7 @@ function mountHook<T>(useValue: () => T): () => T {
 const mount = (opts: { offline?: boolean; section?: DriveSection; timeoutMs?: number } = {}) =>
   mountHook(() =>
     useDriveActions({
-      tree, actor: data.actor, ctx: { surface: "manager", docsInstalled: true, section: opts.section ?? "my", offline: opts.offline ?? false, touch: false },
+      tree, actor: data.actor, ctx: { surface: "manager", section: opts.section ?? "my", offline: opts.offline ?? false, touch: false },
       url: url as never, openUrl, loader: loader as never, organizationId: ORG, members: data.members, timeoutMs: opts.timeoutMs, t, locale: "en",
     }),
   );
@@ -354,7 +395,7 @@ describe("a create that gets no answer", () => {
   test("New ▸ Sheet stops spinning with the no-answer copy; an answered create opens; an upload from Recent says where", async () => {
     const create = mountHook(() =>
       useDriveCreate({
-        tree, organizationId: ORG, actingMemberId: "", actorMemberId: ME, section: "recent", usage: data.drive.usage, docsInstalled: true,
+        tree, organizationId: ORG, actingMemberId: "", actorMemberId: ME, section: "recent", usage: data.drive.usage,
         queue: { enqueue: (files) => files.map((_, i) => `k${i}`) }, openUrl, showMyFiles: () => void went.push({ space: "my" }),
         timeoutMs: 20, t, locale: "en",
       }),
@@ -374,6 +415,172 @@ describe("a create that gets no answer", () => {
     create().uploadFiles([{ file: new File(["x"], "a.pdf", { type: "application/pdf" }), path: "a.pdf" }], MY_ROOT);
     await flush();
     expect(toasts).toMatchObject([{ kind: "info", message: "Added to My files", opts: { action: { label: "Show" } } }]);
+  });
+});
+
+describe("a missing editor plugin is asked for first", () => {
+  // The page's wiring (drive-home.tsx): one gate in front of the actions, New and the openUrl choke point.
+  const page = mountHook(() => {
+    const gate = useEditorGate({ surface: "manager" });
+    const gatedOpen = useGatedOpenUrl(openUrl, gate.ensureEditor);
+    const actions = useDriveActions({
+      tree, actor: data.actor, ctx: { surface: "manager", section: "my", offline: false, touch: false },
+      url: url as never, openUrl: gatedOpen, loader: loader as never, organizationId: ORG, members: data.members, gate, t, locale: "en",
+    });
+    const create = useDriveCreate({
+      tree, organizationId: ORG, actingMemberId: "", actorMemberId: ME, section: "my", usage: data.drive.usage,
+      ensureEditor: gate.ensureEditor, queue: { enqueue: () => [] }, openUrl: gatedOpen, showMyFiles() {}, t, locale: "en",
+    });
+    return { gate, actions, create };
+  });
+  /** What the dialog does on Download: install, close, continue. */
+  const download = async () => {
+    const { dialog } = page().gate;
+    await Promise.resolve(pluginInstalls.push(dialog.appId));
+    dialog.onOpenChange(false);
+    dialog.onInstalled();
+    await flush();
+  };
+  beforeEach(async () => {
+    pluginInstalls.length = 0;
+    // Each test starts from an org without Docs and Sheets: a fresh render drops what the last test installed.
+    restream();
+    page().gate.dialog.onOpenChange(false);
+    await flush();
+  });
+
+  test("a plain click on a Doc prompts instead of following the link; Download continues to the editor", async () => {
+    expect(page().gate.isInstalled("doc")).toBe(false);
+    expect(page().gate.isInstalled("slides")).toBe(true);
+    expect(page().actions.openInPlace(e(`doc:${DOC}`))).toBe(true);
+    await flush();
+    expect(page().gate.dialog).toMatchObject({ open: true, appId: "docs", mode: "open" });
+    expect(openUrls).toEqual([]);
+    await download();
+    expect(pluginInstalls).toEqual(["docs"]);
+    expect(page().gate.dialog.open).toBe(false);
+    // The editor URL passes the openUrl gate too, although the page has not seen the new install yet.
+    expect(openUrls).toEqual([[`/manager/docs/edit?id=${DOC}`, "current"]]);
+  });
+
+  test("menu Open and Open in new tab prompt; Not now opens nothing", async () => {
+    page().actions.onAction(e(`doc:${DOC}`), "openNewTab");
+    await flush();
+    expect(page().gate.dialog).toMatchObject({ open: true, appId: "docs", mode: "open" });
+    page().gate.dialog.onOpenChange(false);
+    page().actions.onAction(e(`doc:${DOC}`), "open");
+    await flush();
+    expect(page().gate.dialog.open).toBe(true);
+    page().gate.dialog.onOpenChange(false);
+    await flush();
+    expect(openUrls).toEqual([]);
+  });
+
+  test("Open as Sheet fetches nothing and imports nothing before Sheets is installed", async () => {
+    page().actions.onAction(e(`item:${DOCX}`), "openAsSheet");
+    await flush();
+    expect(page().gate.dialog).toMatchObject({ open: true, appId: "sheets", mode: "open" });
+    expect(calls).toEqual([]);
+    expect(toasts).toEqual([]);
+  });
+
+  test("New ▸ Sheet creates nothing until Sheets is installed, then creates and opens it", async () => {
+    page().create.createDocument("sheet", MY_ROOT);
+    await flush();
+    expect(page().gate.dialog).toMatchObject({ open: true, appId: "sheets", mode: "create" });
+    expect(named("createDriveDoc")).toEqual([]);
+    expect(page().create.creating).toBeNull();
+    await download();
+    expect(named("createDriveDoc").map((c) => c.args[0])).toEqual(["sheet"]);
+    expect(openUrls).toEqual([[documentFileHref({ id: uuid(902), fileType: "sheet" }, { isNew: true }), "current"]]);
+  });
+
+  test("New ▸ Slides (installed) creates straight away; a Docs template asks for Docs first", async () => {
+    page().create.createDocument("slides", MY_ROOT);
+    await flush();
+    expect(page().gate.dialog.open).toBe(false);
+    expect(named("createDriveDoc").map((c) => c.args[0])).toEqual(["slides"]);
+    page().create.createFromTemplate("meetingNotes", MY_ROOT, { storeName: "Corner Cafe", authorName: "Sam" });
+    await flush();
+    expect(page().gate.dialog).toMatchObject({ open: true, appId: "docs", mode: "create" });
+    expect(named("createDriveDocFromTemplate")).toEqual([]);
+    await download();
+    expect(named("createDriveDocFromTemplate").map((c) => c.args[0])).toEqual(["meetingNotes"]);
+    expect(openUrls.at(-1)).toEqual([documentFileHref({ id: uuid(903), fileType: "doc" }, { isNew: true }), "current"]);
+  });
+});
+
+describe("a missing editor plugin, installed while the create is in flight", () => {
+  const page = mountHook(() => {
+    const gate = useEditorGate({ surface: "manager" });
+    const gatedOpen = useGatedOpenUrl(openUrl, gate.ensureEditor);
+    const create = useDriveCreate({
+      tree, organizationId: ORG, actingMemberId: "", actorMemberId: ME, section: "my", usage: data.drive.usage,
+      ensureEditor: gate.ensureEditor, queue: { enqueue: () => [] }, openUrl: gatedOpen, showMyFiles() {}, t, locale: "en",
+    });
+    return { gate, create };
+  });
+
+  test("the new row re-rendering the page before the create answers does not ask again; the sheet opens", async () => {
+    let release = () => {};
+    createHold = new Promise<void>((resolve) => (release = resolve));
+    try {
+      page().create.createDocument("sheet", MY_ROOT);
+      await flush();
+      const { dialog } = page().gate;
+      expect(dialog).toMatchObject({ open: true, appId: "sheets", mode: "create" });
+      dialog.onOpenChange(false);
+      dialog.onInstalled();
+      await flush();
+      expect(named("createDriveDoc").map((c) => c.args[0])).toEqual(["sheet"]);
+      // The settings row streams in and the page re-renders while createDriveDoc is still waiting.
+      streamed.add("sheets");
+      restream();
+      await flush();
+      release();
+      await flush();
+      expect(page().gate.dialog.open).toBe(false);
+      expect(openUrls).toEqual([[documentFileHref({ id: uuid(902), fileType: "sheet" }, { isNew: true }), "current"]]);
+    } finally {
+      createHold = null;
+      streamed.clear();
+      restream();
+      await flush();
+    }
+  });
+});
+
+describe("an ask made before the install state loads", () => {
+  const page = mountHook(() => {
+    const gate = useEditorGate({ surface: "manager" });
+    const create = useDriveCreate({
+      tree, organizationId: ORG, actingMemberId: "", actorMemberId: ME, section: "my", usage: data.drive.usage,
+      ensureEditor: gate.ensureEditor, queue: { enqueue: () => [] }, openUrl, showMyFiles() {}, t, locale: "en",
+    });
+    return { gate, create };
+  });
+
+  test("New ▸ Sheet writes nothing until it has loaded, then asks for the missing Sheets", async () => {
+    streamReady = false;
+    restream();
+    await flush();
+    try {
+      expect(page().gate.isInstalled("sheet")).toBe(true);   // no hint flashes while loading
+      page().create.createDocument("sheet", MY_ROOT);
+      await flush();
+      expect(named("createDriveDoc")).toEqual([]);
+      expect(page().gate.dialog.open).toBe(false);
+      streamReady = true;
+      restream();
+      await flush();
+      expect(page().gate.dialog).toMatchObject({ open: true, appId: "sheets", mode: "create" });
+      expect(named("createDriveDoc")).toEqual([]);
+    } finally {
+      streamReady = true;
+      page().gate.dialog.onOpenChange(false);
+      restream();
+      await flush();
+    }
   });
 });
 

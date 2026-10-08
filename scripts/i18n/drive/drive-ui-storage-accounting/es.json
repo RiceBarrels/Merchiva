@@ -1,0 +1,32 @@
+{
+  "drive": {
+    "storage": {
+      "breakdown": {
+        "title": "Qué ocupa el almacenamiento",
+        "files": "Archivos subidos",
+        "documents": "Documentos, presentaciones y formularios",
+        "sheets": "Hojas de cálculo",
+        "apps": "Archivos en otras apps"
+      },
+      "includesEverything": "Todo lo que guarda tu tienda cuenta para el almacenamiento: archivos subidos, documentos, hojas de cálculo, presentaciones, formularios y archivos en otras apps."
+    },
+    "apps": {
+      "bytesSource": {
+        "doc_image": "Imágenes en documentos",
+        "sheet_image": "Imágenes en hojas de cálculo",
+        "slides_image": "Imágenes en presentaciones",
+        "logo": "Logo de la tienda",
+        "avatar": "Fotos de perfil",
+        "other": "Otros archivos"
+      },
+      "storageTotal": "{size} guardados en otras apps",
+      "bytesNotListed": "{source}: archivos que no puedes abrir aquí",
+      "notStoredHere": "Incluye archivos que no puedes abrir aquí, como los archivos adjuntos del chat de otras personas.",
+      "sources": {
+        "forms": "Formularios"
+      },
+      "countForms": "{count} formularios",
+      "countFormsOne": "1 formulario"
+    }
+  }
+}

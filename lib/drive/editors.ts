@@ -1,13 +1,13 @@
 // Drive's adapter to its three editors (drive-ui UI-3b; CONTRACTS §2.10, §2.11): New ▸ Doc / Sheet / Slides
-// (createDriveDoc) and "Open as Doc / Sheet / Slides" of an uploaded .docx, .xlsx, .csv or .pptx
-// (importIntoDrive), used by the manager page and the device lite app.
+// (createDriveDoc), a Doc from a store template (createDriveDocFromTemplate) and "Open as Doc / Sheet / Slides" of an
+// uploaded .docx, .xlsx, .csv or .pptx (importIntoDrive), used by the manager page and the device lite app.
 //
 // Every document is created through createDriveDocument, never the Docs createDocument (whose org_edit default
 // would publish something meant for My files): the module derives the visibility from the target space and the
 // owner from the container or the acting member, so on the store tablet the PIN operator owns what they create.
 // Sheets and Slides go through their own create / import modules (lib/sheets/{create,import}, lib/slides/create,
 // lib/slides/import), which end in the same wrapper; a text document composes the existing Docs pieces
-// (blankDocumentInput, importFile + buildSeed) with it.
+// (blankDocumentInput, buildDocTemplate or importFile + buildSeed) with it.
 //
 // No editor module is imported statically: each loads with import() inside the call, so the Drive home pulls none
 // of Tiptap, Yjs, Univer, ExcelJS or the .pptx parser into its own chunk. An import failure is rethrown as a
@@ -20,6 +20,7 @@
 // the content is built or the file parsed. The Sheets importer can't say when it sends, so it is marked up front
 // with the longest its read may take (the xlsx worker's start and read limits).
 
+import type { DocTemplateId } from "@/lib/docs/templates";
 import type { DocFileType } from "@/lib/docs/types";
 import { DRIVE_GENERIC_ERROR_KEY, driveErrorCode, driveErrorKey } from "@/lib/drive/errors";
 import { formatDriveBytes } from "@/lib/drive/format";
@@ -102,6 +103,35 @@ export async function createDriveDoc(kind: DriveDocKind, target: DriveDocTarget,
   }
 }
 
+/**
+ * Creates a Doc from one of the Docs store templates (lib/docs/templates.ts) in `target` (titled `target.title`, else
+ * the template's title) and resolves to its id. The template's headings, dates and names are resolved once, in the
+ * creator's language, and seeded at creation like an import. The caller opens
+ * `documentFileHref({ id, fileType: "doc" }, { isNew: true })`. Rejects like createDriveDoc, with the reducer's error
+ * (or `[doc.too_large]` before sending a state the module would refuse).
+ */
+export async function createDriveDocFromTemplate(
+  templateId: Exclude<DocTemplateId, "blank">,
+  target: DriveDocTarget,
+  ctx: DriveEditorContext & { storeName: string | null; authorName: string | null },
+): Promise<string> {
+  const [{ buildDocTemplate }, { buildSeed }] = await Promise.all([import("@/lib/docs/templates"), import("@/lib/docs/seed")]);
+  const template = buildDocTemplate(templateId, ctx.t, { locale: ctx.locale, storeName: ctx.storeName, authorName: ctx.authorName });
+  const seed = buildSeed(template.content);
+  if (seed.initialState.byteLength > DOC_STATE_MAX_BYTES) throw new Error("[doc.too_large] Document is too large");
+  ctx.beforeCreate?.();
+  return createDriveDocument({
+    ...placement(target),
+    fileType: "doc",
+    title: target.title?.trim() || template.title,
+    templateId,
+    initialState: seed.initialState,
+    html: seed.html,
+    plainText: seed.plainText,
+    wordCount: seed.wordCount,
+  });
+}
+
 export interface DriveImportContext extends DriveEditorContext {
   /** The Drive file being opened: a deck records it as its source (meta.source). */
   driveItemId?: string;
@@ -154,7 +184,8 @@ async function importDoc(file: File, target: DriveDocTarget, ctx: DriveImportCon
     import("@/lib/docs/seed"),
   ]);
   try {
-    const result = await importFile(file, { t: ctx.t, locale: ctx.locale, uploadImage: uploadDocImage });
+    const uploadImage = (image: File) => uploadDocImage(image, target.organizationId);
+    const result = await importFile(file, { t: ctx.t, locale: ctx.locale, uploadImage });
     const seed = buildSeed(result.json, { pageSetup: result.pageSetup, headers: result.headers, footers: result.footers });
     // Fail before the request rather than send more than the module accepts (docs.errors.tooLarge).
     if (seed.initialState.byteLength > DOC_STATE_MAX_BYTES) throw new Error("[doc.too_large] Document is too large");

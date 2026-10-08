@@ -74,7 +74,7 @@ function MemberRows({ rows, hrefFor, onPick }: { rows: readonly DriveMemberSumma
               {fmt(t(countKey("drive.members.files", row.fileCount)), { count: row.fileCount })}
             </TableCell>
             <TableCell className="hidden py-2 text-end font-mono text-[12px] whitespace-nowrap text-muted-foreground tabular-nums sm:table-cell">
-              {formatDriveBytes(row.bytes, locale)}
+              {row.bytes === null ? "—" : formatDriveBytes(row.bytes, locale)}
             </TableCell>
             <TableCell className="w-0 py-2 pe-2">
               <Link href={href} prefetch={false} onClick={onClick} tabIndex={-1} aria-hidden className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground group-hover:text-foreground">

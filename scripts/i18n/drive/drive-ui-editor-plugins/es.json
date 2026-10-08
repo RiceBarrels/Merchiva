@@ -1,0 +1,16 @@
+{
+  "drive": {
+    "home": {
+      "newFromTemplate": "Desde una plantilla",
+      "importFile": "Importar un archivo…"
+    }
+  },
+  "device": {
+    "lite": {
+      "drive": {
+        "newFromTemplate": "Documento desde una plantilla",
+        "templatesTitle": "Elige una plantilla"
+      }
+    }
+  }
+}

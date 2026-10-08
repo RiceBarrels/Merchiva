@@ -9,7 +9,7 @@
       "drive": "Drive"
     },
     "catalogDesc": {
-      "drive": "Files, photos, sheets and slides for your store in one place."
+      "drive": "Every file your store keeps, in one place: uploads, photos, and the documents, spreadsheets and presentations made with editor plugins."
     },
     "lite": {
       "drive": {
@@ -361,7 +361,7 @@
       "openIn": "Open in {app}",
       "count": "{count} files",
       "countOne": "1 file",
-      "notIncluded": "Not included: receipt links typed into Finances, images inside documents and lesson text, and attachments sent to Mr. Merchiva.",
+      "notIncluded": "Receipt links typed into Finances and links pasted by hand are not stored by Merchiva, so they don't count.",
       "sources": {
         "chat": "Chat",
         "tasks": "Tasks",

@@ -39,6 +39,10 @@ export interface SheetPresetConfig {
   disableAutoFocus: boolean;
   /** A hyperlink click that passed isSafeSheetLink. */
   onOpenUrl(url: string): void;
+  /** The sheet's store: inserted images count toward its storage (MerchivaImageIoService). */
+  organizationId: string;
+  /** An image upload failed (the error the upload rejected with). */
+  onImageUploadError?(err: unknown): void;
 }
 
 /** Desktop plugin → its mobile counterpart (constructor identity, sheets.md §9.2). */
@@ -116,7 +120,9 @@ export function buildSheetPresets(cfg: SheetPresetConfig): IPreset[] {
   });
   core = withPluginConfig(core, SheetsCore.UniverUIPlugin, { popupRootId: cfg.popupRootId });
   let drawing = UniverSheetsDrawingPreset({ allowImageSize: DOC_IMAGE_MAX_BYTES });
-  drawing = withPluginConfig(drawing, UniverDrawingPlugin, { override: [[IImageIoService, { useClass: MerchivaImageIoService }]] });
+  drawing = withPluginConfig(drawing, UniverDrawingPlugin, {
+    override: [[IImageIoService, { useFactory: () => new MerchivaImageIoService(cfg.organizationId, cfg.onImageUploadError) }]],
+  });
   const presets: IPreset[] = [
     core,
     UniverSheetsFilterPreset(),

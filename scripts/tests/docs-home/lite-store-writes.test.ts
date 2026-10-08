@@ -1,7 +1,7 @@
-// What DocsLite's writes on /store send, end to end: lib/docs/create.ts → lib/spacetimedb/actions/drive.ts (captured
+// What the Docs writes made on /store send, end to end: lib/docs/create.ts → lib/spacetimedb/actions/drive.ts (captured
 // from a fake connection) → the REAL Drive document reducers (spacetimedb/src/drive/documents.ts over the fake db).
 // A new document belongs to the PIN operator, not the tablet account, and so does a rename made at the tablet
-// (renameDocumentFor, used by the docs home and the editor).
+// (renameDocumentFor, used by the editor).
 import { afterAll, expect, test } from "bun:test";
 
 import { createBlankDocument, createDocumentFromTemplate, renameDocumentFor, type DocPlacement } from "@/lib/docs/create";
@@ -56,7 +56,7 @@ function refusal(run: () => void): string {
 }
 
 for (const account of ["owner", "staff"] as const) {
-  test(`/store DocsLite on a ${account}-account tablet: documents are created for and renamed by the operator`, async () => {
+  test(`/store Docs writes on a ${account}-account tablet: documents are created for and renamed by the operator`, async () => {
     const { db, orgA } = fake.createDriveWorld();
     const tablet = account === "owner" ? orgA.owner : db.addMember({ organizationId: orgA.organizationId, role: "staff", displayName: "Tablet" });
     const operator = orgA.staff;

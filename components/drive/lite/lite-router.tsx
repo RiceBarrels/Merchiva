@@ -4,35 +4,38 @@
 // member's files), a file's preview, "From other apps", Trash, and the Docs / Sheets / Slides editors in their
 // phone layout — with the bottom sheets over them. The top screen renders; Back pops it.
 //
-// A panel has no URL of its own, so navigation is caught in two places, as in DocsLite:
+// A panel has no URL of its own, so navigation is caught in two places:
 //   · DocsOpenProvider replaces `openUrl` for everything the editors and Drive's own code open: an editor link
-//     opens that editor on top, any other /manager link (Drive home, Docs home, an editor's Back) returns to the
+//     opens that editor on top, any other /manager link (Drive home, the /manager/docs alias, an editor's Back) returns to the
 //     last home screen (lite-state.ts openUrlInStack);
 //   · the click capture below catches plain /manager anchors (the Docs editor's back link) the same way.
-// Nothing leaves the panel. A text document while the Docs app is not installed stays closed, and says so.
+// Nothing leaves the panel. A file whose editor plugin (Docs, Sheets, Slides) is not installed stays closed while
+// the download drawer asks for it, then opens (lite-install-drawer.tsx).
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
-import { toast } from "sonner";
 import { LiteLoading } from "@/components/device/apps/lite";
 import { DocsOpenProvider, type DocsOpenUrl } from "@/components/docs/docs-open-context";
+import { useDriveActorIds } from "@/components/drive/drive-actor";
 import { DriveEditorScreen } from "@/components/drive/editor-host";
 import type { DriveSection } from "@/components/drive/model/types";
-import { isManagerRouteEnabled } from "@/lib/device-apps";
 import { useDriveTokenBridge } from "@/lib/drive/use-drive-token";
-import { useT } from "@/lib/i18n/context";
-import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
 import { LiteActionsDrawer, LiteConfirmDrawer, LiteDetailsDrawer, LiteSpaceChangeDrawer } from "./lite-actions-drawer";
 import { LiteApps } from "./lite-apps";
-import { LiteDriveProvider, NO_PANEL, type LiteDriveContextValue, type LiteNav, type LitePanels, type LitePanelState } from "./lite-context";
+import {
+  LiteDriveProvider, NO_PANEL, useLiteDriveContext, type LiteDriveContextValue, type LiteInstallRequest, type LiteNav, type LitePanels,
+  type LitePanelState,
+} from "./lite-context";
 import { LiteFolderPicker } from "./lite-folder-picker";
 import { LiteDriveHome } from "./lite-home";
+import { LiteInstallDrawer, LiteInstallScreen, useLiteEditorGate } from "./lite-install-drawer";
 import { LiteNameDrawer } from "./lite-name-drawer";
 import { LiteNoticeDrawer } from "./lite-notice";
 import { LitePreview } from "./lite-preview";
 import {
-  blockedByDocs, homeScreen, LITE_TAB_SECTION, openUrlInStack, popScreen, popScreenIfTop, pushScreen, replaceTop, screenBelow, screenKey,
+  blockedEditor, homeScreen, LITE_TAB_SECTION, openUrlInStack, popScreen, popScreenIfTop, pushScreen, replaceTop, screenBelow, screenKey,
   type LiteDriveScreen, type LiteTab,
 } from "./lite-state";
+import { LiteTemplateDrawer } from "./lite-template-drawer";
 import { LiteTrash } from "./lite-trash";
 import { useLiteDrive } from "./use-lite-drive";
 import { useLiteRunner } from "./use-lite-runner";
@@ -57,11 +60,7 @@ function Screen({ screen }: { screen: LiteDriveScreen }) {
     case "preview":
       return <LitePreview previewKey={screen.key} />;
     case "editor":
-      return (
-        <Suspense fallback={<LiteLoading />}>
-          <DriveEditorScreen kind={screen.docKind} documentId={screen.id} isNew={screen.isNew} mobile />
-        </Suspense>
-      );
+      return <EditorScreen screen={screen} />;
     case "apps":
       return <LiteApps screen={screen} />;
     case "trash":
@@ -69,8 +68,18 @@ function Screen({ screen }: { screen: LiteDriveScreen }) {
   }
 }
 
+/** An editor in its phone layout, or the download prompt while its plugin is missing. */
+function EditorScreen({ screen }: { screen: Extract<LiteDriveScreen, { kind: "editor" }> }) {
+  const { drive } = useLiteDriveContext();
+  if (!drive.editorInstalled(screen.docKind)) return <LiteInstallScreen kind={screen.docKind} />;
+  return (
+    <Suspense fallback={<LiteLoading />}>
+      <DriveEditorScreen kind={screen.docKind} documentId={screen.id} isNew={screen.isNew} mobile />
+    </Suspense>
+  );
+}
+
 export function DriveLiteRouter({ organizationId, initialScreens }: DriveLiteRouterProps) {
-  const t = useT();
   useDriveTokenBridge();
   const [stack, setStack] = useState<LiteDriveScreen[]>(() =>
     initialScreens && initialScreens.length > 0 ? [...initialScreens] : [homeScreen("mine")],
@@ -80,21 +89,23 @@ export function DriveLiteRouter({ organizationId, initialScreens }: DriveLiteRou
   const below = screenBelow(stack);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const docsInstalled = isManagerRouteEnabled("/manager/docs", useDeviceApps().installed);
+  const openInstall = useCallback(
+    (install: LiteInstallRequest) => setPanelState((prev) => ({ ...prev, open: "install", install })),
+    [],
+  );
+  const editors = useLiteEditorGate(useDriveActorIds().surface === "store" ? "store" : "personal", openInstall);
   const open = useCallback<DocsOpenUrl>(
     (url) => {
-      if (blockedByDocs(url, docsInstalled)) {
-        toast(t("device.lite.drive.docsOff"));
-        return;
-      }
-      setStack((prev) => openUrlInStack(prev, url));
+      const blocked = blockedEditor(url, editors.isInstalled);
+      if (blocked) editors.ensureEditor(blocked, "open", () => setStack((prev) => openUrlInStack(prev, url)));
+      else setStack((prev) => openUrlInStack(prev, url));
     },
-    [docsInstalled, t],
+    [editors],
   );
   const setTab = useCallback((tab: LiteTab) => setStack([homeScreen(tab)]), []);
   const showMyFiles = useCallback(() => setTab("mine"), [setTab]);
 
-  const drive = useLiteDrive({ organizationId, docsInstalled, openInPanel: open, section: sectionOf(top), showMyFiles });
+  const drive = useLiteDrive({ organizationId, editors, openInPanel: open, section: sectionOf(top), showMyFiles });
 
   const nav = useMemo(
     (): LiteNav => ({
@@ -121,10 +132,12 @@ export function DriveLiteRouter({ organizationId, initialScreens }: DriveLiteRou
       openConfirm: (confirm) => show({ open: "confirm", confirm }),
       openSpaceChange: (plan) => show({ open: "space", space: plan }),
       openNotice: () => show({ open: "notice" }),
+      openInstall,
+      openTemplates: (target) => show({ open: "templates", templates: target }),
       close: () => setPanelState((prev) => ({ ...prev, open: null })),
       closeIf: (kind, value) => setPanelState((prev) => (prev.open === kind && prev[kind] === value ? { ...prev, open: null } : prev)),
     };
-  }, [panelState]);
+  }, [panelState, openInstall]);
 
   const runner = useLiteRunner(drive, nav, panels);
   const value = useMemo(
@@ -163,6 +176,8 @@ export function DriveLiteRouter({ organizationId, initialScreens }: DriveLiteRou
         <LiteNameDrawer />
         <LiteFolderPicker />
         <LiteNoticeDrawer />
+        <LiteInstallDrawer />
+        <LiteTemplateDrawer />
       </DocsOpenProvider>
     </LiteDriveProvider>
   );

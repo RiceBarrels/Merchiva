@@ -1,13 +1,11 @@
 /**
  * Image uploads for Docs (plan D47, docs-editor-ui spec §2.7 and F5).
  *
- * Images go through the existing UploadThing `generalFile` route (8 MB images, app/api/uploadthing/core.ts).
- * These helpers pass an explicit `url` built with `apiUrl()` so the static Capacitor build posts to the
- * hosted API instead of `capacitor://…/api/uploadthing`. Base64 images are never stored in documents.
+ * Images go through the existing UploadThing `generalFile` route (8 MB images, app/api/uploadthing/core.ts)
+ * by way of lib/storage/app-upload.ts, which posts to the hosted API on native builds and counts each image
+ * toward the document's store's storage quota. Base64 images are never stored in documents.
  */
-import { generateReactHelpers } from "@uploadthing/react";
-import type { OurFileRouter } from "@/app/api/uploadthing/core";
-import { apiUrl } from "@/lib/api-client";
+import { uploadAppFiles } from "@/lib/storage/app-upload";
 
 export const DOC_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 export const DOC_IMAGE_TYPES: readonly string[] = ["image/png", "image/jpeg", "image/gif", "image/webp"];
@@ -27,13 +25,21 @@ export function docImageProblemKey(problem: DocImageProblem): string {
   return problem === "tooLarge" ? "docs.image.tooLarge" : "docs.image.unsupported";
 }
 
-export const { uploadFiles: uploadDocFiles } = generateReactHelpers<OurFileRouter>({ url: apiUrl("/api/uploadthing") });
+/** Which editor an image goes into (app_file.source). */
+export type DocImageSource = "doc_image" | "sheet_image" | "slides_image";
 
-/** Uploads one image and resolves to its hosted URL. Rejects on validation or network failure. */
-export async function uploadDocImage(file: File): Promise<string> {
+/**
+ * Uploads one image for a document of store `organizationId` and resolves to its hosted URL. Rejects on
+ * validation or upload failure (appUploadErrorKey names the copy, e.g. the store is out of room).
+ */
+export async function uploadDocImage(
+  file: File,
+  organizationId: string,
+  source: DocImageSource = "doc_image",
+): Promise<string> {
   const problem = validateDocImage(file);
   if (problem) throw new Error(`[doc.image] ${problem}`);
-  const res = await uploadDocFiles("generalFile", { files: [file] });
+  const res = await uploadAppFiles("generalFile", { files: [file], organizationId, source });
   const url = res[0]?.ufsUrl;
   if (!url) throw new Error("[doc.image] upload returned no URL");
   return url;

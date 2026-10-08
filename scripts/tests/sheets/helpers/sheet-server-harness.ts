@@ -43,6 +43,7 @@ const SHEET_EXTRA_TABLES: readonly FakeTableDef[] = [
     columns: frozenColumns("device_login_request"),
   },
   { accessor: "deviceLoginRequester", primaryKey: "requestId", indexes: { byRequesterIdentity: "requesterIdentity", byOrganizationId: "organizationId" } },
+  { accessor: "deviceOperatorGrant", primaryKey: "key", indexes: { byOrganizationId: "organizationId" } },
 ];
 
 export interface SheetOrg {

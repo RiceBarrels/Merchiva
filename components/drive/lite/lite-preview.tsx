@@ -7,13 +7,13 @@
 
 import { ChevronLeft, Download, EllipsisVertical, FileX, FilePlusCorner } from "lucide-react";
 import { LiteButton, LiteEmpty, LiteLoading, LiteRow, LiteScreen } from "@/components/device/apps/lite";
+import { entrySizeText } from "@/components/drive/model/entry-size";
 import { driveActionGroups } from "@/components/drive/model/actions";
 import type { DriveEntry } from "@/components/drive/model/types";
 import { openAsActionOf } from "@/components/drive/preview/open-entry";
 import { PreviewBody } from "@/components/drive/preview/preview-body";
 import { entryKindKey, entryLabel, isPreviewable } from "@/components/drive/preview/preview-mode";
 import { useVirtualSources } from "@/components/drive/virtual/use-virtual-sources";
-import { formatDriveBytes } from "@/lib/drive/format";
 import { useI18n } from "@/lib/i18n/context";
 import { useLiteDriveContext } from "./lite-context";
 import { virtualSourceOfKey } from "./lite-state";
@@ -28,7 +28,7 @@ export function LitePreview({ previewKey }: { previewKey: string }) {
   const { t, locale } = useI18n();
   const { drive, nav, panels, act } = useLiteDriveContext();
   const source = virtualSourceOfKey(previewKey);
-  const virtual = useVirtualSources({ enabledSource: source });
+  const virtual = useVirtualSources({ enabledSource: source, appFileSizes: drive.data.drive.appFileSizes });
   const entry: DriveEntry | null = source
     ? (virtual.entries.find((e) => e.key === previewKey) ?? null)
     : (drive.data.tree.byKey.get(previewKey) ?? null);
@@ -45,7 +45,8 @@ export function LitePreview({ previewKey }: { previewKey: string }) {
 
   const available = driveActionGroups(entry, drive.ctx, drive.movesFor(entry)).flat();
   const openAs = openAsActionOf(available);
-  const sub = entry.type === "file" ? `${t(entryKindKey(entry))} · ${formatDriveBytes(entry.sizeBytes, locale)}` : t(entryKindKey(entry));
+  const size = entrySizeText(entry, locale);
+  const sub = size === null ? t(entryKindKey(entry)) : `${t(entryKindKey(entry))} · ${size}`;
 
   return (
     <LiteScreen>

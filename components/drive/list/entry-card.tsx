@@ -6,7 +6,7 @@
 // what an item needs — its name, selection, drag source, drop target (folders), link click
 // and its menus.
 //
-// The name is a real link stretched over the card (doc-card.tsx): a folder opens in place, a
+// The name is a real link stretched over the card: a folder opens in place, a
 // file previews, a document opens its editor, and Mod/middle-click reach the browser shell as
 // link clicks. A plain click the page handles in place (openInPlace) skips the link. In touch
 // selection mode a tap toggles instead; Shift+click extends the selection. The card's picture
@@ -19,12 +19,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { EntryContextMenu, EntryMenu, type EntryMenuBulk } from "@/components/drive/list/entry-menu";
 import { EntryIcon } from "@/components/drive/list/entry-icon";
 import { EntryThumb } from "@/components/drive/list/thumb/entry-thumb";
+import { entrySizeText } from "@/components/drive/model/entry-size";
 import type { ActionContext, DriveAction, DriveBulkAction } from "@/components/drive/model/actions";
 import { folderContainer } from "@/components/drive/model/entries";
 import { entryRecentTime } from "@/components/drive/model/listing";
 import type { DocEntry, DriveEntry, DriveSection, DriveSort, FileEntry, FolderEntry, VirtualEntry } from "@/components/drive/model/types";
 import { formatDocDateTime, formatDocStamp } from "@/components/docs/home/format";
-import { formatDriveBytes } from "@/lib/drive/format";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
 import { cn } from "@/lib/utils";
@@ -330,7 +330,7 @@ export function EntryCard(props: EntryItemProps & { entry: FileEntry | DocEntry 
   const uploading = uploadingOf(entry);
   const { time, kind } = entryTime(entry, sort, section);
   const date = new Date(time);
-  const size = entry.type === "file" && uploading === null ? formatDriveBytes(entry.sizeBytes, locale) : null;
+  const size = uploading === null ? entrySizeText(entry, locale) : null;
   const pinned = selection.mode || item.selected;
 
   return (

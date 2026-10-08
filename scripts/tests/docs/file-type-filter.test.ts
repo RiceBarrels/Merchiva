@@ -284,7 +284,12 @@ if (SCENARIO === "pre-codegen" || SCENARIO === "live" || SCENARIO === "no-drive"
     expect(c.drive.grants.map((g) => g.memberId)).toEqual(["member-4"]);
     expect([...c.drive.starredItemIds]).toEqual([uuid(101)]);
     expect([...c.drive.starredDocumentIds]).toEqual([uuid(5)]);
-    expect(c.drive.usage).toEqual({ usedBytes: 100, reservedBytes: 5, quotaBytes: rules.DRIVE_DEFAULT_QUOTA_BYTES, fileCount: 2, sheetBytes: 7 });
+    expect(c.drive.usage).toEqual({
+      usedBytes: 100, reservedBytes: 5, quotaBytes: rules.DRIVE_DEFAULT_QUOTA_BYTES, fileCount: 2, sheetBytes: 7,
+      // No storage-accounting tables in this fixture: documents and app files are unknown, not 0.
+      breakdown: { files: 105, documents: null, sheets: 7, apps: null, total: 112, quota: rules.DRIVE_DEFAULT_QUOTA_BYTES },
+    });
+    expect(c.drive.storageMeasured).toBe(false);
     expect(c.drive.accessForDocument(c.drive.documents[0]).role).toBe("editor");
     // actorMemberId re-evaluates documents and stars for that member.
     expect(ids(c.driveAs2.documents)).toContain(uuid(10));

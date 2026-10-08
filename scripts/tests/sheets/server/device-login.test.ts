@@ -50,6 +50,10 @@ describe("QR log-in writes the tablet's operator session (U7)", () => {
     expect(db.find("deviceOperatorSession", orgA.staff.identity)).toMatchObject({
       organizationId: orgA.organizationId, memberId: orgA.colleague.memberId, memberName: "Org A  colleague ", role: "staff",
     });
+    // The tablet punches this operator by the request id (recordOperatorPunch's grant).
+    expect(db.find("deviceOperatorGrant", `${orgA.staff.identity.hex}:${request.id.toString()}`)).toMatchObject({
+      organizationId: orgA.organizationId, memberId: orgA.colleague.memberId,
+    });
     expect(db.rows("deviceLoginRequest")[0].status).toBe("consumed");
     expect(requesterHex(db, request)).toBe(orgA.staff.identity.hex); // kept while the request row exists
     const id = newSheet(db, orgA.manager);

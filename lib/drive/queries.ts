@@ -22,3 +22,16 @@ export function driveProbeQueries(): string[] {
     docScopedSql("document_file", "document_id", ""),
   ];
 }
+
+/**
+ * Zero-row query set over the storage-accounting tables (`app_file`, `org_storage_usage`, `document_size`), probed
+ * apart from driveProbeQueries: Drive keeps loading against a module that has Drive but not these yet, and only the
+ * storage breakdown and sizes read as zero / unknown there.
+ */
+export function storageProbeQueries(): string[] {
+  return [
+    docScopedSql("app_file", "organization_id", ""),
+    docScopedSql("org_storage_usage", "organization_id", ""),
+    docScopedSql("document_size", "document_id", ""),
+  ];
+}

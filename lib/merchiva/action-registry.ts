@@ -34,9 +34,9 @@ import {
   addTrainingObjective,
   updateTrainingObjective,
   deleteTrainingObjective,
-  setPunchInCode,
   recordSupplierOrder,
 } from "@/lib/spacetimedb/actions";
+import { setMemberPunchCode } from "@/lib/spacetimedb/actions/pin";
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import { todayKey } from "@/lib/date-key";
 import { computeOrderTotalsStrict, orderAmounts } from "@/lib/merchiva/order-totals";
@@ -391,7 +391,15 @@ register({
     if (!/^[0-9]{4}$/.test(code)) {
       throw new Error("Punch-in code must be exactly 4 digits.");
     }
-    await setPunchInCode(String(p.memberId ?? ""), code);
+    // Answered through pin_attempt_result, never a throw: a code in use (a
+    // colleague's PIN) is counted as a guess for anyone but an owner and left
+    // unchanged, so the outcome must be read or a refusal looks like success.
+    const answer = await setMemberPunchCode(String(p.memberId ?? ""), code);
+    if (answer.outcome === "ok") return;
+    if (answer.outcome === "in_use") throw new Error("That code is already in use at this store. Ask for another one.");
+    if (answer.outcome === "locked") throw new Error("PIN entry is paused after too many wrong PINs. A manager can unlock it on the team page.");
+    if (answer.outcome === "error") throw new Error(answer.message);
+    throw new Error("No answer from the server. Check the connection and try again.");
   },
 });
 

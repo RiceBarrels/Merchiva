@@ -29,6 +29,11 @@ export const DRIVE_STDB_CALLS = {
   failGc: { name: "service_fail_drive_blob_gc", as: "service", params: ["blobKeysJson", "error"] },
   enqueueOrphans: { name: "service_enqueue_orphan_drive_blobs", as: "service", params: ["organizationId", "blobsJson"] },
   finishReconcile: { name: "service_finish_drive_reconcile", as: "service", params: ["organizationId", "measuredBytes", "measuredCount"] },
+  // App files (UploadThing): the route's membership + quota check, then the recorded size; backfill and recompute.
+  beginAppUpload: { name: "begin_app_upload", as: "user", params: ["organizationId", "source", "totalBytes", "fileCount"] },
+  recordAppFile: { name: "service_record_app_file", as: "service", params: ["organizationId", "keyHash", "source", "sizeBytes", "mimeType"] },
+  backfillAppFiles: { name: "service_backfill_app_files", as: "service", params: ["entries"] },
+  recomputeStorage: { name: "service_recompute_storage", as: "service", params: ["organizationId"] },
 } as const satisfies Record<string, DriveStdbCallSpec>;
 
 export type DriveStdbCallKey = keyof typeof DRIVE_STDB_CALLS;
@@ -54,6 +59,14 @@ export interface DriveStdbArgs {
   /** JSON `[{ k: key, s: size, u: uploadedAt ms }]`, at most 1000 entries. */
   enqueueOrphans: { organizationId: string; blobsJson: string };
   finishReconcile: { organizationId: string; measuredBytes: number; measuredCount: number };
+  /** totalBytes: the sum of the files' declared sizes; fileCount 1..APP_UPLOAD_MAX_FILES (lib/storage/sources.ts). */
+  beginAppUpload: { organizationId: string; source: string; totalBytes: number; fileCount: number };
+  /** keyHash: appFileKeyHash (lib/storage/uploadthing-key.ts) of the UploadThing key, never the key itself. */
+  recordAppFile: { organizationId: string; keyHash: string; source: string; sizeBytes: number; mimeType: string };
+  /** JSON `[{ key, keyHash, sizeBytes, mimeType }]`, at most 2000 entries (APP_BACKFILL_MAX). */
+  backfillAppFiles: { entries: string };
+  /** '' recomputes every org. */
+  recomputeStorage: { organizationId: string };
 }
 
 /** The positional JSON array for `/call/<name>`, in `DRIVE_STDB_CALLS[key].params` order. */

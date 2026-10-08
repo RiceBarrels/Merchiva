@@ -14,16 +14,17 @@ const KEYS = Object.keys(DRIVE_STDB_CALLS) as DriveStdbCallKey[];
 describe("DRIVE_STDB_CALLS", () => {
   test("covers the storage reducers of CONTRACTS §2.8 (no plan-quota stamping, DECISIONS U10)", () => {
     expect([...KEYS].sort()).toEqual([
-      "ackGc", "authorizeUpload", "commitUpload", "discardBlob", "enqueueOrphans", "ensureReader", "failGc",
-      "failUpload", "finishReconcile", "setThumb", "sweep",
+      "ackGc", "authorizeUpload", "backfillAppFiles", "beginAppUpload", "commitUpload", "discardBlob", "enqueueOrphans",
+      "ensureReader", "failGc", "failUpload", "finishReconcile", "recomputeStorage", "recordAppFile", "setThumb", "sweep",
     ]);
     expect("setPlanQuota" in DRIVE_STDB_CALLS).toBe(false);
   });
 
-  test("only authorize_drive_upload runs as the user; everything else as the service identity", () => {
+  test("only authorize_drive_upload and begin_app_upload run as the user; everything else as the service identity", () => {
+    const userCalls: ReadonlySet<string> = new Set(["authorizeUpload", "beginAppUpload"]);
     for (const key of KEYS) {
-      expect(DRIVE_STDB_CALLS[key].as).toBe(key === "authorizeUpload" ? "user" : "service");
-      if (key !== "authorizeUpload") expect(DRIVE_STDB_CALLS[key].name.startsWith("service_")).toBe(true);
+      expect(DRIVE_STDB_CALLS[key].as).toBe(userCalls.has(key) ? "user" : "service");
+      if (!userCalls.has(key)) expect(DRIVE_STDB_CALLS[key].name.startsWith("service_")).toBe(true);
     }
   });
 
@@ -47,6 +48,10 @@ describe("driveCallArgs", () => {
     expect(driveCallArgs("commitUpload", { etag: "\"e\"", observedBytes: 5, blobKey: "k", itemId: "i" })).toEqual(["i", "k", 5, "\"e\""]);
     expect(driveCallArgs("failGc", { error: "boom", blobKeysJson: "[\"k\"]" })).toEqual(["[\"k\"]", "boom"]);
     expect(driveCallArgs("finishReconcile", { measuredCount: 3, measuredBytes: 9, organizationId: "o" })).toEqual(["o", 9, 3]);
+    expect(driveCallArgs("beginAppUpload", { fileCount: 2, totalBytes: 10, source: "chat", organizationId: "o" }))
+      .toEqual(["o", "chat", 10, 2]);
+    expect(driveCallArgs("recordAppFile", { mimeType: "image/png", sizeBytes: 7, source: "bugs", keyHash: "h", organizationId: "o" }))
+      .toEqual(["o", "h", "bugs", 7, "image/png"]);
   });
 
   test("a call without parameters posts an empty array", () => {

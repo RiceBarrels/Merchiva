@@ -25,7 +25,9 @@
   "extends": null,
   "overwrites": [
     "docs.share.managersNote",
-    "docs.share.visibilityPrivate"
+    "docs.share.visibilityPrivate",
+    "device.catalogDesc.drive",
+    "drive.apps.notIncluded"
   ],
   "allowSameAsEn": [
     "drive.kind.pdf",

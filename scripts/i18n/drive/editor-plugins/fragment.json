@@ -1,0 +1,20 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "editor-plugins E",
+  "note": "Docs, Sheets and Slides as editor plugins of Drive. device.catalog.sheets / .slides reuse the nav.sheets / nav.slides names of each locale. pluginInstall.* is the shared install prompt ({app} is the plugin's localized device.catalog name): 'download' is the user's word for installing a plugin, and the Plugins page is named as in nav.apps / deviceApps.openStore (zh-cn 插件, zh-tw 外掛, zh-hk 插件, fr Extensions, es Complementos, hi प्लगइन, ar الإضافات); the device list mirrors device.appStore.hint. device.catalogDesc.docs is reworded for the Drive merge (overwrites). docs.editor.backToDocs and docs.homeTooltip label the Docs editor's way back, which now lands on Drive: they reuse sheets.editor.backToDrive and slides.homeTooltip of each locale (overwrites; scripts/i18n/docs-editor.ts and docs-home.ts still hold the old Docs values, so re-running them reverts these). device.catalog.docs reuses nav.docs too (zh-hk 文檔, matching drive.menu.newDoc).",
+  "owned": [
+    "pluginInstall",
+    "device.catalog.sheets",
+    "device.catalog.slides",
+    "device.catalogDesc.sheets",
+    "device.catalogDesc.slides"
+  ],
+  "extends": null,
+  "overwrites": [
+    "device.catalog.docs",
+    "device.catalogDesc.docs",
+    "docs.editor.backToDocs",
+    "docs.homeTooltip"
+  ],
+  "allowSameAsEn": []
+}

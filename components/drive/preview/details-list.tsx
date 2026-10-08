@@ -6,8 +6,8 @@
 
 import { Num } from "@/components/ui/num";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { entrySizeText } from "@/components/drive/model/entry-size";
 import type { DriveEntry, FolderEntry } from "@/components/drive/model/types";
-import { formatDriveBytes } from "@/lib/drive/format";
 import { useI18n } from "@/lib/i18n/context";
 import { intlLocaleTag } from "@/lib/i18n/dates";
 import { fmt } from "@/lib/i18n/fmt";
@@ -54,7 +54,8 @@ function locationText(entry: DriveEntry, path: readonly FolderEntry[], t: (key: 
 
 /** Who can open it: links are public; otherwise the space decides, plus the sharer for a document shared with you. */
 function audienceText(entry: DriveEntry, t: (key: string) => string): string[] {
-  if (entry.type === "virtual") return [t("drive.apps.linkNotice")];
+  // A form's answers are rows, not public links: management reads every response (the Forms disclosure).
+  if (entry.type === "virtual") return [t(entry.href ? "forms.disclosure.managersNote" : "drive.apps.linkNotice")];
   const lines: string[] = [];
   if ((entry.type === "doc" || entry.type === "sheet" || entry.type === "slides") && entry.sharedWithMe) {
     lines.push(fmt(t("drive.preview.sharedBy"), { name: entry.ownerName ?? t("drive.list.formerMember") }));
@@ -74,15 +75,16 @@ export function EntryDetails({ entry, path = [], childCount = null, className }:
     : null;
   const where = locationText(entry, path, t);
   const audience = audienceText(entry, t);
+  const size = entrySizeText(entry, locale);
   const date = (ms: number) => <Num size="xs" value={formatDate(ms, DATE_TIME)} />;
 
   return (
     <div className={cn("space-y-3", className)}>
       <dl className="grid grid-cols-[max-content_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1.5">
         <Row label={t("drive.preview.info.type")}>{t(entryKindKey(entry))}</Row>
-        {entry.type === "file" && (
+        {size !== null && (
           <Row label={t("drive.preview.info.size")}>
-            <Num size="xs" value={formatDriveBytes(entry.sizeBytes, locale)} />
+            <Num size="xs" value={size} />
           </Row>
         )}
         {entry.type === "folder" && childCount !== null && (

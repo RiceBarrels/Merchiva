@@ -115,7 +115,7 @@ test("a panel shows where another file type opens, with Open only when its host 
   html = render({ fileType: "sheet", props: { ...PANEL, opensOtherFileTypes: false } });
   expect(replaced).toEqual([]);
   expect(html).toMatch(/This file opens in Drive|docs\.editor\.otherTypeTitle/);
-  expect(html).toContain('<a href="/manager/docs">');
+  expect(html).toContain('<a href="/manager/drive?space=recent&amp;type=doc">');
   expect(html).not.toMatch(/>Open<|docs\.editor\.openInDrive/);
   expect(html).not.toContain("DOC_EDITOR");
 });

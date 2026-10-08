@@ -9,7 +9,7 @@
       "drive": "云盘"
     },
     "catalogDesc": {
-      "drive": "门店的文件、照片、表格和演示文稿，集中在一处。"
+      "drive": "门店保存的所有文件，集中在一处：上传的文件、照片，以及用编辑器插件制作的文档、表格和演示文稿。"
     },
     "lite": {
       "drive": {
@@ -361,7 +361,7 @@
       "openIn": "在{app}中打开",
       "count": "{count} 个文件",
       "countOne": "1 个文件",
-      "notIncluded": "不包括：在财务中输入的收据链接、文档和课程文字中的图片，以及发给 Mr. Merchiva 的附件。",
+      "notIncluded": "在财务中输入的收据链接和手动粘贴的链接不由 Merchiva 存储，因此不计入。",
       "sources": {
         "chat": "聊天",
         "tasks": "任务",

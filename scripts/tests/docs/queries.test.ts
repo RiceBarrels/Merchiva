@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createDocConnection, wrapDocTable } from "@/lib/docs/connection";
 import { DOC_ERROR_I18N_KEYS, docErrorCode, docErrorMessage } from "@/lib/docs/errors";
 import { DOCS_HOME_HREF, documentHref } from "@/lib/docs/hrefs";
+import { docsHomeRedirectHref, driveKindHref } from "@/lib/drive/hrefs";
 import { DOC_UUID_RE, formatUuidV4, isDocumentId, newDocumentId } from "@/lib/docs/ids";
 import {
   groupDocCommentThreads,
@@ -125,9 +126,19 @@ describe("ids", () => {
   });
 });
 
+describe("docsHomeRedirectHref", () => {
+  test("an old /manager/docs link lands on Drive's documents view in the same space, with its search", () => {
+    expect(docsHomeRedirectHref(null, null)).toBe("/manager/drive?space=recent&type=doc");
+    expect(docsHomeRedirectHref("starred", "menu")).toBe("/manager/drive?space=starred&type=doc&q=menu");
+    expect(docsHomeRedirectHref("trash", "")).toBe("/manager/drive?space=trash&type=doc");
+    expect(docsHomeRedirectHref("mine", null)).toBe("/manager/drive?space=recent&type=doc");
+  });
+});
+
 describe("documentHref", () => {
   test("builds editor links", () => {
-    expect(DOCS_HOME_HREF).toBe("/manager/docs");
+    // The Docs home is Drive's documents view; links go straight there instead of through the /manager/docs redirect.
+    expect(DOCS_HOME_HREF).toBe(driveKindHref("doc"));
     expect(documentHref(DOC_ID)).toBe(`/manager/docs/edit?id=${DOC_ID}`);
     expect(documentHref(DOC_ID.toUpperCase(), { isNew: true })).toBe(`/manager/docs/edit?id=${DOC_ID}&new=1`);
     expect(documentHref(DOC_ID, { comment: "c-1", version: "v 2", isNew: false })).toBe(

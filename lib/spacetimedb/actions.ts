@@ -1393,13 +1393,8 @@ export async function deleteBugReport(bugId: string): Promise<void> {
 
 // ─── Punch Clock ─────────────────────────────────────────────────────────────
 
-export async function recordPunch(code: string, action: string): Promise<void> {
-  return conn().reducers.recordPunch({
-    organizationId: orgId(),
-    code,
-    action,
-  });
-}
+// Punching by PIN (`recordPunch`) is rate limited; clients punch without a PIN
+// through recordOperatorPunch / recordSelfPunch in ./actions/pin.ts.
 
 export async function managerRecordPunch(memberId: string, action: "in" | "out"): Promise<void> {
   return conn().reducers.managerRecordPunch({
@@ -2367,27 +2362,12 @@ export async function deleteDocumentComment(documentId: string, commentId: strin
 // else's. The three flows that used to compare PINs in the browser (device
 // unlock, manager exit-kiosk, "do I have a PIN set") now go through the module.
 
-/**
- * Resolve a PIN to the member standing at the shared store tablet. On success
- * the module writes the answer to `device_operator_session` for this identity;
- * read it with `useDeviceOperatorSession()`. Rejects on an unknown PIN.
- */
-export async function resolveDeviceOperator(code: string): Promise<void> {
-  return conn().reducers.resolveDeviceOperator({ organizationId: orgId(), code });
-}
+// Resolving a PIN to the store tablet's operator and checking a manager PIN are
+// rate limited and answer through `pin_attempt_result`: ./actions/pin.ts.
 
 /** Forget the resolved operator (device re-lock / sign-out). */
 export async function clearDeviceOperator(): Promise<void> {
   return conn().reducers.clearDeviceOperator({});
-}
-
-/**
- * Check that a PIN belongs to an active owner/manager of this org — used by the
- * "leave kiosk mode" gate. Resolves on success, rejects on a bad PIN; the PIN
- * itself never reaches the browser.
- */
-export async function verifyManagerPin(code: string): Promise<void> {
-  return conn().reducers.verifyManagerPin({ organizationId: orgId(), code });
 }
 
 // ─── Maintenance ─────────────────────────────────────────────────────────────

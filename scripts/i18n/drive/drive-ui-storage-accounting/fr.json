@@ -1,0 +1,32 @@
+{
+  "drive": {
+    "storage": {
+      "breakdown": {
+        "title": "Ce qui occupe le stockage",
+        "files": "Fichiers téléversés",
+        "documents": "Documents, présentations et formulaires",
+        "sheets": "Feuilles de calcul",
+        "apps": "Fichiers dans d'autres applications"
+      },
+      "includesEverything": "Tout ce que votre magasin conserve compte dans le stockage : fichiers téléversés, documents, feuilles de calcul, présentations, formulaires et fichiers dans d'autres applications."
+    },
+    "apps": {
+      "bytesSource": {
+        "doc_image": "Images dans les documents",
+        "sheet_image": "Images dans les feuilles de calcul",
+        "slides_image": "Images dans les présentations",
+        "logo": "Logo du magasin",
+        "avatar": "Photos de profil",
+        "other": "Autres fichiers"
+      },
+      "storageTotal": "{size} stockés dans d'autres applications",
+      "bytesNotListed": "{source} : fichiers que vous ne pouvez pas ouvrir ici",
+      "notStoredHere": "Inclut des fichiers que vous ne pouvez pas ouvrir ici, comme les pièces jointes de chat d'autres personnes.",
+      "sources": {
+        "forms": "Formulaires"
+      },
+      "countForms": "{count} formulaires",
+      "countFormsOne": "1 formulaire"
+    }
+  }
+}

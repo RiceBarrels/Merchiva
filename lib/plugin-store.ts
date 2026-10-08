@@ -18,6 +18,7 @@ const CATEGORY_BY_ID: Readonly<Record<string, PluginCategory>> = {
   inventory: "operations",
   products: "operations",
   bookings: "operations",
+  forms: "operations",
   sales: "sales",
   dashboard: "sales",
   docs: "files",

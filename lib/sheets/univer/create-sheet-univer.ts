@@ -38,6 +38,10 @@ export interface CreateSheetUniverOptions {
   disableAutoFocus?: boolean;
   /** Hyperlink clicks that passed isSafeSheetLink (Capacitor Browser on native, window.open otherwise). */
   onOpenUrl(url: string): void;
+  /** The sheet's store, whose storage inserted images count toward. */
+  organizationId: string;
+  /** An inserted image failed to upload (after Univer's own generic error). */
+  onImageUploadError?(err: unknown): void;
 }
 
 export interface SheetUniver {
@@ -82,6 +86,8 @@ export function createSheetUniver(opts: CreateSheetUniverOptions): SheetUniver {
     popupRootId: `merchiva-sheet-popups-${mount}`,
     disableAutoFocus: opts.disableAutoFocus === true || opts.layout === "mobile",
     onOpenUrl: opts.onOpenUrl,
+    organizationId: opts.organizationId,
+    onImageUploadError: opts.onImageUploadError,
   });
   let created: { univer: Univer; univerAPI: FUniver };
   // Before createUniver: Univer's ShortcutService (ui/lib/es/index.js:1023) adds its listener only after this.

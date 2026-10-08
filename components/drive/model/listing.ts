@@ -3,12 +3,13 @@
 //
 // Pure (no React). Every function reads the tree built by ./entries (the actor's access is
 // already on each entry); trash roots and shared-with-me come from lib/drive/model.ts, search
-// normalization and date groups from the Docs home model, so both homes behave alike.
+// normalization and date groups from the docs list model (components/docs/home/doc-list-model.ts).
 
 import { docDateGroup, normalizeSearchText, type DocDateGroup } from "@/components/docs/home/doc-list-model";
 import type { DocumentMeta } from "@/lib/docs/types";
 import { trashRoots } from "@/lib/drive/model";
 import type { DriveItem } from "@/lib/drive/types";
+import { entrySizeBytes } from "./entry-size";
 import { docEntryKey, folderContainer, itemEntryKey, type DriveTree } from "./entries";
 import type {
   DriveCrumb,
@@ -252,8 +253,8 @@ function collatorFor(locale?: string): Intl.Collator {
 
 /**
  * Folders first (except in Recent and Trash). Name: A→Z (numeric, accent- and case-blind), nameless last.
- * Modified / created: newest first (Recent uses the later of changed and opened). Size: files largest first,
- * then everything without a size by name. Trash is always newest-trashed first. Ties break on the key.
+ * Modified / created: newest first (Recent uses the later of changed and opened). Size: files, documents and app files
+ * with a known size largest first, then everything without one by name. Trash is always newest-trashed first. Ties break on the key.
  */
 export function sortDriveEntries(entries: readonly DriveEntry[], sort: DriveSort, section: DriveSection, locale?: string): DriveEntry[] {
   const collator = collatorFor(locale);
@@ -263,7 +264,7 @@ export function sortDriveEntries(entries: readonly DriveEntry[], sort: DriveSort
     if (!an !== !bn) return an ? -1 : 1;
     return collator.compare(an, bn);
   };
-  const size = (e: DriveEntry): number | null => (e.type === "file" ? e.sizeBytes : null);
+  const size = entrySizeBytes;
   const compare = (a: DriveEntry, b: DriveEntry): number => {
     if (section === "trash") return (b.trashedAt ?? 0) - (a.trashedAt ?? 0);
     switch (sort) {
@@ -339,29 +340,41 @@ export function driveEmptyKind(query: ListingQuery, listing: DriveListing): Driv
 
 // ── Members' files ───────────────────────────────────────────────────────────
 
-export interface DriveMemberSummary { memberId: string; name: string | null; role: string; active: boolean; former: boolean; fileCount: number; bytes: number }
+export interface DriveMemberSummary {
+  memberId: string; name: string | null; role: string; active: boolean; former: boolean; fileCount: number;
+  /** Sum of the known sizes; null when the member has files but none with a recorded size (unknown, not 0 B). */
+  bytes: number | null;
+}
 
 /**
  * One row per org member (active first, then disabled, each by name), then one "former member" row per owner of
  * My files who has no member row any more (leaveOrg deletes it) — their files stay reachable to admins. Counts
- * are live files and documents in that person's My files; bytes are the uploaded files'.
+ * are live files and documents in that person's My files; bytes are their known sizes (files, and documents
+ * with a recorded size), or null when none of them has one.
  */
 export function summarizeMembers(
   tree: DriveTree,
   members: readonly { id: string; name: string; role: string; active: boolean }[],
 ): DriveMemberSummary[] {
-  const stats = new Map<string, { fileCount: number; bytes: number }>();
+  const stats = new Map<string, { fileCount: number; sized: number; bytes: number }>();
   for (const entry of tree.entries) {
     const owner = entry.location?.space === "my" ? entry.location.ownerMemberId : "";
     if (!owner || !live(entry)) continue;
-    const s = stats.get(owner) ?? { fileCount: 0, bytes: 0 };
+    const s = stats.get(owner) ?? { fileCount: 0, sized: 0, bytes: 0 };
     stats.set(owner, s);
     if (entry.type === "folder" || (entry.type === "file" && entry.uploading !== null)) continue;
     s.fileCount += 1;
-    if (entry.type === "file") s.bytes += entry.sizeBytes;
+    const bytes = entrySizeBytes(entry);
+    if (bytes === null) continue;
+    s.sized += 1;
+    s.bytes += bytes;
   }
   const collator = collatorFor();
-  const statsOf = (id: string) => stats.get(id) ?? { fileCount: 0, bytes: 0 };
+  const statsOf = (id: string): Pick<DriveMemberSummary, "fileCount" | "bytes"> => {
+    const s = stats.get(id);
+    if (!s) return { fileCount: 0, bytes: 0 };
+    return { fileCount: s.fileCount, bytes: s.fileCount > 0 && s.sized === 0 ? null : s.bytes };
+  };
   const rows = [...members]
     .sort((a, b) => Number(b.active) - Number(a.active) || collator.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
     .map((m): DriveMemberSummary => ({ memberId: m.id, name: m.name, role: m.role, active: m.active, former: false, ...statsOf(m.id) }));

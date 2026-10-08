@@ -4,14 +4,15 @@
 //
 // Scenarios: a staff operator on a tablet signed in as the owner (Mine, Store, Trash, other apps, the actions each
 // entry offers), a staff-account tablet (Store only), the owner on her phone, the unacknowledged notice, empty,
-// not published, offline, loading, an editor inside the panel, a camera shot, a lost PIN session, and the file
-// store being unavailable.
+// not published, offline, loading, an editor inside the panel, a camera shot, a lost PIN session, the file store
+// being unavailable, a missing editor plugin (downloaded in place by an owner; a staff operator is told to ask), and
+// New ▸ Doc from a template while Docs is not downloaded.
 
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { isOperatorError } from "@/components/drive/lite/lite-actions";
 import {
-  blockedByDocs, effectiveTab, folderScreen, homeScreen, liteTabs, openUrlInStack, popScreen, popScreenIfTop, popToHome, pushScreen,
+  blockedEditor, effectiveTab, folderScreen, homeScreen, liteTabs, openUrlInStack, popScreen, popScreenIfTop, popToHome, pushScreen,
   screenBelow, virtualSourceOfKey, type LiteDriveScreen,
 } from "@/components/drive/lite/lite-state";
 import { DriveEditorError } from "@/lib/drive/editors";
@@ -20,7 +21,7 @@ import { DriveClientError } from "@/lib/drive/errors";
 const ROOT = join(import.meta.dir, "..", "..", "..");
 const SCENARIOS = [
   "store-operator", "staff-tablet", "personal", "needs-ack", "empty", "not-published", "offline", "checking", "editor",
-  "camera", "operator", "storage-off",
+  "camera", "operator", "storage-off", "plugin-missing", "plugin-ask", "plugin-template",
 ] as const;
 
 function run(env: Record<string, string>): { exitCode: number | null; output: string } {
@@ -106,10 +107,16 @@ describe("lite screen stack", () => {
     expect(popScreenIfTop([homeScreen("mine")], homeScreen("mine"))).toEqual([homeScreen("mine")]);
   });
 
-  test("a text document is refused only while Docs is not installed", () => {
-    expect(blockedByDocs(`/manager/docs/edit?id=${DOC}`, false)).toBe(true);
-    expect(blockedByDocs(`/manager/docs/edit?id=${DOC}`, true)).toBe(false);
-    expect(blockedByDocs(`/manager/drive/sheet?id=${SHEET}`, false)).toBe(false);
+  test("an editor link is held back only while its own editor plugin is missing", () => {
+    const only = (...kinds: string[]) => (kind: string) => kinds.includes(kind);
+    expect(blockedEditor(`/manager/docs/edit?id=${DOC}`, only("sheet", "slides"))).toBe("doc");
+    expect(blockedEditor(`/manager/docs/edit?id=${DOC}`, only("doc"))).toBeNull();
+    expect(blockedEditor(`/manager/drive/sheet?id=${SHEET}`, only("doc", "slides"))).toBe("sheet");
+    expect(blockedEditor(`/manager/drive/sheet?id=${SHEET}`, only("sheet"))).toBeNull();
+    expect(blockedEditor(`/manager/drive/slides?id=${SHEET}`, only())).toBe("slides");
+    // Not an editor link: nothing to hold back.
+    expect(blockedEditor("/manager/drive", only())).toBeNull();
+    expect(blockedEditor("/manager/drive/sheet", only())).toBeNull();
   });
 
   test("tabs: Mine and Store, Shared with something shared, Team with the power; a staff tablet keeps Store", () => {

@@ -271,7 +271,7 @@ function DocEditorSession(props: DocEditorSessionProps) {
     openLinkEditor: () => latestHandlers.current.openLinkEditor?.(),
     addComment: () => latestHandlers.current.addComment?.(),
     activateComment: (threadId) => latestHandlers.current.activateComment?.(threadId),
-    uploadImage: (file) => uploadDocImage(file),
+    uploadImage: (file) => uploadDocImage(file, doc.organizationId),
     notify: (key, tone) => latestHandlers.current.notify?.(key, tone),
   }));
 

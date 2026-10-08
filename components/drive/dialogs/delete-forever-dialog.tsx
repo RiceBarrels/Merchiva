@@ -1,7 +1,6 @@
 "use client";
 
-// "Delete forever" of trashed Drive entries (drive-ui §7.6), structured like the Docs
-// DeleteForeverDialog (components/docs/dialogs/delete-forever-dialog.tsx): one entry is named,
+// "Delete forever" of trashed Drive entries (drive-ui §7.6): one entry is named,
 // several are counted, and a note says a folder takes everything inside it along.
 
 import { useRef, useState } from "react";

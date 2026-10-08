@@ -97,6 +97,8 @@
         "spacetimedb": "^2.10.1",
         "square": "^44.0.1",
         "stripe": "^22.1.1",
+        "survey-core": "3.1.2",
+        "survey-react-ui": "3.1.2",
         "tailwind-merge": "^3.5.0",
         "turndown": "^7.2.4",
         "turndown-plugin-gfm": "^1.0.2",
@@ -2859,6 +2861,10 @@
     "supports-color": ["supports-color@7.2.0", "", { "dependencies": { "has-flag": "^4.0.0" } }, "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw=="],
 
     "supports-preserve-symlinks-flag": ["supports-preserve-symlinks-flag@1.0.0", "", {}, "sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w=="],
+
+    "survey-core": ["survey-core@3.1.2", "", {}, "sha512-KNKmvCjcaeKKCFikv9Zt1SW0qZa4mVr4lqPXUhBLcZC8h5THs671kGMuF4W9KyatpjKNLWfBNDcACgBNP6HPPg=="],
+
+    "survey-react-ui": ["survey-react-ui@3.1.2", "", { "peerDependencies": { "react": "^16.5.0 || ^17.0.1 || ^18.1.0 || ^19.0.0", "react-dom": "^16.5.0 || ^17.0.1 || ^18.1.0 || ^19.0.0", "survey-core": "3.1.2" } }, "sha512-+RJJSytqgMmS2uuYeVoYOf3oo8RNaebCW68GocY8nrc3b7Y2JhQWPMV9rY1Ox+1JfspzGJYNkk0AOAsXF5q0dA=="],
 
     "svg-pathdata": ["svg-pathdata@6.0.3", "", {}, "sha512-qsjeeq5YjBZ5eMdFuUa4ZosMLxgr5RZ+F+Y1OrDhuOCEInRMA3x74XdBtggJcj9kOeInz0WE+LgCPDkZFlBYJw=="],
 

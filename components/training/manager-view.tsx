@@ -13,6 +13,8 @@ import {
   updateTrainingDay,
 } from "@/lib/spacetimedb/actions";
 import { useUploadThing } from "@/lib/uploadthing";
+import { appUploadErrorKey, appUploadErrorKeyOr, appUploadHeaders, appUploadInput } from "@/lib/storage/app-upload";
+import { useAppUploadProps } from "@/lib/storage/use-app-upload";
 import { useT } from "@/lib/i18n/context";
 import { QuillEditor } from "./quill-editor";
 import { DayRail, type DayRailItem } from "./day-rail";
@@ -279,8 +281,10 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
   // independently so an inline image upload doesn't show the attachment-rail
   // spinner (and vice versa).
   const { startUpload: startInlineUpload } = useUploadThing("generalFile", {
+    headers: appUploadHeaders,
     onUploadError: (err) => {
       console.error("[Training] inline image upload failed", err);
+      toast.error(t(appUploadErrorKey(err)));
     },
   });
   const handleUploadInlineImage = useCallback(
@@ -288,11 +292,11 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
       const max = 8 * 1024 * 1024;
       if (!file.type.startsWith("image/")) return null;
       if (file.size > max) return null;
-      const res = await startInlineUpload([file]);
+      const res = await startInlineUpload([file], appUploadInput(orgId, "training"));
       const first = res?.[0];
       return first?.ufsUrl ?? null;
     },
-    [startInlineUpload],
+    [startInlineUpload, orgId],
   );
 
   return (
@@ -665,8 +669,9 @@ function AttachmentTile({ a }: { a: ObjectiveRow }) {
 function useAttachmentUpload(dayId: string | undefined, sortOrder: number) {
   const t = useT();
   const [busy, setBusy] = useState(false);
-
+  const upload = useAppUploadProps("training");
   const { startUpload, isUploading } = useUploadThing("generalFile", {
+    headers: upload.headers,
     onClientUploadComplete: async (res) => {
       const file = res?.[0];
       if (!file || !dayId) {
@@ -692,14 +697,14 @@ function useAttachmentUpload(dayId: string | undefined, sortOrder: number) {
     },
     onUploadError: (err) => {
       console.error("[Training] attachment upload failed", err);
-      toast.error(t("training.manager.uploadFailed"));
+      toast.error(t(appUploadErrorKeyOr(err, "training.manager.uploadFailed")));
       setBusy(false);
     },
   });
 
   const uploadFile = useCallback(
     (file: File) => {
-      if (!dayId) return;
+      if (!dayId || !upload.input) return;
       const isImage = file.type.startsWith("image/");
       const isVideo = file.type.startsWith("video/");
       if (!isImage && !isVideo) {
@@ -712,13 +717,13 @@ function useAttachmentUpload(dayId: string | undefined, sortOrder: number) {
         return;
       }
       setBusy(true);
-      startUpload([file]).catch((err) => {
+      startUpload([file], upload.input).catch((err) => {
         console.error("[Training] attachment upload failed", err);
-        toast.error(t("training.manager.uploadFailed"));
+        toast.error(t(appUploadErrorKeyOr(err, "training.manager.uploadFailed")));
         setBusy(false);
       });
     },
-    [dayId, startUpload, t],
+    [dayId, startUpload, t, upload.input],
   );
 
   return { uploadFile, busy: busy || isUploading };

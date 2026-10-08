@@ -32,6 +32,7 @@ import "@/lib/sheets/univer/univer-compat.css";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { IWorkbookData } from "@univerjs/presets";
 import { AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -45,6 +46,7 @@ import { createUniverModelAdapter } from "@/lib/sheets/univer/model-adapter";
 import { installViewOnlyGuard } from "@/lib/sheets/univer/view-only-guard";
 import { createFormulaWorker, watchFormulaWorkerStartup } from "@/lib/sheets/univer/worker-support";
 import { sheetToSafeCsv } from "@/lib/sheets/xlsx/csv";
+import { appUploadErrorKey } from "@/lib/storage/app-upload";
 import { useResolvedDark } from "@/lib/use-resolved-dark";
 import { MOBILE_BREAKPOINT } from "@/lib/use-is-mobile";
 import type { SheetHostHandle } from "./sheet-editor-context";
@@ -67,6 +69,8 @@ export interface UniverHostProps {
   onFailed(failed: boolean): void;
   /** The view-only guard stopped an edit. */
   onBlocked(): void;
+  /** The sheet's store: inserted images count toward its storage. */
+  organizationId: string;
 }
 
 interface LiveUniver {
@@ -91,7 +95,7 @@ function layoutOf(host: HTMLElement): "desktop" | "mobile" {
   return width < MOBILE_BREAKPOINT ? "mobile" : "desktop";
 }
 
-export function UniverHost({ bindModel, panel, mobile, previewing, onReady, onFailed, onBlocked }: UniverHostProps) {
+export function UniverHost({ bindModel, panel, mobile, previewing, onReady, onFailed, onBlocked, organizationId }: UniverHostProps) {
   const { t, locale } = useI18n();
   const dark = useResolvedDark();
   const brand = t("sheets.brand");
@@ -103,9 +107,9 @@ export function UniverHost({ bindModel, panel, mobile, previewing, onReady, onFa
   const [failed, setFailed] = useState(false);
 
   // Read by the mount effect without remounting on change.
-  const latest = useRef({ bindModel, onReady, onBlocked, dark, mobile });
+  const latest = useRef({ bindModel, onReady, onBlocked, dark, mobile, organizationId, t });
   useLayoutEffect(() => {
-    latest.current = { bindModel, onReady, onBlocked, dark, mobile };
+    latest.current = { bindModel, onReady, onBlocked, dark, mobile, organizationId, t };
   });
   const mountedLayout = useRef<"desktop" | "mobile" | null>(null);
 
@@ -134,6 +138,12 @@ export function UniverHost({ bindModel, panel, mobile, previewing, onReady, onFa
             brand,
             disableAutoFocus: panel || latest.current.mobile,
             onOpenUrl: (url) => void openExternal(url).catch(() => {}),
+            organizationId: latest.current.organizationId,
+            // Univer shows its own generic error; a full store or an expired session gets ours too.
+            onImageUploadError: (err) => {
+              const key = appUploadErrorKey(err);
+              if (key !== "appUpload.failed") toast.error(latest.current.t(key));
+            },
           });
           adapter = createUniverModelAdapter({ univer: sheet.univer, univerAPI: sheet.univerAPI });
         } catch (err) {

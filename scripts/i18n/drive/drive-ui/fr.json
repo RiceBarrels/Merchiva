@@ -9,7 +9,7 @@
       "drive": "Fichiers"
     },
     "catalogDesc": {
-      "drive": "Les fichiers, photos, feuilles de calcul et présentations de votre magasin, au même endroit."
+      "drive": "Tous les fichiers de votre magasin, au même endroit : fichiers téléversés, photos, et les documents, feuilles de calcul et présentations créés avec les extensions d'édition."
     },
     "lite": {
       "drive": {
@@ -361,7 +361,7 @@
       "openIn": "Ouvrir dans {app}",
       "count": "{count} fichiers",
       "countOne": "1 fichier",
-      "notIncluded": "Non inclus : les liens de reçus saisis dans Finances, les images placées dans les documents et le texte des leçons, et les pièces jointes envoyées à Mr. Merchiva.",
+      "notIncluded": "Les liens de reçus saisis dans Finances et les liens collés à la main ne sont pas stockés par Merchiva : ils ne sont donc pas comptés.",
       "sources": {
         "chat": "Chat",
         "tasks": "Tâches",

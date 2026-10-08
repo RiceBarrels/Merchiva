@@ -51,6 +51,7 @@ describe("brandViolation", () => {
     expect(brandViolation("en", "open the excel file")).toBe("excel");
     expect(brandViolation("en", "Google")).toBe("Google");
     expect(brandViolation("en", "Univer formulas")).toBe("Univer");
+    expect(brandViolation("en", "Built with SurveyJS")).toBe("SurveyJS");
     expect(brandViolation("hi", "एक्सेल फ़ाइल")).toBe("एक्सेल");
     expect(brandViolation("ar", "ملف إكسل")).toBe("إكسل");
     expect(brandViolation("zh-cn", "微软表格")).toBe("微软");

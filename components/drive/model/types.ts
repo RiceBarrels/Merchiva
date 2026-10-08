@@ -16,9 +16,9 @@ export type DriveDocKind = Exclude<DocFileType, "unknown">;
 export type DriveSection = "my" | "store" | "shared" | "recent" | "starred" | "trash" | "apps" | "members";
 export const DRIVE_SECTIONS: readonly DriveSection[] = ["my", "store", "shared", "recent", "starred", "trash", "apps", "members"];
 
-/** Apps whose stored file links Drive lists read-only under "Stored in apps". */
-export type VirtualSourceId = "chat" | "tasks" | "inventory" | "training" | "products" | "bugs" | "profile";
-export const VIRTUAL_SOURCE_IDS: readonly VirtualSourceId[] = ["chat", "tasks", "inventory", "training", "products", "bugs", "profile"];
+/** Apps whose stored file links (and, for forms, records) Drive lists read-only under "Stored in apps". */
+export type VirtualSourceId = "chat" | "tasks" | "inventory" | "training" | "products" | "bugs" | "profile" | "forms";
+export const VIRTUAL_SOURCE_IDS: readonly VirtualSourceId[] = ["chat", "tasks", "inventory", "training", "products", "bugs", "profile", "forms"];
 
 export type DriveTypeFilter = "all" | "folder" | "doc" | "sheet" | "slides" | "image" | "pdf" | "video" | "audio" | "other";
 export const DRIVE_TYPE_FILTERS: readonly DriveTypeFilter[] = ["all", "folder", "doc", "sheet", "slides", "image", "pdf", "video", "audio", "other"];
@@ -94,6 +94,8 @@ export interface DocEntry extends EntryBase {
   readonly docAccess: DocAccess;
   readonly sharedWithMe: boolean;
   readonly hasGrants: boolean;
+  /** Stored bytes, content plus kept versions (`document_size`); null when unknown. */
+  readonly sizeBytes: number | null;
 }
 
 export interface VirtualEntry extends EntryBase {
@@ -104,6 +106,20 @@ export interface VirtualEntry extends EntryBase {
   readonly mimeType: string;
   readonly group: string;
   readonly originRoute: string | null;
+  /** The app file's size (`app_file`, by appFileKeyHash(url)); null for a link Merchiva does not store or one not recorded. */
+  readonly sizeBytes: number | null;
+  /**
+   * Set for a record another app keeps rather than a file (a form and its responses): the /manager page it opens
+   * instead of a preview. `url` is '' then and nothing downloads. Absent for a file link.
+   */
+  readonly href?: string;
+  /** A record's one-line summary (a form's response count). */
+  readonly note?: string;
+}
+
+/** A record entry ("Stored in apps → Forms"): opens its /manager page, never previews or downloads. */
+export function isRecordEntry(entry: DriveEntry): entry is VirtualEntry & { readonly href: string } {
+  return entry.type === "virtual" && typeof entry.href === "string" && entry.href !== "";
 }
 
 export type DriveEntry = FolderEntry | FileEntry | DocEntry | VirtualEntry;

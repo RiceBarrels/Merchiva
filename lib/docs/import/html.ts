@@ -21,6 +21,7 @@ import DOMPurify from "dompurify";
 import { buildDocExtensions } from "@/lib/docs/editor-extensions";
 import { buildHeaderFooterExtensions } from "@/lib/docs/header-footer-extensions";
 
+import { isQuotaExceededError, rethrowIfQuotaExceeded } from "@/lib/storage/quota-error";
 import { createLimiter, dataUrlToBlob, IMPORT_SKIPPED_IMAGE_ATTR, importImageAction, toUploadableImage } from "./images";
 
 export interface PrepareImportHtmlDeps {
@@ -125,9 +126,11 @@ function textOf(el: Element | null): string | null {
   return text ? text : null;
 }
 
+/** Rehosts embedded images; a store out of storage fails it with `[drive.quota_exceeded]` (no image left out). */
 async function rehostImages(doc: Document, deps: PrepareImportHtmlDeps): Promise<number> {
   const limit = createLimiter(UPLOAD_CONCURRENCY);
   let skipped = 0;
+  let outOfRoom: unknown = null;
   await Promise.all(
     Array.from(doc.querySelectorAll("img")).map(async (img) => {
       const src = (img.getAttribute("src") ?? "").trim();
@@ -143,10 +146,14 @@ async function rehostImages(doc: Document, deps: PrepareImportHtmlDeps): Promise
         const file = blob ? await toUploadableImage(blob, "image") : null;
         if (file) {
           try {
-            img.setAttribute("src", await limit(() => deps.uploadImage(file)));
+            img.setAttribute("src", await limit(() => (outOfRoom === null ? deps.uploadImage(file) : Promise.reject(outOfRoom))));
             return;
-          } catch {
-            // counted below
+          } catch (err) {
+            // A quota refusal fails the import below; anything else is counted as a skipped image.
+            if (isQuotaExceededError(err)) {
+              outOfRoom ??= err;
+              return;
+            }
           }
         }
       }
@@ -154,6 +161,7 @@ async function rehostImages(doc: Document, deps: PrepareImportHtmlDeps): Promise
       img.remove();
     }),
   );
+  rethrowIfQuotaExceeded(outOfRoom);
   return skipped;
 }
 

@@ -2,8 +2,8 @@
 
 // The Drive list: a table of Name (icon, name, badges) · Owner · date · Size · Location (flat
 // results only) · star + menu, with a select-all checkbox and sortable headers. Phones get a
-// compact row (name, date, menu). As in doc-list.tsx, every cell carries its own hidden copy
-// of the name link, because WebKit doesn't treat `<tr>` as a containing block. Keyboard
+// compact row (name, date, menu). Every cell carries its own hidden copy of the name link,
+// because WebKit doesn't treat `<tr>` as a containing block. Keyboard
 // shortcuts live on this element only (onDriveResultsKeyDown).
 
 import { useId, useMemo } from "react";
@@ -17,10 +17,10 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EntryContextMenu, EntryMenu } from "@/components/drive/list/entry-menu";
 import { EntryIcon } from "@/components/drive/list/entry-icon";
+import { entrySizeText } from "@/components/drive/model/entry-size";
 import type { DriveTree } from "@/components/drive/model/entries";
 import type { DriveEntry, DriveSection, DriveSort } from "@/components/drive/model/types";
 import { formatDocDateTime, formatDocStamp } from "@/components/docs/home/format";
-import { formatDriveBytes } from "@/lib/drive/format";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
 import { cn } from "@/lib/utils";
@@ -194,7 +194,7 @@ function EntryRow(props: RowProps) {
   const { time } = entryTime(entry, sort, section);
   const date = new Date(time);
   const owner = ownerLabel(entry, t);
-  const size = entry.type === "file" && uploadingOf(entry) === null ? formatDriveBytes(entry.sizeBytes, locale) : null;
+  const size = uploadingOf(entry) === null ? entrySizeText(entry, locale) : null;
   const location = flat ? (props.locationOf?.(entry) ?? null) : null;
   const showCheck = item.checkable && (!compact || selection.mode);
 

@@ -18,7 +18,7 @@ import { DeviceDrawer } from "@/components/device/device-drawer";
 import { hapticLight } from "@/lib/haptics";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LiteButton, LiteChoice, LiteEmpty, LiteLoading, LiteRow, LiteScreen, LiteSection, LiteStat } from "./lite";
-import { useUploadThing } from "@/lib/uploadthing";
+import { appUploadErrorKeyOr, uploadAppFiles } from "@/lib/storage/app-upload";
 import type { LiteAppProps } from "./types";
 import { dateKey } from "@/lib/date-key";
 
@@ -118,7 +118,6 @@ export function TasksLite({ organizationId, member, isManager }: LiteAppProps) {
   const [photo, setPhoto] = useState<{ url: string; type: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const { startUpload } = useUploadThing("taskEvidence");
 
   const [taskRows, tasksReady] = useTable(tables.roleTask);
   const [assignmentRows, assignmentsReady] = useTable(tables.roleTaskAssignment);
@@ -229,14 +228,14 @@ export function TasksLite({ organizationId, member, isManager }: LiteAppProps) {
     setUploading(true);
     setError(null);
     try {
-      const res = await startUpload([file]);
+      const res = await uploadAppFiles("taskEvidence", { files: [file], organizationId, source: "tasks" });
       const first = res?.[0];
       const url = (first?.serverData as { url?: string } | undefined)?.url;
       if (!url) throw new Error("upload returned no url");
       setPhoto({ url, type: (first?.serverData as { type?: string } | undefined)?.type ?? file.type ?? "image" });
     } catch (err) {
       console.error("Evidence upload failed:", err);
-      setError(t("device.lite.tasks.uploadFailed"));
+      setError(t(appUploadErrorKeyOr(err, "device.lite.tasks.uploadFailed")));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";

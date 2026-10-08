@@ -17,6 +17,7 @@ import type { DriveEntryActions } from "@/components/drive/preview/open-entry";
 import { AppsView } from "@/components/drive/virtual/apps-view";
 import type { VirtualSourceSummary } from "@/components/drive/virtual/use-virtual-sources";
 import { useT } from "@/lib/i18n/context";
+import type { AppFileSource } from "@/lib/storage/sources";
 import { cn } from "@/lib/utils";
 import { DriveEmpty, type DriveEmptyProps } from "./drive-empty";
 
@@ -24,6 +25,8 @@ export interface DriveContentApps {
   source: VirtualSourceId | "";
   /** useVirtualSources(...).sources: the sources this person may see. */
   sources: readonly VirtualSourceSummary[];
+  /** useDrive().appBytesBySource: bytes per app over every app file of the store. */
+  appBytes: ReadonlyMap<AppFileSource, number>;
   ready: boolean;
   onPick(pick: VirtualSourceId | VirtualEntry): void;
   onOpenOrigin(route: string): void;
@@ -72,6 +75,7 @@ function Results(props: DriveContentProps) {
       <AppsView
         source={apps.source}
         sources={apps.sources}
+        appBytes={apps.appBytes}
         entries={files}
         ready={apps.ready && !loading}
         view={view}

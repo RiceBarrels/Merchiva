@@ -4,13 +4,18 @@
 
 import {
   Bug,
+  ClipboardList,
   Clock,
+  File,
+  FileText,
   GraduationCap,
   HardDrive,
   LayoutGrid,
   ListChecks,
   MessageSquare,
   Package,
+  Presentation,
+  Sheet,
   Star,
   Store,
   Tag,
@@ -20,7 +25,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import type { VirtualSourceMeta } from "@/components/drive/model/virtual-sources";
+import { VIRTUAL_SOURCES, type VirtualSourceMeta } from "@/components/drive/model/virtual-sources";
 import type { DriveSection } from "@/components/drive/model/types";
 
 export const SECTION_ICONS: Readonly<Record<DriveSection, LucideIcon>> = {
@@ -42,7 +47,22 @@ export const SOURCE_ICONS: Readonly<Record<VirtualSourceMeta["icon"], LucideIcon
   Tag,
   Bug,
   UserCircle,
+  ClipboardList,
 };
+
+const UNLISTED_SOURCE_ICONS: Readonly<Record<string, LucideIcon>> = {
+  doc_image: FileText,
+  sheet_image: Sheet,
+  slides_image: Presentation,
+  logo: UserCircle,
+  avatar: UserCircle,
+};
+
+/** The icon of a "Stored in apps" byte-total row (model/app-storage.ts AppBytesRow): its source's, else a file. */
+export function appBytesRowIcon(row: { id: string; source?: string }): LucideIcon {
+  const meta = VIRTUAL_SOURCES.find((s) => s.id === (row.source ?? row.id));
+  return meta ? SOURCE_ICONS[meta.icon] : (UNLISTED_SOURCE_ICONS[row.id] ?? File);
+}
 
 /** i18n key of a section's name. */
 export function sectionLabelKey(section: DriveSection): string {

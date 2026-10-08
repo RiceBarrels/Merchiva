@@ -106,6 +106,12 @@ const TABLE_DEFS: readonly TableDef[] = [
   },
   // A document's Drive type and folder (drive/document-file.ts): restoreDocument and setDocumentVisibility read it.
   { accessor: "documentFile", sqlName: "document_file", primaryKey: "documentId", indexes: { byOrganizationId: "organizationId" } },
+  // Storage accounting (drive/storage.ts): new documents check the org's quota and keep a document_size row.
+  { accessor: "driveUsage", sqlName: "drive_usage", primaryKey: "organizationId", indexes: { byScope: "scope" } },
+  { accessor: "orgStorageUsage", sqlName: "org_storage_usage", primaryKey: "organizationId", indexes: {} },
+  { accessor: "documentSize", sqlName: "document_size", primaryKey: "documentId", indexes: { byOrganizationId: "organizationId" } },
+  // Allowed, not yet recorded app uploads count toward the same quota (orgStorageTotal).
+  { accessor: "appUploadHold", sqlName: "app_upload_hold", primaryKey: "id", autoInc: true, indexes: { byOrganizationId: "organizationId" } },
 ];
 
 /** Reducers the fake server exposes, taken verbatim from the module. */

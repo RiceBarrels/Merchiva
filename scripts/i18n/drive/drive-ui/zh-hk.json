@@ -9,7 +9,7 @@
       "drive": "雲端硬碟"
     },
     "catalogDesc": {
-      "drive": "店舖的檔案、相片、試算表及簡報，集中於一處。"
+      "drive": "店舖保存的所有檔案，集中於一處：上載的檔案、相片，以及以編輯器插件製作的文件、試算表及簡報。"
     },
     "lite": {
       "drive": {
@@ -361,7 +361,7 @@
       "openIn": "在{app}中開啟",
       "count": "{count} 個檔案",
       "countOne": "1 個檔案",
-      "notIncluded": "不包括：在財務中輸入的收據連結、文檔及課程文字中的圖片，以及傳送給 Mr. Merchiva 的附件。",
+      "notIncluded": "在財務中輸入的收據連結及手動貼上的連結不會由 Merchiva 儲存，因此不計入。",
       "sources": {
         "chat": "聊天",
         "tasks": "任務",

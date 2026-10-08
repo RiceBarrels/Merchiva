@@ -28,7 +28,7 @@ import { useDriveSelection, useFinePointer } from "@/components/drive/list/use-s
 import type { ActionContext } from "@/components/drive/model/actions";
 import { buildDriveTree } from "@/components/drive/model/entries";
 import { driveEmptyKind, groupDriveEntries, listDriveEntries, sortDriveEntries, summarizeMembers, type ListingQuery } from "@/components/drive/model/listing";
-import type { DriveEntry, DriveSort, VirtualEntry, VirtualSourceId } from "@/components/drive/model/types";
+import { isRecordEntry, type DriveEntry, type DriveSort, type VirtualEntry, type VirtualSourceId } from "@/components/drive/model/types";
 import { DriveNav } from "@/components/drive/nav/drive-nav";
 import { StorageMeter, displayUsage } from "@/components/drive/nav/storage-meter";
 import { DriveSectionSelect } from "@/components/drive/nav/section-select";
@@ -38,6 +38,7 @@ import { usePreviewLoader } from "@/components/drive/preview/open-entry";
 import { DrivePreviewSheet } from "@/components/drive/preview/preview-sheet";
 import { DriveToolbar } from "@/components/drive/toolbar/drive-toolbar";
 import { DisabledReasonTooltip, NewMenu } from "@/components/drive/toolbar/new-menu";
+import { useDocTemplateNames } from "@/components/drive/store-templates";
 import { SelectionBar } from "@/components/drive/toolbar/selection-bar";
 import { DriveDropZone } from "@/components/drive/upload/drop-zone";
 import { DriveFileInputs, useDriveFilePickers } from "@/components/drive/upload/file-inputs";
@@ -45,19 +46,21 @@ import { UploadTray } from "@/components/drive/upload/upload-tray";
 import { useDriveData } from "@/components/drive/use-drive-data";
 import { useDriveUrlState } from "@/components/drive/use-drive-url-state";
 import { useVirtualSources } from "@/components/drive/virtual/use-virtual-sources";
+import { PluginInstallDialog } from "@/components/plugins/plugin-install-prompt";
 import { useSetTabTitle } from "@/lib/browser-shell";
 import { usePermissions } from "@/lib/context/permissions";
-import { isManagerRouteEnabled } from "@/lib/device-apps";
 import { driveHref } from "@/lib/drive/hrefs";
 import { useDriveStorageStatus } from "@/lib/drive/use-drive-storage-status";
 import { useDriveTokenBridge } from "@/lib/drive/use-drive-token";
 import { useDriveUploads } from "@/lib/drive/use-drive-uploads";
 import { useI18n } from "@/lib/i18n/context";
-import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
+import { useMerchivaPageContext } from "@/lib/merchiva/page-context";
+import { driveHomePageContext } from "@/lib/merchiva/workspace-page-context";
 import { useLiveSpacetimeConnection } from "@/lib/spacetimedb/hooks/useDocs";
 import { useIsMobile } from "@/lib/use-is-mobile";
 import { useDriveActions } from "./actions/use-drive-actions";
 import { useDriveCreate } from "./actions/use-drive-create";
+import { useEditorGate, useGatedOpenUrl } from "./actions/use-editor-gate";
 import { DriveDeleteForeverDialog } from "./dialogs/delete-forever-dialog";
 import { MoveDialog } from "./dialogs/move-dialog";
 import { DriveNameDialog } from "./dialogs/name-dialog";
@@ -84,10 +87,11 @@ export function DriveHome() {
   const now = useMinuteClock();
   const phone = useIsMobile(PHONE_MAX_WIDTH);
   const fine = useFinePointer();
-  const openUrl = useDocsOpenUrl();
+  // Docs, Sheets and Slides are plugins: every open or create of one asks to download it when it is missing.
+  const gate = useEditorGate({ surface: "manager" });
+  const openUrl = useGatedOpenUrl(useDocsOpenUrl(), gate.ensureEditor);
   const loader = usePreviewLoader();
   const organizationId = usePermissions().organizationId ?? "";
-  const docsInstalled = isManagerRouteEnabled("/manager/docs", useDeviceApps().installed);
   const resultsId = useId();
 
   const section = url.space;
@@ -95,7 +99,7 @@ export function DriveHome() {
   const loading = !notPublished && (!data.isReady || drive.status === "checking");
 
   // "Stored in apps": the viewed source's files (its entries join the tree, so ?preview= finds them), else the counts.
-  const virtual = useVirtualSources({ enabledSource: section === "apps" ? url.source : "summary" });
+  const virtual = useVirtualSources({ enabledSource: section === "apps" ? url.source : "summary", appFileSizes: drive.appFileSizes });
   const listTree = useMemo(
     () => (section === "apps" && virtual.entries.length > 0 ? buildDriveTree([...tree.entries, ...virtual.entries]) : tree),
     [section, virtual.entries, tree],
@@ -135,15 +139,22 @@ export function DriveHome() {
   const selection = useDriveSelection(visibleKeys, `${section}:${url.folder}:${url.member}:${url.source}`);
   const selected = useMemo(() => sorted.filter((entry) => selection.keys.has(entry.key)), [sorted, selection.keys]);
   useSetTabTitle(listing.folder ? listing.folder.name.trim() || untitled.folder : null);
+  // What Mr. Merchiva is told the page shows (the old Docs home links land here, on the documents view).
+  useMerchivaPageContext(
+    driveHomePageContext({
+      space: section, type: url.type === "all" ? "" : url.type, folder: listing.folder?.name ?? null, search: url.query, shown: sorted.length,
+    }),
+  );
 
-  const ctx = useMemo((): ActionContext => ({ surface: "manager", docsInstalled, section, offline, touch: !fine }), [docsInstalled, section, offline, fine]);
+  const ctx = useMemo((): ActionContext => ({ surface: "manager", section, offline, touch: !fine }), [section, offline, fine]);
   const actions = useDriveActions({
-    tree: listTree, actor, ctx, url, openUrl, loader, organizationId, members, onSelect: selection.enterMode, t, locale,
+    tree: listTree, actor, ctx, url, openUrl, loader, organizationId, members, onSelect: selection.enterMode, gate, t, locale,
   });
+  const templateNames = useDocTemplateNames(memberNames, actor.memberId);
   const showMyFiles = useCallback(() => url.go({ space: "my" }), [url]);
   const create = useDriveCreate({
     tree, organizationId, actingMemberId: actor.actingMemberId, actorMemberId: actor.memberId, section, usage: drive.usage,
-    docsInstalled, queue, openUrl, showMyFiles, t, locale,
+    ensureEditor: gate.ensureEditor, queue, openUrl, showMyFiles, t, locale,
   });
 
   // Why nothing can be added here right now; null = uploads and New work, into listing.createTarget.
@@ -180,13 +191,20 @@ export function DriveHome() {
       <NewMenu
         disabledReason={disabledReason}
         uploadDisabledReason={uploadOffReason}
-        docsInstalled={docsInstalled}
+        editorInstalled={gate.isInstalled}
+        canDownloadEditors={gate.canInstall}
         supportsFolder={pickers.supportsFolder}
         onNewFolder={onNewFolder}
         onUploadFiles={pickers.pickFiles}
         onUploadFolder={pickers.pickFolder}
         onNewDocument={(kind) => {
           if (createTarget) create.createDocument(kind, createTarget);
+        }}
+        onNewFromTemplate={(templateId) => {
+          if (createTarget) create.createFromTemplate(templateId, createTarget, templateNames);
+        }}
+        onImportFile={(file) => {
+          if (createTarget) create.importFile(file, createTarget);
         }}
         busy={create.creating}
       />
@@ -211,8 +229,11 @@ export function DriveHome() {
   const previewEntry = url.preview ? (listTree.byKey.get(url.preview) ?? null) : null;
   const shareEntry = actions.share.value;
   const locationOf = (entry: DriveEntry) => entryLocationLabel(entry, listTree, actor.memberId, t);
+  // A record (a form) opens its page in that app; a file link previews.
   const pickApp = (pick: VirtualSourceId | VirtualEntry) =>
-    typeof pick === "string" ? url.go({ space: "apps", source: pick }) : url.go({ preview: pick.key });
+    typeof pick === "string" ? url.go({ space: "apps", source: pick })
+      : isRecordEntry(pick) ? openUrl(pick.href, "current")
+        : url.go({ preview: pick.key });
 
   return (
     <div className="flex min-h-full flex-col">
@@ -299,7 +320,7 @@ export function DriveHome() {
               }}
               apps={
                 section === "apps"
-                  ? { source: url.source, sources: virtual.sources, ready: virtual.ready, onPick: pickApp, onOpenOrigin: (route) => openUrl(route, "current"), actions }
+                  ? { source: url.source, sources: virtual.sources, appBytes: drive.appBytesBySource, ready: virtual.ready, onPick: pickApp, onOpenOrigin: (route) => openUrl(route, "current"), actions }
                   : null
               }
               members={
@@ -353,6 +374,7 @@ export function DriveHome() {
       <SpaceChangeDialog open={actions.spaceChange.open} onOpenChange={actions.setSpaceChangeOpen} plan={actions.spaceChange.value} onConfirm={actions.confirmSpaceChange} />
       <DriveDeleteForeverDialog open={actions.remove.open} onOpenChange={actions.setRemoveOpen} entries={actions.remove.value ?? NO_ENTRIES} onConfirm={actions.confirmRemove} />
       {shareEntry && <ShareDialog open={actions.share.open} onOpenChange={actions.setShareOpen} doc={shareEntry.doc} access={shareEntry.docAccess} />}
+      <PluginInstallDialog {...gate.dialog} />
       <DriveFileInputs {...pickers.inputs} />
       <ManagementNoticeGate />
     </div>

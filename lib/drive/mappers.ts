@@ -8,8 +8,20 @@
 // a render.
 
 import { idString, toDate } from "@/lib/docs/mappers";
+import { isAppFileSource } from "@/lib/storage/sources";
 import { effectiveQuotaBytes } from "./rules";
-import type { DriveItem, DriveNoticeAck, DriveStar, DriveSurface, DriveUsage, DriveUsageView } from "./types";
+import type {
+  AppFileRecord,
+  DocumentSize,
+  DriveItem,
+  DriveNoticeAck,
+  DriveStar,
+  DriveSurface,
+  DriveUsage,
+  DriveUsageView,
+  OrgStorageUsage,
+  StorageBreakdown,
+} from "./types";
 
 function str(value: any): string {
   return value == null ? "" : String(value);
@@ -77,15 +89,67 @@ export function mapDriveUsage(row: any): DriveUsage {
   };
 }
 
-/** The storage meter's figures; null before the org's usage row exists. The quota is never 0 (effectiveQuotaBytes). */
-export function toDriveUsageView(u: DriveUsage | null): DriveUsageView | null {
-  if (!u) return null;
+export function mapOrgStorageUsage(row: any): OrgStorageUsage {
   return {
-    usedBytes: u.bytesUsed,
-    reservedBytes: u.bytesReserved,
+    organizationId: str(row.organizationId),
+    docBytes: count(row.docBytes),
+    docCount: count(row.docCount),
+    appBytes: count(row.appBytes),
+    appFileCount: count(row.appFileCount),
+    updatedAt: dateOrEpoch(row.updatedAt),
+  };
+}
+
+/** Unknown source → "other" (the store still pays for the bytes). */
+export function mapAppFile(row: any): AppFileRecord {
+  return {
+    keyHash: str(row.keyHash).toLowerCase(),
+    organizationId: str(row.organizationId),
+    source: isAppFileSource(row.source) ? row.source : "other",
+    sizeBytes: count(row.sizeBytes),
+    mimeType: str(row.mimeType),
+    createdAt: dateOrEpoch(row.createdAt),
+  };
+}
+
+export function mapDocumentSize(row: any): DocumentSize {
+  return {
+    documentId: lowerId(row.documentId),
+    organizationId: str(row.organizationId),
+    fileType: str(row.fileType),
+    bytes: count(row.bytes),
+    versionBytes: count(row.versionBytes),
+    updatedAt: dateOrEpoch(row.updatedAt),
+  };
+}
+
+/**
+ * Everything the store keeps against its quota, as the module adds it up: Drive files (stored + reserved), Docs,
+ * Slides and Forms, Sheets, app files. A missing row counts 0 (a store with no uploads), except that documents and
+ * apps are unknown (null) when `measured` is false: a module without org_storage_usage.
+ */
+export function storageBreakdown(u: DriveUsage | null, org: OrgStorageUsage | null, measured = true): StorageBreakdown {
+  const files = (u?.bytesUsed ?? 0) + (u?.bytesReserved ?? 0);
+  const documents = measured ? (org?.docBytes ?? 0) : null;
+  const sheets = u?.sheetBytes ?? 0;
+  const apps = measured ? (org?.appBytes ?? 0) : null;
+  const total = files + (documents ?? 0) + sheets + (apps ?? 0);
+  return { files, documents, sheets, apps, total, quota: effectiveQuotaBytes(u) };
+}
+
+/**
+ * The storage meter's figures; null before either usage row exists (displayUsage then shows zero of the default).
+ * The quota is never 0 (effectiveQuotaBytes).
+ */
+export function toDriveUsageView(u: DriveUsage | null, org: OrgStorageUsage | null = null, measured = true): DriveUsageView | null {
+  if (!u && !org) return null;
+  return {
+    usedBytes: u?.bytesUsed ?? 0,
+    reservedBytes: u?.bytesReserved ?? 0,
     quotaBytes: effectiveQuotaBytes(u),
-    fileCount: u.fileCount,
-    sheetBytes: u.sheetBytes,
+    fileCount: u?.fileCount ?? 0,
+    sheetBytes: u?.sheetBytes ?? 0,
+    breakdown: storageBreakdown(u, org, measured),
   };
 }
 

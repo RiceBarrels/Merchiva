@@ -9,7 +9,9 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Clock } from "lucide-react";
 import { toast } from "sonner";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
-import { recordPunch } from "@/lib/spacetimedb/actions";
+import { recordOperatorPunch } from "@/lib/spacetimedb/actions/pin";
+import { pinErrorKey } from "@/lib/pin-attempt";
+import { useT } from "@/lib/i18n/context";
 import { Button } from "@/components/ui/button";
 import { DeviceDrawer } from "./device-drawer";
 
@@ -24,7 +26,8 @@ export interface PunchInPromptLabels {
 
 export interface PunchInPromptProps {
   open: boolean;
-  /** Member's 4-digit punch-in code; the prompt is inert without one. */
+  /** Member's 4-digit punch-in code; the prompt is inert without one. The punch
+   *  itself is for the device's resolved operator and never re-sends it. */
   code: string | null | undefined;
   /** Shown after the "punched in" toast. */
   name?: string;
@@ -39,6 +42,7 @@ export interface PunchInPromptProps {
 }
 
 export function PunchInPrompt({ open, code, name, labels, onDone, onSkip, maxWidth = 400, scan }: PunchInPromptProps) {
+  const t = useT();
   const [pane, setPane] = useState<"ask" | "scan">("ask");
   const [busy, setBusy] = useState(false);
 
@@ -55,12 +59,14 @@ export function PunchInPrompt({ open, code, name, labels, onDone, onSkip, maxWid
     }
     setBusy(true);
     try {
-      await recordPunch(code, "in");
+      await recordOperatorPunch("in");
       hapticSuccess();
       toast.success(name ? `${labels.punchedIn} · ${name}` : labels.punchedIn);
       onDone();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : labels.failed);
+      const message = err instanceof Error ? err.message : "";
+      const key = pinErrorKey(message);
+      toast.error(key ? t(key) : message || labels.failed);
     } finally {
       setBusy(false);
     }

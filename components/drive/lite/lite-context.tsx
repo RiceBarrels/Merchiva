@@ -10,10 +10,11 @@ import type { DocsOpenUrl } from "@/components/docs/docs-open-context";
 import type { DriveAction } from "@/components/drive/model/actions";
 import type { DriveDocKind, DriveEntry, DriveMoveTarget } from "@/components/drive/model/types";
 import type { MovePlan } from "@/components/drive/model/move";
+import type { EditorKind } from "@/lib/device-apps";
 import type { LiteDriveScreen, LiteTab } from "./lite-state";
 import type { LiteDrive } from "./use-lite-drive";
 
-export type LitePanelKind = "actions" | "details" | "name" | "move" | "confirm" | "space" | "notice";
+export type LitePanelKind = "actions" | "details" | "name" | "move" | "confirm" | "space" | "notice" | "install" | "templates";
 /** The drawers that show a value of their own (LitePanelState keeps it under the same name). */
 export type LiteValuePanel = Exclude<LitePanelKind, "notice">;
 
@@ -25,6 +26,13 @@ export interface LiteNameTarget {
   target: DriveMoveTarget | null;
   initialName: string;
   kind: "folder" | "file" | DriveDocKind;
+}
+
+/** A file whose editor plugin is missing: download it, then `then` (open the editor, create, open as). */
+export interface LiteInstallRequest {
+  kind: EditorKind;
+  mode: "open" | "create";
+  then: () => void;
 }
 
 export interface LiteConfirm {
@@ -41,6 +49,9 @@ export interface LitePanelState {
   move: readonly DriveEntry[];
   confirm: LiteConfirm | null;
   space: MovePlan | null;
+  install: LiteInstallRequest | null;
+  /** Where a Doc from a template goes (lite-template-drawer.tsx). */
+  templates: DriveMoveTarget | null;
 }
 
 export const NO_PANEL: LitePanelState = {
@@ -51,6 +62,8 @@ export const NO_PANEL: LitePanelState = {
   move: [],
   confirm: null,
   space: null,
+  install: null,
+  templates: null,
 };
 
 export interface LiteNav {
@@ -81,6 +94,10 @@ export interface LitePanels {
   openConfirm(confirm: LiteConfirm): void;
   openSpaceChange(plan: MovePlan): void;
   openNotice(): void;
+  /** The download prompt in front of an editor whose plugin is missing (lite-install-drawer.tsx). */
+  openInstall(request: LiteInstallRequest): void;
+  /** New ▸ Doc from a template: the store templates, for a Doc created in `target`. */
+  openTemplates(target: DriveMoveTarget): void;
   close(): void;
   /**
    * Closes `kind` only while it is still open showing `value` (the same object it was opened with): a write that

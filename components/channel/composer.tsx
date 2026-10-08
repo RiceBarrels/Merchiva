@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { uploadChatFile } from "@/lib/chat/upload";
+import { usePermissions } from "@/lib/context/permissions";
+import { appUploadErrorKeyOr } from "@/lib/storage/app-upload";
 import { useChannelWorkspace } from "@/components/channel/context";
 
 export interface ComposerHandle {
@@ -48,6 +50,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
 ) {
   const t = useT();
   const { people, meHex, isMobile, nameOf, avatarOf } = useChannelWorkspace();
+  const { organizationId } = usePermissions();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState<{ start: number; query: string } | null>(null);
@@ -114,14 +117,14 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (!file || !organizationId) return;
     setBusy(true);
     let attachment: Attachment | null = null;
     try {
-      attachment = await uploadChatFile(file);
+      attachment = await uploadChatFile(file, organizationId);
     } catch (err) {
       console.error("Chat upload failed:", err);
-      toast.error(t("chat.ws.uploadFailed"));
+      toast.error(t(appUploadErrorKeyOr(err, "chat.ws.uploadFailed")));
     } finally {
       setBusy(false);
     }

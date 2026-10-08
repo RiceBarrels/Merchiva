@@ -1,0 +1,32 @@
+{
+  "drive": {
+    "storage": {
+      "breakdown": {
+        "title": "存储空间使用情况",
+        "files": "上传的文件",
+        "documents": "文档、演示文稿和表单",
+        "sheets": "表格",
+        "apps": "其他应用中的文件"
+      },
+      "includesEverything": "门店保存的所有内容都计入存储空间：上传的文件、文档、表格、演示文稿、表单和其他应用中的文件。"
+    },
+    "apps": {
+      "bytesSource": {
+        "doc_image": "文档中的图片",
+        "sheet_image": "表格中的图片",
+        "slides_image": "演示文稿中的图片",
+        "logo": "门店标志",
+        "avatar": "头像",
+        "other": "其他文件"
+      },
+      "storageTotal": "其他应用中存储了 {size}",
+      "bytesNotListed": "{source}：你无法在此打开的文件",
+      "notStoredHere": "包括你无法在此打开的文件，例如其他人的聊天附件。",
+      "sources": {
+        "forms": "表单"
+      },
+      "countForms": "{count} 个表单",
+      "countFormsOne": "1 个表单"
+    }
+  }
+}

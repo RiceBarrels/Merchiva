@@ -51,7 +51,7 @@ function doc(patch: Partial<DocumentMeta> = {}): DocumentMeta {
   };
 }
 
-function treeFor(actor: Member, items: DriveItem[], docs: DocumentMeta[] = [], opts: { grants?: DocAccessGrant[]; opened?: [string, number][]; extra?: DriveEntry[] } = {}): DriveTree {
+function treeFor(actor: Member, items: DriveItem[], docs: DocumentMeta[] = [], opts: { grants?: DocAccessGrant[]; opened?: [string, number][]; extra?: DriveEntry[]; docSizes?: [string, number][] } = {}): DriveTree {
   const grants = opts.grants ?? [];
   const docAccess = (d: DocumentMeta) => resolveDocAccess({ doc: d, memberId: actor.id, orgRole: actor.role, permissions: actor.permissions, grants });
   const admin = driveAdminAccess(actor.role, actor.permissions);
@@ -63,6 +63,7 @@ function treeFor(actor: Member, items: DriveItem[], docs: DocumentMeta[] = [], o
       grants, starredItemIds: new Set(items.filter((i) => i.name.startsWith("*")).map((i) => i.id)), starredDocumentIds: new Set(),
       accessForItem: (i) => resolveDriveItemAccess(i, { organizationId: ORG, memberId: actor.id, role: actor.role, gate: true, canViewAll: admin.view, canEditAll: admin.edit }),
       accessForDocument: docAccess, admin,
+      ...(opts.docSizes ? { documentSizes: new Map(opts.docSizes) } : {}),
     },
     ceiling: null,
     actor: { memberId: actor.id, surface: "manager", acting: false },
@@ -174,6 +175,7 @@ describe("listDriveEntries — sections", () => {
       starred: false, trashedAt: null, openedAt: null, location: null,
       access: { canOpen: true, canDownload: true, canRename: false, canMove: false, canTrash: false, canRestore: false, canDeleteForever: false, canShare: false, canStar: false, canAddChildren: false },
       type: "virtual", source, url: "https://x.test/a.png", fileKind: "image", mimeType: "image/png", group: "", originRoute: null,
+      sizeBytes: null,
     });
     const tree = treeFor(ANA, [], [], { extra: [v("bugs", "b1"), v("chat", "c1")] });
     expect(listDriveEntries(tree, query({ section: "apps" }), actorOf(ANA)).entries).toEqual([]);
@@ -242,6 +244,18 @@ describe("sortDriveEntries / groupDriveEntries", () => {
     expect(order("created")).toEqual([f2.id, f10.id, named.id, small.id, nameless.id, big.id]);
     expect(order("size")).toEqual([f2.id, f10.id, big.id, small.id, named.id, nameless.id]);
   });
+  test("size counts documents and app files with a known size, then everything without one by name", () => {
+    const sized = doc({ title: "Sized doc" });
+    const sizedTree = treeFor(ANA, [small, big], [sized, named], { docSizes: [[sized.id, 20]] });
+    const virtual = (id: string, sizeBytes: number | null): VirtualEntry => ({
+      ...(sizedTree.entries.find((e) => e.id === small.id) as DriveEntry), key: `v:chat:${id}`, id, name: id, location: null,
+      type: "virtual", source: "chat", url: "https://utfs.io/f/k", fileKind: "image", mimeType: "image/png", group: "", originRoute: null, sizeBytes,
+    } as VirtualEntry);
+    const list = [...sizedTree.entries, virtual("v-big", 70), virtual("v-unknown", null)];
+    expect(sizedTree.entries.find((e) => e.id === sized.id)).toMatchObject({ sizeBytes: 20 });
+    expect(sizedTree.entries.find((e) => e.id === named.id)).toMatchObject({ sizeBytes: null });
+    expect(sortDriveEntries(list, "size", "my", "en").map((e) => e.id)).toEqual(["v-big", big.id, sized.id, small.id, named.id, "v-unknown"]);
+  });
   test("Recent: no folders-first, the later of changed and opened", () => {
     const opened = { ...all.find((e) => e.id === big.id)!, openedAt: 10_000 };
     const list = sortDriveEntries([...all.filter((e) => e.id !== big.id), opened], "modified", "recent");
@@ -274,8 +288,9 @@ describe("driveEmptyKind", () => {
 });
 
 describe("summarizeMembers", () => {
-  test("active first, then disabled, then former owners with no member row", () => {
+  test("active first, then disabled, then former owners with no member row; bytes include sized documents, unknown when none is sized", () => {
     const formerId = uuid();
+    const sizedDoc = doc({ ownerMemberId: ANA.id, title: "Sized" });
     const tree = treeFor(MANAGER, [
       item({ ownerMemberId: ANA.id, sizeBytes: 100 }),
       item({ ownerMemberId: ANA.id, sizeBytes: 23 }),
@@ -283,16 +298,16 @@ describe("summarizeMembers", () => {
       item({ ownerMemberId: ANA.id, trashed: true, trashRootId: "x", trashedAt: new Date(1) }),
       item({ ownerMemberId: formerId, sizeBytes: 7 }),
       item({ space: "store", ownerMemberId: BEN.id, sizeBytes: 999 }),
-    ], [doc({ ownerMemberId: BEN.id })]);
+    ], [doc({ ownerMemberId: BEN.id }), sizedDoc], { docSizes: [[sizedDoc.id, 40]] });
     const rows = summarizeMembers(tree, [
       { id: BEN.id, name: "Ben", role: "staff", active: false },
       { id: ANA.id, name: "Ana", role: "staff", active: true },
       { id: MANAGER.id, name: "Zed", role: "manager", active: true },
     ]);
     expect(rows.map((r) => [r.name, r.active, r.former, r.fileCount, r.bytes])).toEqual([
-      ["Ana", true, false, 2, 123],
+      ["Ana", true, false, 3, 163],
       ["Zed", true, false, 0, 0],
-      ["Ben", false, false, 1, 0],
+      ["Ben", false, false, 1, null],
       [null, false, true, 1, 7],
     ]);
     expect(rows[3]).toMatchObject({ memberId: formerId, role: "" });

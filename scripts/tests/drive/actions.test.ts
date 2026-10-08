@@ -1,6 +1,8 @@
 // components/drive/model/actions.ts — entry menus (manager and lite) and multi-selection actions.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { entryHref } from "@/components/drive/actions/entry-links";
+import { isPreviewable } from "@/components/drive/preview/preview-mode";
 import { LITE_ACTION_LABEL, driveActionGroups, driveBulkActions, type ActionContext } from "@/components/drive/model/actions";
 import type { DocEntry, DriveEntry, DriveEntryAccess, FileEntry, FolderEntry, VirtualEntry } from "@/components/drive/model/types";
 import type { DocAccess, DocumentMeta } from "@/lib/docs/types";
@@ -33,7 +35,7 @@ const virtualEntry = (originRoute: string | null = "/manager/bugs"): VirtualEntr
   url: "https://x.test/a.png", fileKind: "image", mimeType: "image/png", group: "", originRoute,
 });
 
-const MANAGER: ActionContext = { surface: "manager", docsInstalled: true, section: "my", offline: false };
+const MANAGER: ActionContext = { surface: "manager", section: "my", offline: false };
 const STORE: ActionContext = { ...MANAGER, surface: "store" };
 const NO_MOVE = { toStore: false, toMy: false };
 const groups = (entry: DriveEntry, ctx: ActionContext = MANAGER, move = NO_MOVE) => driveActionGroups(entry, ctx, move);
@@ -48,19 +50,30 @@ describe("driveActionGroups", () => {
     expect(groups(fileEntry("b.xlsx", ""))[0]).toEqual(["preview", "download", "openAsSheet"]);
     expect(groups(fileEntry("c.pptx", ""))[0]).toEqual(["preview", "download", "openAsSlides"]);
     expect(groups(fileEntry("d.docx", ""))[0]).toEqual(["preview", "download", "openAsDoc"]);
-    expect(groups(fileEntry("d.docx", ""), { ...MANAGER, docsInstalled: false })[0]).toEqual(["preview", "download"]);
   });
 
-  test("documents: text documents open only with Docs installed; sheets and slides always", () => {
+  test("documents: every kind offers open whatever is installed (the runner asks for a missing editor plugin)", () => {
     expect(groups(docEntry("doc"))).toEqual([["open", "openNewTab"], ["rename", "move", "share", "star", "details"], ["trash"]]);
-    expect(groups(docEntry("doc"), { ...MANAGER, docsInstalled: false })[0]).toEqual(["rename", "move", "share", "star", "details"]);
-    expect(groups(docEntry("sheet"), { ...MANAGER, docsInstalled: false })[0]).toEqual(["open", "openNewTab"]);
+    expect(groups(docEntry("sheet"))[0]).toEqual(["open", "openNewTab"]);
+    expect(groups(docEntry("slides"))[0]).toEqual(["open", "openNewTab"]);
+    expect(groups(docEntry("doc", { canOpen: false }))[0]).toEqual(["rename", "move", "share", "star", "details"]);
     expect(groups(docEntry("slides", {}, { starred: true }))[1]).toContain("unstar");
   });
 
   test("virtual: preview, download, open in the app it came from", () => {
     expect(groups(virtualEntry())).toEqual([["preview", "download", "openOriginal"], ["details"]]);
     expect(groups(virtualEntry(null))).toEqual([["preview", "download"], ["details"]]);
+  });
+
+  test("a record (a form): opens its page, never previews or downloads", () => {
+    const record: VirtualEntry = {
+      ...virtualEntry("/manager/forms"), key: "v:forms:1", source: "forms", url: "", fileKind: "other",
+      mimeType: "application/octet-stream", access: { ...NONE, canOpen: true }, href: "/manager/forms/edit?id=1&view=responses",
+    };
+    expect(groups(record)).toEqual([["open", "openNewTab", "openOriginal"], ["details"]]);
+    expect(isPreviewable(record)).toBe(false);
+    expect(isPreviewable(virtualEntry())).toBe(true);
+    expect(entryHref(record, { space: "apps", folder: "", member: "", source: "forms" }, null)).toBe(record.href ?? "");
   });
 
   test("access decides: a viewer gets open/download and details only", () => {

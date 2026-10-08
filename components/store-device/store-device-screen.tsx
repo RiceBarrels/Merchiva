@@ -8,6 +8,7 @@ import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { hapticSuccess } from "@/lib/haptics";
 import { clearDeviceOperator, registerStoreDevice } from "@/lib/spacetimedb/actions";
+import { rememberOperatorGrant } from "@/lib/spacetimedb/actions/pin";
 import { getOrCreateDeviceId, getStoreMachineMode, setStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
 import { useAutolockSeconds, useCurrentOperator, setCurrentOperator, getCurrentOperator } from "@/lib/store-device-lock";
 import { useIsMobile } from "@/lib/use-is-mobile";
@@ -22,6 +23,7 @@ import { PunchPrompt } from "./punch-prompt";
 /** Delete this tablet's `device_operator_session` row. Best effort: the server
  *  also ignores a session older than 12 h. */
 function forgetOperatorSession() {
+  rememberOperatorGrant(null);
   void clearDeviceOperator().catch((err) => console.warn("[store-device] clear operator failed:", err));
 }
 

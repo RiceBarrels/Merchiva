@@ -13,17 +13,16 @@
 
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Camera, ChevronLeft, CloudOff, FolderOpen, FolderX, HardDrive, LayoutGrid, Plus, SearchX, Store, Trash2, Upload, type LucideIcon } from "lucide-react";
+import { Camera, ChevronLeft, CloudOff, FolderOpen, FolderX, LayoutGrid, Plus, SearchX, Store, Trash2, Upload, type LucideIcon } from "lucide-react";
 import { LiteButton, LiteChoice, LiteEmpty, LiteLoading, LiteRow, LiteScreen, LiteSearch } from "@/components/device/apps/lite";
 import { useMinuteClock } from "@/components/docs/home/format";
 import { listDriveEntries, sortDriveEntries, type ListingQuery } from "@/components/drive/model/listing";
 import type { DriveMoveTarget } from "@/components/drive/model/types";
-import { displayUsage, storageFigures } from "@/components/drive/nav/storage-meter";
+import { displayUsage } from "@/components/drive/nav/storage-meter";
 import { SECTION_ICONS } from "@/components/drive/nav/section-meta";
 import { entryLabel } from "@/components/drive/preview/preview-mode";
 import { DriveFileInputs, useDriveFilePickers } from "@/components/drive/upload/file-inputs";
 import { STATUS_TONE_CLASSES } from "@/components/ui/status-badge";
-import { formatDriveBytes } from "@/lib/drive/format";
 import { useDriveStorageStatus } from "@/lib/drive/use-drive-storage-status";
 import { useI18n } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
@@ -33,6 +32,7 @@ import { LiteEntryRow } from "./lite-entry-row";
 import { liteEntrySub, untitledLabels } from "./lite-labels";
 import { LiteMembers } from "./lite-members";
 import { LiteNewDrawer } from "./lite-new-drawer";
+import { LiteStorage } from "./lite-storage";
 import { LiteNoticeRow, LiteSharedDeviceNote } from "./lite-notice";
 import { effectiveTab, LITE_TAB_LABEL, LITE_TAB_SECTION, liteTabs, type LiteDriveScreen, type LiteHomeScreen, type LiteTab } from "./lite-state";
 import { LiteUploads } from "./lite-uploads";
@@ -118,12 +118,6 @@ export function LiteDriveHome({ screen }: { screen: LiteHomeScreen }) {
   const heading = atRoot ? null : homeLabel({ ...screen, tab, memberId });
 
   const usage = displayUsage(drive.data.drive);
-  const storage = usage ? storageFigures(usage) : null;
-  const storageText = storage
-    ? storage.total > 0
-      ? fmt(t("device.lite.drive.storage"), { used: formatDriveBytes(storage.used, locale), total: formatDriveBytes(storage.total, locale) })
-      : fmt(t("device.lite.drive.storageNoQuota"), { used: formatDriveBytes(storage.used, locale) })
-    : null;
 
   let content: ReactNode;
   if (drive.loading) content = <LiteLoading />;
@@ -194,12 +188,7 @@ export function LiteDriveHome({ screen }: { screen: LiteHomeScreen }) {
             <div className="mt-2 flex flex-col gap-2">
               <LiteRow icon={LayoutGrid} title={t("device.lite.drive.fromApps")} chevron onClick={() => nav.push({ kind: "apps", source: "" })} />
               <LiteRow icon={Trash2} title={t("device.lite.drive.trash")} chevron onClick={() => nav.push({ kind: "trash" })} />
-              {storageText && (
-                <p className="flex items-center gap-2 px-1 text-[13px] tabular-nums text-muted-foreground">
-                  <HardDrive className="h-4 w-4 flex-none" aria-hidden />
-                  {storageText}
-                </p>
-              )}
+              <LiteStorage usage={usage} />
             </div>
           )}
         </>

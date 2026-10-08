@@ -1,0 +1,9 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "storage-accounting S4",
+  "note": "New leaves under drive-ui's prefixes for storage accounting: the meter's breakdown of what uses the store's quota (uploaded files, documents, presentations and forms — the module charges form definitions and stored answers to docBytes —, spreadsheets, files in other apps), includesEverything (which takes over the role of drive.storage.excludesDocs; that key stays in place), the per-source byte labels of 'Stored in apps' (drive.apps.bytesSource.*, keyed by the module's source ids) with its total, the '{source}: files you can't open here' row for a tile's store bytes beyond what it lists (bytesNotListed), and the note that it counts files the viewer can't open. drive.apps.notIncluded is reworded in the drive-ui fragment itself, which owns it. Terms follow drive-ui: zh-cn 文档/表格/演示文稿/门店, zh-tw 文件/試算表/簡報/店面, zh-hk 文檔/試算表/簡報/店舖, es apps, fr applications, hi ऐप्स. Also the Forms source of 'Stored in apps' (drive.apps.sources.forms, drive.apps.countForms / countFormsOne), from the Drive Forms source task.",
+  "owned": [],
+  "extends": "drive-ui",
+  "overwrites": ["drive.storage.breakdown.documents", "drive.storage.includesEverything"],
+  "allowSameAsEn": []
+}

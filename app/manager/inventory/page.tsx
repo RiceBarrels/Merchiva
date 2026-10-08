@@ -71,6 +71,7 @@ import { SectionNav } from "@/components/section-nav";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { INVENTORY_CONTENT_UNITS, formatInventoryContentAmount } from "@/lib/inventory-units";
 import { useUploadThing } from "@/lib/uploadthing";
+import { appUploadErrorKeyOr, appUploadHeaders, appUploadInput } from "@/lib/storage/app-upload";
 import { todayKey } from "@/lib/date-key";
 
 type StatusCfg = { label: string; icon: React.ElementType; color: string };
@@ -164,6 +165,7 @@ export default function InventoryPage() {
   const [stockPhotos, setStockPhotos] = useState<StockPhoto[]>([]);
   const [stockSaving, setStockSaving] = useState(false);
   const { startUpload: startStockPhotoUpload, isUploading: uploadingStockPhoto } = useUploadThing("taskEvidence", {
+    headers: appUploadHeaders,
     onClientUploadComplete: (res) => {
       const uploaded = (res ?? [])
         .map((file) => ({
@@ -183,7 +185,7 @@ export default function InventoryPage() {
       }
     },
     onUploadError: (err) => {
-      toast.error(err.message || t("inventory.quickStock.uploadFailed"));
+      toast.error(t(appUploadErrorKeyOr(err, "inventory.quickStock.uploadFailed")));
     },
   });
 
@@ -336,8 +338,9 @@ export default function InventoryPage() {
       toast.error(t("inventory.quickStock.uploadImagesOnly"));
       return;
     }
+    if (!organizationId) return;
     try {
-      await startStockPhotoUpload(picked);
+      await startStockPhotoUpload(picked, appUploadInput(organizationId, "inventory"));
     } catch (err) {
       console.error(err);
       toast.error(t("inventory.quickStock.uploadFailed"));

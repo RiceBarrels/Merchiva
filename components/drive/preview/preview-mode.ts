@@ -45,9 +45,12 @@ export function entryPreviewMode(entry: PreviewableEntry, env: PreviewEnv, opts:
   return mode === "office" && entry.type === "virtual" ? "none" : mode;
 }
 
-/** Entries the sheet steps through with previous / next: files and app-stored links (folders and documents open). */
+/**
+ * Entries the sheet steps through with previous / next: files and app-stored links (folders, documents and app
+ * records such as forms open).
+ */
 export function isPreviewable(entry: DriveEntry): entry is PreviewableEntry {
-  return entry.type === "file" || entry.type === "virtual";
+  return entry.type === "file" || (entry.type === "virtual" && !entry.href);
 }
 
 /** An entry's name, or the untitled label of its type (drive.list.untitled.*) when it has none. */

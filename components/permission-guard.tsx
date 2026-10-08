@@ -4,8 +4,9 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { PackageOpen, ShieldAlert } from "lucide-react";
+import { PluginInstallPage } from "@/components/plugins/plugin-install-prompt";
 import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
-import { canManageDeviceApps, isManagerRouteEnabled } from "@/lib/device-apps";
+import { appForManagerRoute, canManageDeviceApps, isManagerRouteEnabled } from "@/lib/device-apps";
 import { usePermissions } from "@/lib/context/permissions";
 import type { Permissions } from "@/lib/types";
 import { useT } from "@/lib/i18n/context";
@@ -15,6 +16,7 @@ import { useT } from "@/lib/i18n/context";
  * - If the user lacks `view` permission for the section, redirects to /.
  * - `editRequired` additionally blocks if the user only has view (not edit) access,
  *   but instead of redirect just shows a read-only notice — pages handle that themselves.
+ * - A route whose plugin isn't installed shows the plugin's download prompt instead of the page.
  */
 export function PermissionGuard({
   section,
@@ -40,6 +42,8 @@ export function PermissionGuard({
   }, [hasView, router]);
 
   if (hasView && !featureOn) {
+    const appId = appForManagerRoute(pathname);
+    if (appId) return <PluginInstallPage appId={appId} />;
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
         <PackageOpen className="h-10 w-10 text-muted-foreground" />

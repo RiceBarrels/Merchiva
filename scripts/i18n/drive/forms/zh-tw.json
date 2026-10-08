@@ -1,0 +1,623 @@
+{
+  "forms": {
+    "errors": {
+      "generic": "出了點問題，請重試。",
+      "not_connected": "未連線。請檢查網路後重試。",
+      "not_published": "這家店面暫時還不能使用表單。",
+      "network": "你已離線。恢復網路連線後再試。",
+      "forbidden": "你沒有權限執行這個操作。",
+      "not_found": "這個表單已不存在。",
+      "invalid": "這個請求中有無效的內容。",
+      "exists": "已經存在。",
+      "conflict": "在此期間有人儲存了這個表單。請重新載入檢視對方的修改。",
+      "operator": "正在使用這台裝置的人不能執行這個操作。",
+      "not_open": "這個表單目前不接收回覆。",
+      "closed": "這個表單已關閉。",
+      "not_assigned": "這個表單沒有指定給你。",
+      "invalid_date": "這台裝置上的日期似乎不對，請檢查裝置時鐘。",
+      "already_submitted": "你這次已經填寫過這個表單了。",
+      "response_limit": "這個表單不再接收更多回覆。",
+      "too_many_forms": "這家店面的表單數量已達上限。",
+      "org_storage_full": "這家店面沒有空間存放更多表單答案了。",
+      "file_not_found": "有一個附件不見了，請重新附上。",
+      "files_not_allowed": "這裡不能新增檔案和照片。",
+      "public_unsafe": "含有檔案或照片問題的表單不能透過連結分享。",
+      "rate_limited": "目前回覆太多，請稍後再試。",
+      "invalid_settings": "部分設定無效。",
+      "invalid_status": "這個狀態無效。",
+      "invalid_definition": "無法讀取這個表單。",
+      "definition_too_large": "這個表單太大了。",
+      "title_required": "請給表單加一個標題。",
+      "title_too_long": "標題太長了。",
+      "description_too_long": "說明太長了。",
+      "confirmation_too_long": "確認訊息太長了。",
+      "no_questions": "請至少新增一個問題。",
+      "too_many_questions": "這個表單的問題太多了。",
+      "invalid_question": "有一個問題無效。",
+      "invalid_question_id": "有一個問題無效。",
+      "duplicate_question_id": "有兩個問題重複了。",
+      "invalid_question_type": "有一種問題類型不受支援。",
+      "question_title_required": "每個問題都需要標題。",
+      "question_title_too_long": "有一個問題的標題太長了。",
+      "help_too_long": "有一個問題的說明文字太長了。",
+      "options_required": "請至少新增一個選項。",
+      "too_many_options": "有一個問題的選項太多了。",
+      "invalid_option_id": "有一個選項無效。",
+      "duplicate_option_id": "有兩個選項重複了。",
+      "option_label_required": "每個選項都需要文字。",
+      "option_label_too_long": "有一個選項的文字太長了。",
+      "invalid_range": "範圍無效。",
+      "scale_label_too_long": "有一個量表標籤太長了。",
+      "invalid_max_files": "檔案數量無效。",
+      "invalid_accept": "允許的檔案類型無效。",
+      "question_removed": "已有答案的問題不能刪除，請改為隱藏。",
+      "question_type_changed": "已有答案的問題不能更改類型。",
+      "option_removed": "已有人選過的選項不能刪除。",
+      "invalid_answers": "無法讀取這些答案。",
+      "answers_too_large": "這些答案太長了。",
+      "unknown_question": "有一個答案對應的問題已不存在。請重新載入表單。",
+      "required": "請回答所有必填問題。",
+      "invalid_answer": "有一個答案無效。",
+      "text_too_long": "有一個答案太長了。",
+      "unknown_option": "你選的某個選項已不存在。請重新載入表單。",
+      "out_of_range": "有一個數字超出範圍。",
+      "too_many_selections": "選了太多項。",
+      "too_few_selections": "選的項太少。",
+      "too_many_files": "這個問題的檔案太多了。"
+    },
+    "disclosure": {
+      "respondentNote": "店面管理層可以看到你的答案。",
+      "managersTitle": "管理層可以看到每一份答案",
+      "managersNote": "店主、經理以及可以檢視所有檔案的成員，都能讀取這個表單的每一份回覆，包括大家附上的檔案。填寫的人會被告知這一點。"
+    },
+    "title": "表單",
+    "list": {
+      "subtitleBuilder": "給團隊用的檢查清單、報告和問卷",
+      "subtitleMember": "等你填寫的表單和你提交過的內容",
+      "new": "新增表單",
+      "search": "搜尋表單",
+      "fill": "填寫",
+      "questions": "{n} 個問題",
+      "responses": "{n} 份回覆",
+      "updated": "{date} 更新",
+      "due": "{date} 截止",
+      "closes": "{date} 關閉",
+      "notPublished": "表單功能暫不可用",
+      "notPublishedDesc": "這家店面還沒有開通表單功能，請稍後再試。",
+      "filter": {
+        "active": "進行中",
+        "drafts": "草稿",
+        "closed": "已關閉",
+        "archived": "已歸檔",
+        "toFill": "待填寫",
+        "mine": "我提交的"
+      },
+      "stats": {
+        "open": "開放中的表單",
+        "drafts": "草稿",
+        "responses": "回覆",
+        "toFill": "待填寫",
+        "submitted": "已提交",
+        "last90": "最近 90 天",
+        "reviewed": "已檢視"
+      },
+      "empty": {
+        "search": "沒有符合搜尋條件的表單",
+        "active": "沒有開放中的表單",
+        "activeDesc": "開啟一份草稿，或者從範本新增一個表單。",
+        "drafts": "沒有草稿",
+        "draftsDesc": "新表單在開放前都會放在這裡。",
+        "closed": "沒有已關閉的表單",
+        "closedDesc": "關閉的表單不再接收答案，會顯示在這裡。",
+        "archived": "沒有已歸檔的表單",
+        "archivedDesc": "把不再使用的表單歸檔，讓清單更簡潔。",
+        "toFill": "沒有需要填寫的表單",
+        "toFillDesc": "經理分享給你的表單會顯示在這裡。",
+        "mine": "還沒有提交過",
+        "mineDesc": "你最近 90 天提交的表單會顯示在這裡。"
+      },
+      "view": {
+        "manage": "管理",
+        "mine": "我的表單"
+      }
+    },
+    "status": {
+      "draft": "草稿",
+      "open": "開放中",
+      "closed": "已關閉",
+      "archived": "已歸檔"
+    },
+    "kind": {
+      "form": "表單",
+      "checklist": "檢查清單",
+      "report": "報告",
+      "survey": "問卷"
+    },
+    "perMember": {
+      "unlimited": "不限次數",
+      "once": "一次",
+      "daily": "每天一次",
+      "weekly": "每週一次"
+    },
+    "reviewStatus": {
+      "new": "已提交",
+      "reviewed": "已檢視"
+    },
+    "types": {
+      "section": "分節",
+      "short_text": "簡答",
+      "long_text": "段落",
+      "single_choice": "單選",
+      "multi_choice": "多選",
+      "dropdown": "下拉式清單",
+      "yes_no": "是 / 否",
+      "number": "數字",
+      "date": "日期",
+      "time": "時間",
+      "rating": "星級評分",
+      "scale": "量表",
+      "checklist_item": "檢查項",
+      "photo": "照片",
+      "file": "檔案上傳"
+    },
+    "newForm": {
+      "title": "新增表單",
+      "description": "從範本或空白表單開始，之後都可以修改。",
+      "templates": "範本",
+      "create": "建立",
+      "kindHint": "檢查清單會在店面平板上顯示為今天的檢查，報告則顯示在「報告情況」下。類型之後無法更改。"
+    },
+    "edit": {
+      "notFound": "找不到表單",
+      "notFoundDesc": "它可能已被刪除，或者你沒有存取權限。",
+      "backToList": "返回表單",
+      "more": "更多操作",
+      "view": {
+        "build": "編輯",
+        "preview": "預覽",
+        "responses": "回覆",
+        "share": "分享"
+      },
+      "action": {
+        "draft": "開放填寫",
+        "open": "關閉",
+        "closed": "重新開放"
+      },
+      "statusChanged": {
+        "draft": "已移回草稿",
+        "open": "表單已開放填寫",
+        "closed": "表單已關閉",
+        "archived": "表單已歸檔"
+      },
+      "backToDraft": "移回草稿",
+      "archive": "歸檔",
+      "unarchive": "取消歸檔",
+      "delete": "刪除表單",
+      "deleteTitle": "刪除這個表單？",
+      "deleteDesc": "表單及其所有回覆都會被永久刪除。大家附上的檔案仍保留在各自的「我的檔案」中。",
+      "deleted": "表單已刪除"
+    },
+    "builder": {
+      "details": "表單詳情",
+      "formTitle": "標題",
+      "description": "說明",
+      "descriptionPlaceholder": "這個表單是做什麼用的？",
+      "confirmation": "提交後顯示的訊息",
+      "confirmationHint": "留空則顯示簡單的感謝語。",
+      "confirmationPlaceholder": "謝謝！你的答案已提交。",
+      "status": {
+        "saved": "所有更改已儲存",
+        "pending": "正在儲存…",
+        "saving": "正在儲存…",
+        "invalid": "未儲存：請修改標出的欄位",
+        "error": "未儲存"
+      },
+      "retry": "重試",
+      "conflictTitle": "有人修改了這個表單",
+      "conflictDesc": "你最近的修改還沒儲存。保留你的版本會覆蓋對方的修改；載入對方的版本則會丟失你未儲存的修改。",
+      "keepMine": "保留我的版本",
+      "loadTheirs": "載入對方的版本",
+      "lockedNote": "這個表單已有回覆。刪除問題會將其歸檔，以便舊答案保留該問題；問題類型也不能再更改。",
+      "publicNote": "公開連結已開啟，因此不能新增照片和檔案問題。",
+      "brokenTitle": "無法開啟這個表單",
+      "brokenDesc": "無法讀取它的問題。它的回覆仍然安全。",
+      "newQuestion": "未命名問題",
+      "newSection": "新分節",
+      "newOption": "選項 {n}",
+      "untitledQuestion": "未命名問題",
+      "addQuestion": "新增問題",
+      "questionTitle": "問題",
+      "sectionTitle": "分節標題",
+      "type": "類型",
+      "typeLocked": "有回覆後不能更改",
+      "help": "說明文字",
+      "helpPlaceholder": "顯示在問題下方的提示（選填）",
+      "required": "必填",
+      "duplicate": "複製",
+      "remove": "刪除",
+      "archive": "歸檔",
+      "archived": "已歸檔",
+      "archivedNote": "已歸檔：新的填寫中不再顯示，舊回覆中仍保留。",
+      "restore": "還原",
+      "needsFix": "需要修改",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "options": "選項",
+      "optionLabel": "選項文字",
+      "addOption": "新增選項",
+      "removeOption": "刪除選項",
+      "optionLocked": "這個選項已有人選過，可以改名，但不能刪除。",
+      "minSelections": "至少",
+      "maxSelections": "最多",
+      "minValue": "最小數值",
+      "maxValue": "最大數值",
+      "scaleFrom": "從",
+      "scaleTo": "到",
+      "scaleLowLabel": "最低端的標籤",
+      "scaleHighLabel": "最高端的標籤",
+      "maxFiles": "每個答案的檔案數",
+      "accept": "允許的檔案類型",
+      "acceptHint": "用逗號分隔副檔名或類型。留空則允許任何檔案。",
+      "filesNote": "檔案儲存在提交者的「我的檔案」中，並計入店面的儲存空間。在店面共用平板上或透過公開連結都不能新增檔案。"
+    },
+    "share": {
+      "audienceTitle": "誰可以填寫",
+      "audience": {
+        "members": "所有人",
+        "assigned": "僅限指定的人",
+        "private": "僅限我自己"
+      },
+      "audienceDesc": {
+        "members": "表單開放期間，店面的每位成員都可以填寫。",
+        "assigned": "只有你在下面指定的成員可以填寫。",
+        "private": "其他人看不到這個表單。可以先用它試一試，再分享出去。"
+      },
+      "assignees": "指定給",
+      "assigneesOnly": "只有這些成員可以填寫。新增截止日期來提醒他們。",
+      "assigneesHint": "選填：指定成員後，表單會帶著截止日期出現在他們的清單中。",
+      "noMembers": "還沒有可指定的在職成員。",
+      "dueDate": "截止日期",
+      "role": {
+        "owner": "店主",
+        "manager": "經理",
+        "staff": "員工"
+      },
+      "rulesTitle": "答案",
+      "perMember": "每人可以填寫",
+      "responseLimit": "達到多少份回覆後停止",
+      "closesOn": "關閉日期（當天結束時）",
+      "never": "永不",
+      "trackCompletion": "顯示誰已完成",
+      "trackCompletionHint": "店面平板會列出今天誰已完成，但不會顯示他們的答案。",
+      "notifyOwner": "有新回覆時通知我",
+      "notifyOwnerHint": "每收到一份回覆，表單負責人都會收到通知。",
+      "publicTitle": "任何拿到連結的人",
+      "publicDesc": "店面以外的人無需登入也可以填寫。",
+      "publicOwnerOnly": "只有店主可以開啟公開連結。",
+      "publicUrl": "公開連結",
+      "copy": "複製",
+      "publicCopied": "連結已複製",
+      "publicRotate": "產生新連結",
+      "publicRotateTitle": "產生新連結？",
+      "publicRotateDesc": "目前的連結和QR 碼會立即失效。拿到舊連結的人需要使用新連結。",
+      "publicRotated": "新連結已產生",
+      "publicOpenOnly": "只有在表單開放時，連結才會接收答案。",
+      "publicNote": "透過連結提交的答案在「回覆」中會標為「公開」。不要詢問密碼或付款資訊。"
+    },
+    "templates": {
+      "blank": {
+        "title": "空白表單",
+        "description": "從零開始，寫你自己的問題。",
+        "untitled": "未命名表單",
+        "q": {
+          "first": "未命名問題"
+        }
+      },
+      "openingChecklist": {
+        "title": "開店檢查清單",
+        "description": "開門營業前要檢查的所有事項。",
+        "q": {
+          "alarmOff": "已關閉警報",
+          "lightsOn": "燈光和招牌已開啟",
+          "cashFloat": "開店時收銀機裡的現金",
+          "fridgesOk": "冰箱和冷凍櫃運作正常",
+          "floorClean": "地面和入口已清潔",
+          "shelvesStocked": "貨架已補貨",
+          "notes": "有什麼需要報告的嗎？"
+        },
+        "h": {
+          "cashFloat": "清點開店現金並輸入總額。"
+        }
+      },
+      "closingChecklist": {
+        "title": "關店檢查清單",
+        "description": "鎖門前要做的所有事項。",
+        "q": {
+          "cashCounted": "關店時收銀機裡的現金",
+          "equipmentOff": "設備已關閉",
+          "trashOut": "垃圾已拿出去",
+          "doorsLocked": "門窗已鎖好",
+          "alarmSet": "已設定警報",
+          "notes": "有什麼需要報告的嗎？"
+        },
+        "h": {
+          "cashCounted": "清點現金並輸入總額。"
+        }
+      },
+      "incidentReport": {
+        "title": "事故報告",
+        "description": "報告意外、盜竊、損壞或顧客問題。",
+        "confirmation": "謝謝你的報告，經理會跟進處理。",
+        "q": {
+          "details": "發生了什麼",
+          "date": "日期",
+          "time": "時間",
+          "category": "事故類型",
+          "what": "描述發生的經過",
+          "injured": "有人受傷嗎？",
+          "followUp": "後續處理",
+          "actions": "目前已經做了哪些處理？",
+          "photos": "照片"
+        },
+        "o": {
+          "injury": "受傷",
+          "theft": "盜竊",
+          "damage": "損壞",
+          "customer": "顧客問題",
+          "other": "其他"
+        },
+        "h": {
+          "what": "涉及哪些人、在哪裡發生、你看到了什麼。"
+        }
+      },
+      "customerFeedback": {
+        "title": "顧客意見",
+        "description": "詢問顧客這次光臨的體驗。",
+        "confirmation": "感謝你的意見！",
+        "q": {
+          "overall": "這次光臨體驗如何？",
+          "recommend": "你有多大可能向朋友推薦我們？",
+          "liked": "你喜歡哪些方面？",
+          "comments": "還有其他想告訴我們的嗎？",
+          "contact": "你的電子郵件或電話（選填）"
+        },
+        "l": {
+          "recommendLow": "不太可能",
+          "recommendHigh": "非常可能"
+        },
+        "o": {
+          "service": "服務",
+          "speed": "速度",
+          "quality": "品質",
+          "price": "價格",
+          "cleanliness": "清潔"
+        },
+        "h": {
+          "contact": "如果你希望我們回覆你，再填寫。"
+        }
+      },
+      "equipmentCheck": {
+        "title": "溫度和設備檢查",
+        "description": "記錄冰箱和冷凍櫃的溫度，並標出故障設備。",
+        "q": {
+          "fridgeTemp": "冰箱溫度",
+          "freezerTemp": "冷凍櫃溫度",
+          "equipmentOk": "所有設備都正常運作嗎？",
+          "issue": "哪些設備不能正常運作？",
+          "photo": "照片"
+        },
+        "h": {
+          "fridgeTemp": "讀取冰箱溫度計並輸入數字。",
+          "freezerTemp": "讀取冷凍櫃溫度計並輸入數字。"
+        }
+      }
+    },
+    "runtime": {
+      "filesUnavailableHere": "在這台裝置上不能新增檔案和照片。",
+      "previewNoUpload": "預覽中不能新增檔案。",
+      "checklistRequired": "提交前請勾選這一項。",
+      "defaultConfirmation": "謝謝！你的答案已提交。",
+      "pagePrevText": "上一步",
+      "pageNextText": "下一步",
+      "completeText": "提交",
+      "progressText": "第 {0} 頁，共 {1} 頁",
+      "emptySurvey": "這個表單還沒有問題。",
+      "completingSurvey": "謝謝！你的答案已提交。",
+      "loadingSurvey": "正在載入…",
+      "placeholder": "請選擇…",
+      "ratingOptionsCaption": "請選擇…",
+      "requiredError": "這個問題需要回答。",
+      "numericError": "請輸入數字。",
+      "minError": "請輸入 {0} 或以上。",
+      "maxError": "請輸入 {0} 或以下。",
+      "numericMinMax": "請輸入 {1} 到 {2} 之間的數字。",
+      "numericMin": "請輸入 {1} 或以上。",
+      "numericMax": "請輸入 {1} 或以下。",
+      "invalidInputError": "這個答案無效。",
+      "textMaxLength": "最多 {0} 個字元。",
+      "minSelectError": "至少選擇 {0} 項。",
+      "maxSelectError": "最多選擇 {0} 項。",
+      "exceedMaxSize": "每個檔案最大 {0}。",
+      "fileSizeUnits": "位元組, KB, MB, GB, TB",
+      "exceedMaxFiles": "最多可以新增 {0} 個檔案。",
+      "uploadingFile": "還有檔案在上傳，請稍等再試。",
+      "loadingFile": "正在載入…",
+      "chooseFile": "選擇檔案…",
+      "noFileChosen": "未選擇檔案",
+      "filePlaceholder": "把檔案拖到這裡，或在下方選擇。",
+      "chooseFileCaption": "選擇檔案",
+      "takePhotoCaption": "拍照",
+      "photoPlaceholder": "用下方的按鈕拍一張照片。",
+      "fileOrPhotoPlaceholder": "把檔案拖到這裡、選擇檔案或拍照。",
+      "replaceFileCaption": "替換檔案",
+      "removeFileCaption": "移除這個檔案",
+      "confirmRemoveFile": "移除 {0}？",
+      "confirmRemoveAllFiles": "移除所有檔案？",
+      "clearCaption": "清除",
+      "selectCaption": "選擇",
+      "booleanCheckedLabel": "是",
+      "booleanUncheckedLabel": "否",
+      "savingData": "正在提交…",
+      "savingDataError": "你的答案沒有提交成功。",
+      "savingDataSuccess": "已提交。",
+      "saveAgainButton": "重試",
+      "modalApplyButtonText": "套用",
+      "modalCancelButtonText": "取消",
+      "filterStringPlaceholder": "輸入以搜尋…",
+      "emptyMessage": "沒有可顯示的內容",
+      "loadingData": "正在載入…",
+      "tagboxDoneButtonCaption": "確定",
+      "more": "更多",
+      "ok": "確定",
+      "cancel": "取消"
+    },
+    "fill": {
+      "title": "填寫表單",
+      "subtitle": "回答問題後提交。",
+      "backToForms": "返回表單",
+      "another": "再提交一份",
+      "filesNote": "你新增的檔案和照片會儲存在雲端硬碟的「我的檔案」中。",
+      "required": "必填",
+      "ratingLabel": "{n} 星（滿分 {max} 星）",
+      "uploading": "正在上傳…",
+      "addPhoto": "拍照或選擇照片",
+      "addFile": "選擇檔案",
+      "filesAttached": "已附上 {count} 個，最多 {max} 個",
+      "removeFiles": "移除"
+    },
+    "preview": {
+      "notice": "這是預覽。答案不會儲存，也不能新增檔案。",
+      "widthLabel": "預覽寬度",
+      "desktop": "電腦",
+      "phone": "手機",
+      "restart": "重新開始",
+      "emptyTitle": "還沒有問題",
+      "emptyBody": "在「編輯」中新增問題後，就會顯示在這裡。",
+      "completed": "表單到此結束。如果是真實填寫，現在答案就會提交。",
+      "invalidDraft": "你最近的修改需要先修正才能儲存，所以此預覽顯示的是上次儲存的版本。"
+    },
+    "responses": {
+      "total": "回覆",
+      "toReview": "待檢視",
+      "last": "最新回覆",
+      "viewLabel": "回覆檢視",
+      "summary": "摘要",
+      "table": "清單",
+      "export": "匯出",
+      "exportCsv": "下載 .csv",
+      "exportXlsx": "下載 .xlsx",
+      "openAsSheet": "以試算表開啟",
+      "exportFailed": "匯出失敗，請重試。",
+      "fileName": "表單回覆",
+      "sheetName": "回覆",
+      "loadFailed": "部分回覆無法載入。請重新載入後再試。",
+      "emptyTitle": "還沒有回覆",
+      "emptyBody": "有人提交表單後，回覆會立即顯示在這裡。",
+      "count": "回覆數",
+      "average": "平均",
+      "min": "最低",
+      "max": "最高",
+      "noAnswers": "還沒有答案",
+      "fileCount": "附上了 {count} 個檔案",
+      "answeredOf": "{total} 人中 {answered} 人回答",
+      "archivedQuestion": "已刪除的問題",
+      "file": "檔案",
+      "review": "檢視",
+      "notePlaceholder": "為這份回覆新增備註",
+      "noteBy": "最後備註人",
+      "noteHint": "店主、經理和擁有雲端硬碟完整權限的成員可以閱讀備註，填寫的人看不到。",
+      "save": "儲存",
+      "close": "關閉",
+      "cancel": "取消",
+      "delete": "刪除回覆",
+      "deleteTitle": "刪除這份回覆？",
+      "deleteBody": "答案和備註會被永久刪除。附上的檔案仍保留在填寫人的「我的檔案」中。"
+    },
+    "export": {
+      "submittedAt": "提交時間",
+      "respondent": "填寫人",
+      "sourceHeader": "提交來源",
+      "reviewHeader": "狀態",
+      "anonymous": "匿名",
+      "yes": "是",
+      "no": "否",
+      "removedOption": "已刪除的選項",
+      "source": {
+        "manager": "後台",
+        "store": "店面平板",
+        "personal": "手機",
+        "public": "公開連結"
+      },
+      "review": {
+        "new": "新",
+        "reviewed": "已檢視"
+      }
+    },
+    "public": {
+      "answersGoTo": "你的答案會傳送給 {store}。對方可以看到你在這裡填寫的所有內容。",
+      "noSecrets": "請不要在表單中填寫密碼或付款卡資訊。",
+      "honeypotLabel": "這一欄請留空",
+      "notFoundTitle": "這個連結無效",
+      "notFoundBody": "表單可能已被刪除，或者它的連結已更換。請向店面索取新連結。",
+      "unavailableTitle": "暫時無法開啟這個表單",
+      "unavailableBody": "請過幾分鐘再試。",
+      "closedTitle": "這個表單不接收回覆",
+      "closedBody": "店面已關閉這個表單。如果你仍需聯絡他們，請直接詢問店面。",
+      "sentTitle": "你的答案已提交"
+    }
+  },
+  "device": {
+    "catalog": {
+      "forms": "表單"
+    },
+    "catalogDesc": {
+      "forms": "團隊在平板或自己手機上填寫的檢查清單、報告和問卷。"
+    },
+    "lite": {
+      "forms": {
+        "checklistsLeft": "今天還剩的檢查清單",
+        "checklistsLeftHint": "點一個檢查清單開始填寫。",
+        "allDone": "全部完成，做得好！",
+        "today": "今天",
+        "doneBy": "已完成 · {name} {time}",
+        "doneByYou": "你已經做過了",
+        "notDone": "還沒做",
+        "report": "報告情況",
+        "other": "其他表單",
+        "toFill": "待填寫",
+        "toFillHint": "店面請你填寫的表單。",
+        "due": "{date} 截止",
+        "overdue": "已逾期 · 原定 {date} 截止",
+        "noDue": "沒有截止日期",
+        "openToAll": "所有人都可以填",
+        "doneForNow": "這次已完成",
+        "mySubmissions": "我提交的",
+        "noSubmissions": "還沒有提交過",
+        "sentOn": "{date} 提交",
+        "status": {
+          "new": "等待檢視",
+          "reviewed": "已檢視"
+        },
+        "unavailable": "這個表單已不可用，所以無法顯示它的答案。",
+        "filesAdded": "{count} 個檔案",
+        "none": "現在沒有表單",
+        "noneHint": "店面分享表單後，會顯示在這裡。",
+        "checklistHint": "每一項都要勾選",
+        "progress": "{n}/{total}",
+        "send": "提交",
+        "confirmTitle": "提交你的答案？",
+        "confirmSend": "確定提交",
+        "confirmSub": "提交後就不能再修改。",
+        "keepEditing": "繼續填寫",
+        "leaveTitle": "離開這個表單？",
+        "leave": "離開",
+        "leaveSub": "你填的答案會丟失。",
+        "thanks": "謝謝！你的答案已提交。",
+        "filesOffTablet": "在這台共用平板上不能新增照片和檔案。請用你自己的手機回答這個問題。"
+      }
+    }
+  },
+  "nav": {
+    "forms": "表單"
+  }
+}

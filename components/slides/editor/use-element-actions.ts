@@ -43,6 +43,7 @@ import type {
 } from "@/lib/slides/model/types";
 import { DEFAULT_NEW_SLIDE_LAYOUT } from "@/lib/slides/themes/layouts";
 import { STARTER_THEMES } from "@/lib/slides/themes/themes";
+import { appUploadErrorKeyOr } from "@/lib/storage/app-upload";
 
 export type { TextFormatCommand } from "@/lib/slides/editor/text-format";
 export type { SlidesTableCommand } from "@/lib/slides/editor/table-commands";
@@ -191,7 +192,7 @@ export function useElementActions(deps: SlidesElementActionDeps): SlidesElementA
         addToSlide(els, slideId);
       } catch (err) {
         console.error("[slides] image upload failed", err);
-        toast.error(tr("docs.image.failed"), { id });
+        toast.error(tr(appUploadErrorKeyOr(err, "docs.image.failed")), { id });
       }
     };
 

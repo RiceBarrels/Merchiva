@@ -21,7 +21,7 @@ import {
   channelPageContext,
   dashboardPageContext,
   docEditorPageContext,
-  docsHomePageContext,
+  driveHomePageContext,
   newTabPageContext,
 } from "@/lib/merchiva/workspace-page-context";
 
@@ -286,15 +286,18 @@ describe("salesPageContext, reportsPageContext, financesPageContext", () => {
 describe("docs", () => {
   const DOC = "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
 
-  test("docs home: defaults stay out of the params", () => {
-    const ctx = docsHomePageContext({ scope: "recent", owner: "anyone", sort: "modified", search: "" });
-    expect(ctx).toEqual({ summary: "Docs home, recent documents.", params: { scope: "recent" } });
+  test("drive: defaults stay out of the params", () => {
+    const ctx = driveHomePageContext({ space: "my", type: "", folder: null, search: "", shown: 1 });
+    expect(ctx).toEqual({ summary: "Drive, My files, 1 item shown.", params: { space: "my", shown: 1 } });
   });
 
-  test("docs home: filters, sort and search", () => {
-    const ctx = docsHomePageContext({ scope: "starred", owner: "me", sort: "title", search: "menu" });
-    expect(ctx.summary).toBe('Docs home, starred documents, owned by me, sorted by title, search "menu".');
-    expect(ctx.params).toEqual({ scope: "starred", owner: "me", sort: "title", search: "menu" });
+  test("drive: the documents view an old Docs home link lands on, with folder and search", () => {
+    const ctx = driveHomePageContext({ space: "starred", type: "doc", folder: null, search: " menu ", shown: 3 });
+    expect(ctx.summary).toBe('Drive, starred, only documents, search "menu", 3 items shown.');
+    expect(ctx.params).toEqual({ space: "starred", type: "doc", search: "menu", shown: 3 });
+    expect(driveHomePageContext({ space: "store", type: "", folder: "  ", search: "", shown: 0 }).summary).toBe(
+      'Drive, Store files, in folder "Untitled folder", 0 items shown.',
+    );
   });
 
   test("editor: open document with its title and access", () => {

@@ -1,13 +1,13 @@
 // Words the Drive lite screens put next to entries (drive-ui §14.3): the one short line under a name — what it
 // is or whose it is, and when it last changed ("2 MB · Sep 12", "Priya · 10:42", "Sheet · Sep 3"; a file on its
 // way up says so instead) — and the name of the place something moves to. Plain functions; the dates are the
-// Docs home's stamps (components/docs/home/format.ts).
+// shared docs stamps (components/docs/home/format.ts).
 
 import { formatDocStamp } from "@/components/docs/home/format";
+import { entrySizeText } from "@/components/drive/model/entry-size";
 import type { ListingQuery } from "@/components/drive/model/listing";
 import type { DriveEntry, DriveMoveTarget, FolderEntry } from "@/components/drive/model/types";
 import { entryKindKey } from "@/components/drive/preview/preview-mode";
-import { formatDriveBytes } from "@/lib/drive/format";
 import { fmt } from "@/lib/i18n/fmt";
 
 export interface EntrySubOptions {
@@ -25,12 +25,13 @@ export function liteEntrySub(entry: DriveEntry, { t, locale, now, trash = false 
   }
   const at = trash && entry.trashedAt !== null ? entry.trashedAt : entry.updatedAt;
   const date = at > 0 ? formatDocStamp(new Date(at), locale, now) : "";
+  const size = entrySizeText(entry, locale) ?? "";
   let lead: string;
-  if (entry.type === "file") lead = formatDriveBytes(entry.sizeBytes, locale);
-  else if (entry.type === "virtual") lead = entry.group;
+  if (entry.type === "file") lead = size;
+  else if (entry.type === "virtual") lead = [entry.group, entry.note ?? ""].filter((part) => part !== "").join(" · ");
   else if (!entry.isMine && entry.ownerMemberId !== "") lead = entry.ownerName ?? t("drive.list.formerMember");
   else lead = t(entryKindKey(entry));
-  return [lead, date].filter((part) => part !== "").join(" · ");
+  return [lead, entry.type === "file" ? "" : size, date].filter((part) => part !== "").join(" · ");
 }
 
 export interface TargetLabelContext {

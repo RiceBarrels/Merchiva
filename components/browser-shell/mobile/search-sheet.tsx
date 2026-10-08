@@ -23,8 +23,9 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { IconTile } from "@/components/ui/icon-tile";
 import {
   NEW_TAB_URL,
+  anyDocumentEditorAllowed,
   currentEntry,
-  getRouteAccess,
+  openableDocuments,
   parseOmniboxInput,
   searchRoutes,
   useAccessContext,
@@ -44,7 +45,6 @@ import { INSTANT, SHEET_TRANSITION } from "@/lib/browser-shell/mobile/geometry";
 import { labelForUrl } from "@/lib/browser-shell/mobile/labels";
 import { rankSuggestions, suggestionScore, type Suggestion } from "@/lib/browser-shell/mobile/suggestions";
 import { canonicalizeUrl } from "@/lib/browser-shell/url";
-import { DOCS_HOME_HREF } from "@/lib/docs/hrefs";
 import type { RecentDocumentItem } from "@/lib/docs/types";
 import { LOCALE_BCP47 } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/context";
@@ -235,7 +235,8 @@ export function SearchSheet({ ref, open, onOpenChange, bottomInset, reducedMotio
 
 function SearchResults({ query, topRef, ...handlers }: ResultHandlers & { query: string; topRef: TopSuggestionRef }) {
   const access = useAccessContext();
-  const docsAllowed = getRouteAccess(DOCS_HOME_HREF, access) === "allowed";
+  // Documents apply while any editor plugin is open to this person; each is listed only if its own editor is.
+  const docsAllowed = anyDocumentEditorAllowed(access);
   const q = query.trim();
   if (!q) return <StartPage docsAllowed={docsAllowed} topRef={topRef} {...handlers} />;
   if (docsAllowed) return <SuggestionsWithDocs query={q} topRef={topRef} {...handlers} />;
@@ -352,7 +353,10 @@ function OpenTabRow({ tab, onSwitchTab }: { tab: BrowserTab; onSwitchTab(tabId: 
 
 function RecentDocumentsSection({ onNavigate, onOpenInNewTab }: Pick<ResultHandlers, "onNavigate" | "onOpenInNewTab">) {
   const { t, locale } = useI18n();
-  const { items, ready } = useRecentDocuments(START_PAGE_LIMIT);
+  const access = useAccessContext();
+  const recent = useRecentDocuments(START_PAGE_LIMIT);
+  const items = useMemo(() => openableDocuments(recent.items, access), [recent.items, access]);
+  const ready = recent.ready;
   const dateFormat = useMemo(
     () => new Intl.DateTimeFormat(LOCALE_BCP47[locale], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
     [locale],
@@ -378,8 +382,10 @@ function RecentDocumentsSection({ onNavigate, onOpenInNewTab }: Pick<ResultHandl
 }
 
 function SuggestionsWithDocs(props: ResultHandlers & { query: string; topRef: TopSuggestionRef }) {
+  const access = useAccessContext();
   const { items } = useRecentDocuments(DOC_SUGGESTION_POOL);
-  return <SuggestionList {...props} docs={items} />;
+  const docs = useMemo(() => openableDocuments(items, access), [items, access]);
+  return <SuggestionList {...props} docs={docs} />;
 }
 
 function SuggestionList({

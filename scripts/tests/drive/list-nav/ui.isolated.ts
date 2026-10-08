@@ -91,7 +91,7 @@ const noop = () => {};
 const own = item({ name: "shelf.pdf" });
 const anas = world(ANA, [own]);
 const ownEntry = anas.byKey.get(`item:${own.id}`) as Entry;
-const ctx = { surface: "manager" as const, docsInstalled: true, section: "my" as const, offline: false };
+const ctx = { surface: "manager" as const, section: "my" as const, offline: false };
 
 function selectionOf(keys: string[], mode = false): Selection {
   const set = new Set(keys);

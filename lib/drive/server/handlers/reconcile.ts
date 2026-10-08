@@ -18,6 +18,10 @@
 //      its finish are skipped, and it is logged at error level. The module also
 //      skips organizations it does not know.
 //   5. More than DRIVE_PLATFORM_ALERT_BYTES in the store → an error-level log.
+//   6. After the Blob pass, live only: service_recompute_storage('') rebuilds
+//      every store's org_storage_usage (Docs, Sheets and app files) from its
+//      rows. It reads the database only, so it runs even when the pass stopped
+//      early; a failure is logged and leaves `storageRecomputed` false.
 //
 // Mode: `live` only on the production deployment (config.reconcileLive, i.e.
 // VERCEL_ENV === "production") and without `?dryRun=1`. Otherwise `dry_run`:
@@ -45,6 +49,8 @@ export interface DriveReconcileSummary {
   alert: boolean;
   /** The budget ran out before every folder was listed. */
   stoppedEarly: boolean;
+  /** service_recompute_storage('') succeeded (always false in dry_run). */
+  storageRecomputed: boolean;
 }
 
 /** Of the route's 300 s maxDuration. */
@@ -156,6 +162,17 @@ export function createDriveReconcileHandler(
     return "done";
   }
 
+  /** Step 6: every store's storage usage, one transaction in the module. */
+  async function recomputeStorage(): Promise<boolean> {
+    try {
+      await deps.call("recomputeStorage", { organizationId: "" });
+      return true;
+    } catch (err) {
+      deps.log("error", "drive.reconcile.recompute_failed", { code: reducerFailure(err).code });
+      return false;
+    }
+  }
+
   return async (req) => {
     try {
       requireCron(deps, req);
@@ -167,6 +184,7 @@ export function createDriveReconcileHandler(
       const cutoff = started - DRIVE_RECONCILE_ORPHAN_AGE_MS;
       const summary: DriveReconcileSummary = {
         mode: live ? "live" : "dry_run", orgs: 0, blobs: 0, bytes: 0, sentKeys: 0, braked: [], alert: false, stoppedEarly: false,
+        storageRecomputed: false,
       };
 
       const folders = await listOrgFolders(overBudget);
@@ -185,6 +203,8 @@ export function createDriveReconcileHandler(
         }
       }
 
+      if (live) summary.storageRecomputed = await recomputeStorage();
+
       const threshold = config?.platformAlertBytes ?? null;
       if (threshold !== null && summary.bytes > threshold) {
         summary.alert = true;
@@ -193,6 +213,7 @@ export function createDriveReconcileHandler(
       deps.log("info", "drive.reconcile.done", {
         mode: summary.mode, orgs: summary.orgs, blobs: summary.blobs, bytes: summary.bytes, sentKeys: summary.sentKeys,
         braked: summary.braked.length, alert: summary.alert, stoppedEarly: summary.stoppedEarly,
+        storageRecomputed: summary.storageRecomputed,
       });
       return deps.json(req, summary, { headers: NO_STORE });
     } catch (err) {

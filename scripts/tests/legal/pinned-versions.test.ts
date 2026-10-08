@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readLockfile } from "../../licenses/lockfile";
-import { MIN_VERSIONS, PINNED_OVERRIDES, PINNED_VERSIONS, UNIVER_LOCKSTEP } from "../../licenses/policy";
+import { MIN_VERSIONS, PINNED_OVERRIDES, PINNED_VERSIONS, SURVEYJS_LOCKSTEP, UNIVER_LOCKSTEP } from "../../licenses/policy";
 
 /*
  * Office dependencies stay pinned exactly (integration-legal §3): a caret would let a Univer minor, an unreviewed
@@ -44,6 +44,17 @@ describe("pinned versions", () => {
     const off = [...lock.packages.values()]
       .filter((p) => p.name.startsWith(UNIVER_LOCKSTEP.scope) && !except.has(p.name) && p.version !== UNIVER_LOCKSTEP.version)
       .map((p) => `${p.key} = ${p.name}@${p.version}`);
+    expect(off).toEqual([]);
+  });
+
+  test(`${SURVEYJS_LOCKSTEP.packages.join(" and ")} are pinned and resolved in lockstep at ${SURVEYJS_LOCKSTEP.version}`, () => {
+    const off: string[] = [];
+    for (const name of SURVEYJS_LOCKSTEP.packages) {
+      if (PINNED_VERSIONS[name] !== SURVEYJS_LOCKSTEP.version) off.push(`PINNED_VERSIONS ${name}: ${PINNED_VERSIONS[name] ?? "missing"}`);
+      const copies = [...lock.packages.values()].filter((p) => p.name === name);
+      if (copies.length === 0) off.push(`bun.lock ${name}: missing`);
+      for (const p of copies) if (p.version !== SURVEYJS_LOCKSTEP.version) off.push(`${p.key} = ${p.name}@${p.version}`);
+    }
     expect(off).toEqual([]);
   });
 

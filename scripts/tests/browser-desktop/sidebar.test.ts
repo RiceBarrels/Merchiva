@@ -23,7 +23,7 @@ import type { Permissions } from "@/lib/types";
 
 type Section = keyof Permissions;
 
-const ALL_APPS = ["sales", "products", "tasks", "training", "pay", "bookings", "docs", "drive"];
+const ALL_APPS = ["sales", "products", "tasks", "training", "pay", "bookings", "docs", "sheets", "slides", "forms"];
 
 /** Same access-context stand-in as scripts/tests/browser-shell/access.test.ts. */
 function ctx(
@@ -140,8 +140,8 @@ describe("sidebar nav rows", () => {
     expect(pinned.map((section) => section.href)).toEqual(["/manager/settings"]);
     expect(primary.map((section) => section.href)).toEqual([
       "/manager/new-tab",
-      "/manager/docs",
       "/manager/drive",
+      "/manager/forms",
       "/manager/inventory",
       "/manager/sales",
       "/manager/personnel/schedule",
@@ -180,13 +180,14 @@ describe("sidebar nav rows", () => {
     expect(currentRows(sections, "/manager/personnel/schedule")).toEqual(["/manager/personnel/schedule"]);
   });
 
-  test("an unlisted sub-route lights the section that owns it (docs editor, billing)", () => {
+  test("an unlisted sub-route lights the section that owns it (editors, the Docs alias, billing)", () => {
     const sections = listNavSections(ctx({ owner: true }));
-    // Neither route is listed, so neither can appear as a child row — the section has to carry it.
-    expect(sections.find((section) => section.href === "/manager/docs")?.children).toEqual([]);
-    expect(currentRows(sections, "/manager/docs/edit?id=abc")).toEqual(["/manager/docs"]);
-    // The Sheets / Slides editors are Drive's pages, so they light the Drive row.
+    // None of these routes is listed, so none can appear as a child row — the section has to carry it.
+    expect(sections.find((section) => section.href === "/manager/docs")).toBeUndefined();
     expect(sections.find((section) => section.href === "/manager/drive")?.children).toEqual([]);
+    // Every file is found in Drive: the Docs, Sheets and Slides editors and the old Docs home light the Drive row.
+    expect(currentRows(sections, "/manager/docs/edit?id=abc")).toEqual(["/manager/drive"]);
+    expect(currentRows(sections, "/manager/docs?scope=starred")).toEqual(["/manager/drive"]);
     expect(currentRows(sections, "/manager/drive?space=store")).toEqual(["/manager/drive"]);
     expect(currentRows(sections, "/manager/drive/sheet?id=abc")).toEqual(["/manager/drive"]);
     expect(currentRows(sections, "/manager/drive/slides?id=abc&slide=2")).toEqual(["/manager/drive"]);

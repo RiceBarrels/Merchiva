@@ -302,7 +302,7 @@ describe("index.ts member-write call sites", () => {
     expect(adminHexes(db)).toContain(orgA.owner.identity.hex);
   });
 
-  test("loginWithPassword re-keys the indexes to the new identity", () => {
+  test("loginWithPassword is retired: it refuses and moves nothing", () => {
     const { db, orgA } = createDriveWorld();
     const doc = addDoc(db, orgA.staff, "private");
     write(db, (ctx) => {
@@ -313,10 +313,9 @@ describe("index.ts member-write call sites", () => {
     db.insert("user", { identity: old, email: "m@example.test", displayName: "M", passwordHash: undefined });
     db.insert("userSecret", { identity: old, passwordHash: "h", updatedAt: new FakeTimestamp(db.nowMicros) });
     const fresh = FakeIdentity.random();
-    db.run(mod.loginWithPassword, fresh, { email: "m@example.test", passwordHash: "h" });
-    expect(adminHexes(db)).toContain(fresh.hex);
-    expect(adminHexes(db)).not.toContain(old.hex);
-    expect(readers(db, doc)).toContain(fresh.hex);
-    expect(readers(db, doc)).not.toContain(old.hex);
+    expect(() => db.run(mod.loginWithPassword, fresh, { email: "m@example.test", passwordHash: "h" })).toThrow(/retired/);
+    expect(adminHexes(db)).toContain(old.hex);
+    expect(adminHexes(db)).not.toContain(fresh.hex);
+    expect(readers(db, doc)).not.toContain(fresh.hex);
   });
 });

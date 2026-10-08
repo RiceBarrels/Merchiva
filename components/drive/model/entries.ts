@@ -39,7 +39,9 @@ export interface BuildDriveEntriesInput {
    * tablet account's (the module ANDs both, drive/context.ts adminOf).
    */
   drive: Pick<UseDriveResult, "items" | "itemsById" | "documents" | "trashedDocuments" | "grants"
-    | "starredItemIds" | "starredDocumentIds" | "accessForItem" | "accessForDocument" | "admin">;
+    | "starredItemIds" | "starredDocumentIds" | "accessForItem" | "accessForDocument" | "admin">
+    /** Document sizes (`document_size`); without them every document's size is unknown. */
+    & Partial<Pick<UseDriveResult, "documentSizes">>;
   /** DriveActor.ceiling: the tablet account's rights on a non-admin store tablet; null elsewhere. */
   ceiling: AccessCeiling | null;
   actor: { memberId: string | null; surface: DriveSurface; acting: boolean };
@@ -242,6 +244,7 @@ export function buildDriveEntries(input: BuildDriveEntriesInput): DriveEntry[] {
       docAccess: d,
       sharedWithMe: shared.has(doc.id),
       hasGrants: granted.has(doc.id),
+      sizeBytes: drive.documentSizes?.get(doc.id.toLowerCase()) ?? null,
     } satisfies DocEntry);
   }
 

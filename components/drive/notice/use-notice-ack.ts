@@ -3,8 +3,8 @@
 // Whether the person using this screen has acknowledged the management-visibility notice on this
 // surface, and how to acknowledge it (components/drive/notice/notice-ack-state.ts has the rules).
 //
-// Reads only the thin `drive_notice_ack` subscription (useDriveNoticeAckRows), so Docs home and
-// the editors can gate without mounting all of Drive. acknowledge() stores a local copy first —
+// Reads only the thin `drive_notice_ack` subscription (useDriveNoticeAckRows), so the editors
+// can gate without mounting all of Drive. acknowledge() stores a local copy first —
 // the gate lifts at once, even offline or before the module has Drive — then records it on the
 // server as the actor (the operator on /store). While the server row is missing, one retry loop
 // per member, notice and surface re-sends it (every mounted consumer shares it).

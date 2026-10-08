@@ -13,6 +13,8 @@ import type { DocumentMeta } from "@/lib/docs/types";
 import { resolveDriveItemAccess, type DriveClientActor } from "@/lib/drive/access";
 import type { DriveItem, DriveUsageView } from "@/lib/drive/types";
 import type { OrgRole } from "@/lib/types";
+import type { AppFileSize } from "@/lib/drive/storage-rows";
+import type { AppFileSource } from "@/lib/storage/sources";
 import { makeDoc, makeItem, ME, ORG, PRIYA, uuid } from "../home/fixture";
 
 export { decode, makeDoc, makeItem, ORG, translator, uuid } from "../home/fixture";
@@ -128,6 +130,12 @@ export interface LiteDataOptions {
   status?: "checking" | "ready" | "not_published";
   isReady?: boolean;
   usage?: DriveUsageView | null;
+  /** document id → stored bytes (useDrive().documentSizes). */
+  documentSizes?: [string, number][];
+  /** appFileKeyHash(url) → size (useDrive().appFileSizes). */
+  appFileSizes?: [string, AppFileSize][];
+  /** Bytes per app source (useDrive().appBytesBySource). */
+  appBytesBySource?: [AppFileSource, number][];
 }
 
 /** useDriveData's result for these rows, evaluated for `person` (and capped by the staff tablet's account). */
@@ -152,7 +160,13 @@ export function liteData(opts: LiteDataOptions) {
     grants: [],
     starredItemIds: new Set<string>(),
     starredDocumentIds: new Set<string>(),
-    usage: opts.usage === undefined ? { usedBytes: 4096, reservedBytes: 0, quotaBytes: 10 * 1024 ** 3, fileCount: 3, sheetBytes: 0 } : opts.usage,
+    usage: opts.usage === undefined ? {
+      usedBytes: 4096, reservedBytes: 0, quotaBytes: 10 * 1024 ** 3, fileCount: 3, sheetBytes: 0,
+      breakdown: { files: 4096, documents: 0, sheets: 0, apps: 0, total: 4096, quota: 10 * 1024 ** 3 },
+    } : opts.usage,
+    documentSizes: new Map<string, number>(opts.documentSizes ?? []),
+    appFileSizes: new Map<string, AppFileSize>(opts.appFileSizes ?? []),
+    appBytesBySource: new Map<AppFileSource, number>(opts.appBytesBySource ?? []),
     accessForItem: (item: DriveItem) => resolveDriveItemAccess(item, actor),
     accessForDocument: (doc: DocumentMeta) =>
       docAccessFromRole(docRoleFor({ doc, memberId: person.id, orgRole: person.role, permissions: person.permissions, grants: [] }), doc.trashedAt !== null),
@@ -206,13 +220,15 @@ export function memberRows() {
 }
 
 export const CONVERSATION = uuid(31);
+/** The chat photo is an UploadThing file, so Drive can show its recorded size (app_file, by key hash). */
+export const TILL_URL = "https://utfs.io/f/till-key";
 
 export function virtualRows() {
   const createdAt = new Date(Date.now() - 2 * HOUR);
   return {
     chatConversations: [{ id: CONVERSATION, organizationId: ORG, name: "Front of house" }],
     chatMessages: [{
-      id: uuid(32), conversationId: CONVERSATION, senderId: identity(ANA_HEX), attachmentUrl: "https://files.example.test/till.jpg",
+      id: uuid(32), conversationId: CONVERSATION, senderId: identity(ANA_HEX), attachmentUrl: TILL_URL,
       attachmentName: "till.jpg", attachmentType: "image/jpeg", createdAt,
     }],
     organizations: [{ id: ORG, logoUrl: "https://files.example.test/logo.png", createdAt }],
