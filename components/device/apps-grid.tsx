@@ -2,6 +2,7 @@
 
 // iOS-style home grid + frosted dock.
 
+import { useRef } from "react";
 import { LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_ICONS } from "./app-icons";
@@ -10,7 +11,9 @@ import type { DeviceApp, TileColor } from "./types";
 
 export interface AppsGridProps {
   apps: DeviceApp[];
-  onOpen: (id: DeviceApp["id"]) => void;
+  /** `origin` is the tapped tile's icon: MiniAppShell grows the app's window
+   *  out of it. */
+  onOpen: (id: DeviceApp["id"], origin?: HTMLElement) => void;
   columns?: 4 | 6;          // phone 4, tablet 6
   size?: "md" | "lg";       // tile size
   className?: string;
@@ -45,30 +48,49 @@ export const TILE_COLORS: Record<TileColor, string> = {
   pink: "from-white to-pink-100",
   rose: "from-white to-rose-100",
 };
-const TILE_BASE = "bg-gradient-to-b shadow-[0_1px_2px_rgb(0_0_0/.08),inset_0_0_0_.5px_rgb(0_0_0/.06)] dark:from-[rgb(48_48_48)] dark:to-[rgb(30_30_30)]";
+const TILE_GRADIENT = "bg-gradient-to-b dark:from-[rgb(48_48_48)] dark:to-[rgb(30_30_30)]";
+const TILE_SHADOW = "shadow-[0_1px_2px_rgb(0_0_0/.08),inset_0_0_0_.5px_rgb(0_0_0/.06)]";
 
-function Tile({ app, size, showLabel, onOpen }: { app: DeviceApp; size: "md" | "lg"; showLabel: boolean; onOpen: (id: DeviceApp["id"]) => void }) {
+/** A tile's tint. The app's launch splash (MiniAppShell) wears it too. */
+export function tileGradient(app: Pick<DeviceApp, "color" | "dark">): string {
+  return cn(TILE_GRADIENT, TILE_COLORS[app.color ?? (app.dark ? "ink" : "slate")]);
+}
+
+/** A tile's glyph. */
+export function TileGlyph({ app, className }: { app: Pick<DeviceApp, "id" | "icon">; className?: string }) {
   const Icon = app.icon ?? APP_ICONS[app.id] ?? LayoutGrid;
+  return <Icon className={className} />;
+}
+
+// `data-app-tile` / `data-app-icon` let MiniAppShell find the open app's icon
+// again when it closes; `data-app-dock` and `data-app-viewport` tell it which
+// copy is on screen.
+function Tile({ app, size, showLabel, onOpen }: { app: DeviceApp; size: "md" | "lg"; showLabel: boolean; onOpen: AppsGridProps["onOpen"] }) {
+  const iconRef = useRef<HTMLSpanElement>(null);
   const lg = size === "lg";
   return (
     <button
       type="button"
+      data-app-tile={app.id}
       onClick={() => {
         hapticLight();
-        onOpen(app.id);
+        onOpen(app.id, iconRef.current ?? undefined);
       }}
       className="group flex min-w-0 flex-col items-center gap-[7px] text-[11.5px] font-medium tracking-[-0.01em] text-foreground"
     >
       <span
+        ref={iconRef}
+        data-app-icon
         className={cn(
-          "grid place-items-center transition-[transform,filter] duration-100 group-active:scale-[0.92] group-active:brightness-[0.92]",
+          // Tailwind v4's scale-* sets the `scale` property, not `transform`.
+          "grid place-items-center transition-[scale,filter] duration-100 group-active:scale-[0.92] group-active:brightness-[0.92]",
           lg ? "h-[76px] w-[76px] rounded-[17px]" : "h-[60px] w-[60px] rounded-[14px]",
-          TILE_BASE,
-          TILE_COLORS[app.color ?? (app.dark ? "ink" : "slate")],
+          TILE_SHADOW,
+          tileGradient(app),
           "text-foreground",
         )}
       >
-        <Icon className={lg ? "h-10 w-10" : "h-8 w-8"} />
+        <TileGlyph app={app} className={lg ? "h-10 w-10" : "h-8 w-8"} />
       </span>
       {showLabel && <span className="w-full truncate text-center">{app.label}</span>}
     </button>
@@ -82,6 +104,7 @@ export function AppsGrid({ apps, onOpen, columns = 4, size = "md", className }: 
     <div className={cn("relative h-full w-full overflow-hidden", className)}>
       {/* Scrollable page of tiles; bottom padding keeps the last row clear of the dock. */}
       <div
+        data-app-viewport
         className={cn(
           "h-full overflow-y-auto pt-7 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           columns === 6 ? "px-10" : "px-4",
@@ -96,6 +119,7 @@ export function AppsGrid({ apps, onOpen, columns = 4, size = "md", className }: 
       </div>
       {dock.length > 0 && (
         <div
+          data-app-dock
           className={cn(
             "absolute flex items-center justify-evenly bg-black/5 backdrop-blur-[20px] dark:bg-white/10",
             lg ? "bottom-6 left-10 right-10 h-[104px] rounded-[27px]" : "bottom-9 left-4 right-4 h-[88px] rounded-[21px]",

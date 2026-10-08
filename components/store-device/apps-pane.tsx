@@ -29,6 +29,8 @@ export function AppsPane({ operator, operatorPin, members, forMember, onPanelOpe
   const t = useT();
   const [openApp, setOpenApp] = useState<DeviceApp["id"] | null>(null);
   const [openRoute, setOpenRoute] = useState<string | null>(null);
+  // The tapped tile's icon: the app grows out of it (MiniAppShell).
+  const [openOrigin, setOpenOrigin] = useState<HTMLElement | null>(null);
 
   // Punching happens at log-in (PunchPrompt) and in the log-out drawer, so
   // there is no separate Punch In app on the store device. Every other
@@ -40,10 +42,11 @@ export function AppsPane({ operator, operatorPin, members, forMember, onPanelOpe
   const openCatalog = openApp ? catalogApp(openApp) : null;
   const title = openApp ? (openCatalog ? t(`device.catalog.${openApp}`) : t(`storeDevice.apps.${openApp}`)) : "";
 
-  const open = (id: DeviceApp["id"]) => {
+  const open = (id: DeviceApp["id"], origin?: HTMLElement) => {
     hapticLight();
     setOpenApp(id);
     setOpenRoute(null);
+    setOpenOrigin(origin ?? null);
     onPanelOpenChange?.(true);
   };
   const close = () => {
@@ -56,7 +59,14 @@ export function AppsPane({ operator, operatorPin, members, forMember, onPanelOpe
   return (
     <div className={cn("relative min-h-0 overflow-hidden bg-background", className)}>
       <AppsGrid apps={apps} onOpen={open} columns={phone ? 4 : 6} size={phone ? "md" : "lg"} className="absolute inset-0" />
-      <MiniAppShell open={openApp !== null} title={title} onClose={close} closeLabel={t("storeDevice.close")}>
+      <MiniAppShell
+        open={openApp !== null}
+        title={title}
+        app={openApp ? apps.find((a) => a.id === openApp) ?? null : null}
+        origin={openOrigin}
+        onClose={close}
+        closeLabel={t("storeDevice.close")}
+      >
         {openCatalog && (
           <EmbeddedPage
             appId={openCatalog.id}
