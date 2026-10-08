@@ -295,7 +295,7 @@ export function SlidesStage({ touch = false, className }: SlidesStageProps) {
   const index = deck.slideIds.indexOf(slide.id) + 1;
   return (
     <div
-      ref={setViewport}
+      ref={setViewport} data-no-sidebar-swipe
       {...{ [STAGE_VIEWPORT_ATTR]: "" }}
       className={cn("relative h-full w-full overflow-auto bg-muted select-none", className)}
       onPointerUp={onPointerUp}

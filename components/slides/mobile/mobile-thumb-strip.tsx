@@ -144,7 +144,7 @@ export function MobileThumbStrip({ orientation }: { orientation: "horizontal" | 
   return (
     <div className={cn("shrink-0 bg-muted/40", vertical ? "flex h-full w-[136px] flex-col border-e border-border" : "border-t border-border")}>
       <div
-        ref={setStrip}
+        ref={setStrip} data-no-sidebar-swipe
         role="group"
         aria-label={t("slides.rail.label")}
         aria-describedby={editMode && writable ? hintId : undefined}

@@ -4,7 +4,7 @@ import { useSyncExternalStore, type ReactNode } from "react";
 import { MobileShell } from "@/components/sidebar";
 import { BrowserShellProvider } from "@/components/browser-shell/core/browser-shell-provider";
 import { DesktopBrowserChrome } from "@/components/browser-shell/desktop";
-import { MobileBrowserChrome } from "@/components/browser-shell/mobile";
+import { MobileAppChrome } from "@/components/browser-shell/mobile-app";
 import { getStoreMachineMode } from "@/lib/store-machine-mode";
 import { useShellLayoutQuery } from "@/lib/browser-shell";
 
@@ -45,10 +45,11 @@ function readLegacyOnServer(): boolean {
 /**
  * Picks the manager shell (plan §B2.5, D1–D3). Exactly one shell is mounted at a time:
  * the legacy `MobileShell` in store-machine mode (or when rolled back), otherwise the
- * browser shell with the Chrome-style desktop chrome at ≥1024px and the Safari-style
- * mobile chrome below. Crossing the breakpoint remounts the page subtree, as the legacy
- * shell did. Note: the `storage` event does not fire in the tab that wrote a flag, so a
- * flag change there needs a reload.
+ * browser shell with the Chrome-style desktop chrome at ≥1024px and, below, the phone's
+ * app chrome: a single page with a swipe-in sidebar drawer and no browser UI (the provider
+ * still runs the tab store, history, Android back and the editors' shell hooks). Crossing
+ * the breakpoint remounts the page subtree, as the legacy shell did. Note: the `storage`
+ * event does not fire in the tab that wrote a flag, so a flag change there needs a reload.
  */
 export function ManagerShell({ children }: { children: ReactNode }) {
   const legacy = useSyncExternalStore(subscribe, readLegacy, readLegacyOnServer);
@@ -59,7 +60,7 @@ export function ManagerShell({ children }: { children: ReactNode }) {
       {layout === "desktop" ? (
         <DesktopBrowserChrome>{children}</DesktopBrowserChrome>
       ) : (
-        <MobileBrowserChrome>{children}</MobileBrowserChrome>
+        <MobileAppChrome>{children}</MobileAppChrome>
       )}
     </BrowserShellProvider>
   );

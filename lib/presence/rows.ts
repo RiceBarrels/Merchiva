@@ -1,6 +1,6 @@
 import { activeSectionHref, navKeyOf } from "@/components/browser-shell/desktop/sidebar/sidebar-nav";
 import { resolveLegacyRedirect } from "@/lib/browser-shell/routes";
-import type { NavSection } from "@/lib/browser-shell/types";
+import { currentEntry, type BrowserTab, type NavSection, type TabId, type TabUrl } from "@/lib/browser-shell/types";
 import { PAGE_ANCHOR } from "./anchor";
 import { stripRecordKey } from "./path";
 
@@ -108,6 +108,15 @@ export function viewersFromPeers(peers: readonly PresencePeer[]): ViewerInput[] 
       memberId: peer.memberId,
       url: stripRecordKey(peer.pagePath),
     }));
+}
+
+/**
+ * URLs of this window's tabs other than the one on screen, for viewersFromTabs. None on the
+ * single-tab phone layout (lib/browser-shell/single-tab.ts): its other tabs are hidden, so they
+ * are not pages this user is on.
+ */
+export function otherTabUrlsOf(tabs: readonly BrowserTab[], shownTabId: TabId | null, singleTab: boolean): TabUrl[] {
+  return singleTab ? [] : tabs.filter((tab) => tab.id !== shownTabId).map((tab) => currentEntry(tab).url);
 }
 
 /** Viewer entries for this user's other in-app tabs (their URLs, the active tab left out). */

@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useTabActions } from "@/lib/browser-shell";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
+import { SIDEBAR_DRAWER_POPOVER_CLASS, SIDEBAR_DRAWER_SWITCHER_CLASS } from "../chrome-classes";
 import { useOverlayBackHandler } from "../chrome-context";
 
 /*
@@ -29,8 +30,10 @@ import { useOverlayBackHandler } from "../chrome-context";
  * popover first; store and account switches reload the page.
  *
  * Collapsed (icon rail) it shrinks to the store tile with a tooltip; the popover is identical.
+ * In the phone drawer the trigger and the popover rows are touch-sized and the popover never
+ * outgrows a 320px screen; Android back closes it like any other popup (lib/browser-shell/android-back.ts).
  */
-export function SidebarWorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
+export function SidebarWorkspaceSwitcher({ collapsed, drawer = false }: { collapsed: boolean; drawer?: boolean }) {
   const t = useT();
   const actions = useTabActions();
   const [open, setOpen] = useState(false);
@@ -75,7 +78,10 @@ export function SidebarWorkspaceSwitcher({ collapsed }: { collapsed: boolean }) 
         <button
           type="button"
           aria-label={label}
-          className="flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-start outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 data-popup-open:bg-muted dark:hover:bg-background dark:data-popup-open:bg-background"
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-start outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 data-popup-open:bg-muted dark:hover:bg-background dark:data-popup-open:bg-background",
+            drawer && SIDEBAR_DRAWER_SWITCHER_CLASS,
+          )}
         />
       }
     >
@@ -104,7 +110,7 @@ export function SidebarWorkspaceSwitcher({ collapsed }: { collapsed: boolean }) 
         side="bottom"
         sideOffset={6}
         aria-label={label}
-        className={cn("max-h-[min(640px,80vh)] w-[300px] overflow-y-auto p-0")}
+        className={cn("max-h-[min(640px,80vh)] w-[300px] overflow-y-auto p-0", drawer && SIDEBAR_DRAWER_POPOVER_CLASS)}
       >
         {user ? (
           <div className="flex items-center gap-3 border-b border-border px-3 py-3">

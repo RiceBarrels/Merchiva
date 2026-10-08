@@ -9,7 +9,7 @@ import { useT } from "@/lib/i18n/context";
 import { isNativeShell } from "@/lib/native-shell";
 import { useAccessContext } from "@/lib/browser-shell/access";
 import { installAndroidBack } from "@/lib/browser-shell/android-back";
-import { OPEN_TAB_EVENT, useTab, useTabPresentation, useTabsSnapshot } from "@/lib/browser-shell/hooks";
+import { OPEN_TAB_EVENT, shellTabActions, useTab, useTabPresentation, useTabsSnapshot } from "@/lib/browser-shell/hooks";
 import { installLinkInterceptor } from "@/lib/browser-shell/link-intercept";
 import { matchRoute } from "@/lib/browser-shell/routes";
 import {
@@ -22,8 +22,16 @@ import {
 import { markBrowserShellMounted } from "@/lib/browser-shell/shell-dom";
 import { installSignOutPurge } from "@/lib/browser-shell/sign-out";
 import { getShortcutEnv, installShortcuts } from "@/lib/browser-shell/shortcuts";
+import { isSingleTabLayout, isSingleTabShell, runTabCommand, shellCommandApplies } from "@/lib/browser-shell/single-tab";
 import { TAB_COMMANDS, executeShellCommand, tabsStore } from "@/lib/browser-shell/store";
-import type { BrowserTab, ShellInfo, ShellLayout, TabsSnapshot } from "@/lib/browser-shell/types";
+import {
+  SHELL_MOBILE_BREAKPOINT,
+  type BrowserTab,
+  type ShellCommand,
+  type ShellInfo,
+  type ShellLayout,
+  type TabsSnapshot,
+} from "@/lib/browser-shell/types";
 import { canonicalizeUrl } from "@/lib/browser-shell/url";
 import { RouterInvariantGuard } from "./router-invariant-guard";
 
@@ -39,8 +47,23 @@ function readCoarsePointer(): boolean {
   return window.matchMedia(COARSE_POINTER_QUERY).matches;
 }
 
+/** The layout the viewport asks for right now (useShellLayoutQuery's breakpoint, read directly). */
+function readViewportLayout(): ShellLayout {
+  return window.matchMedia(`(max-width: ${SHELL_MOBILE_BREAKPOINT - 1}px)`).matches ? "mobile" : "desktop";
+}
+
 function renderedTab(snapshot: TabsSnapshot): BrowserTab | null {
   return snapshot.tabs.find((tab) => tab.id === snapshot.activeTabId) ?? null;
+}
+
+/** A core tab command under the layout's tab policy (single-tab.ts); false when nothing ran it. */
+function runShellTabCommand(cmd: ShellCommand): boolean {
+  return runTabCommand(cmd, {
+    ready: tabsStore.isReady(),
+    singleTab: isSingleTabShell(),
+    actions: shellTabActions,
+    execute: executeShellCommand,
+  });
 }
 
 /** `document.title = "<tab title> | Merchiva"` (template in app/layout.tsx), for the rendered tab. */
@@ -66,7 +89,8 @@ function DocumentTitleSync(): null {
  * shared shell behaviour (plan §B2.1): history bridge, invariant guard, link interception,
  * shortcuts, Android back, OPEN_TAB_EVENT, the Capacitor-hidden bounce, the
  * `<html data-browser-shell>` mark and `document.title`. Chromes render inside it and only
- * read the public API.
+ * read the public API. On the phone layout links, shortcuts and OPEN_TAB_EVENT follow the
+ * single-tab policy (lib/browser-shell/single-tab.ts).
  */
 export function BrowserShellProvider({ layout, children }: { layout: ShellLayout; children: ReactNode }): React.JSX.Element {
   const router = useRouter();
@@ -93,10 +117,13 @@ export function BrowserShellProvider({ layout, children }: { layout: ShellLayout
   useLayoutEffect(() => () => tabsStore.setAccess(null), []);
 
   // Bound before first paint so the chrome never renders an empty strip. A layout change
-  // (crossing 1024px) re-renders this provider but never re-binds.
+  // (crossing 1024px) re-renders this provider but never re-binds. The boot's single-tab rule
+  // reads the viewport, not `layout`: a render during hydration still says "desktop" there
+  // (useIsMobile's server snapshot).
   useLayoutEffect(() => {
     if (!userId || !organizationId) return;
-    return tabsStore.bind({ scope: { userId, organizationId }, router });
+    const singleTab = isSingleTabLayout(readViewportLayout());
+    return tabsStore.bind({ scope: { userId, organizationId }, router, singleTab });
   }, [userId, organizationId, router]);
 
   useEffect(() => {
@@ -110,14 +137,15 @@ export function BrowserShellProvider({ layout, children }: { layout: ShellLayout
     const removeShortcuts = installShortcuts(
       env,
       (cmd) => {
-        if (!executeShellCommand(cmd)) emitShellCommand(cmd);
+        if (!runShellTabCommand(cmd)) emitShellCommand(cmd);
       },
       {
         isEnabled: tabsStore.isReady,
         // Only swallow a combo something will act on: `toggleSidebar` and `toggleBookmarksBar`
         // are desktop-chrome commands, so on the mobile chrome nothing registers them and the
-        // key belongs to the browser.
-        canHandle: (cmd) => TAB_COMMANDS.includes(cmd) || hasShellCommandHandler(cmd),
+        // key belongs to the browser, as do the tab-switching commands the phone layout drops.
+        canHandle: (cmd) =>
+          shellCommandApplies(cmd, isSingleTabShell()) && (TAB_COMMANDS.includes(cmd) || hasShellCommandHandler(cmd)),
       },
     );
     const removeLinks = installLinkInterceptor({
@@ -125,12 +153,12 @@ export function BrowserShellProvider({ layout, children }: { layout: ShellLayout
       isTauri: isNativeShell(),
       isEnabled: tabsStore.isReady,
       getActiveTabId: () => tabsStore.getState().activeTabId,
-      open: (url, { activate }) => tabsStore.actions.openUrl(url, activate ? "new-foreground" : "new-background"),
+      open: (url, { activate }) => shellTabActions.openUrl(url, activate ? "new-foreground" : "new-background"),
       onPlainNavigate: (url) => tabsStore.markPlainNavigation(url),
     });
     const removeCommands = TAB_COMMANDS.map((cmd) =>
       registerShellCommandHandler(cmd, () => {
-        executeShellCommand(cmd);
+        runShellTabCommand(cmd);
       }),
     );
     const removeBack = installAndroidBack({
@@ -149,7 +177,7 @@ export function BrowserShellProvider({ layout, children }: { layout: ShellLayout
       const detail = (event as CustomEvent<{ url?: unknown; activate?: unknown }>).detail;
       if (!detail || typeof detail.url !== "string") return;
       if (tabsStore.isReady()) {
-        tabsStore.actions.openUrl(detail.url, detail.activate === false ? "new-background" : "new-foreground");
+        shellTabActions.openUrl(detail.url, detail.activate === false ? "new-background" : "new-foreground");
         return;
       }
       const target = canonicalizeUrl(detail.url);

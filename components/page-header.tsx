@@ -34,6 +34,8 @@ export function PageHeader({
   const shell = useShellInfo();
   const [navMode] = useNavMode();
   const isSideBarMode = !shell && navMode === "sidebar";
+  // The phone shell's menu button sits in the top start corner (components/browser-shell/mobile-app).
+  const cornerButton = shell?.layout === "mobile";
   const showCrumbs = shell?.layout !== "desktop";
   return (
     <>
@@ -66,7 +68,7 @@ export function PageHeader({
         )}
         style={{ paddingTop: `calc(${SafeArea.top}px + 0.875rem)` }}
       >
-        <div className={cn("pl-14 min-w-0 flex-1", !isSideBarMode && "pl-0")}>
+        <div className={cn("min-w-0 flex-1", isSideBarMode && "pl-14", cornerButton && "ps-14")}>
           <h1 className="text-[22px] font-semibold text-foreground leading-[1.15] tracking-tight">{title}</h1>
           {subtitle && (
             <p className="text-[12px] text-muted-foreground leading-tight mt-1">{subtitle}</p>

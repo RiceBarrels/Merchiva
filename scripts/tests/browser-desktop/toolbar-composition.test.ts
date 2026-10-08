@@ -165,9 +165,17 @@ describe("desktop frame layout", () => {
     }
   });
 
-  test("the sidebar is desktop-only: the mobile chrome never mounts it", () => {
-    const mobile = join(import.meta.dir, "..", "..", "..", "components", "browser-shell", "mobile", "mobile-browser-chrome.tsx");
-    expect(readFileSync(mobile, "utf8")).not.toContain("BrowserSidebar");
+  test("the phone drawer reuses the sidebar at touch size; only the desktop chrome gets the collapse control", () => {
+    const drawer = join(import.meta.dir, "..", "..", "..", "components", "browser-shell", "mobile-app", "sidebar-drawer.tsx");
+    const drawerCode = code(readFileSync(drawer, "utf8"));
+    expect(countOf(drawerCode, "<BrowserSidebar ")).toBe(1);
+    expect(drawerCode).toContain('variant="drawer"');
+    // No icon rail on a phone: without onToggleCollapse the sidebar renders no collapse control.
+    expect(drawerCode).not.toContain("onToggleCollapse");
+    expect(source("sidebar", "sidebar.tsx")).toContain(
+      "{onToggleCollapse ? <CollapseControl collapsed={collapsed} onToggle={onToggleCollapse} /> : null}",
+    );
+    expect(chrome).toContain("onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}");
   });
 });
 

@@ -22,10 +22,12 @@ import { currentEntry, type ShellLayout, type TabId, type TabsSnapshot, type Url
 /** Desktop windows have memory to spare and up to MAX_TABS tabs: eight pages stay alive. */
 export const DESKTOP_KEEP_ALIVE = 8;
 /**
- * Phones (mobile Safari, the Capacitor WebViews) reclaim memory aggressively, and hidden pages
- * still re-render at low priority when a shared context changes: four pages stay alive there.
+ * The phone layout shows one tab (single-tab.ts): only the visible page stays mounted. Tabs left
+ * hidden by a restored session or a wider window would otherwise cost memory the phone reclaims
+ * aggressively, and re-render at low priority whenever a shared context changes; they remount
+ * when the desktop chrome shows them again.
  */
-export const MOBILE_KEEP_ALIVE = 4;
+export const MOBILE_KEEP_ALIVE = 1;
 
 export function keepAliveLimit(layout: ShellLayout): number {
   return layout === "mobile" ? MOBILE_KEEP_ALIVE : DESKTOP_KEEP_ALIVE;

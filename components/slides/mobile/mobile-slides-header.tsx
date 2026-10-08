@@ -4,7 +4,8 @@
 // Viewing: Back · title (tap to rename) · collaborators (2) · Edit · Play · More.
 // Editing: Done · Undo · Redo · save status · Add · More.
 // Back goes to Drive the same way the Docs phone header does: the device panel's opener when there is one, else
-// the shell's back, else a plain navigation. The undo / redo buttons keep the keyboard up (no focus on press).
+// the shell's back (Drive itself when the tab has nothing to go back to: a cold deep link, no history and no
+// opener), else a plain navigation. The undo / redo buttons keep the keyboard up (no focus on press).
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, MoreVertical, Pencil, Play, Plus, Redo2, Undo2 } from "lucide-react";
 
@@ -13,7 +14,7 @@ import { FilePresenceAvatars } from "@/components/files/editor-chrome/file-prese
 import { FileSaveStatus } from "@/components/files/editor-chrome/file-save-status";
 import { useSlidesEditor } from "@/components/slides/editor/slides-context";
 import { Button } from "@/components/ui/button";
-import { useShellInfo, useTabActions } from "@/lib/browser-shell";
+import { useActiveTab, useShellInfo, useTab, useTabActions, useTabHistory } from "@/lib/browser-shell";
 import { DRIVE_HOME_HREF } from "@/lib/drive/hrefs";
 import { useT } from "@/lib/i18n/context";
 
@@ -24,6 +25,9 @@ export function MobileSlidesHeader() {
   const router = useRouter();
   const shell = useShellInfo();
   const tabActions = useTabActions();
+  const activeTab = useActiveTab();
+  const tabHistory = useTabHistory(activeTab?.id ?? null);
+  const opener = useTab(activeTab?.openerTabId ?? null);
   const openDocs = useDocsOpenOverride();
   const { doc, deck, ui, dispatch, actions, undo, canEditNow, collab, peers, saveState } = useSlidesEditor();
   const editing = ui.mobileMode === "edit";
@@ -34,7 +38,8 @@ export function MobileSlidesHeader() {
 
   const back = () => {
     if (openDocs) openDocs(DRIVE_HOME_HREF, "current");
-    else if (shell) tabActions.goBack({ closeToOpener: true });
+    else if (shell && (tabHistory.canGoBack || opener !== null)) tabActions.goBack({ closeToOpener: true });
+    else if (shell) tabActions.navigateActive(DRIVE_HOME_HREF);
     else router.push(DRIVE_HOME_HREF);
   };
   const jumpTo = (memberId: string) => {

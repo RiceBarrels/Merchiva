@@ -1,6 +1,7 @@
 /*
- * ⌘⇧M (Ctrl+Shift+M elsewhere) is the only way to open Mr. Merchiva in /manager. Pure so it is
- * testable without the React tree.
+ * ⌘⇧M (Ctrl+Shift+M elsewhere) opens Mr. Merchiva anywhere in /manager; the only other ways in are
+ * the desktop rail and, on the phone layout, a swipe toward the inline start (dock-reveal.ts). Pure
+ * so it is testable without the React tree.
  *
  * The key matches on `event.key`, like every letter shortcut the user reads off the keycap, so
  * AZERTY's M works where it is printed. Layouts with no Latin M on that key (Arabic, Hindi,

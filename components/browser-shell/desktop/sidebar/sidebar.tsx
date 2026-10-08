@@ -15,6 +15,10 @@ import { navPresenceId } from "@/lib/presence/anchor";
 import { cn } from "@/lib/utils";
 import {
   SIDEBAR_CLASS,
+  SIDEBAR_DRAWER_HEADER_CLASS,
+  SIDEBAR_DRAWER_ICON_BUTTON_CLASS,
+  SIDEBAR_DRAWER_ROW_CLASS,
+  SIDEBAR_DRAWER_SUB_ROW_CLASS,
   SIDEBAR_HEADER_CLASS,
   SIDEBAR_ICON_BUTTON_CLASS,
   SIDEBAR_PAD_CLASS,
@@ -35,7 +39,9 @@ import { SIDEBAR_ELEMENT_ID } from "./sidebar-state";
 import { SidebarWorkspaceSwitcher } from "./workspace-switcher";
 
 /*
- * Desktop sidebar (≥1024px only; the mobile Safari chrome keeps its page menu and launcher).
+ * Desktop sidebar (≥1024px), also the /manager phone drawer (variant "drawer",
+ * components/browser-shell/mobile-app): touch-sized rows, no collapse control, and the drawer's
+ * own rows (Notifications) above the pinned ones.
  * It replicates the legacy sidebar (components/sidebar.tsx SidebarContent): logo header,
  * combined store + account switcher, nav rows with expandable sub-pages, Settings pinned at
  * the bottom, the collapse control and the version line.
@@ -53,8 +59,18 @@ function onRowMouseDown(event: MouseEvent<HTMLAnchorElement>): void {
   if (event.button === 1) event.preventDefault();
 }
 
-export function BrowserSidebar({ collapsed, onToggleCollapse }: { collapsed: boolean; onToggleCollapse(): void }) {
+export interface BrowserSidebarProps {
+  collapsed: boolean;
+  /** The collapse control at the foot; the phone drawer has no icon rail and passes none. */
+  onToggleCollapse?(): void;
+  variant?: "panel" | "drawer";
+  /** The drawer's own rows, above the pinned ones. */
+  extraRows?: ReactNode;
+}
+
+export function BrowserSidebar({ collapsed, onToggleCollapse, variant = "panel", extraRows }: BrowserSidebarProps) {
   const { t, dir } = useI18n();
+  const drawer = variant === "drawer";
   const sections = useNavSections();
   const activeTab = useActiveTab();
   const presentation = useTabPresentation(activeTab);
@@ -84,7 +100,7 @@ export function BrowserSidebar({ collapsed, onToggleCollapse }: { collapsed: boo
       aria-label={t("browserDesktop.sidebar.label")}
       className={SIDEBAR_CLASS}
     >
-      <div className={cn(SIDEBAR_HEADER_CLASS, collapsed && "justify-center px-2")}>
+      <div className={cn(SIDEBAR_HEADER_CLASS, collapsed && "justify-center px-2", drawer && SIDEBAR_DRAWER_HEADER_CLASS)}>
         <MerchivaLogo size={24} fg="var(--background)" bg="var(--foreground)" rounded />
         {collapsed ? null : (
           <p className="min-w-0 truncate text-[13px] font-semibold leading-tight tracking-tight">
@@ -94,7 +110,7 @@ export function BrowserSidebar({ collapsed, onToggleCollapse }: { collapsed: boo
       </div>
 
       <div className={cn("shrink-0 border-b border-border py-2", SIDEBAR_PAD_CLASS)}>
-        <SidebarWorkspaceSwitcher collapsed={collapsed} />
+        <SidebarWorkspaceSwitcher collapsed={collapsed} drawer={drawer} />
       </div>
 
       <nav
@@ -106,6 +122,7 @@ export function BrowserSidebar({ collapsed, onToggleCollapse }: { collapsed: boo
             key={section.href}
             section={section}
             collapsed={collapsed}
+            drawer={drawer}
             activeUrl={activeUrl}
             activeSection={activeSection}
             expanded={expanded.has(section.href)}
@@ -115,6 +132,7 @@ export function BrowserSidebar({ collapsed, onToggleCollapse }: { collapsed: boo
       </nav>
 
       <div className={cn("shrink-0 space-y-0.5 border-t border-border py-2", SIDEBAR_PAD_CLASS)}>
+        {extraRows}
         {pinned.map((section) => (
           <SidebarRow
             key={section.href}
@@ -125,9 +143,10 @@ export function BrowserSidebar({ collapsed, onToggleCollapse }: { collapsed: boo
             // /manager/settings/billing.
             active={isSectionRowActive(section, activeUrl, activeSection, false)}
             collapsed={collapsed}
+            drawer={drawer}
           />
         ))}
-        <CollapseControl collapsed={collapsed} onToggle={onToggleCollapse} />
+        {onToggleCollapse ? <CollapseControl collapsed={collapsed} onToggle={onToggleCollapse} /> : null}
         {collapsed ? null : (
           <p className="px-2 pt-1.5 font-mono text-[10px] text-muted-foreground">{t("components.sidebar.version")}</p>
         )}
@@ -139,6 +158,7 @@ export function BrowserSidebar({ collapsed, onToggleCollapse }: { collapsed: boo
 function SidebarSection({
   section,
   collapsed,
+  drawer,
   activeUrl,
   activeSection,
   expanded,
@@ -146,6 +166,7 @@ function SidebarSection({
 }: {
   section: NavSection;
   collapsed: boolean;
+  drawer: boolean;
   activeUrl: TabUrl;
   activeSection: TabUrl | null;
   expanded: boolean;
@@ -162,7 +183,7 @@ function SidebarSection({
   const active = isSectionRowActive(section, activeUrl, activeSection, childrenVisible);
 
   if (collapsed || section.children.length === 0) {
-    return <SidebarRow href={section.href} title={title} icon={section.icon} active={active} collapsed={collapsed} />;
+    return <SidebarRow href={section.href} title={title} icon={section.icon} active={active} collapsed={collapsed} drawer={drawer} />;
   }
 
   return (
@@ -174,6 +195,7 @@ function SidebarSection({
           icon={section.icon}
           active={active}
           collapsed={false}
+          drawer={drawer}
           childrenVisible={childrenVisible}
           className="min-w-0 flex-1"
         />
@@ -183,7 +205,7 @@ function SidebarSection({
           aria-expanded={expanded}
           aria-controls={expanded ? listId : undefined}
           aria-label={fmt(t(expanded ? "browserDesktop.sidebar.hideSubPages" : "browserDesktop.sidebar.showSubPages"), { title })}
-          className={SIDEBAR_ICON_BUTTON_CLASS}
+          className={drawer ? cn(SIDEBAR_ICON_BUTTON_CLASS, SIDEBAR_DRAWER_ICON_BUTTON_CLASS) : SIDEBAR_ICON_BUTTON_CLASS}
         >
           <ChevronRight
             aria-hidden
@@ -220,6 +242,7 @@ function SidebarSection({
                     "relative",
                     SIDEBAR_SUB_ROW_CLASS,
                     isRowActive(child.href, activeUrl) ? SIDEBAR_ROW_ACTIVE_CLASS : SIDEBAR_ROW_IDLE_CLASS,
+                    drawer && SIDEBAR_DRAWER_SUB_ROW_CLASS,
                   )}
                 >
                   {t(child.titleKey)}
@@ -240,6 +263,7 @@ function SidebarRow({
   icon: Icon,
   active,
   collapsed,
+  drawer,
   childrenVisible = false,
   className,
 }: {
@@ -248,6 +272,7 @@ function SidebarRow({
   icon: AppIcon;
   active: boolean;
   collapsed: boolean;
+  drawer: boolean;
   /** Its sub-page rows are on screen (they show their own presence badges). */
   childrenVisible?: boolean;
   className?: string;
@@ -265,6 +290,7 @@ function SidebarRow({
     collapsed && "justify-center",
     active ? SIDEBAR_ROW_ACTIVE_CLASS : SIDEBAR_ROW_IDLE_CLASS,
     className,
+    drawer && SIDEBAR_DRAWER_ROW_CLASS,
   );
 
   if (!collapsed) {

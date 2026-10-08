@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { motion, useReducedMotion } from "motion/react";
-import { PanelRightClose, PanelRightOpen, X } from "lucide-react";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { MerchivaLogo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { useActiveTab, useTabsSnapshot } from "@/lib/browser-shell";
+import { useSingleTabShell } from "@/lib/browser-shell/single-tab";
 import { usePermissions } from "@/lib/context/permissions";
 import { useI18n } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
@@ -17,21 +18,23 @@ import { isMacPlatform, merchivaShortcutLabel } from "./shortcut";
 /** Width of the collapsed desktop dock: the rail with the vertical "Mr. Merchiva" label. */
 export const RAIL_WIDTH = 44;
 
-/** Key of the one Merchiva outside the browser shell, where there are no tabs. */
+/** Key of the one Merchiva outside the browser shell and on the single-tab phone layout, where there are no tabs to tell apart. */
 const WINDOW_SCOPE = "__window__";
+
+/** The quiet area a chat shows until it has loaded. */
+export function ChatLoading() {
+  return (
+    <div className="flex flex-1 items-center justify-center">
+      <Spinner size={16} className="text-muted-foreground" />
+    </div>
+  );
+}
 
 // The chat is several thousand lines plus a markdown renderer; load it when the dock first opens,
 // not with every /manager page.
 const MerchivaChat = dynamic(
   () => import("@/components/merchiva-chat-dashboard").then((m) => m.MerchivaChat),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex flex-1 items-center justify-center">
-        <Spinner size={16} className="text-muted-foreground" />
-      </div>
-    ),
-  },
+  { ssr: false, loading: () => <ChatLoading /> },
 );
 
 /** Owners, or members with `merchiva.view` — the same gate as the chat itself. */
@@ -40,7 +43,7 @@ export function useCanUseMerchiva(): boolean {
   return isOwner || can("merchiva", "view");
 }
 
-function MerchivaMark({ size = 20 }: { size?: number }) {
+export function MerchivaMark({ size = 20 }: { size?: number }) {
   return (
     <span
       className="inline-flex shrink-0 items-center justify-center rounded bg-foreground text-background"
@@ -51,7 +54,7 @@ function MerchivaMark({ size = 20 }: { size?: number }) {
   );
 }
 
-function shortcutHint(label: string): string {
+export function shortcutHint(label: string): string {
   return `${label} (${merchivaShortcutLabel(isMacPlatform())})`;
 }
 
@@ -60,12 +63,16 @@ function shortcutHint(label: string): string {
  * schedule while the next one does something else. A tab's chat mounts the first time the dock is
  * open on it and then stays mounted — hidden while another tab is showing or the dock is collapsed —
  * so a reply keeps streaming in after the user switches away. Closing a tab drops its chat; its
- * conversation stays saved, so reopening the tab brings it back.
+ * conversation stays saved, so reopening the tab brings it back. `idle` shows in place of a chat
+ * the showing tab has not mounted yet. The phone layout shows one tab and never switches, so there
+ * the window has one Merchiva, as outside the shell: a deep link that lands in a new hidden tab
+ * keeps the conversation instead of starting an empty one.
  */
-function TabChats({ open }: { open: boolean }) {
+export function TabChats({ open, idle = null }: { open: boolean; idle?: ReactNode }) {
   const snapshot = useTabsSnapshot();
   const activeTab = useActiveTab();
-  const tabbed = snapshot.scope !== null;
+  const singleTab = useSingleTabShell();
+  const tabbed = snapshot.scope !== null && !singleTab;
   const current = tabbed ? activeTab?.id ?? null : WINDOW_SCOPE;
 
   const [kept, setKept] = useState<readonly string[]>([]);
@@ -87,13 +94,15 @@ function TabChats({ open }: { open: boolean }) {
           </div>
         );
       })}
+      {current && next.includes(current) ? null : idle}
     </div>
   );
 }
 
 /**
  * When the user opens the dock (shortcut or rail), put the caret in the showing tab's composer —
- * once its chat has loaded. A dock restored open on page load leaves focus alone.
+ * once its chat has loaded. A dock restored open on page load leaves focus alone, and so does one
+ * swiped open on the phone (dock-reveal.ts), so the keyboard stays down.
  */
 function useComposerFocus(open: boolean, current: string | null, hostRef: React.RefObject<HTMLDivElement | null>): void {
   useEffect(() => {
@@ -183,30 +192,6 @@ export function MerchivaSidePanel({ open }: { open: boolean }) {
         <MerchivaMark />
         <span className="whitespace-nowrap text-[13px] font-semibold tracking-tight text-foreground">{t("merchiva.name")}</span>
       </motion.div>
-    </aside>
-  );
-}
-
-/**
- * The dock where no shell gives it a column (the mobile browser chrome, the legacy shell): the
- * same chats over the right side of the page — the whole width on a phone.
- */
-export function MerchivaOverlayPanel() {
-  const { t } = useI18n();
-  const closeLabel = t("merchiva.dock.close");
-  return (
-    <aside
-      aria-label={t("merchiva.name")}
-      className="fixed inset-y-0 end-0 z-40 flex w-full flex-col border-s border-border bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-xl sm:w-[400px]"
-    >
-      <div className="flex min-h-[42px] shrink-0 items-center gap-2 px-3 py-2">
-        <MerchivaMark />
-        <span className="flex-1 truncate text-[13px] font-semibold tracking-tight">{t("merchiva.name")}</span>
-        <Button variant="ghost" size="icon-xs" onClick={closeMerchivaDock} aria-label={closeLabel} title={shortcutHint(closeLabel)}>
-          <X className="h-4 w-4 text-muted-foreground" />
-        </Button>
-      </div>
-      <TabChats open />
     </aside>
   );
 }

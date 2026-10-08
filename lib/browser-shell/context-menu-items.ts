@@ -28,7 +28,8 @@ import type { ShellContextHit, ShellContextMenuItem } from "./context-menu";
  *   5. the rendered page's own actions (useRegisterPageActions) — on the desktop this menu is
  *      the only place they surface, since only the mobile chrome has a page menu sheet
  *   6. the page: back / forward / reload / new tab / bookmark / copy link
- * Empty groups are dropped, so a click on blank space is just the page group.
+ * Empty groups are dropped, so a click on blank space is just the page group. The single-tab
+ * phone layout (single-tab.ts) has no tabs to open, so its menu has no new-tab items.
  */
 
 export interface ShellContextMenuGroup {
@@ -41,6 +42,8 @@ export interface ContextMenuDeps {
   readonly t: (key: string) => string;
   /** False in the legacy sidebar shell: tab and bookmark items are dropped. */
   readonly inShell: boolean;
+  /** True on the single-tab phone layout: the new-tab and bookmark items are dropped (the phone shows neither tabs nor bookmarks). */
+  readonly singleTab?: boolean;
   readonly canGoBack: boolean;
   readonly canGoForward: boolean;
   /** Current in-app URL and its tab title, for the bookmark and copy-link items. */
@@ -91,11 +94,12 @@ function linkGroup(hit: ShellContextHit, deps: ContextMenuDeps): ShellContextMen
   if (!link) return null;
   const { t, on } = deps;
   const inApp = link.inApp;
+  const tabs = deps.inShell && !deps.singleTab;
   return group("link", [
-    inApp && deps.inShell
+    inApp && tabs
       ? { id: "link-new-tab", label: t("browser.contextMenu.openInNewTab"), icon: ExternalLink, onSelect: () => on.openInNewTab(inApp, true) }
       : null,
-    inApp && deps.inShell
+    inApp && tabs
       ? { id: "link-background-tab", label: t("browser.contextMenu.openInBackgroundTab"), icon: ExternalLink, onSelect: () => on.openInNewTab(inApp, false) }
       : null,
     // An external href (docs site, POS console, mailto:) leaves the app entirely.
@@ -103,7 +107,7 @@ function linkGroup(hit: ShellContextHit, deps: ContextMenuDeps): ShellContextMen
       ? { id: "link-external", label: t("browser.contextMenu.openInBrowser"), icon: ExternalLink, onSelect: () => on.openExternal(link.href) }
       : null,
     { id: "link-copy", label: t("browser.contextMenu.copyLink"), icon: LinkIcon, onSelect: () => on.copyUrl(inApp ?? link.href, inApp !== null) },
-    inApp && deps.inShell
+    inApp && deps.inShell && !deps.singleTab
       ? { id: "link-bookmark", label: t("browser.contextMenu.bookmarkLink"), icon: Star, onSelect: () => on.bookmark(inApp, link.text || inApp) }
       : null,
   ]);
@@ -161,10 +165,10 @@ function pageGroup(deps: ContextMenuDeps): ShellContextMenuGroup | null {
     { id: "page-back", label: t("browser.actions.back"), icon: ArrowLeft, disabled: !deps.canGoBack, shortcut: shortcuts.back ?? undefined, onSelect: on.back },
     { id: "page-forward", label: t("browser.actions.forward"), icon: ArrowRight, disabled: !deps.canGoForward, shortcut: shortcuts.forward ?? undefined, onSelect: on.forward },
     { id: "page-reload", label: t("browser.actions.reload"), icon: RotateCw, shortcut: shortcuts.reload ?? undefined, onSelect: on.reload },
-    deps.inShell
+    deps.inShell && !deps.singleTab
       ? { id: "page-new-tab", label: t("browser.actions.newTab"), icon: Plus, shortcut: shortcuts.newTab ?? undefined, onSelect: on.newTab }
       : null,
-    deps.inShell
+    deps.inShell && !deps.singleTab
       ? bookmarked
         ? { id: "page-unbookmark", label: t("browser.contextMenu.removeBookmark"), icon: StarOff, onSelect: on.unbookmarkPage }
         : { id: "page-bookmark", label: t("browser.contextMenu.bookmarkPage"), icon: Star, onSelect: () => on.bookmark(deps.pageUrl, deps.pageTitle) }

@@ -8,6 +8,7 @@ import {
   cursorSpotKey,
   isFreshPresence,
   livePeers,
+  otherTabUrlsOf,
   personKey,
   placeViewers,
   presenceNavKey,
@@ -21,7 +22,7 @@ import {
 import { listNavSections } from "@/lib/browser-shell/access";
 import { documentHref } from "@/lib/docs/hrefs";
 import { presencePageKeyOf } from "@/lib/presence/path";
-import type { AccessContext } from "@/lib/browser-shell/types";
+import type { AccessContext, BrowserTab } from "@/lib/browser-shell/types";
 
 const NOW = 1_800_000_000_000;
 
@@ -108,7 +109,8 @@ describe("nav placement", () => {
       ["/manager/suppliers", "/manager/inventory", "/manager/suppliers"],
       ["/manager/inventory", "/manager/inventory", null],
       ["/manager/inventory/waste", "/manager/inventory", "/manager/inventory/waste"],
-      ["/manager/docs/edit?id=abc", "/manager/docs", null],
+      // The Docs editor sits under Drive, the one file hub (Docs is an editor plugin).
+      ["/manager/docs/edit?id=abc", "/manager/drive", null],
       ["/manager", "/manager/new-tab", null],
       ["/manager/personnel", "/manager/personnel/schedule", "/manager/personnel/schedule"],
       ["/manager/personnel/team/42", "/manager/personnel/schedule", "/manager/personnel/team"],
@@ -130,14 +132,31 @@ describe("nav placement", () => {
     ]);
   });
 
-  test("people in different documents are all on the Docs row; the record segment is not a nav key", () => {
+  test("this window's other tabs are the ones off screen, and none on the single-tab phone layout", () => {
+    const tab = (id: string, urls: string[], index = urls.length - 1): BrowserTab => ({
+      id,
+      pinned: false,
+      openerTabId: null,
+      createdAt: 1,
+      lastActiveAt: 1,
+      history: { entries: urls.map((url, i) => ({ key: `e_${id}${i}`, url, at: 1 })), index },
+    });
+    const tabs = [tab("t_a", ["/manager/inventory"]), tab("t_b", ["/manager/sales"]), tab("t_c", ["/manager/reports", "/manager/tasks"], 0)];
+    // Each tab counts with the page it shows, not the last one in its history.
+    expect(otherTabUrlsOf(tabs, "t_b", false)).toEqual(["/manager/inventory", "/manager/reports"]);
+    expect(otherTabUrlsOf(tabs, null, false)).toHaveLength(3);
+    // The phone keeps restored tabs hidden: they put no "You (other tab)" badge on the drawer.
+    expect(otherTabUrlsOf(tabs, "t_b", true)).toEqual([]);
+  });
+
+  test("people in different documents are all on the Drive row; the record segment is not a nav key", () => {
     const inDocX = presencePageKeyOf(documentHref("doc-x")) ?? "";
     const inDocY = presencePageKeyOf(documentHref("doc-y")) ?? "";
     expect(inDocX).not.toBe(inDocY);
     const viewers = viewersFromPeers([peer({ pagePath: inDocX }), peer({ pagePath: inDocY })]);
     expect(viewers.map((v) => v.url)).toEqual(["/manager/docs/edit", "/manager/docs/edit"]);
     const placed = placeViewers(viewers, SECTIONS);
-    expect(placed.map((v) => v.sectionHref)).toEqual(["/manager/docs", "/manager/docs"]);
+    expect(placed.map((v) => v.sectionHref)).toEqual(["/manager/drive", "/manager/drive"]);
     expect(presenceNavKey(inDocX)).toBe(presenceNavKey("/manager/docs/edit"));
     expect(presenceNavKey("/manager/inventory/waste")).toBe("/manager/inventory/waste");
   });

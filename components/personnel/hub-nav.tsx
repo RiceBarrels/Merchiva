@@ -55,12 +55,13 @@ export function PersonnelLoading() {
 export function PersonnelHeader() {
   const t = useT();
   // In sidebar nav mode phones/tablets get a floating hamburger pinned over the
-  // top-left corner (lg:hidden) — leave room for it like PageHeader does.
+  // top-left corner (lg:hidden), and the phone shell a menu button in the top
+  // start corner — leave room for them like PageHeader does.
   const shell = useShellInfo();
   const [navMode] = useNavMode();
   return (
     <div className="h-14 px-4 lg:px-6 border-b border-border bg-background flex items-center gap-3 shrink-0">
-      <div className={cn("min-w-0 flex-1", !shell && navMode === "sidebar" && "pl-14 lg:pl-0")}>
+      <div className={cn("min-w-0 flex-1", !shell && navMode === "sidebar" && "pl-14 lg:pl-0", shell?.layout === "mobile" && "ps-14")}>
         <h1 className="text-[15px] font-semibold leading-tight truncate">
           {t("personnel.title")}
         </h1>

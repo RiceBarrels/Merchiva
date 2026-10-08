@@ -13,7 +13,8 @@ import { SidebarToggle } from "./sidebar";
  * Toolbar row (desktop spec §3.3): sidebar toggle · Back · Forward · Reload · Home · omnibox ·
  * notifications · | · app menu. A plain group in normal Tab order (no roving toolbar). The
  * account and store menu moved into the sidebar's workspace switcher. Mr. Merchiva has no button
- * here: ⌘⇧M is its only way in (components/merchiva-dock).
+ * here: on desktop ⌘⇧M and his rail are the ways in (the phone layout adds a swipe;
+ * components/merchiva-dock).
  */
 export function Toolbar() {
   const t = useT();

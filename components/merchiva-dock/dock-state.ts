@@ -3,9 +3,11 @@
 import { useLayoutEffect, useSyncExternalStore } from "react";
 
 /*
- * Whether the Mr. Merchiva dock is open, and how wide it is on desktop. It opens from ⌘⇧M or,
- * on desktop, the rail on the right edge, and stays open — across tabs, navigation and reloads —
- * until the user closes it (the collapse button, the shortcut again, or dragging it to the rail).
+ * Whether the Mr. Merchiva dock is open, and how wide it is on desktop. It opens from ⌘⇧M, on
+ * desktop the rail on the right edge, or on the phone layout a swipe toward the inline start
+ * (dock-reveal.ts), and stays open — across tabs, navigation and reloads — until the user closes it
+ * (the collapse or close button, the shortcut again, dragging it to the rail, or on the phone
+ * swiping it away or Android back).
  *
  * The state is per window: it is read from localStorage once and written back on every change,
  * so a reload starts where it left off, but opening the dock in one window never opens it in
@@ -76,14 +78,14 @@ export function closeMerchivaDock(): void {
   returnFocus = null;
   focusPending = false;
   writeOpen(false);
-  // Whatever had focus inside the panel unmounts with it; hand focus back to where it was.
+  // Whatever had focus in the panel unmounts or goes inert; hand focus back to where it was.
   if (!target) return;
   window.requestAnimationFrame(() => {
     if (target.isConnected) target.focus({ preventScroll: true });
   });
 }
 
-/** Follows a drag of the desktop dock to or from the rail: no focus moves. */
+/** Follows a drag of the desktop dock to or from the rail, or a swipe on the phone: no focus moves. */
 export function setMerchivaDockOpen(next: boolean): void {
   if (readOpen() === next) return;
   if (!next) {

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "motion/react"
 import { getSafeAreaInsets } from "@/lib/safe-area";
 import { displayedDialogPage, lastShownDialogClose } from "@/lib/browser-shell/shell-dom";
 import { useDialogDepth, useOpenDynamicUIElementCount } from "@/components/ui/dialog-depth";
+import { DynamicUIElementBack, dialogSafeTop } from "@/components/ui/dynamic-ui-element-back";
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -367,6 +368,12 @@ function MobileDynamicUIElementPage({
   const startY = React.useRef(0);
   const axis = React.useRef<"h" | "v" | null>(null);
   const closeRef = React.useRef<HTMLButtonElement>(null);
+  // Back: slide out, then close. The hidden [data-dialog-back] runs it (closeTopDialog, popstate,
+  // Android back), and so does the visible Back on the /manager phone layout.
+  const goBack = React.useCallback(() => {
+    setExiting(true);
+    setTimeout(() => closeRef.current?.click(), 500);
+  }, []);
 
   React.useEffect(() => {
     return () => {
@@ -497,15 +504,10 @@ function MobileDynamicUIElementPage({
       >
         <div ref={ref} className="flex flex-col h-full">
           <DialogPrimitive.Close ref={closeRef} className="hidden" />
-          <button
-            data-dialog-back
-            onClick={() => {
-              setExiting(true);
-              setTimeout(() => closeRef.current?.click(), 500);
-            }}
-            className="hidden"
-          />
-          <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ paddingInline: noPadding ? 0 : 16, paddingTop: 64, paddingBottom: `calc(${noPadding ? 0 : 16}px + var(--shell-dialog-bottom, 0px))` }}>
+          <button data-dialog-back onClick={goBack} className="hidden" />
+          <DynamicUIElementBack title={mobileTitle} onBack={goBack} exiting={exiting} />
+          {/* The safe top is padding, not a spacer child, so an h-full child fits below it. */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ paddingInline: noPadding ? 0 : 16, paddingTop: `calc(64px + ${dialogSafeTop(getSafeAreaInsets().top)})`, paddingBottom: `calc(${noPadding ? 0 : 16}px + var(--shell-dialog-bottom, 0px))` }}>
             {children}
           </div>
         </div>
@@ -548,7 +550,6 @@ function DynamicUIElementContent({
     return (
       <DynamicUIElementPortal>
         <MobileDynamicUIElementPage className={className} noPadding={noPadding} {...props}>
-          <div className="w-full" style={{ height: getSafeAreaInsets().top }} />
           {children}
         </MobileDynamicUIElementPage>
       </DynamicUIElementPortal>

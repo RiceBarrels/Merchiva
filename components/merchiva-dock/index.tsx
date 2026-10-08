@@ -1,24 +1,29 @@
 "use client";
 
 import { useEffect } from "react";
-import { MerchivaOverlayPanel, useCanUseMerchiva } from "./dock-panel";
+import { useCanUseMerchiva } from "./dock-panel";
 import { toggleMerchivaDock, useHasDockSlot, useMerchivaDockOpen } from "./dock-state";
+import { MerchivaOverlayPanel } from "./overlay-panel";
 import { isMerchivaShortcut } from "./shortcut";
 import { ShortcutHint } from "./shortcut-hint";
 
 export { MerchivaDockLayout } from "./dock-layout";
+export { useMerchivaBackHandler } from "./overlay-panel";
 
 /*
  * Mr. Merchiva in /manager: a chat docked on the right that stays until the user closes it.
  *
- *   ways in   ⌘⇧M (Ctrl+Shift+M) anywhere in /manager, and on desktop the rail on the right
- *             edge. Nothing else opens him — no button, menu entry, omnibox action or chat channel.
- *   per tab   every browser tab has its own Merchiva and conversation (dock-panel.tsx TabChats,
- *             tab-sessions.ts); whether the dock is open is shared by the window.
+ *   ways in   ⌘⇧M (Ctrl+Shift+M) anywhere in /manager, on desktop the rail on the right edge, and
+ *             on the phone layout a swipe toward the inline start (right-to-left in LTR) that pulls
+ *             him in from the end edge (dock-reveal.ts). Nothing else opens him — no button, menu
+ *             entry, omnibox action or chat channel.
+ *   per tab   on desktop every browser tab has its own Merchiva and conversation; the single-tab
+ *             phone layout has one per window, like the legacy shell (dock-panel.tsx TabChats,
+ *             tab-sessions.ts). Whether the dock is open is shared by the window.
  *
  *   MerchivaDock        mounted once by app/manager/layout.tsx: owns the shortcut and the first-run
  *                       hint, and overlays the dock on the page when no shell gives it a column (the
- *                       mobile browser chrome, the legacy shell).
+ *                       phone layout, the legacy shell; overlay-panel.tsx).
  *   MerchivaDockLayout  the desktop browser chrome's page region plus the dock as a resizable panel
  *                       that collapses to the rail (dock-layout.tsx).
  *
@@ -48,7 +53,7 @@ function MerchivaDockRoot() {
   return (
     <>
       <ShortcutHint open={open} />
-      {open && !slotted ? <MerchivaOverlayPanel /> : null}
+      {slotted ? null : <MerchivaOverlayPanel open={open} />}
     </>
   );
 }

@@ -3,12 +3,13 @@
 // Per-entry actions on the Drive manager page, shared by the "⋮" dropdown (cards, rows, the
 // preview header) and the right-click / long-press context menu. The items come only from
 // driveActionGroups (components/drive/model/actions.ts), which reads the entry's access flags,
-// so a menu never offers what the module would refuse. Right-clicking an entry that is part of
+// so a menu never offers what the module would refuse; the single-tab phone layout drops
+// "Open in new tab" (lib/browser-shell/single-tab.ts). Right-clicking an entry that is part of
 // a multi-selection offers the selection's actions instead (selectionActions, the rule the
 // selection bar and the Delete key use: offline, only downloading).
 //
-// Same structure as components/docs/home/doc-item-menu.tsx: both menus render the same Base UI
-// items (ContextMenu reuses Menu's Popup/Item parts and anchors to the pointer).
+// The dropdown and the context menu render the same Base UI items (ContextMenu reuses Menu's
+// Popup/Item parts and anchors to the pointer).
 
 import { Fragment } from "react";
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
@@ -46,6 +47,7 @@ import {
   DocMenuSeparator,
   DocMenuTrigger,
 } from "@/components/docs/ui/doc-menu";
+import { useSingleTabShell, withoutNewTabRows } from "@/lib/browser-shell/single-tab";
 import { useT } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
 import { cn } from "@/lib/utils";
@@ -117,9 +119,10 @@ export interface EntryMenuActionsProps {
 
 function EntryMenuItems({ entry, ctx, move, onAction }: EntryMenuActionsProps) {
   const t = useT();
+  const singleTab = useSingleTabShell();
   return (
     <>
-      {driveActionGroups(entry, ctx, move).map((group, index) => (
+      {withoutNewTabRows(driveActionGroups(entry, ctx, move), singleTab).map((group, index) => (
         <Fragment key={group.join(",")}>
           {index > 0 && <DocMenuSeparator />}
           {group.map((action) => {

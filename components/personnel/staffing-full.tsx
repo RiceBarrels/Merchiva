@@ -3088,7 +3088,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
 
               {/* 7-column day buttons — touch-swipe */}
               <div
-                ref={weekStripRef}
+                ref={weekStripRef} data-no-sidebar-swipe
                 className="overflow-hidden pb-2"
               >
                 <div
@@ -3177,7 +3177,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
 
             {/* ── Day Timeline (swipe left/right to change day) ── */}
             <div
-              ref={dayContentRef}
+              ref={dayContentRef} data-no-sidebar-swipe
               className="px-0 overflow-hidden"
               style={{
                 transform: daySwiping ? `translateX(${daySwipeOffset}px)` : undefined,

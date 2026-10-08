@@ -31,8 +31,9 @@ function markSeen(): void {
 }
 
 /**
- * First-run hint for ⌘⇧M. The shortcut is the only way into Mr. Merchiva, so nothing else
- * teaches it. Pointer devices only; shown for a few seconds on each load until the user opens
+ * First-run hint for ⌘⇧M. The shortcut is the way into Mr. Merchiva everywhere (besides it only
+ * the desktop rail and the phone layout's swipe toward the inline start open him), and nothing
+ * else teaches it. Pointer devices only; shown for a few seconds on each load until the user opens
  * the dock or clicks the hint.
  */
 export function ShortcutHint({ open }: { open: boolean }) {

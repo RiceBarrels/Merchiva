@@ -24,6 +24,7 @@ import { copyFromField, cutFromField, pasteIntoField, selectAllIn, type EditResu
 import { buildContextMenu, type ContextMenuHandlers } from "@/lib/browser-shell/context-menu-items";
 import type { ShellContextMenuItem } from "@/lib/browser-shell/context-menu";
 import { buildShareUrl, copyText, openExternal } from "@/lib/browser-shell/mobile/share";
+import { isSingleTabLayout } from "@/lib/browser-shell/single-tab";
 import { useT } from "@/lib/i18n/context";
 
 /*
@@ -143,6 +144,7 @@ export function ShellContextMenu() {
         ? buildContextMenu(hit, {
             t,
             inShell: shellLayout !== null,
+            singleTab: isSingleTabLayout(shellLayout),
             canGoBack: nav.canGoBack,
             canGoForward: nav.canGoForward,
             pageUrl,

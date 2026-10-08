@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo } from "react";
 import { useReducedMotion } from "motion/react";
-import { currentEntry, useNavSections, useTab, useTabPresentation, useTabsSnapshot } from "@/lib/browser-shell";
+import { useNavSections, useTab, useTabPresentation, useTabsSnapshot } from "@/lib/browser-shell";
+import { useSingleTabShell } from "@/lib/browser-shell/single-tab";
 import { useAuth, type AuthUser } from "@/lib/auth/context";
 import { usePermissions } from "@/lib/context/permissions";
 import { useI18n } from "@/lib/i18n/context";
@@ -14,6 +15,7 @@ import { presencePageKeyOf, stripRecordKey } from "@/lib/presence/path";
 import {
   cursorSpotKey,
   livePeers,
+  otherTabUrlsOf,
   placeViewers,
   presenceNavKey,
   stackIndexes,
@@ -129,10 +131,12 @@ export function PresenceLayer() {
   const me = useMemo(() => selfProfile(peers, myConnectionId, user), [peers, myConnectionId, user]);
 
   // ── Nav badges: other people, this user's other windows, and this window's other tabs ──
+  // (none on the phone layout, which keeps its other tabs hidden)
+  const singleTab = useSingleTabShell();
   const highlightedId = snapshot.requestedTabId ?? snapshot.activeTabId;
   const otherTabUrls = useMemo(
-    () => snapshot.tabs.filter((tab) => tab.id !== highlightedId).map((tab) => currentEntry(tab).url),
-    [snapshot.tabs, highlightedId],
+    () => otherTabUrlsOf(snapshot.tabs, highlightedId, singleTab),
+    [snapshot.tabs, highlightedId, singleTab],
   );
   const viewers = useMemo(
     () => placeViewers([...viewersFromPeers(live), ...viewersFromTabs(otherTabUrls, me)], sections),

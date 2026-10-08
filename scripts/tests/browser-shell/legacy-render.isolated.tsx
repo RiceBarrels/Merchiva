@@ -76,23 +76,34 @@ test("PageHeader outside the browser shell keeps the legacy inset and breadcrumb
   expect(bottombar).toContain(BREADCRUMBS);
 });
 
-test("PageHeader inside the browser shell: no hamburger inset; desktop hides breadcrumbs", () => {
+test("PageHeader inside the browser shell: the phone reserves the menu-button corner; desktop hides breadcrumbs", () => {
   navMode = "sidebar";
   const desktop = renderToStaticMarkup(withShell("desktop", createElement(PageHeader, { title: "Inventory" })));
   expect(desktop).not.toContain("pl-14");
+  expect(desktop).not.toContain("ps-14");
   expect(desktop).not.toContain(BREADCRUMBS);
+  // The phone chrome's menu button sits in the top start corner, mirrored in RTL: a logical inset.
   const mobile = renderToStaticMarkup(withShell("mobile", createElement(PageHeader, { title: "Inventory" })));
+  expect(mobile).toContain("ps-14");
   expect(mobile).not.toContain("pl-14");
   expect(mobile).toContain(BREADCRUMBS);
+  navMode = "bottombar";
+  expect(renderToStaticMarkup(withShell("mobile", createElement(PageHeader, { title: "Inventory" })))).toContain("ps-14");
+  navMode = "sidebar";
 });
 
-test("PersonnelHeader keeps the sidebar inset only outside the browser shell", () => {
+test("PersonnelHeader: the legacy sidebar inset outside the shell, the menu-button corner on the phone shell", () => {
   navMode = "sidebar";
   expect(renderToStaticMarkup(createElement(PersonnelHeader))).toContain("pl-14 lg:pl-0");
   navMode = "bottombar";
   expect(renderToStaticMarkup(createElement(PersonnelHeader))).not.toContain("pl-14");
   navMode = "sidebar";
-  expect(renderToStaticMarkup(withShell("mobile", createElement(PersonnelHeader)))).not.toContain("pl-14");
+  const mobile = renderToStaticMarkup(withShell("mobile", createElement(PersonnelHeader)));
+  expect(mobile).toContain("ps-14");
+  expect(mobile).not.toContain("pl-14");
+  const desktop = renderToStaticMarkup(withShell("desktop", createElement(PersonnelHeader)));
+  expect(desktop).not.toContain("ps-14");
+  expect(desktop).not.toContain("pl-14");
 });
 
 test("the New Tab page renders under the legacy shell with the fallbacks", () => {
@@ -102,7 +113,8 @@ test("the New Tab page renders under the legacy shell with the fallbacks", () =>
   // Home tile, which would point at the page being displayed.
   expect(html).toContain('<h1 class="sr-only">Home</h1>');
   expect(html).toContain("Search pages, documents and tabs");
-  for (const href of ["/manager/docs", "/manager/inventory", "/manager/sales", "/manager/personnel/schedule", "/manager/settings"]) {
+  // "All documents" goes straight to Drive's documents view (DOCS_HOME_HREF), not through the /manager/docs redirect.
+  for (const href of ["/manager/drive?space=recent&amp;type=doc", "/manager/inventory", "/manager/sales", "/manager/personnel/schedule", "/manager/settings"]) {
     expect(html).toContain(`href="${href}"`);
   }
   expect(html).not.toContain('href="/manager/new-tab"');

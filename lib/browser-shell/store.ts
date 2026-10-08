@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { skipNextPageTransition } from "@/components/page-tabs";
 import { getAppMode } from "@/lib/app-mode";
 import { getRouteAccess } from "./access";
+import { placeDeepLink } from "./boot-deep-link";
 import { recordBrowsingVisit, updateBrowsingHistoryTitle } from "./browsing-history";
 import { createHistoryBridge, readStamp } from "./history-bridge";
 import {
@@ -20,7 +21,6 @@ import {
   pathnameOf,
   removeTab,
   reorder,
-  replaceEntry,
   restoreClosed,
   setEntryScroll,
   setEntryTitle,
@@ -92,6 +92,8 @@ export interface ShellRouter {
 export interface BindInput {
   readonly scope: TabsScope;
   readonly router: ShellRouter;
+  /** The window boots into the single-tab phone layout (single-tab.ts): a deep link adds no tab. */
+  readonly singleTab: boolean;
 }
 
 interface Runtime {
@@ -320,7 +322,7 @@ interface BootResult {
   readonly protectEntryKey: EntryKey | null;
 }
 
-function bootState(sanitized: SanitizedTabs | null, scope: TabsScope, now: number, orgIntent: boolean): BootResult {
+function bootState(sanitized: SanitizedTabs | null, scope: TabsScope, now: number, orgIntent: boolean, singleTab: boolean): BootResult {
   const base: TabsSnapshot = { ...IDLE_SNAPSHOT, status: "ready", scope: { userId: scope.userId, organizationId: scope.organizationId } };
   const boot = canonicalizeUrl(window.location.href);
   /** What the browser really shows; null when it is not a tab URL, so it matches no entry. */
@@ -407,21 +409,8 @@ function bootState(sanitized: SanitizedTabs | null, scope: TabsScope, now: numbe
     return { state: commitActivation(st, active.id, now), navigate: null, protectEntryKey: activeEntry.key };
   }
 
-  // Deep link (bookmark, login ?next=, notification): reuse or add a tab.
-  const existing = findByUrlKey(st, bootKey);
-  if (existing) {
-    const entry = currentEntry(existing);
-    st = commitActivation(patchEntryUrl(st, entry.key, bootUrl), existing.id, now);
-    return { state: st, navigate: null, protectEntryKey: entry.key };
-  }
-  if (st.tabs.length < MAX_TABS) {
-    const tab = createTab(bootUrl, now, ids);
-    st = commitActivation(insertTab(st, tab, "end", null), tab.id, now);
-    return { state: st, navigate: null, protectEntryKey: tab.history.entries[0].key };
-  }
-  const replaced = replaceEntry(st, active.id, bootUrl, now, ids);
-  st = commitActivation(replaced.state, active.id, now);
-  return { state: st, navigate: null, protectEntryKey: replaced.entry?.key ?? null };
+  // Deep link (bookmark, login ?next=, notification): reuse or add a tab; the phone adds none (boot-deep-link.ts).
+  return { ...placeDeepLink(st, active.id, bootUrl, now, ids, singleTab), navigate: null };
 }
 
 // ─── Bind / teardown ─────────────────────────────────────────────────────────
@@ -494,7 +483,7 @@ function bind(input: BindInput): () => void {
     removeLifecycle: () => {},
   };
   runtime = rt;
-  const boot = bootState(sanitized, input.scope, now, orgIntent);
+  const boot = bootState(sanitized, input.scope, now, orgIntent, input.singleTab);
   state = boot.state;
   configureScrollTracking(() => renderedEntry()?.entry.key ?? null);
   rt.releaseBridge = bridge.install();

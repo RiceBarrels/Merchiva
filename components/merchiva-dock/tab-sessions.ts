@@ -8,9 +8,10 @@ import { useTabsSnapshot } from "@/lib/browser-shell";
  * plan the schedule while the next does something else entirely. The tab → session binding is
  * kept per user and store in localStorage, next to the persisted tabs themselves (tab ids survive
  * reloads, and reopening a closed tab usually restores its id), so a tab gets its conversation
- * back after a reload. Outside the browser shell (the legacy shell has no tabs) there is one
- * Merchiva, on the user's most recent session when it opens, as before; it then stays there, since
- * every save (from any device or tab) moves some session to the top.
+ * back after a reload. Outside the browser shell (the legacy shell has no tabs), and on the
+ * single-tab phone layout, there is one Merchiva, on the user's most recent session when it opens,
+ * as before; it then stays there, since every save (from any device or tab) moves some session to
+ * the top.
  *
  * A tab asks for a session only when its first message goes out, so tabs where Merchiva was merely
  * looked at leave no empty rows behind. `createAiChatSession` cannot return the new row's id, so
