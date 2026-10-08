@@ -4,6 +4,7 @@ import TextInput from "ink-text-input";
 import { Spinner } from "../components/Spinner.tsx";
 import { streamChat, type ChatTurn } from "../../lib/api.ts";
 import { loadConfig } from "../../lib/config.ts";
+import { useOrg } from "../data/provider.tsx";
 import { theme } from "../theme.ts";
 
 interface Msg {
@@ -13,6 +14,8 @@ interface Msg {
 }
 
 export function Chat({ focused, height }: { focused: boolean; height: number }) {
+  // The store picked in the TUI; the server answers only an active member of it.
+  const { orgId } = useOrg();
   const [input, setInput] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [busy, setBusy] = useState(false);
@@ -33,6 +36,7 @@ export function Chat({ focused, height }: { focused: boolean; height: number }) 
         config: loadConfig(),
         message: q,
         history,
+        organizationId: orgId ?? undefined,
         onText: (chunk) => setStreaming((s) => s + chunk),
       });
       if (res.ack && !res.text) setAck(res.ack);

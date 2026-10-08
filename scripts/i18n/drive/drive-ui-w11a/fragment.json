@@ -1,0 +1,9 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "W1.1a",
+  "note": "New leaves under drive-ui's prefixes for the upload tray, drops and folder uploads, and downloads (drive-ui.md §8.2-§8.3). Terms follow the drive-ui fragment: zh-cn 上传/文件夹, zh-tw 上傳/資料夾, zh-hk 上載/資料夾.",
+  "owned": [],
+  "extends": "drive-ui",
+  "overwrites": [],
+  "allowSameAsEn": []
+}

@@ -1,8 +1,10 @@
 // SpacetimeDB React hooks — generated bindings for all 33 public tables.
 // Use these in any client component inside <SpacetimeProvider>.
 
-import { useTable } from "spacetimedb/react";
+import { useState } from "react";
+import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { tables } from "./generated";
+import type { PagePresence } from "./generated/types";
 
 export { useSpacetimeDB } from "spacetimedb/react";
 export { useTable } from "spacetimedb/react";
@@ -183,16 +185,56 @@ export function useBugReports() {
 // Domain hooks with mapping + access rules: lib/spacetimedb/hooks/useDocs.ts.
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/rules-of-hooks */
 const __docTables = tables as any;
+/** Nothing to subscribe (no scope, or disabled): no rows and nothing to wait for, like a disabled useTable. */
+const SCOPED_DISABLED = Object.freeze([Object.freeze([]), true]) as unknown as [unknown[], boolean];
+interface ScopedPhase {
+  /** The scope the last render subscribed to (null: none). */
+  scope: string | null;
+  /** useTable is passed one disabled render before the new query, which resets its `applied` flag. */
+  resetting: boolean;
+  /** What useTable returned when this phase began: the previous query's snapshot, which never counts. */
+  stale: unknown;
+}
+/**
+ * spacetimedb/react useTable keeps its snapshot in a ref that only an effect clears, so on the render where the
+ * query or `enabled` changes it still returns the previous snapshot (`[[], true]` after a disabled one, the old
+ * scope's rows otherwise), and a query change while enabled never resets its `applied` flag
+ * (node_modules/spacetimedb/dist/react/index.mjs). So the tuple returned when a phase begins never counts, and a
+ * re-scope while subscribed goes through one disabled render first: ready means this scope's subscription applied.
+ */
 function useScopedDocTable(accessor: string, column: string, value: string | null, enabled = true) {
   const tbl = __docTables[accessor];
   if (!tbl) return EMPTY_TABLE_RESULT as unknown as [unknown[], boolean];
-  return useTable(tbl.where((r: any) => r[column].eq(value ?? "")), { enabled: enabled && !!value });
+  const scope = enabled && value ? value : null;
+  const [phase, setPhase] = useState<ScopedPhase>(() => ({ scope, resetting: false, stale: null }));
+  const moved = phase.scope !== scope;
+  const resetting = moved ? scope !== null && phase.scope !== null && !phase.resetting : phase.resetting;
+  const result = useTable(tbl.where((r: any) => r[column].eq(value ?? "")), { enabled: scope !== null && !resetting });
+  if (moved) setPhase({ scope, resetting, stale: result });
+  // A new snapshot while resetting: the disabled render committed and its effect reset `applied`. Subscribe now.
+  else if (resetting && result !== phase.stale) setPhase({ scope, resetting: false, stale: result });
+  if (scope === null) return SCOPED_DISABLED;
+  return moved || resetting || result === phase.stale ? (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]) : result;
 }
 export function useDocumentRows(organizationId: string | null) { return useScopedDocTable("document", "organizationId", organizationId); }
+// Each document's type and folder (`document_file`); useDocs.ts pairs them with the document rows.
+export function useDocumentFileRows(organizationId: string | null) { return useScopedDocTable("documentFile", "organizationId", organizationId); }
 export function useDocumentStarRows(organizationId: string | null) { return useScopedDocTable("documentStar", "organizationId", organizationId); }
 export function useDocumentAccessRows(organizationId: string | null) { return useScopedDocTable("documentAccess", "organizationId", organizationId); }
 export function useDocumentCommentRows(documentId: string | null) { return useScopedDocTable("documentComment", "documentId", documentId); }
 export function useDocumentVersionRows(documentId: string | null, enabled: boolean) { return useScopedDocTable("documentVersion", "documentId", documentId, enabled); }
+// Drive tables, same guard and org scope. Kept out of the provider.tsx batches: a
+// module without them would fail every org query there. Mapping + access rules:
+// lib/spacetimedb/hooks/useDrive.ts.
+export function useDriveItemRows(organizationId: string | null, enabled = true) { return useScopedDocTable("driveItem", "organizationId", organizationId, enabled); }
+export function useDriveUsageRows(organizationId: string | null, enabled = true) { return useScopedDocTable("driveUsage", "organizationId", organizationId, enabled); }
+export function useDriveStarRows(organizationId: string | null, enabled = true) { return useScopedDocTable("driveStar", "organizationId", organizationId, enabled); }
+export function useDriveNoticeAckRows(organizationId: string | null, enabled = true) { return useScopedDocTable("driveNoticeAck", "organizationId", organizationId, enabled); }
+// Storage accounting (app_file, org_storage_usage, document_size): same guard and org scope, probed apart from
+// Drive (lib/drive/queries.ts storageProbeQueries). Mapping: lib/spacetimedb/hooks/useDriveStorage.ts.
+export function useAppFileRows(organizationId: string | null, enabled = true) { return useScopedDocTable("appFile", "organizationId", organizationId, enabled); }
+export function useOrgStorageUsageRows(organizationId: string | null, enabled = true) { return useScopedDocTable("orgStorageUsage", "organizationId", organizationId, enabled); }
+export function useDocumentSizeRows(organizationId: string | null, enabled = true) { return useScopedDocTable("documentSize", "organizationId", organizationId, enabled); }
 /* eslint-enable */
 
 // ── Punch-in codes / device operator ─────────────────────────────────────────
@@ -212,3 +254,27 @@ export function useDeviceOperatorSession() {
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
 }
 /* eslint-enable */
+
+// ── Page presence ───────────────────────────────────────────────────────────
+// Live cursors on /manager pages — people and Mr. Merchiva (`page_presence`).
+// Rows change on every cursor move, so pass the active org id: the subscription
+// is then scoped to that org (null subscribes to nothing). With no argument it
+// is RLS-scoped only, i.e. every org the caller belongs to. `updatedAt` cannot
+// be filtered in SQL — callers drop rows older than the 90 s TTL themselves.
+// Guarded like the tables above: bindings without the table return an empty,
+// never-ready tuple.
+const EMPTY_PRESENCE_RESULT = EMPTY_TABLE_RESULT as unknown as [readonly PagePresence[], boolean];
+/* eslint-disable react-hooks/rules-of-hooks */
+export function usePagePresenceRows(organizationId?: string | null): [readonly PagePresence[], boolean] {
+  const tbl = tables.pagePresence as typeof tables.pagePresence | undefined;
+  if (!tbl) return EMPTY_PRESENCE_RESULT;
+  if (organizationId === undefined) return useTable(tbl);
+  return useTable(tbl.where((r) => r.organizationId.eq(organizationId ?? "")), { enabled: !!organizationId });
+}
+/* eslint-enable */
+
+/** This tab's connection id (hex) once connected, else null. Same identity + another id = my other tab. */
+export function useMyConnectionId(): string | null {
+  const { isActive, connectionId } = useSpacetimeDB();
+  return isActive && connectionId ? connectionId.toHexString() : null;
+}

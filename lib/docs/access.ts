@@ -5,8 +5,13 @@
 //   Org owner                                         → manager
 //   Fails the Docs gate (no permissions.dashboard.view === true) → none
 //   Org manager, or the document's owner              → manager
-//   Anyone else → max(visibility role, explicit grant role)
+//   Anyone else → max(visibility role, Drive floor, explicit grant role)
 //                 org_edit → editor, org_view → viewer, private → none
+//                 Drive floor ("everyone's files"): permissions.drive.edit →
+//                 editor, drive.view → viewer
+//
+// The server also returns none for another organization's document; the client
+// only ever evaluates its own org's rows, so that line is not mirrored.
 //
 // The gate mirrors `can("dashboard", "view")` (lib/context/permissions.tsx) and
 // the `<PermissionGuard section="dashboard">` on the docs routes.
@@ -34,8 +39,11 @@ export function isDocGrantRole(value: unknown): value is DocGrantRole {
   return typeof value === "string" && (DOC_GRANT_ROLES as readonly string[]).includes(value);
 }
 
-/** The `permissions` shape the gate reads; the full `Permissions` object fits. */
-export interface DocsGatePermissions { readonly dashboard?: { readonly view?: boolean } | null }
+/** The `permissions` shape the gate and the Drive floor read; the full `Permissions` object fits. */
+export interface DocsGatePermissions {
+  readonly dashboard?: { readonly view?: boolean } | null;
+  readonly drive?: { readonly view?: boolean; readonly edit?: boolean } | null;
+}
 
 /** Whether the member may use Docs at all (same rule as `can("dashboard", "view")`). */
 export function docsGateAllows(orgRole: OrgRole | null | undefined, permissions: DocsGatePermissions | null | undefined): boolean {
@@ -59,6 +67,9 @@ export function docRoleFor(input: ResolveDocAccessInput): DocRole {
   if (!docsGateAllows(orgRole, permissions)) return "none";
   if (orgRole === "manager" || (!!memberId && doc.ownerMemberId === memberId)) return "manager";
   let role: DocRole = doc.visibility === "org_edit" ? "editor" : doc.visibility === "org_view" ? "viewer" : "none";
+  // Drive "everyone's files": drive.edit → at least editor, drive.view → at least viewer.
+  const floor: DocRole = permissions?.drive?.edit === true ? "editor" : permissions?.drive?.view === true ? "viewer" : "none";
+  if (DOC_ROLE_RANK[floor] > DOC_ROLE_RANK[role]) role = floor;
   if (!memberId) return role;
   for (const grant of grants) {
     if (grant.documentId !== doc.id || grant.memberId !== memberId || !isDocGrantRole(grant.role)) continue;
@@ -85,4 +96,39 @@ export function docAccessFromRole(role: DocRole, trashed: boolean): DocAccess {
 
 export function resolveDocAccess(input: ResolveDocAccessInput): DocAccess {
   return docAccessFromRole(docRoleFor(input), !!input.doc.trashedAt);
+}
+
+/** Member ids compare case- and dash-insensitively (an id read through Uuid.toHexString() has no dashes). */
+export function sameMemberId(a: string | null | undefined, b: string | null | undefined): boolean {
+  const norm = (id: string | null | undefined) => (id ?? "").replace(/-/g, "").toLowerCase();
+  return norm(a) !== "" && norm(a) === norm(b);
+}
+
+export interface DocVisibilityRuleInput {
+  visibility: DocVisibility;
+  ownerMemberId: string;
+  /** The member setDocumentVisibility checks: useDocsSender().memberId (on /store the tablet account). */
+  senderMemberId: string | null;
+  /** The owner is an active member of the store (false when their row is gone or no longer active). */
+  ownerActive: boolean;
+}
+
+export interface DocVisibilityRule {
+  /** "Anyone in the store" is refused: only the owner may open this private document to the store. */
+  storeLocked: boolean;
+  /** Making it private is one-way for this caller: afterwards only the owner could open it to the store again. */
+  privateIsOneWay: boolean;
+}
+
+/**
+ * The owner rule of setDocumentVisibility (spacetimedb/src/index.ts, decision Q3): opening a private document to
+ * the store publishes someone's My files, so only its owner may, unless the owner is no longer an active member.
+ * A manager may still make anyone's store document private; this says when that cannot be undone by them.
+ */
+export function docVisibilityRule(input: DocVisibilityRuleInput): DocVisibilityRule {
+  const ownerOnly = input.ownerActive && !sameMemberId(input.senderMemberId, input.ownerMemberId);
+  return {
+    storeLocked: ownerOnly && input.visibility === "private",
+    privateIsOneWay: ownerOnly && input.visibility !== "private",
+  };
 }

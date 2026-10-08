@@ -44,6 +44,7 @@ import { PageHeader } from "@/components/page-header";
 import { useCurrency } from "@/lib/currency";
 import { usePermissions } from "@/lib/context/permissions";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
+import { usePricingPageContext } from "@/app/manager/pricing/use-pricing-page-context";
 import { updateProduct } from "@/lib/spacetimedb/actions";
 import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
@@ -743,6 +744,7 @@ export default function PricingPage() {
   const { organizationId } = usePermissions();
   const { products, isReady } = useProducts(organizationId);
   const [search, setSearch] = useState("");
+  usePricingPageContext({ ready: isReady, products: products.length, search });
 
   if (!isReady) {
     return (

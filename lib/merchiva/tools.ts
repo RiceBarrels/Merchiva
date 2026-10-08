@@ -7,116 +7,63 @@
  * `LIVE STORE DATA` JSON dump up-front. WRITES stay as ```action``` blocks so
  * the existing approval-card UI and permission flow are untouched.
  *
- * Data comes from the cached SpacetimeDB service connection
- * (SPACETIMEDB_SERVICE_TOKEN). If the token isn't configured the caller should
- * skip tools (see `merchivaToolsEnabled`) and fall back to the inline dump.
+ * Data is read AS THE CALLING MEMBER: each request gets its own source
+ * (lib/merchiva/tools/sql-source.ts) that loads the store's tables with the
+ * caller's token over the SQL endpoint, so row-level security returns what
+ * that member's app shows. Without a token the caller skips tools (see
+ * `merchivaToolsEnabled`) and falls back to the inline dump.
  *
- * Tools return real row `id`s — the model needs them to emit updateShift /
- * deleteShift / updateRole / addRoleTask / updatePrice / orderFromSupplier
- * action blocks.
+ * Tools return real row ids, hyphenated as the client and the reducers match
+ * them — every id an action block takes comes from one of them, under a name
+ * that says which action parameter it is (lib/merchiva/tools/id-sources.ts).
+ *
+ * "Algorithms compute, AI explains": finance, forecast, restock and schedule
+ * numbers come from the app's engines (lib/payroll + lib/money, lib/forecast,
+ * lib/restock, lib/scheduler) through the engine tools in lib/merchiva/tools/.
+ * The model only explains their output.
  */
 
 import "server-only";
 
-import { tool } from "ai";
+import { tool, type Tool, type ToolSet } from "ai";
 import { z } from "zod";
-import { getServiceConn, subscribeAndWait } from "@/lib/spacetimedb/service-client";
 import { productsFromInventoryRows } from "@/lib/products/from-inventory";
+import type { MerchivaToolName } from "@/lib/merchiva/tools/names";
+import {
+  canonicalUuid,
+  idHex,
+  jsonArray,
+  opt,
+  orgRows,
+  rowId,
+  type Row,
+  type ToolContext,
+  type ToolData,
+  type ToolExec,
+} from "@/lib/merchiva/tools/rows";
+import { createSqlToolSource } from "@/lib/merchiva/tools/sql-source";
+import type { ToolTable } from "@/lib/merchiva/tools/tool-tables";
+import { addDaysToKey, resolveStoreToday, validTimeZone } from "@/lib/merchiva/tools/store-time";
+import { roleViews, trainingViews } from "@/lib/merchiva/tools/view-roles";
+import {
+  VIEW_INVENTORY_DESCRIPTION,
+  inventoryView,
+  viewInventoryInput,
+  type ViewInventoryArgs,
+} from "@/lib/merchiva/tools/view-inventory";
+import { VIEW_SALES_DESCRIPTION, salesFromRows, viewSalesInput, type ViewSalesArgs } from "@/lib/merchiva/tools/view-sales";
+import { viewFinanceTool } from "@/lib/merchiva/tools/view-finance";
+import { viewForecastTool } from "@/lib/merchiva/tools/view-forecast";
+import { viewRestockSuggestionsTool } from "@/lib/merchiva/tools/view-restock-suggestions";
+import { proposeScheduleTool } from "@/lib/merchiva/tools/propose-schedule";
+import { nullsAsMissing } from "@/lib/merchiva/tools/null-args";
 
-/** Tools are only usable when the server can open the service connection. */
-export function merchivaToolsEnabled(): boolean {
-  return !!process.env.SPACETIMEDB_SERVICE_TOKEN;
-}
-
-// ── Row helpers ──────────────────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ServiceConn = any;
-
-/** A uuid/identity column decodes to an object with toHexString(); fall back to String. */
-function rowId(r: Row): string {
-  const id = r?.id;
-  return id?.toHexString ? id.toHexString() : String(id ?? "");
-}
-
-/** option<T> columns come back as the value, or undefined/null when unset. */
-function opt<T>(v: T | null | undefined): T | null {
-  return v == null ? null : v;
-}
-
-function jsonArray(v: unknown): unknown[] {
-  if (Array.isArray(v)) return v;
-  if (typeof v !== "string" || !v.trim()) return [];
-  try {
-    const parsed = JSON.parse(v);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-/** An identity column decodes to an object with toHexString(); always return a string. */
-function idHex(u: unknown): string {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const v = u as any;
-  return v?.toHexString ? v.toHexString() : String(v ?? "");
-}
-
-/** All rows of a table for one org. `orgIdField` defaults to `organizationId`. */
-function orgRows(conn: ServiceConn, table: string, organizationId: string): Row[] {
-  const t = conn?.db?.[table];
-  if (!t || typeof t.iter !== "function") return [];
-  return [...t.iter()].filter((r: Row) => {
-    const oid = r?.organizationId;
-    // organizationId is sometimes an option<string> (e.g. role_task) → unwrap.
-    const v = oid && typeof oid === "object" && "some" in oid ? oid.some : oid;
-    return v === organizationId;
-  });
-}
-
-// ── Subscriptions ────────────────────────────────────────────────────────────
-//
-// The service connection's row cache is empty until a subscription delivers
-// rows. We subscribe once per connection to the superset of tables the tools
-// read. Subscriptions stay live on the cached (warm) connection.
-
-const TOOL_QUERIES = [
-  "SELECT * FROM organization",
-  "SELECT * FROM org_member",
-  "SELECT * FROM staff_member",
-  "SELECT * FROM staff_role",
-  "SELECT * FROM role_task",
-  "SELECT * FROM shift",
-  "SELECT * FROM shift_preset",
-  "SELECT * FROM staff_availability",
-  "SELECT * FROM time_off_request",
-  "SELECT * FROM shift_trade",
-  "SELECT * FROM inventory_item",
-  "SELECT * FROM supplier",
-  "SELECT * FROM sales_record",
-  "SELECT * FROM settings",
-];
-
-const toolsSubscribed = new WeakSet<object>();
-
-async function ready(): Promise<ServiceConn> {
-  const conn = await getServiceConn();
-  if (!toolsSubscribed.has(conn)) {
-    await subscribeAndWait(conn, TOOL_QUERIES);
-    toolsSubscribed.add(conn);
-  }
-  return conn;
-}
-
-// ── Date helpers ─────────────────────────────────────────────────────────────
-
-function addDays(isoDate: string, delta: number): string {
-  const d = new Date(`${isoDate}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return isoDate;
-  d.setUTCDate(d.getUTCDate() + delta);
-  return d.toISOString().slice(0, 10);
+/**
+ * Tools read as the caller, so all they need is the caller's token — the one
+ * the route just verified their membership with.
+ */
+export function merchivaToolsEnabled(token: string | null | undefined): boolean {
+  return !!token;
 }
 
 function shiftView(s: Row) {
@@ -159,20 +106,47 @@ export function buildSlimContext(context: Record<string, unknown>): string {
 
 // ── Tool definitions ─────────────────────────────────────────────────────────
 
-export function buildMerchivaTools(opts: { organizationId: string; today?: string }) {
+/**
+ * `today` is the store's calendar day the chat client sent (`context.today`,
+ * from lib/date-key's `todayKey()` in the browser). `timeZone` is the store's
+ * IANA zone when the client sends one; it only matters where an instant (a
+ * payment, a punch) is split into days. Without either, the server's local
+ * day stands in — see lib/merchiva/tools/store-time.ts for why the org's
+ * `settings.timezone` is not trusted.
+ *
+ * `allowed` is the caller's permitted tools (allowedMerchivaTools in
+ * lib/merchiva/tools/access.ts, from their verified membership). Every other
+ * tool is left out of the returned set, so the model cannot call it.
+ *
+ * `token` is the caller's own token, verified against `organizationId` by the
+ * route; every row the tools read is read with it. Build the set once per
+ * request: its tools share the rows they load.
+ */
+export function buildMerchivaTools(opts: {
+  token: string;
+  organizationId: string;
+  allowed: readonly MerchivaToolName[];
+  today?: string;
+  timeZone?: string;
+}): ToolSet {
   const { organizationId } = opts;
-  const today = opts.today && /^\d{4}-\d{2}-\d{2}$/.test(opts.today)
-    ? opts.today
-    : new Date().toISOString().slice(0, 10);
+  const timeZone = validTimeZone(opts.timeZone);
+  const today = resolveStoreToday(opts.today, timeZone);
+  const source = createSqlToolSource({ token: opts.token, organizationId, today });
 
-  // Wrap each executor: open+subscribe the conn, log the call, and turn any
-  // failure into a structured result the model can recover from (rather than
-  // throwing, which would abort the whole generation).
-  function exec<A>(label: string, fn: (conn: ServiceConn, args: A) => Promise<unknown>) {
+  // Wrap each executor: load the tables it reads, log the call, and turn any
+  // failure (an expired token, a failed query) into a structured result the
+  // model can recover from (rather than throwing, which would abort the whole
+  // generation).
+  const exec: ToolExec = <A>(
+    label: string,
+    tables: readonly ToolTable[],
+    fn: (data: ToolData, args: A) => Promise<unknown>,
+  ) => {
     return async (args: A) => {
       try {
-        const conn = await ready();
-        const out = await fn(conn, args);
+        const data = await source.load(tables);
+        const out = await fn(data, args);
         console.log(`[store-ai/tool] ${label}(${JSON.stringify(args)}) →`, JSON.stringify(out).slice(0, 300));
         return out;
       } catch (e) {
@@ -181,27 +155,36 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
         return { error: "live store data unavailable", detail: msg };
       }
     };
-  }
+  };
+  const ctx: ToolContext = { organizationId, today, timeZone, exec };
 
-  return {
+  const tools = {
     viewTeam: tool({
       description:
-        "List all team members with their job role. Call before scheduling shifts so addShift.staffName matches an existing member, or when the user asks who works here / how many staff. Includes loginable members (org_member) and placeholder staff (added by name).",
+        "The team roster with the ids the staff actions take. kind \"member\" has an app login: memberId is their org_member id (setPunchInCode, addShift.memberId). kind \"placeholder\" was added by name and has no login: staffMemberId is their staff_member id (updateStaffMember, deleteStaffMember). jobRole is the person's job title on the team page; accessLevel (owner/manager/staff) is an app permission level and never a job role — addShift.staffRoles come from viewRoles. Call before adding a single shift by hand (addShift.staffName must match a name here; a whole schedule comes from proposeSchedule), or when the user asks who works here.",
       inputSchema: z.object({}),
-      execute: exec("viewTeam", async (conn) => {
-        // Loginable team members carry their display name + role here.
-        const members = orgRows(conn, "orgMember", organizationId).map((m) => ({
-          name: m.displayName,
-          role: m.role,
-          hasPunchInCode: !!opt(m.punchInCode),
-          source: "member" as const,
-        }));
+      execute: exec("viewTeam", ["orgMember", "staffMember"], async (data) => {
+        // `org_member.role` holds a permission level or, set on the team page, a job role's name.
+        const accessLevels = new Set(["owner", "manager", "staff"]);
+        const members = orgRows(data, "orgMember", organizationId).map((m) => {
+          const role = String(m.role ?? "");
+          return {
+            kind: "member" as const,
+            memberId: rowId(m),
+            name: m.displayName,
+            ...(accessLevels.has(role.toLowerCase()) ? { accessLevel: role.toLowerCase() } : role ? { jobRole: role } : {}),
+            // `punchInCode` is drained (the code lives in the self-scoped member_punch_code);
+            // `hasPunchCode` is the flag the team page reads.
+            hasPunchInCode: m.hasPunchCode === true,
+            ...(m.status !== "active" ? { status: m.status } : {}),
+          };
+        });
         // Placeholder/contractor rows added via addStaffMember (no login).
-        const placeholders = orgRows(conn, "staffMember", organizationId).map((r) => ({
+        const placeholders = orgRows(data, "staffMember", organizationId).map((r) => ({
+          kind: "placeholder" as const,
+          staffMemberId: rowId(r),
           name: r.name,
-          role: r.role,
-          hasPunchInCode: false,
-          source: "placeholder" as const,
+          jobRole: r.role,
         }));
         return { team: [...members, ...placeholders] };
       }),
@@ -209,44 +192,23 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
 
     viewRoles: tool({
       description:
-        "List all roles/positions with ids, plus each role's tasks (id, title, times, requiresEvidence). Call before adding/editing roles or role tasks — updateRole/deleteRole/addRoleTask/updateRoleTask need these ids.",
+        "Roles/positions and their tasks, plus the training curriculum. roles[].id is the roleId (updateRole, deleteRole, addRoleTask) and roles[].name is what addShift.staffRoles take; roles[].tasks[].id is the taskId (updateRoleTask, deleteRoleTask). training[] lists the curriculum days — dayId and dayNumber (updateTrainingDay, deleteTrainingDay, addTrainingObjective) — each with its objectives' objectiveId (updateTrainingObjective, deleteTrainingObjective).",
       inputSchema: z.object({}),
-      execute: exec("viewRoles", async (conn) => {
-        const tasks = orgRows(conn, "roleTask", organizationId);
-        return {
-          roles: orgRows(conn, "staffRole", organizationId).map((r) => {
-            const rid = rowId(r);
-            return {
-              id: rid,
-              name: r.name,
-              icon: r.icon,
-              color: r.color,
-              description: r.description,
-              tasks: tasks
-                .filter((t) => t.roleId === rid)
-                .map((t) => ({
-                  id: rowId(t),
-                  title: t.title,
-                  description: t.description,
-                  startTime: opt(t.startTime),
-                  endTime: opt(t.endTime),
-                  requiresEvidence: !!t.requiresEvidence,
-                })),
-            };
-          }),
-        };
-      }),
+      execute: exec("viewRoles", ["staffRole", "roleTask", "trainingDay", "trainingObjective"], async (data) => ({
+        roles: roleViews(orgRows(data, "staffRole", organizationId), orgRows(data, "roleTask", organizationId)),
+        training: trainingViews(orgRows(data, "trainingDay", organizationId), orgRows(data, "trainingObjective", organizationId)),
+      })),
     }),
 
     viewScheduleHistory: tool({
       description:
-        "Past shifts within the last N days (default 14). Use this to detect recurring patterns (who usually works which weekday/time) BEFORE auto-scheduling. Returns id, staffName, date, start, end, type, roles.",
+        "Past shifts within the last N days (default 14): who usually works which weekday and time. Returns id (the shiftId updateShift/deleteShift take), staffName, date, start, end, type, roles.",
       inputSchema: z.object({
         days: z.number().int().min(1).max(90).optional().describe("How many days back to look. Default 14."),
       }),
-      execute: exec("viewScheduleHistory", async (conn, { days }: { days?: number }) => {
-        const since = addDays(today, -(days ?? 14));
-        const shifts = orgRows(conn, "shift", organizationId)
+      execute: exec("viewScheduleHistory", ["shift"], async (data, { days }: { days?: number }) => {
+        const since = addDaysToKey(today, -(days ?? 14));
+        const shifts = orgRows(data, "shift", organizationId)
           .filter((s) => typeof s.date === "string" && s.date >= since && s.date <= today)
           .sort((a, b) => (a.date < b.date ? 1 : -1))
           .slice(0, 200)
@@ -257,10 +219,10 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
 
     viewUpcomingShifts: tool({
       description:
-        "Today's and future shifts. Use to avoid double-booking, and to edit or delete a shift (returns shift ids needed for updateShift/deleteShift).",
+        "Today's and future shifts. Use to avoid double-booking, and to edit or delete a shift: shifts[].id is the shiftId updateShift/deleteShift take.",
       inputSchema: z.object({}),
-      execute: exec("viewUpcomingShifts", async (conn) => {
-        const shifts = orgRows(conn, "shift", organizationId)
+      execute: exec("viewUpcomingShifts", ["shift"], async (data) => {
+        const shifts = orgRows(data, "shift", organizationId)
           .filter((s) => typeof s.date === "string" && s.date >= today)
           .sort((a, b) => (a.date < b.date ? -1 : 1))
           .slice(0, 100)
@@ -272,8 +234,8 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
     viewShiftPresets: tool({
       description: "Shift templates (name, startTime, endTime). Use when the user references a preset like \"morning shift\".",
       inputSchema: z.object({}),
-      execute: exec("viewShiftPresets", async (conn) => ({
-        presets: orgRows(conn, "shiftPreset", organizationId).map((p) => ({
+      execute: exec("viewShiftPresets", ["shiftPreset"], async (data) => ({
+        presets: orgRows(data, "shiftPreset", organizationId).map((p) => ({
           id: rowId(p),
           name: p.name,
           startTime: p.startTime,
@@ -284,14 +246,16 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
 
     viewAvailability: tool({
       description:
-        "Staff availability per weekday, plus pending time-off requests and pending shift trades. Call before auto-scheduling so you skip people who are unavailable or off.",
+        "Staff availability per weekday, plus pending time-off requests (requestId for approveTimeOff) and pending shift trades (tradeId for approveShiftTrade). proposeSchedule already applies availability and time off itself.",
       inputSchema: z.object({}),
-      execute: exec("viewAvailability", async (conn) => {
+      execute: exec("viewAvailability", ["orgMember", "staffAvailability", "timeOffRequest", "shiftTrade"], async (data) => {
         const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        // userId (identity) → display name, from org members.
+        // userId (identity) → display name, and org_member id → display name, from org members.
         const nameByUser = new Map<string, string>();
-        for (const m of orgRows(conn, "orgMember", organizationId)) {
+        const nameByMember = new Map<string, string>();
+        for (const m of orgRows(data, "orgMember", organizationId)) {
           nameByUser.set(idHex(m.userId), m.displayName);
+          nameByMember.set(canonicalUuid(rowId(m)), m.displayName);
         }
         const nameFor = (userId: unknown) => {
           const hex = idHex(userId);
@@ -310,7 +274,7 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
           }
           return [];
         };
-        const availability = orgRows(conn, "staffAvailability", organizationId).slice(0, 50).map((a) => ({
+        const availability = orgRows(data, "staffAvailability", organizationId).slice(0, 50).map((a) => ({
           staffName: nameFor(a.userId),
           type: a.type,
           availableDays: parseDays(a.days)
@@ -319,57 +283,41 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
           startDate: opt(a.startDate),
           endDate: opt(a.endDate),
         }));
-        const timeOff = orgRows(conn, "timeOffRequest", organizationId)
+        const timeOff = orgRows(data, "timeOffRequest", organizationId)
           .filter((r) => r.status === "pending")
           .map((r) => ({
-            id: rowId(r),
+            requestId: rowId(r),
             staffName: nameFor(r.userId),
             startDate: r.startDate,
             endDate: r.endDate,
             fullDays: !!r.fullDays,
           }));
-        const trades = orgRows(conn, "shiftTrade", organizationId)
+        const trades = orgRows(data, "shiftTrade", organizationId)
           .filter((t) => t.status === "pending")
-          .map((t) => ({ id: rowId(t), type: t.type, managerApproved: !!t.managerApproved }));
+          .map((t) => ({
+            tradeId: rowId(t),
+            requester: nameByMember.get(canonicalUuid(t.requesterId)) ?? null,
+            type: t.type,
+            managerApproved: !!t.managerApproved,
+          }));
         return { availability, pendingTimeOff: timeOff, pendingShiftTrades: trades };
       }),
     }),
 
     viewInventory: tool({
-      description:
-        "Inventory items with stock levels and ordering specs (id, name, stock, min, max, unit, supplier, minOrderQty, unitsPerCase). Pass lowOnly=true for items at or below their minimum. Use the ids for restock / orderFromSupplier action blocks.",
-      inputSchema: z.object({
-        lowOnly: z.boolean().optional().describe("Only items at or below min stock."),
-      }),
-      execute: exec("viewInventory", async (conn, { lowOnly }: { lowOnly?: boolean }) => {
-        let items = orgRows(conn, "inventoryItem", organizationId);
-        if (lowOnly) items = items.filter((i) => Number(i.currentStock) <= Number(i.minStock));
-        return {
-          count: items.length,
-          items: items.slice(0, 200).map((i) => ({
-            id: rowId(i),
-            name: i.name,
-            category: i.category,
-            stock: i.currentStock,
-            min: i.minStock,
-            max: i.maxStock,
-            unit: i.unit,
-            supplier: i.supplier,
-            minOrderQty: opt(i.minOrderQty),
-            unitsPerCase: opt(i.unitsPerCase),
-            unitContentAmount: opt(i.unitContentAmount),
-            unitContentUnit: opt(i.unitContentUnit),
-          })),
-        };
-      }),
+      description: VIEW_INVENTORY_DESCRIPTION,
+      inputSchema: viewInventoryInput,
+      execute: exec("viewInventory", ["inventoryItem"], async (data, args: ViewInventoryArgs) =>
+        inventoryView(orgRows(data, "inventoryItem", organizationId), args ?? {}),
+      ),
     }),
 
     viewSuppliers: tool({
       description:
-        "Supplier records (id, name, contact, email, phone, language). orderFromSupplier needs the supplier id and language — match an inventory item's supplier NAME to a supplier here to get the id.",
+        "Supplier records (id, name, contact, email, phone, language). suppliers[].id is the supplierId orderFromSupplier, createPurchaseOrder, updateSupplier and deleteSupplier take — match an inventory item's supplier NAME to a supplier here to get it.",
       inputSchema: z.object({}),
-      execute: exec("viewSuppliers", async (conn) => ({
-        suppliers: orgRows(conn, "supplier", organizationId).map((s) => ({
+      execute: exec("viewSuppliers", ["supplier"], async (data) => ({
+        suppliers: orgRows(data, "supplier", organizationId).map((s) => ({
           id: rowId(s),
           name: s.name,
           contactName: opt(s.contactName),
@@ -381,11 +329,11 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
     }),
 
     viewProducts: tool({
-      description: "Menu/products (id, name, price, category, inventoryUsage). Use the id for updatePrice / product edits.",
+      description: "Menu/products (id, name, price, category, inventoryUsage). products[].id is the productId updatePrice, updateProduct and deleteProduct take.",
       inputSchema: z.object({}),
-      execute: exec("viewProducts", async (conn) => ({
+      execute: exec("viewProducts", ["inventoryItem"], async (data) => ({
         // product table no longer exists — retail-enabled inventory rows ARE the products
-        products: productsFromInventoryRows(orgRows(conn, "inventoryItem", organizationId))
+        products: productsFromInventoryRows(orgRows(data, "inventoryItem", organizationId))
           .slice(0, 200)
           .map((p) => ({
             id: rowId(p),
@@ -398,33 +346,38 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
     }),
 
     viewSales: tool({
-      description: "Daily revenue for the last N days (default 14), for trend/anomaly analysis. Never invent revenue — fetch it here.",
-      inputSchema: z.object({
-        days: z.number().int().min(1).max(90).optional().describe("How many days back. Default 14."),
-      }),
-      execute: exec("viewSales", async (conn, { days }: { days?: number }) => {
-        const since = addDays(today, -(days ?? 14));
-        const daily: Record<string, number> = {};
-        for (const r of orgRows(conn, "salesRecord", organizationId)) {
-          if (typeof r.date !== "string" || r.date < since) continue;
-          daily[r.date] = (daily[r.date] ?? 0) + (Number(r.actual) || 0);
-        }
-        const series = Object.entries(daily)
-          .sort(([a], [b]) => (a < b ? -1 : 1))
-          .map(([date, revenue]) => ({ date, revenue: Math.round(revenue * 100) / 100 }));
-        return { since, today, daily: series };
-      }),
+      description: VIEW_SALES_DESCRIPTION,
+      inputSchema: viewSalesInput,
+      execute: exec("viewSales", ["payment", "salesRecord", "settings"], async (data, args: ViewSalesArgs) =>
+        salesFromRows(
+          {
+            salesRecord: orgRows(data, "salesRecord", organizationId),
+            payment: orgRows(data, "payment", organizationId),
+            settings: orgRows(data, "settings", organizationId)[0],
+          },
+          today,
+          timeZone,
+          args ?? {},
+        ),
+      ),
     }),
-  };
+
+    // ── Engine tools: the numbers come from the app's algorithms. ──
+    viewFinance: viewFinanceTool(ctx),
+    viewForecast: viewForecastTool(ctx),
+    viewRestockSuggestions: viewRestockSuggestionsTool(ctx),
+    proposeSchedule: proposeScheduleTool(ctx),
+    // Compile-time check: the keys are exactly MERCHIVA_TOOL_NAMES (missing or extra both fail).
+  } satisfies Record<MerchivaToolName, unknown>;
+
+  const allowed = new Set<string>(opts.allowed);
+  // A null argument reads as a missing one (tools/null-args.ts).
+  return Object.fromEntries(
+    Object.entries(tools)
+      .filter(([name]) => allowed.has(name))
+      .map(([name, def]) => [name, nullsAsMissing(def as Tool)]),
+  ) as ToolSet;
 }
 
-// Instruction block appended to the system prompt when tools are enabled.
-export const TOOLS_PROMPT_BLOCK = `LIVE DATA ACCESS — READ TOOLS:
-You start with only a brief STORE OVERVIEW (below). Before answering data questions or producing any \`\`\`action\`\`\` blocks, CALL THE READ TOOLS to fetch the current data you need. The tools return real row \`id\`s — you NEED those ids for updateShift/deleteShift/updateRole/deleteRole/addRoleTask/updateRoleTask/updatePrice/orderFromSupplier blocks.
-- Scheduling ("排班"): call viewTeam, viewScheduleHistory, viewUpcomingShifts and viewAvailability (and viewShiftPresets if presets are referenced) BEFORE emitting addShift blocks.
-- Roles / tasks: call viewRoles to get role ids and task ids.
-- Inventory / restock: call viewInventory (lowOnly:true for shortages) and viewSuppliers.
-- Supplier restock actions must pass suppliers[].language as supplierLanguage, include every item name, and include unitsPerCase/caseCount when ordering full cases.
-- Pricing / products: call viewProducts.
-- Sales / trends / anomalies: call viewSales.
-Fetch only what the request needs — don't call every tool. NEVER invent ids, names, or numbers; if a tool returns an error, tell the user the live data is unavailable. After fetching, give your answer and any action blocks as usual.`;
+// The read-tool guide for the system prompt is built per caller from the tools
+// they were given: buildToolsPromptBlock in lib/merchiva/tools/prompt.ts.

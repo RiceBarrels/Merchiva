@@ -1,7 +1,9 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { useState } from "react";
+import { ChevronRight, LogOut } from "lucide-react";
 import { StoreModeIcon } from "@/components/device/app-icons";
+import { LicensesPanel } from "@/components/licenses/licenses-panel";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -24,6 +26,7 @@ export function SettingsPanel({ name, email, orgName }: { name: string; email?: 
   const t = useT();
   const [theme, setTheme] = useThemeMode();
   const { signOut } = useAuth();
+  const [licensesOpen, setLicensesOpen] = useState(false);
 
   return (
     <div>
@@ -45,6 +48,15 @@ export function SettingsPanel({ name, email, orgName }: { name: string; email?: 
           ]}
         />
       </Row>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 border-b border-border px-4 py-3 text-start transition-colors active:bg-muted/50"
+        onClick={() => { hapticLight(); setLicensesOpen(true); }}
+      >
+        <span className="text-[13px] font-medium">{t("licenses.title")}</span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl:rotate-180" />
+      </button>
+      <LicensesPanel open={licensesOpen} onOpenChange={setLicensesOpen} />
       <div className="space-y-2 p-4">
         <Button
           variant="outline"

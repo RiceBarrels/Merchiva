@@ -81,6 +81,7 @@ import { SectionNav } from "@/components/section-nav";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { applyRateCents, centsOf, multiplyCents, sumCents, toCents, toMajor } from "@/lib/money";
 import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
+import { useSuppliersPageContext } from "@/app/manager/suppliers/use-suppliers-page-context";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -493,6 +494,7 @@ export default function SuppliersPage() {
     () => aiSentEmails.filter((m) => m.status === "failed").length,
     [aiSentEmails],
   );
+  useSuppliersPageContext({ suppliers: suppliers.length, shown: filteredSuppliers.length, search, openOrders: activeOrders, needsReview: needsReviewMessages.length, supplierDialog: supplierDialogOpen, editingSupplier, orderDialog: poDialogOpen, orderSupplier: supplierById.get(poForm.supplierId) ?? null });
 
   // Get last PO date for a supplier
   const getLastPODate = (supplierId: string): string | null => {

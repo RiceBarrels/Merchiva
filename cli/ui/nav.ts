@@ -17,7 +17,8 @@ export type PermKey =
   | "products"
   | "settings"
   | "team"
-  | "training_grading";
+  | "training_grading"
+  | "drive";
 
 export interface NavSection {
   /** Page key (used for routing + the pages registry). */

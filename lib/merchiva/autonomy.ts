@@ -14,14 +14,23 @@
  * every action already live in the action registry, so this gate is a thin
  * decision layer on top of that metadata — it never re-classifies actions.
  *
- * The core {@link decideAutonomy} is a pure function (type-only imports) so it
- * is trivially unit-testable and safe to call server-side without pulling in any
- * browser-only client code. {@link gateAction} is the convenience wrapper that
- * resolves action metadata from the registry.
+ * The core {@link decideAutonomy} is a pure function (its only runtime imports,
+ * order-totals, autonomy-reason and lib/money, are pure too) so it is trivially unit-testable
+ * and safe to call server-side without pulling in any browser-only client code.
+ * {@link gateAction} is the convenience wrapper that resolves action metadata
+ * from the registry.
  */
 
 import type { ActionCategory, RiskLevel } from "./action-registry";
 import { getAction } from "./action-registry";
+import { applyOrderTotals, computeOrderTotals } from "./order-totals";
+import { gateReasonText, type GateReason } from "./autonomy-reason";
+import { toMajor } from "@/lib/money";
+
+/** The actions whose value is an order total, computed from their items. */
+function isOrderAction(name: string): boolean {
+  return name === "orderFromSupplier" || name === "createPurchaseOrder";
+}
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -125,11 +134,19 @@ export interface ActionRiskMeta {
 export interface GateContext {
   /** How many actions have already auto-executed today (for the daily cap). */
   autoActionsToday?: number;
+  /**
+   * The product's current price, from the store's rows (the caller looks the
+   * action's productId up). The model sends only {productId, newPrice}, so
+   * without it the price-change cap had no baseline and never applied.
+   */
+  oldPrice?: number | null;
 }
 
 export interface GateResult {
   decision: GateDecision;
-  /** Short human-readable rationale, surfaced in logs and the UI. */
+  /** Why, as a code plus figures; the approval card translates it (autonomy-reason.ts). */
+  why: GateReason;
+  /** The same rationale in English, for logs and tests. */
   reason: string;
   riskLevel: RiskLevel;
   category: ActionCategory;
@@ -164,7 +181,7 @@ function capBreach(
   params: Record<string, unknown>,
   caps: AutonomyCaps | undefined,
   ctx: GateContext,
-): string | null {
+): GateReason | null {
   if (!caps) return null;
   const num = (v: unknown): number | null => {
     const n = Number(v);
@@ -176,15 +193,26 @@ function capBreach(
     caps.dailyActionLimit != null &&
     (ctx.autoActionsToday ?? 0) >= caps.dailyActionLimit
   ) {
-    return `daily auto-action limit (${caps.dailyActionLimit}) reached`;
+    return { code: "dailyLimit", limit: caps.dailyActionLimit };
   }
 
-  // Supplier order / purchase order value.
-  if (meta.name === "orderFromSupplier" || meta.name === "createPurchaseOrder") {
+  // Supplier order / purchase order value — computed from the items, exactly
+  // as the order will be recorded. A subtotal or total in `params` came from
+  // the model and is never trusted: an understated one must not slip past the
+  // cap. A line without a unit cost makes the value unknown, which is treated
+  // as over the cap rather than as zero.
+  if (isOrderAction(meta.name)) {
     if (caps.maxAutoOrderValue != null) {
-      const total = num(params.total) ?? num(params.subtotal);
-      if (total != null && total > caps.maxAutoOrderValue) {
-        return `order total ${total} exceeds auto limit ${caps.maxAutoOrderValue}`;
+      const order = computeOrderTotals(params.items, params.tax);
+      if (order.invalidLines > 0) {
+        return { code: "orderInvalidLines", count: order.invalidLines };
+      }
+      if (order.unpricedLines > 0) {
+        return { code: "orderUnpriced", count: order.unpricedLines };
+      }
+      const total = toMajor(order.totalCents);
+      if (total > caps.maxAutoOrderValue) {
+        return { code: "orderOverCap", total, limit: caps.maxAutoOrderValue };
       }
     }
   }
@@ -196,7 +224,7 @@ function capBreach(
       // No amount = full refund → always over a 0 cap.
       const effective = amount ?? Number.POSITIVE_INFINITY;
       if (effective > caps.maxAutoRefund) {
-        return `refund ${amount ?? "full"} exceeds auto limit ${caps.maxAutoRefund}`;
+        return { code: "refundOverCap", amount, limit: caps.maxAutoRefund };
       }
     }
   }
@@ -206,11 +234,11 @@ function capBreach(
     if (caps.maxPriceChangePct != null) {
       const newPrice = num(params.newPrice) ?? num(params.price);
       const oldPrice =
-        num(params.__oldPrice) ?? num(params.currentPrice) ?? num(params.oldPrice);
+        (ctx.oldPrice != null ? num(ctx.oldPrice) : null) ?? num(params.currentPrice) ?? num(params.oldPrice);
       if (newPrice != null && oldPrice != null && oldPrice > 0) {
         const pct = (Math.abs(newPrice - oldPrice) / oldPrice) * 100;
         if (pct > caps.maxPriceChangePct) {
-          return `price change ${pct.toFixed(0)}% exceeds auto limit ${caps.maxPriceChangePct}%`;
+          return { code: "priceChangeOverCap", pct: Math.round(pct), limit: caps.maxPriceChangePct };
         }
       }
     }
@@ -222,7 +250,7 @@ function capBreach(
 /**
  * Pure decision: given action metadata, params, config, a capability predicate
  * and runtime context, decide whether to auto-execute, propose for approval, or
- * deny outright. No imports beyond types — safe and testable anywhere.
+ * deny outright. Safe and testable anywhere.
  */
 export function decideAutonomy(
   meta: ActionRiskMeta,
@@ -231,49 +259,52 @@ export function decideAutonomy(
   can: CanFn,
   ctx: GateContext = {},
 ): GateResult {
-  const base = { riskLevel: meta.riskLevel, category: meta.category };
+  const result = (decision: GateDecision, why: GateReason): GateResult => ({
+    decision,
+    why,
+    reason: gateReasonText(why),
+    riskLevel: meta.riskLevel,
+    category: meta.category,
+  });
 
   // 1. Capability gate — the hard ceiling. No permission ⇒ can't do it at all.
   if (meta.requiredPermission) {
     const { section, action } = meta.requiredPermission;
     if (!can(section, action)) {
-      return {
-        ...base,
-        decision: "deny",
-        reason: `missing permission: ${section}.${action}`,
-      };
+      return result("deny", { code: "missingPermission", section, action });
     }
   }
 
   // 2. Autonomy off ⇒ everything is proposed (today's behavior, unchanged).
   if (!config.enabled || config.mode === "off") {
-    return { ...base, decision: "propose", reason: "autonomy disabled" };
+    return result("propose", { code: "autonomyDisabled" });
   }
 
   // 3. Resolve the effective mode (per-category override beats the global mode).
   const effectiveMode = config.perCategory?.[meta.category] ?? config.mode;
 
   if (!modeAllowsRisk(effectiveMode, meta.riskLevel)) {
-    return {
-      ...base,
-      decision: "propose",
-      reason: `${meta.riskLevel}-risk needs approval under "${effectiveMode}"`,
-    };
+    return result("propose", { code: "riskNeedsApproval", risk: meta.riskLevel, mode: effectiveMode });
   }
 
   // 4. Caps can still downgrade an otherwise-auto action to propose.
   const breach = capBreach(meta, params, config.caps, ctx);
   if (breach) {
-    return { ...base, decision: "propose", reason: breach };
+    return result("propose", breach);
   }
 
-  return { ...base, decision: "auto", reason: `auto (${effectiveMode})` };
+  return result("auto", { code: "auto", mode: effectiveMode });
 }
 
 /**
  * Convenience wrapper that resolves action metadata from the registry by name.
  * Unknown actions are proposed (never auto-run) so a model typo can't bypass
  * approval.
+ *
+ * For an order action it also replaces the model's subtotal/tax/total in
+ * `params` with the ones computed from the items (applyOrderTotals). The chat
+ * gates every action before rendering its card, and the card and the executed
+ * action share this object — so what the user approves is what gets recorded.
  */
 export function gateAction(
   actionName: string,
@@ -284,13 +315,16 @@ export function gateAction(
 ): GateResult {
   const def = getAction(actionName);
   if (!def) {
+    const why: GateReason = { code: "unknownAction" };
     return {
       decision: "propose",
-      reason: "unknown action",
+      why,
+      reason: gateReasonText(why),
       riskLevel: "high",
       category: "notifications",
     };
   }
+  if (isOrderAction(def.name)) applyOrderTotals(params);
   return decideAutonomy(
     {
       name: def.name,

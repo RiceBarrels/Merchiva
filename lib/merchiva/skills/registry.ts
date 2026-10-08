@@ -3,6 +3,8 @@ import { askSkill } from "./ask";
 import { rolesSkill } from "./roles";
 import { tasksSkill } from "./tasks";
 import { memorySkill, parseMemoryCommands } from "./memory";
+import { boolParam } from "@/lib/merchiva/action-ids";
+import { canonicalUuid } from "@/lib/merchiva/tools/rows";
 import type { ChatMessage, MerchivaSkill, PendingAction, QAItem, RoleAddCmd, TaskAddCmd, TaskDeleteCmd } from "./types";
 
 export type { ChatMessage, PendingAction, QAItem, RoleAddCmd, TaskAddCmd, TaskDeleteCmd };
@@ -57,6 +59,16 @@ export function getSkillCatalog(): SkillCatalogItem[] {
   }));
 }
 
+function textParam(v: unknown): string {
+  return v == null ? "" : String(v).trim();
+}
+
+/** `{ [key]: id }` in the hyphenated form, or nothing when the block has no such id. */
+function idField<K extends "roleId" | "taskId">(key: K, v: unknown): Partial<Record<K, string>> {
+  const id = textParam(v);
+  return id ? ({ [key]: canonicalUuid(id) } as Partial<Record<K, string>>) : {};
+}
+
 export function parseAllSkills(text: string): ParsedResult {
   let remaining = text;
   let actions: PendingAction[] = [];
@@ -90,18 +102,23 @@ export function parseAllSkills(text: string): ParsedResult {
         color: String(pa.action.color ?? "#44403c"),
       });
     } else if (name === "addRoleTask") {
+      // Ids and names stay in their own fields: every reader of `role` / `title`
+      // shows it to the user, so an id there printed "→ <uuid>" on the card.
       tasksAdd.push({
-        role: String(pa.action.role ?? pa.action.roleId ?? ""),
-        title: String(pa.action.title ?? ""),
+        role: textParam(pa.action.role ?? pa.action.roleName),
+        ...idField("roleId", pa.action.roleId),
+        title: textParam(pa.action.title),
         des: String(pa.action.description ?? pa.action.des ?? ""),
         startTime: pa.action.startTime ? String(pa.action.startTime) : null,
         endTime: pa.action.endTime ? String(pa.action.endTime) : null,
-        requiresEvidence: Boolean(pa.action.requiresEvidence ?? false),
+        requiresEvidence: boolParam(pa.action.requiresEvidence),
       });
     } else if (name === "deleteRoleTask") {
       tasksDelete.push({
-        role: String(pa.action.role ?? pa.action.roleId ?? ""),
-        title: String(pa.action.title ?? pa.action.taskId ?? ""),
+        role: textParam(pa.action.role ?? pa.action.roleName),
+        title: textParam(pa.action.title),
+        ...idField("roleId", pa.action.roleId),
+        ...idField("taskId", pa.action.taskId),
       });
     } else {
       roleActions.push(pa);

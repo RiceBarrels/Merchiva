@@ -17,6 +17,8 @@ export const DOC_TABLE_SCOPE_COLUMNS = [
   ["document_version", "document_id"],
   ["document_star", "document_id"],
   ["document_access", "document_id"],
+  // A document's type and folder (useDocs.ts reads them with the document rows).
+  ["document_file", "document_id"],
 ] as const;
 
 /** Tables the Yjs provider subscribes to as ONE query set per open document. */
@@ -39,6 +41,13 @@ export function docLiveQueries(documentId: string): string[] {
   if (!isDocumentId(documentId)) throw new Error("Invalid document id");
   const id = documentId.toLowerCase();
   return DOC_LIVE_TABLES.map((table) => docScopedSql(table, "document_id", id));
+}
+
+/** A spreadsheet's live set: docLiveQueries plus its edit lease, applied atomically. */
+export function sheetLiveQueries(documentId: string): string[] {
+  const queries = docLiveQueries(documentId);
+  queries.push(docScopedSql("document_edit_lease", "document_id", documentId.toLowerCase()));
+  return queries;
 }
 
 /**

@@ -17,6 +17,9 @@ Dependencies are in `package.json`; these are the rules the manifest can't tell 
 | Styling | Tailwind CSS v4 | Utility-first. No per-component CSS files. |
 | Icons | Lucide React | `h-4 w-4` default, `h-5 w-5` for nav. |
 | Database | SpacetimeDB | Sole data layer. Real-time subscriptions. Generated types in `lib/spacetimedb/generated/`. |
+| File storage | Vercel Blob, private store (`@vercel/blob`) | Drive file bytes only; metadata lives in SpacetimeDB. See "Drive & File Storage". |
+| Sheets | Univer OSS (`@univerjs/presets` + `preset-sheets-*`, one pinned version) | Apache-2.0 packages only, never Univer Pro. `.xlsx` via ExcelJS, loaded lazily on the client; `.csv` by `lib/sheets/xlsx/csv.ts` (formula-injection safe). |
+| Slides | Own editor (`components/slides/`) on Yjs | `.pptx` import `pptxtojson`, export `pptxgenjs`; transforms `react-moveable` / `react-selecto`. |
 | POS | Square SDK (v44+), Clover | OAuth flow, sync to SpacetimeDB. Credentials stored in DB, not env vars. |
 | Auth | WorkOS (`lib/auth/workos.ts`) | Email/password, OAuth. Session via cookies. |
 | i18n | Custom (`lib/i18n/`) | One JSON per locale in `messages/`; every key goes in every locale file. |
@@ -31,10 +34,11 @@ Dependencies are in `package.json`; these are the rules the manifest can't tell 
 
 | Command | When | Bar |
 |:---|:---|:---|
-| `bun test` | After any logic change | 776 tests, ~8s. Must stay green. Zero failures. |
+| `bun test` | After any logic change | 3318 tests, ~45s. Must stay green. Zero failures. |
 | `bunx tsc --noEmit` | After any TypeScript change | Must print **nothing**. |
 | `bun run build` | Before any deploy, and after routing/config/server changes | Must pass clean. |
 | `bunx eslint <changed paths>` | After any change | No **new** errors on files you touched. |
+| `bun test scripts/tests/legal` + `bun scripts/licenses/generate.ts --check` | After any dependency change | Must pass; notices must be fresh. |
 
 ### Gotchas that will waste your time
 
@@ -83,6 +87,7 @@ Do not delete or gitignore these — they are committed on purpose:
 - `lib/spacetimedb/generated/**` — regenerate with `spacetime generate`, **never hand-edit**.
 - `spacetimedb/dist/bundle.js` — the published module bundle.
 - `bun.lock` — commit it with any dependency change.
+- `public/legal/third-party-notices.json`, `public/legal/THIRD_PARTY_NOTICES.txt` — regenerate with `bun scripts/licenses/generate.ts`, never hand-edit.
 
 ### Never commit
 
@@ -102,12 +107,19 @@ Do not delete or gitignore these — they are committed on purpose:
 | `app/manager/**` | Authenticated pages. `layout.tsx` holds auth guard, SpacetimeDB provider, shell. |
 | `app/[locale]/**` | Public marketing pages, locale-prefixed. |
 | `app/store`, `app/personal`, `app/choose` | Bare device surfaces (see App modes). |
+| `app/licenses` | Public open-source notices page (static; also in the Capacitor export). |
 | `components/<feature>/**` | Feature UI, grouped by domain (`personnel/`, `docs/`, `device/`, `browser-shell/`). |
 | `components/ui/**` | shadcn primitives + the 12 shared composites. Nothing feature-specific. |
 | `lib/spacetimedb/**` | Data layer: client, provider, hooks, actions, generated types. |
 | `lib/<domain>/**` | Domain logic with no React (`lib/docs/`, `lib/merchiva/`, `lib/i18n/`). |
+| `components/drive/`, `lib/drive/` | Drive UI and domain logic. `components/device/apps/drive.tsx` is the device app. |
+| `components/sheets/`, `lib/sheets/` | Spreadsheet editor (Univer host, `.xlsx` IO). |
+| `components/slides/`, `lib/slides/` | Presentation editor. |
+| `spacetimedb/src/drive/` | Drive module code (tables, reducers), wired into `spacetimedb/src/index.ts`. |
+| `lib/drive/server/` | Server-only Blob adapter and route handlers behind `app/api/drive/*`. |
 | `messages/*.json` | One per locale: `ar, en, es, fr, hi, zh-cn, zh-hk, zh-tw`. |
 | `scripts/tests/**` | The whole test suite (`bun:test`). |
+| `scripts/licenses/`, `public/legal/` | License policy + notices generator; generated notices (committed). |
 | `cli/` | Bun + Ink terminal client. |
 | `design-system/` | Design system snapshot — source of truth for visuals. |
 
@@ -153,6 +165,7 @@ several hand-rolled copies, and a new copy is a bug waiting to happen:
 - Provider wraps the app in `app/manager/layout.tsx`.
 - No Supabase.
 - Module source: `spacetimedb/src/index.ts`. Published to maincloud via `spacetime publish`.
+- Module code may live in `spacetimedb/src/drive/*.ts` factories wired from `index.ts`; client write wrappers may live in `lib/spacetimedb/actions/<area>.ts` (approved U12). `@/lib/spacetimedb/actions` still resolves to `actions.ts`; import an area file by its own path (`@/lib/spacetimedb/actions/drive`).
 - The SDK carries a local patch in `spacetimedb/patches/` (fixes an SDK 2.2.0 index-lookup bug that panics on connect). Don't drop it when upgrading.
 
 ### Schema Migration Rules (CRITICAL)
@@ -181,6 +194,8 @@ Two more dialect limits that shape schema design:
 
 Look rows up by primary key with `findById(ctx.db.foo, idString)` (it parses the string into a `Uuid`), not `[...ctx.db.foo.iter()].find(r => r.id.toString() === id)` — that is a full table scan for a primary-key lookup.
 
+**A unique-index `find()` returns `null` on a miss, never `undefined`** (SDK 2.10, `node_modules/spacetimedb/src/server/runtime.ts`). Test the result with `!= null` or truthiness — never `!== undefined`. `isServiceCaller` once compared with `undefined`, so every caller counted as the service identity: every service-only reducer, `requireAdmin` and `findActiveMember`'s virtual owner were open to anyone.
+
 ### Row-Level Security (CRITICAL)
 
 `public: true` means **any client may read every row of that table** — over the WebSocket *and* over the unauthenticated HTTP `/v1/database/<id>/sql` endpoint, whose database id ships in the client bundle as `NEXT_PUBLIC_SPACETIMEDB_MODULE`. Scoping the client's subscription is not a security boundary; the client chooses its own query.
@@ -189,10 +204,15 @@ The only boundary is a `clientVisibilityFilter`. The rule lists live near the bo
 
 - `RLS_ORG_SCOPED` — joins `org_member` on `organizationId`; the default for tenant data.
 - `RLS_SELF_SCOPED` — `WHERE <identityColumn> = :sender`; for personal rows (notifications, push keys, todos, punch PINs).
+- `RLS_DOC_READER_SCOPED` — joins `document_reader_index` on the document id; the whole Docs family (Docs, Sheets, Slides). A new document child table goes here, never in `RLS_ORG_SCOPED`.
 - `RLS_SERVICE_ONLY` — readable only by the service identity; for retired tables that still hold data.
 - `RLS_UNFILTERED` — deliberately world-readable, with a written reason.
 
 **Every table gets a service rule too.** `/merchivaAdmin` and the server routes read across tenants with `SPACETIMEDB_SERVICE_TOKEN`, which is an ordinary identity and is subject to RLS like any other — without that rule the admin console goes blank.
+
+Exception (approved U14): service identity reads only `drive_usage` and `drive_blob_gc`, through the rule-free `drive_service_reader` join target; every other Drive/Docs table has no service rule — service work happens inside reducers.
+
+`drive_admin_index`, `document_reader_index` and `drive_service_reader` are rule-free join targets, listed in `RLS_UNFILTERED` under KNOWN GAP like `org_membership_index`. Do not add a rule to a join target without a staging-verified subscription test: a wrong one makes every table whose rule joins it unsubscribable ("Subscriptions require indexes on join columns"). The fix for the KNOWN GAP is tracked in the `RLS_UNFILTERED` comment.
 
 **A table with no rule is silently world-readable.** After adding a table:
 
@@ -208,6 +228,39 @@ Currency columns are `f64` and cannot be changed in place, so each has an exact 
 - Retired columns and tables stay in the schema. Removing them is a destructive migration.
 
 Follow the `spacetimedb-schema-change` skill for the full procedure.
+
+### Drive & File Storage (CRITICAL)
+
+- File bytes live in the private Vercel Blob store. SpacetimeDB holds metadata only (`drive_item`, `drive_usage`, …).
+  Never put file bytes in a SpacetimeDB column — the whole database is memory-resident.
+- Blob pathnames are ASCII only (`org/<orgId>/<itemId>/…`, built by `lib/drive/rules.ts` and mirrored in the module).
+  The display name lives in `drive_item.name`, never in the pathname (non-ASCII pathnames break: vercel/storage#1101).
+- Browsers upload straight to Blob with a short-lived client token and download through short-lived signed URLs.
+  Routes under `app/api/drive/` only authorize; they never stream bytes (Vercel's ~4.5 MB body cap; `proxy.ts`
+  silently truncates request bodies over 10 MB).
+- Authorization is SpacetimeDB's call: verify the WorkOS token with `verifiedUserId()`, then ask the module with the
+  caller's own token (reducer via `lib/spacetimedb/server-rpc.ts`, or RLS-scoped `/sql`). Never trust an org or item
+  id from the client. Native builds have no API routes — call them through `apiUrl()`.
+- Docs, Sheets and Slides are rows of `document`; `fileType` is '' (legacy doc) | 'doc' | 'sheet' | 'slides'. Every
+  Docs surface filters by `fileType`: a sheet or a deck must never open in the Tiptap editor.
+- Management sees everything. The owner, the `manager` role and members with the `drive` permission (`drive.view`
+  = view, `drive.edit` = edit) can open every member's Drive items and documents. Any feature that stores user
+  content says so with the `drive.disclosure.*` copy; never promise privacy from management.
+- Colleagues do not. `drive_item` is readable by its owner (by member id), by everyone in the org for ready,
+  untrashed Store-space items, and by Drive admins (`drive_admin_index`, joined on the org's opaque `adminScope`);
+  a pending upload also by the identity uploading it.
+  The whole Docs family (`RLS_DOC_READER_SCOPED`: document, access, comment, edit lease, presence, snapshot, star,
+  update, version, version state) is readable only by identities in `document_reader_index`, which
+  `syncDocumentReaders` / `syncMemberDocReaders` derive from `docRoleFor`. Any write that changes a member's
+  status, role, permissions or identity, or a document's visibility, grants or ownership, must refresh those
+  indexes: `syncMemberAccessIndexes` / `dropMemberAccessIndexes` after every `org_member` write (next to
+  `syncOrgMembershipIndex` where there is one), `rekeyAccessIdentity` when an identity changes, and
+  `refreshDocReaders` after a document write. A new document child table joins that list. Until the phase-B
+  publish, the eight older Docs tables also stay in `RLS_ORG_SCOPED` (its "PHASE A ONLY" block) and are still
+  org-readable.
+- A store tablet is one identity for everyone who uses it. Operator scoping on `/store` is UX plus `actingMemberId`,
+  which only narrows (reducers and `/api/drive/url` grant the lower of the tablet account's and the operator's
+  rights); it is not a read boundary. The lite app shows `drive.disclosure.sharedDeviceNote`.
 
 ---
 
@@ -235,13 +288,15 @@ Pages are grouped with `PageTabs`. All hrefs use the `/manager/` prefix:
 
 | Mode | Home | UI |
 |:---|:---|:---|
-| admin | `/manager` | Back-office shell (sidebar / bottom bar) — the "manager" UI |
+| admin | `/manager` | Back-office shell — the "manager" UI. Desktop (≥1024px): Chrome-style browser shell with tabs. Phone: no browser UI — one page, a corner menu button, swipe toward the inline end for the sidebar, toward the start for Mr. Merchiva (`components/browser-shell/mobile-app/`) |
 | personal | `/personal` | Employee phone surface |
 | store | `/store` | Shared store tablet surface |
 
+On the phone `/manager` (below 1024px) the browser shell keeps its tab store but shows one page and never opens or switches tabs (`lib/browser-shell/single-tab.ts`). Two conventions follow from its swipes and corner button: a region that owns horizontal drags (a canvas, a swipeable strip) marks itself `data-no-sidebar-swipe` (rules in `lib/gestures/page-swipe.ts`), and a header that starts in the top inline-start corner reserves `ps-14` when `useShellInfo()?.layout === "mobile"` (`components/ui/corner-button.ts`), as `PageHeader` does.
+
 `/store` and `/personal` render bare (no MobileShell) through the manager layout for auth + providers. Neither surface has a shortcut into `/manager`: a device gets there by leaving its mode ("Leave" / "Log out" sheet → the chooser). The account menu still shows "Back to store device / personal" whenever the stored mode says this device is one.
 
-**Device apps are lite versions.** `/store` and `/personal` are built for low-literacy staff — far simpler than `/manager`. Never embed a manager page into a device surface. The one exception is Docs, which renders the manager Docs screens in their phone layout inside the panel (`components/device/apps/docs.tsx`): writing and reading a document is the same job on every surface.
+**Device apps are lite versions.** `/store` and `/personal` are built for low-literacy staff — far simpler than `/manager`. Never embed a manager page into a device surface. The one exception is the office editors: the Docs, Sheets and Slides editors, opened from Drive, render the manager editor screens in their phone layout inside the Drive panel (`components/device/apps/drive.tsx` through `components/drive/editor-host.tsx`) — writing a document, a spreadsheet or a deck is the same job on every surface. There is no Docs device app. Everything else in the Drive device app (browse, upload, preview) is a lite rewrite.
 
 ---
 
@@ -269,10 +324,11 @@ Pages are grouped with `PageTabs`. All hrefs use the `/manager/` prefix:
 
 ### Rules
 
-- **The device versions are lite, not ports.** The `component` field in the catalog exists for link interception and kiosk pages flagged `keepManagerPage` — it is not how a feature reaches `/store` or `/personal`. Never route a device tile to a manager page. Docs is the standing exception (see App modes above); it still goes through `lite`, as a panel host around the manager screens.
+- **The device versions are lite, not ports.** The `component` field in the catalog exists for link interception and kiosk pages flagged `keepManagerPage` — it is not how a feature reaches `/store` or `/personal`. Never route a device tile to a manager page. The office editors are the standing exception (see App modes above); they reach the devices only through Drive's `lite` panel, which hosts the manager screens.
 - **No `lite` component means the app never appears on the device grids.** Shipping the manager page alone is an unfinished feature, not a milestone.
 - **Surfaces are declared, visibility is gated.** Put `surfaces: ["store", "personal"]` in the catalog entry and let `permissionKey` / `managerOnly` decide who sees the tile. Don't hide a feature by omitting a surface.
 - **If a surface genuinely doesn't fit, ask before skipping it.** There are real exceptions — `pay` is `surfaces: ["personal"]`, `punch-in` happens at store log-in instead of as a tile — but that is the user's call, not yours. Say which surface you want to skip and why, and wait for an answer.
+- **Editor plugins have no tile.** A catalog entry with `editor: <kind>` (Docs, Sheets, Slides) is installed from `/manager/apps` but has no `lite` and no tile: its files are found and opened in Drive on all three surfaces. Opening or creating a file whose plugin is missing asks to download it (`components/plugins/`, `useEditorGate` in `components/drive/actions/use-editor-gate.ts`, `LiteInstallDrawer` on the devices). Its catalog `route` is the editor page, which `MANAGER_ROUTE_APPS` gives to the plugin.
 - Install state is org-wide and cached on the settings row (`settings.deviceApps`) via the `setDeviceApps` reducer — never write it from a component.
 
 ## Auth & Permissions
@@ -283,6 +339,24 @@ Pages are grouped with `PageTabs`. All hrefs use the `/manager/` prefix:
 - `usePermissions()` hook + `<PermissionGuard section="...">` for access control.
 - Sidebar and bottom bar auto-hide pages the user can't access.
 - Every new `/manager/` page is permission-gated. No exceptions.
+- Drive is built in (`REQUIRED_DEVICE_APPS`); `/manager/drive` is gated by `dashboard` only. `/manager/docs` is an always-on
+  alias that redirects to Drive's documents view. The editors (`/manager/docs/edit`, `/manager/drive/sheet`,
+  `/manager/drive/slides`) also need their plugin installed (`MANAGER_ROUTE_APPS`). Legacy rule, read path only: a stored
+  `settings.deviceApps` that still holds `"drive"` stands for `sheets` + `slides` (`deviceAppsFromSettingsRow`).
+- `drive` is not a page gate. `drive.view` / `drive.edit` grant
+  view / edit of **every member's** files and documents. Owner and `manager` role have it by role. The server mirrors are
+  `drive_admin_index` and `document_reader_index`, refreshed by `syncMemberAccessIndexes` / `dropMemberAccessIndexes`
+  after every write that adds or removes a member or changes a member's status, role or permissions
+  (`rekeyAccessIdentity` when an identity changes), next to `syncOrgMembershipIndex` / `dropOrgMembershipIndex` where
+  there is one — keep them together.
+- `drive.edit` never trashes, restores or deletes forever someone else's content, and never moves it across spaces.
+  Trash, restore and delete forever take the item's owner or an owner / manager. Moving a member's My files into Store
+  takes that member; an owner or manager may do it only for a member who is no longer active (left or disabled).
+  Moving into a member's My files takes rows that member already owns, moved by that member or an owner / manager. On
+  `/store` a cross-space move must pass for the tablet account and the operator both (`spaceMoveAllowed` in
+  `spacetimedb/src/drive/logic.ts`, `moveDriveContent` in `spacetimedb/src/drive/reducers.ts`). Only owners grant
+  `drive` (`updateMemberPermissions` is owner-only; `inviteToOrg` strips it from a non-owner's invitation). On the client read the power with `driveAdminAccess(role, permissions)`
+  (`lib/drive/access.ts`), never `can("drive", …)` — the manager layout merges role defaults into a manager's permissions.
 
 ---
 
@@ -310,6 +384,15 @@ Reuse the shared composites in `components/ui` (`StatusBadge`, `EmptyState`, `St
 - Use the `useT()` hook. No hardcoded user-facing strings.
 - Every key must exist in **all 8** locale files: `ar, en, es, fr, hi, zh-cn, zh-hk, zh-tw`. A key missing from one locale is a bug.
 - Public marketing pages are locale-prefixed (`/en`, `/zh-cn`, …) via `proxy.ts`.
+- While the Drive project is in flight, parallel sessions write keys to fragments under `scripts/i18n/drive/`
+  (a file, or a directory with one file per locale; all 8 locales), and one serial step merges them with
+  `bun scripts/i18n/drive.ts`. Never hand-merge into `messages/*.json` while other sessions are working. Until the
+  fragments are retired, `scripts/tests/i18n/drive-fragments.test.ts` fails if a merged key in
+  `messages/*.json` drifts from its fragment: change the fragment and re-run the merge. After that, edit
+  `messages/*.json` directly as usual.
+- `docs.share.managersNote` and `docs.share.visibilityPrivate` are Drive disclosure copy, like `drive.disclosure.*`:
+  the same meaning in all 8 locales, no softening. They are not Docs home copy — `scripts/i18n/docs-home.ts` must not
+  write them; while it still defines them with their old values, re-running it reverts the disclosure in every locale.
 
 ## Environment Variables
 
@@ -322,6 +405,20 @@ Reuse the shared composites in `components/ui` (`StatusBadge`, `EmptyState`, `St
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — client-side (optional for Checkout)
 - `STRIPE_PRO_MONTHLY_PRICE_ID` / `STRIPE_PRO_YEARLY_PRICE_ID` — Stripe Price ids for the Pro plan
 - `NEXT_PUBLIC_APP_URL` — fallback origin for Stripe success/cancel URLs
+- `BLOB_STORE_ID` / `BLOB_WEBHOOK_PUBLIC_KEY` — the private Vercel Blob store behind Drive (added when the store is connected).
+- `BLOB_READ_WRITE_TOKEN` — optional; local development without OIDC.
+- `VERCEL_BLOB_CALLBACK_URL` — optional; a tunnel URL to test the upload callback locally.
+- `CRON_SECRET` — authorizes Vercel Cron calls (`/api/merchiva/scan`, `/api/cron/drive-gc`, `/api/cron/drive-reconcile`).
+- `DRIVE_BLOB_DATABASE` — must equal `NEXT_PUBLIC_SPACETIMEDB_MODULE`: pairs the Blob store with one database, so a
+  laptop pointed at another database never touches the production store.
+- `DRIVE_UPLOADS_PAUSED` — kill switch: `1` refuses new uploads; everything else in Drive keeps working.
+- `DRIVE_PLATFORM_ALERT_BYTES` — optional; the nightly reconcile logs an error when the whole store holds more.
+- `FORMS_PUBLIC_SECRET` — server-only, ≥32 chars; signs the render stamp of public form links (`/f/<token>`). Without it, or without `SPACETIMEDB_SERVICE_TOKEN`, `/api/forms/public/*` answers 503 `not_configured`.
+- The Drive variables above are all server-only, never `NEXT_PUBLIC_`. Drive storage counts as configured only when
+  `BLOB_READ_WRITE_TOKEN` or `BLOB_STORE_ID`, `BLOB_WEBHOOK_PUBLIC_KEY`, `SPACETIMEDB_SERVICE_TOKEN` and the
+  SpacetimeDB URI/module are set and `DRIVE_BLOB_DATABASE` matches; otherwise upload, commit, signed-URL and Drive
+  cron requests answer 503 `not_configured` (`/api/drive/status` reports `configured: false`) and the rest of Drive
+  keeps working.
 - Square / Clover credentials stored in DB, not env vars
 
 ## Stripe Billing
@@ -335,6 +432,29 @@ Subscription state on org rows (`organization.stripeCustomerId`, `subscriptionSt
 1. `bun run build` — must pass clean
 2. `npx vercel --prod --yes`
 3. Native: `npx cap sync`, then open in Xcode / Android Studio
+
+## Licensing & Third-Party Code
+
+Everything that ships to a browser, the Capacitor apps or Tauri must be permissively licensed. The policy is code
+(`scripts/licenses/policy.ts`) and the guard is `bun test scripts/tests/legal`.
+
+- Forbidden, always: `@univerjs-pro/*`, `@univerjs/preset-*-advanced`, `@univerjs/preset-*-collaboration`,
+  `hyperformula`, `handsontable` (and `@handsontable/*`), the npm `xlsx` package (`FORBIDDEN_PACKAGES`,
+  `FORBIDDEN_IMPORT_SPECIFIERS`). Never copy source from PPTist (AGPL-3.0) or any GPL/AGPL project.
+- Office dependencies are pinned exactly (no `^`/`~`): every `@univerjs/*` in lockstep at one version (except
+  `@univerjs/icons`), `rxjs`, `exceljs`, `pptxtojson` (never below 1.0.0 — early releases were GPL/AGPL), `pptxgenjs`,
+  `react-moveable`, `react-selecto`, `@vercel/blob` (`PINNED_VERSIONS`, `UNIVER_LOCKSTEP`, `MIN_VERSIONS`). Keep the
+  `package.json` `overrides` for `https` (an empty placeholder pulled in by pptxgenjs) and `unzipper` (drops the
+  unlicensed `buffers` chain).
+- After any dependency change run `bun scripts/licenses/generate.ts` (`bun run licenses`) and commit `public/legal/*`;
+  `--check` (`bun run check:licenses`) writes nothing and fails while they are stale. Users read them at `/licenses`
+  and in Settings → About → Open-source licenses on every surface.
+- `spacetimedb` ships BUSL-1.1 although its `package.json` says ISC. It is the one `EXCEPTIONS` entry: a documented,
+  pre-existing exception (U16), not a release blocker. `generate.ts --release` additionally fails while any
+  `EXCEPTIONS` entry is `approvedBy: "pending-user"`.
+- No third-party marks as product names: never "Excel", "PowerPoint", "Univer" or "Google" in UI copy. Say
+  "spreadsheet", "presentation", ".xlsx", ".pptx". `brandViolation` (`scripts/licenses/brand.ts`) enforces it.
+- Patching a dependency file (Apache-2.0 §4(b)) means marking the change inside the patched file.
 
 ---
 
@@ -356,6 +476,7 @@ Stop and get an explicit yes before:
 - `git push --force`, rewriting history, or committing to `main`.
 - Adding or upgrading a dependency.
 - Touching auth, billing, or permission-gating logic in a way that changes who can access what.
+- Adding an entry to `EXCEPTIONS` or `ELECTIONS` in `scripts/licenses/policy.ts`, or any package the license guard rejects.
 
 Approval for one of these is not approval for the next one.
 
@@ -371,6 +492,7 @@ Approval for one of these is not approval for the next one.
 - **No placeholder implementations.** No mock data, no `TODO: implement`, no function that returns a hardcoded value, presented as finished work. If you can't complete it, say so.
 - **Match the surrounding code** — its comment density, naming, and idiom. New code should be unrecognizable as new.
 - **Don't reintroduce removed features.** POS integrations, website builder, design tools, customers, marketing, the hourly patrol, and the parent/sub-store ("multi-store") hierarchy were all deliberately deleted. Their leftover columns and tables stay in the schema; the features do not come back. Every organization is standalone: there is no share group, no `parentOrgId`, and nothing is shared between stores.
+- **Mr. Merchiva lives in the dock** (`components/merchiva-dock/`): a chat on the right of `/manager` that stays until the user closes it. Three ways in only — ⌘⇧M (Ctrl+Shift+M) everywhere, on desktop the rail on the right edge, and on the phone layout a swipe toward the inline start (right-to-left in LTR) that pulls him in (`dock-reveal.ts`). On desktop every browser tab has its own Merchiva and conversation; the single-tab phone layout has one per window, on the user's latest session, like the legacy shell (`TabChats` in `dock-panel.tsx`). Don't add a button, menu row, omnibox action, chat channel or overlay window that opens him.
 
 ### When something breaks
 

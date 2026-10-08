@@ -1,0 +1,20 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "W1.3a",
+  "note": "Slides editor copy: the complete key list of slides.md §14 (CONTRACTS C42). Later W1.3 units may append leaves (SERIAL chain). Terms: zh-cn 演示文稿 (presentation) / 幻灯片 (slide); zh-tw and zh-hk 簡報 (presentation) / 投影片 (slide), with 列 = row and 欄 = column; no product names of other vendors (brandViolation). allowSameAsEn holds the bare format names used by File > Download, and slides.shapes.rect (French \"Rectangle\" is the same word; the other locales translate it). slides.format.ptValue (W1.3f) is \"{n} pt\" in es and fr, the unit abbreviation both use.",
+  "owned": [
+    "slides"
+  ],
+  "extends": null,
+  "overwrites": [],
+  "allowSameAsEn": [
+    "slides.file.downloadPdf",
+    "slides.file.downloadPng",
+    "slides.file.downloadPptx",
+    "slides.shapes.rect",
+    "slides.format.ptValue",
+    "slides.panel.x",
+    "slides.panel.y",
+    "slides.panel.unitPt"
+  ]
+}

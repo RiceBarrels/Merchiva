@@ -29,7 +29,8 @@ export type PermSectionKey =
   | "settings"
   | "team"
   | "training_grading"
-  | "merchiva";
+  | "merchiva"
+  | "drive";
 
 export type PermAction = "view" | "edit" | "invite";
 
@@ -59,6 +60,8 @@ export const ORG_PERMS: PermGroup[] = [
       { id: "staffing.edit", section: "staffing", action: "edit", i18nKey: "staffing.edit" },
       { id: "training_grading.view", section: "training_grading", action: "view", i18nKey: "trainingGrading.view" },
       { id: "training_grading.edit", section: "training_grading", action: "edit", i18nKey: "trainingGrading.edit", sensitive: true },
+      { id: "drive.view", section: "drive", action: "view", i18nKey: "drive.view", sensitive: true },
+      { id: "drive.edit", section: "drive", action: "edit", i18nKey: "drive.edit", sensitive: true },
     ],
   },
   {

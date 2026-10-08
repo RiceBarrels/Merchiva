@@ -10,8 +10,10 @@ import { useDocEditor } from "./doc-editor-context";
 
 export function StarButton() {
   const t = useT();
-  const { doc, isStarred, actions } = useDocEditor();
+  const { doc, isStarred, actions, actingForOther } = useDocEditor();
   const label = isStarred ? t("docs.menu.unstar") : t("docs.menu.star");
+  // On /store for an operator other than the tablet account the star would be the tablet's.
+  if (actingForOther) return null;
   return (
     <Tooltip>
       <TooltipTrigger

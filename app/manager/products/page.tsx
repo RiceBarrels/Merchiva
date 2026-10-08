@@ -67,6 +67,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/image-upload";
 import { PageTabs } from "@/components/page-tabs";
 import { ProductInventoryUsageEditor } from "@/components/inventory/product-inventory-usage-editor";
+import { useProductsPageContext } from "@/app/manager/products/use-products-page-context";
 
 const alertConfig: Record<Product["alert"], { labelKey: string; icon: typeof CheckCircle2; tone: StatusTone }> = {
   none:           { labelKey: "products.alerts.healthy",          icon: CheckCircle2,  tone: "success" },
@@ -162,6 +163,7 @@ export default function ProductsPage() {
     : 0;
   const atRisk        = products.filter((p) => p.alert !== "none").length;
   const topProduct    = [...products].sort((a, b) => b.revenue - a.revenue)[0];
+  useProductsPageContext({ products: products.length, flagged: atRisk, shown: filtered.length, category, search, flaggedOnly: filterAlert === "alerts", adding: dialogOpen });
 
   const chartData = [...products]
     .sort((a, b) => b.revenue - a.revenue)

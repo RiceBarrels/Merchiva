@@ -1,0 +1,18 @@
+{
+  "drive": {
+    "upload": {
+      "preparing": "Preparando…",
+      "finishing": "Finalizando…",
+      "expand": "Expandir",
+      "readFailed": "No se pudieron leer los archivos soltados. Elígelos con Subir.",
+      "folderFailed": "No se pudo crear la carpeta «{name}», así que no se subió nada.",
+      "skipped": "Se omitieron {count} archivos: sus nombres o carpetas no son válidos, o están demasiado anidados.",
+      "skippedOne": "Se omitió 1 archivo: su nombre o carpeta no es válido, o está demasiado anidado."
+    },
+    "home": {
+      "downloadBlocked": "El navegador bloqueó la descarga. Inténtalo de nuevo.",
+      "downloadPartial": "Se guardaron {saved} de {total} archivos. Guarda los demás de uno en uno.",
+      "downloadNext": "Guardar el siguiente (quedan {count})"
+    }
+  }
+}

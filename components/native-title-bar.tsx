@@ -117,8 +117,7 @@ export function NativeTitleBar() {
 
   // The title bar belongs to the manager (back-office) mode only. The mode
   // chooser and the store / personal device surfaces are full-screen kiosk
-  // style screens and render no chrome at all; the quick-dialog overlay
-  // window is chrome-less too.
+  // style screens and render no chrome at all.
   const isManagerRoute = pathname === "/manager" || pathname.startsWith("/manager/");
   const isDeviceRoute =
     pathname === "/choose" ||
@@ -126,7 +125,7 @@ export function NativeTitleBar() {
     pathname === "/personal" || pathname.startsWith("/personal/");
   const showAppPromo =
     DOWNLOAD_PAGE_ENABLED && isMounted && !isNative && !isAppAsked &&
-    pathname !== "/quick-overlay" && !isDeviceRoute && !browserShell;
+    !isDeviceRoute && !browserShell;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -141,7 +140,7 @@ export function NativeTitleBar() {
     };
   }, [showAppPromo]);
 
-  const chromeVisible = pathname !== "/quick-overlay" && (showAppPromo || isManagerRoute) && !browserShell;
+  const chromeVisible = (showAppPromo || isManagerRoute) && !browserShell;
   useEffect(() => {
     const root = document.documentElement;
     const el = barRef.current;
@@ -164,7 +163,6 @@ export function NativeTitleBar() {
 
   // The browser shell's tab strip is the window chrome (drag regions, caption buttons).
   if (browserShell) return null;
-  if (pathname === "/quick-overlay") return null;
 
   if (showAppPromo) {
     return (

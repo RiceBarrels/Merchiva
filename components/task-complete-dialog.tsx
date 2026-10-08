@@ -14,6 +14,7 @@ import {
   DynamicUIElementFooter,
 } from "@/components/ui/dynamic-ui-element";
 import { UploadButton } from "@/lib/uploadthing";
+import { appUploadErrorKeyOr, appUploadHeaders, appUploadInput } from "@/lib/storage/app-upload";
 import { recordTaskCompletion, sendMessage } from "@/lib/spacetimedb/actions";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -197,6 +198,8 @@ export function TaskCompleteDialog({
               <div className="border border-dashed border-border rounded-lg p-3 mt-1.5">
                 <UploadButton
                   endpoint="taskEvidence"
+                  headers={appUploadHeaders}
+                  input={appUploadInput(organizationId, "tasks")}
                   onUploadBegin={() => setUploading(true)}
                   onClientUploadComplete={(res) => {
                     const uploaded = (res ?? [])
@@ -219,7 +222,7 @@ export function TaskCompleteDialog({
                   }}
                   onUploadError={(err) => {
                     setUploading(false);
-                    toast.error(err.message ?? t("myTasks.uploadError"));
+                    toast.error(t(appUploadErrorKeyOr(err, "myTasks.uploadError")));
                   }}
                   appearance={{
                     button:

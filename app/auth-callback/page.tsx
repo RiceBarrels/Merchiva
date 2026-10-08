@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { addAccountToStorage } from "@/lib/auth/context";
+import { safeNextPath } from "@/lib/auth/safe-next";
 
 import { Suspense } from "react";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -19,7 +20,7 @@ function AuthCallbackInner() {
     const accessToken = searchParams.get("access_token");
     const refreshToken = searchParams.get("refresh_token");
     const userStr = searchParams.get("user");
-    const redirectTo = searchParams.get("redirect_to") || "/choose";
+    const redirectTo = safeNextPath(searchParams.get("redirect_to"));
 
     if (!accessToken || !refreshToken || !userStr) {
       router.replace("/login?error=missing_tokens");

@@ -1,0 +1,37 @@
+{
+  "device": {
+    "catalog": {
+      "docs": "文档",
+      "sheets": "表格",
+      "slides": "演示文稿"
+    },
+    "catalogDesc": {
+      "docs": "门店的文档：在云盘中撰写，也能打开 .docx 文件。",
+      "sheets": "门店的电子表格：在云盘中打开 .xlsx 和 .csv 文件，或新建表格。",
+      "slides": "门店的演示文稿：在云盘中打开 .pptx 文件，或新建演示文稿。"
+    }
+  },
+  "docs": {
+    "editor": {
+      "backToDocs": "返回云盘"
+    },
+    "homeTooltip": "云盘"
+  },
+  "pluginInstall": {
+    "missingTitle": "尚未安装“{app}”",
+    "openBody": "下载“{app}”即可打开此文件。它会在整家店开启：后台、门店平板和员工手机都能使用。",
+    "createBody": "下载“{app}”即可新建。它会在整家店开启：后台、门店平板和员工手机都能使用。",
+    "pageBody": "此页面属于“{app}”。下载后即可在这里和门店的设备上使用。",
+    "askManager": "请让店主或经理在插件页下载“{app}”。",
+    "download": "下载",
+    "downloading": "正在下载…",
+    "installed": "“{app}”已可使用",
+    "failed": "“{app}”下载失败，请重试。",
+    "openPlugins": "打开插件页",
+    "notNow": "暂不",
+    "offline": "你已离线。联网后才能下载插件。",
+    "downloadFirst": "需先下载",
+    "askOtherDevice": "这台平板登录的账号不能下载插件。请在后台或你自己的手机上，从插件页下载“{app}”。",
+    "notInstalled": "未安装"
+  }
+}

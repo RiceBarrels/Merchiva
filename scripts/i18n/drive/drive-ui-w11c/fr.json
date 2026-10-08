@@ -1,0 +1,12 @@
+{
+  "drive": {
+    "nav": {
+      "breadcrumbs": "Chemin du dossier",
+      "morePath": "Afficher le chemin complet"
+    },
+    "list": {
+      "memberHint": "Dans les fichiers de {name}. La direction du magasin peut le voir.",
+      "formerMemberHint": "Dans les fichiers d'un ancien membre. La direction du magasin peut le voir."
+    }
+  }
+}

@@ -4,7 +4,9 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { ManagerShell } from "@/components/browser-shell/manager-shell";
 import { ShellContextMenu } from "@/components/browser-shell/shared/shell-context-menu";
-import { MerchivaQuickDialog } from "@/components/merchiva-quick-dialog";
+import { MerchivaDock } from "@/components/merchiva-dock";
+import { PresenceLayer } from "@/components/presence/presence-layer";
+import { SheetSessionKeeper } from "@/lib/sheets/use-sheet-session-keeper";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { ShakeBugReport } from "@/components/shake-bug-report";
 import { PushNotificationPrompt } from "@/components/push-notification-prompt";
@@ -25,6 +27,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
 import { getAppMode } from "@/lib/app-mode";
+import { entrySplashSeen, markEntrySplashSeen } from "@/lib/entry-splash";
+import { isSetupKnownDone, markSetupDone } from "@/lib/setup-state";
 
 import { tables } from "@/lib/spacetimedb/generated";
 import { getConnection, setActiveOrgId } from "@/lib/spacetimedb/client";
@@ -179,6 +183,25 @@ function NamePrompt({ memberId, onComplete }: { memberId: string; onComplete: ()
           {saving ? <Spinner size={16} /> : t("layout.namePrompt.continue")}
         </Button>
       </div>
+    </div>
+  );
+}
+
+// What went wrong while the app loads, and the way out. Shared by the splash and the quiet loader that later
+// entries of a session get instead; semantic tokens follow the `dark` class the splash's own theme tracks.
+function EntryLoadErrors({ errors, onSignOut }: { errors: string[]; onSignOut: () => void }) {
+  const t = useT();
+  return (
+    <div className="flex flex-col items-center gap-2 px-6 text-center">
+      {errors.map((e) => (
+        <p key={e} className="max-w-md break-words font-mono text-xs text-destructive">{e}</p>
+      ))}
+      <button
+        onClick={onSignOut}
+        className="rounded border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+      >
+        {t("layout.signOutAndRetry")}
+      </button>
     </div>
   );
 }
@@ -374,30 +397,40 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   const needsName = effectiveAuth ? (!effectiveAuth.memberDisplayName || !effectiveAuth.memberDisplayName.trim()) : false;
 
   // True once the user has touched settings (setup wizard's updateSettings or
-  // any later /manager/settings edit). Null while the settings table is still
-  // syncing — we hold off on the redirect until we have a definitive answer
-  // so users aren't bounced to /manager/setup just because rows haven't streamed in
-  // yet. eslint-disable: ToDate exists on the SpacetimeDB Timestamp wrapper
-  // but isn't in our shared row typing.
+  // any later /manager/settings edit). Null whenever the answer is not proven:
+  // only a settings row we can actually read, with updatedAt still at
+  // createdAt, sends the user to /manager/setup. A missing row is NOT "not set
+  // up" — after a reconnect `settingsReady` can be true while the new
+  // connection's cache is still empty and `effectiveAuth` comes from the
+  // offline auth cache, which used to bounce finished stores into the wizard.
+  // Setup never becomes undone, so a store once seen done on this device stays
+  // done (lib/setup-state.ts). eslint-disable: ToDate exists on the SpacetimeDB
+  // Timestamp wrapper but isn't in our shared row typing.
   const setupComplete = useMemo<boolean | null>(() => {
     if (!effectiveAuth) return null;
+    if (isSetupKnownDone(effectiveAuth.organizationId)) return true;
     if (!settingsReady) return null;
     const row = settingsRows.find(
       (r: { organizationId: string }) => r.organizationId === effectiveAuth.organizationId,
     );
-    if (!row) return false;
+    if (!row) return null;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const r = row as any;
-      const createdMs = r.createdAt?.toDate?.()?.getTime?.() ?? 0;
-      const updatedMs = r.updatedAt?.toDate?.()?.getTime?.() ?? 0;
+      const createdMs = r.createdAt?.toDate?.()?.getTime?.();
+      const updatedMs = r.updatedAt?.toDate?.()?.getTime?.();
+      if (typeof createdMs !== "number" || typeof updatedMs !== "number") return null;
       // 1 second tolerance — `createOrg` writes both timestamps in the same
       // reducer call, but they can differ by sub-millisecond ticks.
       return updatedMs - createdMs > 1000;
     } catch {
-      return false;
+      return null;
     }
   }, [effectiveAuth, settingsReady, settingsRows]);
+
+  useEffect(() => {
+    if (setupComplete === true && effectiveAuth) markSetupDone(effectiveAuth.organizationId);
+  }, [effectiveAuth, setupComplete]);
 
   useEffect(() => {
     if (!effectiveAuth || needsName) return;
@@ -477,16 +510,27 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   }, [effectiveAuth, needsName, setupComplete, subscriptionBlocked, pathname, setupRouter]);
 
   // ── Splash flow ───────────────────────────────────────────────────────
-  // Cold load: SpacetimeDB tables aren't ready AND we have no cached auth.
-  // Show the splash, loop the loading orbit, and once data lands play the
-  // end animation (snap → ready → welcome) before unmounting the splash and
-  // revealing the dashboard.
+  // First entry of a session, cold load: SpacetimeDB tables aren't ready AND
+  // we have no cached auth. Show the splash, loop the loading orbit, and once
+  // data lands play the end animation (snap → ready → welcome) before
+  // unmounting the splash and revealing the dashboard.
   //
+  // Later entries in the session (reloads, store / account switches, the
+  // /choose → /store | /personal | /manager redirects that remount this
+  // layout) get the quiet loader below instead — see lib/entry-splash.ts.
   // Warm caches (auth restored from localStorage snapshot) skip the splash
   // entirely — there's nothing to wait for and flashing brand chrome on
   // every navigation is annoying.
-  const [splashStarted] = useState(() => !isReady && !effectiveAuth);
+  const [splashStarted] = useState(() => !entrySplashSeen() && !isReady && !effectiveAuth);
   const [splashFinished, setSplashFinished] = useState(false);
+  // Any first mount is this session's entry, splash or warm-cache fast path
+  // alike (splashStarted was captured above, before this runs). A warm entry
+  // left unmarked would play the whole splash on the next remount once the
+  // token is fresh. Never in onFinish: the /choose → mode-home redirect
+  // unmounts this layout mid-ending and onFinish never fires.
+  useEffect(() => {
+    markEntrySplashSeen();
+  }, []);
 
   // Pick light vs dark splash based on the user's resolved theme — `dark`
   // class on <html> is the source of truth (applyThemeMode keeps it in sync).
@@ -553,12 +597,16 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
               {/* Device surfaces get no shell, but once notifications are
                   granted they should still register for push. */}
               <PushNotificationPrompt />
+              {/* Parked spreadsheet sessions follow reconnects (devices edit sheets too). */}
+              <SheetSessionKeeper />
             </>
           ) : (
             <>
               <ManagerShell>{children}</ManagerShell>
               <ShellContextMenu />
-              <MerchivaQuickDialog />
+              <SheetSessionKeeper />
+              <PresenceLayer />
+              <MerchivaDock />
               <PushNotificationPrompt />
               <TauriNotificationBridge />
             </>
@@ -589,10 +637,24 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     conn.tokenMissing ? t("layout.notConnected") : null,
     (timedOut || conn.timedOut) && !dataReady ? t("layout.connectionTimedOut") : null,
   ].filter((x): x is string => !!x);
+  const showLoadErrors = splashErrors.length > 0 && !dataReady;
 
   return (
     <>
       {realContent}
+      {/* No splash (a later entry, or it already ended) and nothing to show
+          yet: a quiet loader that still says where it is stuck. */}
+      {!showSplash && realContent === null && (
+        <div className="flex h-screen flex-col items-center justify-center gap-3 bg-background">
+          <Spinner size={20} className="text-muted-foreground" />
+          <p className="px-6 text-center text-xs text-muted-foreground">{splashStatus}</p>
+          {showLoadErrors && (
+            <div className="mt-2">
+              <EntryLoadErrors errors={splashErrors} onSignOut={handleSignOut} />
+            </div>
+          )}
+        </div>
+      )}
       {showSplash && (
         <div className="fixed inset-0 z-[100]">
           <SplashLoader
@@ -603,17 +665,9 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
             tagline={t("layout.connecting")}
             status={splashStatus}
           />
-          {splashErrors.length > 0 && !dataReady && (
-            <div className="absolute inset-x-0 bottom-12 flex flex-col items-center gap-2 z-10 px-6 text-center">
-              {splashErrors.map((e) => (
-                <p key={e} className="max-w-md break-words font-mono text-xs text-red-400">{e}</p>
-              ))}
-              <button
-                onClick={handleSignOut}
-                className={`rounded border px-3 py-1.5 text-xs ${splashDark ? "border-stone-700 bg-stone-900 text-stone-300 hover:bg-stone-800" : "border-border bg-background text-muted-foreground hover:bg-muted"}`}
-              >
-                {t("layout.signOutAndRetry")}
-              </button>
+          {showLoadErrors && (
+            <div className="absolute inset-x-0 bottom-12 z-10">
+              <EntryLoadErrors errors={splashErrors} onSignOut={handleSignOut} />
             </div>
           )}
         </div>

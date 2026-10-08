@@ -25,7 +25,7 @@ import { hapticSuccess } from "@/lib/haptics";
 import { useT } from "@/lib/i18n/context";
 import { updateOrgLogo } from "@/lib/spacetimedb/actions";
 import { useOrganizations } from "@/lib/spacetimedb/hooks";
-import { uploadFiles } from "@/lib/uploadthing";
+import { appUploadErrorKeyOr, uploadAppFiles } from "@/lib/storage/app-upload";
 
 export interface StoreProfilePanelProps {
   open: boolean;
@@ -58,13 +58,13 @@ export function StoreProfilePanel({ open, onOpenChange }: StoreProfilePanelProps
 
     setUploading(true);
     try {
-      const [res] = await uploadFiles("avatar", { files: [file] });
+      const [res] = await uploadAppFiles("avatar", { files: [file], organizationId, source: "logo" });
       await updateOrgLogo(organizationId, res.ufsUrl);
       hapticSuccess();
       toast.success(t("settings.storeImageSaved"));
     } catch (err) {
       console.error("Store image upload failed:", err);
-      toast.error(t("settings.storeImageFailed"));
+      toast.error(t(appUploadErrorKeyOr(err, "settings.storeImageFailed")));
     } finally {
       setUploading(false);
     }

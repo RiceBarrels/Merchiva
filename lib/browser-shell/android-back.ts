@@ -1,7 +1,7 @@
 import { isCapacitorNative } from "@/lib/capacitor";
 import { isEditableElement } from "./keyboard";
 import { runShellBackHandlers } from "./shell-context";
-import { closeTopDialog } from "./shell-dom";
+import { closeTopDialog, inHiddenSubtree } from "./shell-dom";
 
 /*
  * Android hardware back (plan D29, mobile-safari spec §19). Registering a Capacitor
@@ -60,7 +60,8 @@ let settleTimer: ReturnType<typeof setTimeout> | undefined;
 
 function topForeignOverlay(): Element | null {
   try {
-    const open = document.querySelectorAll(FOREIGN_OVERLAY_SELECTOR);
+    // Overlays of kept-alive background tabs stay in the document, hidden: skip them.
+    const open = Array.from(document.querySelectorAll(FOREIGN_OVERLAY_SELECTOR)).filter((el) => !inHiddenSubtree(el));
     // Overlays portal to the end of <body>: the last match in document order is the topmost.
     return open.length > 0 ? open[open.length - 1] : null;
   } catch {

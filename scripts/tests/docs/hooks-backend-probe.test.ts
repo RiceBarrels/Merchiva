@@ -5,6 +5,7 @@
 import { afterEach, describe, expect, jest, test } from "bun:test";
 import { DocsBackendMonitor, isMissingDocsSchemaError, type DocsProbeTuning } from "@/lib/docs/backend-probe";
 import { docsProbeQueries } from "@/lib/docs/queries";
+import { driveProbeQueries } from "@/lib/drive/queries";
 import { FakeDocServer, waitFor } from "./fake-server";
 
 const TUNING: DocsProbeTuning = { retryBaseMs: 100, retryMaxMs: 400, recheckBaseMs: 1_000, recheckMaxMs: 4_000 };
@@ -235,6 +236,52 @@ describe("DocsBackendMonitor", () => {
     const off2 = monitor.subscribe(conn, () => {});
     expect(conn.calls).toHaveLength(2);
     off2();
+  });
+
+  test("a custom query set (Drive) is probed on its own: Docs ready, Drive not published on the same connection", () => {
+    jest.useFakeTimers();
+    const docs = new DocsBackendMonitor({ bindingsGenerated: true, tuning: TUNING });
+    const drive = new DocsBackendMonitor({ bindingsGenerated: true, tuning: TUNING, queries: driveProbeQueries });
+    const conn = new FakeProbeConnection();
+    const offDocs = docs.subscribe(conn, () => {});
+    const offDrive = drive.subscribe(conn, () => {});
+    expect(conn.calls.map((c) => c.queries)).toEqual([docsProbeQueries(), driveProbeQueries()]);
+
+    conn.apply(0);
+    conn.fail("no such table: `drive_item`. If the table exists, it may be marked private.", 1);
+    expect(docs.status(conn)).toBe("ready");
+    expect(drive.status(conn)).toBe("not_published");
+
+    jest.advanceTimersByTime(past(TUNING.recheckBaseMs));
+    expect(conn.calls).toHaveLength(3);
+    expect(conn.calls[2].queries).toEqual(driveProbeQueries()); // the re-check uses the same set
+    conn.apply(2);
+    expect(drive.status(conn)).toBe("ready");
+    offDocs();
+    offDrive();
+  });
+
+  test("a query set that throws while building is retried like any transient failure", () => {
+    jest.useFakeTimers();
+    let broken = true;
+    const monitor = new DocsBackendMonitor({
+      bindingsGenerated: true,
+      tuning: TUNING,
+      queries: () => {
+        if (broken) throw new Error("not ready");
+        return docsProbeQueries();
+      },
+    });
+    const conn = new FakeProbeConnection();
+    const off = monitor.subscribe(conn, () => {});
+    expect(conn.calls).toHaveLength(0);
+    expect(monitor.status(conn)).toBe("checking");
+    broken = false;
+    jest.advanceTimersByTime(past(TUNING.retryBaseMs));
+    expect(conn.calls).toHaveLength(1);
+    conn.apply();
+    expect(monitor.status(conn)).toBe("ready");
+    off();
   });
 
   test("without generated bindings it is not_published and never subscribes", () => {

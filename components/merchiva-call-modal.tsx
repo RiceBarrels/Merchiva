@@ -5,7 +5,10 @@ import { Mic, MicOff, PhoneOff, Volume2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { usePermissions } from "@/lib/context/permissions";
+import { useAuth } from "@/lib/auth/context";
+import { getStoredToken } from "@/lib/spacetimedb/client";
 import { loadStoredMcpServers } from "@/lib/merchiva/mcp/config";
+import type { CurrentPage } from "@/lib/ai/page-prompt";
 import { MerchivaLogo } from "./logo";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { Button } from "@/components/ui/button";
@@ -27,6 +30,8 @@ interface VoiceTurnContext {
   memory: { summary?: string; storeOverview?: string; userPreferences?: string };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   permissions: any;
+  /** The page the chat's tab shows (lib/merchiva/current-page.ts), read per turn. */
+  page?: CurrentPage | null;
 }
 
 interface MerchivaCallModalProps {
@@ -72,6 +77,7 @@ export function MerchivaCallModal({
   const t = useT();
   const { locale } = useI18n();
   const { organizationId } = usePermissions();
+  const { getToken } = useAuth();
   const [state, setState] = useState<CallState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
@@ -239,10 +245,14 @@ export function MerchivaCallModal({
   const askAndSpeak = useCallback(
     async (userText: string): Promise<string> => {
       setState("thinking");
-      const { history, storeContext, memory, permissions } = getContext();
+      const { history, storeContext, memory, permissions, page } = getContext();
       const mcpServers = organizationId
         ? loadStoredMcpServers(organizationId).filter((server) => server.enabled)
         : [];
+      // /api/store-ai checks this token belongs to an active member of the org.
+      // Same token the chat sends to /api/store-ai/enqueue: the auto-refreshed
+      // WorkOS access token, else the stored SpacetimeDB token.
+      const token = (await getToken().catch(() => null)) || getStoredToken();
 
       const res = await fetch("/api/store-ai", {
         method: "POST",
@@ -251,7 +261,9 @@ export function MerchivaCallModal({
           message: userText,
           history,
           context: storeContext,
+          page: page ?? null,
           organizationId,
+          token,
           lang: locale,
           stream: true,
           mode: "voice",
@@ -340,7 +352,7 @@ export function MerchivaCallModal({
       await playLoop;
       return cleanForSpeech(raw);
     },
-    [getContext, organizationId, locale, fetchTTS, playBlob],
+    [getContext, organizationId, getToken, locale, fetchTTS, playBlob],
   );
 
   const transcribe = useCallback(

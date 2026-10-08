@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { LicensesPanel } from "@/components/licenses/licenses-panel";
 import { useDeviceName } from "@/lib/store-machine-mode";
 import { AUTOLOCK_OPTIONS, useAutolockSeconds, type AutolockSeconds } from "@/lib/store-device-lock";
 import { ExitStoreDrawer } from "./exit-store-drawer";
@@ -23,6 +24,7 @@ export function DeviceSettingsPanel({ className }: DeviceSettingsPanelProps) {
   const [draftName, setDraftName] = useState(deviceName);
   const [autolock, setAutolock] = useAutolockSeconds();
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [licensesOpen, setLicensesOpen] = useState(false);
 
   const autolockLabel = (s: AutolockSeconds) =>
     s === 0 ? t("storeDevice.never") : s < 60 ? `${s}s` : `${s / 60}m`;
@@ -57,6 +59,9 @@ export function DeviceSettingsPanel({ className }: DeviceSettingsPanelProps) {
           aria-label={t("storeDevice.autoLock")}
         />
         <p className="text-[11px] text-muted-foreground">{t("storeDevice.autoLockHint")}</p>
+        <Button variant="link" size="sm" className="h-auto px-0" onClick={() => { hapticLight(); setLicensesOpen(true); }}>
+          {t("licenses.title")}
+        </Button>
       </div>
       <div className="pt-2 border-t border-border">
         <Button variant="destructive" className="h-10 w-full mt-4" onClick={() => { hapticLight(); setLeaveOpen(true); }}>
@@ -65,6 +70,7 @@ export function DeviceSettingsPanel({ className }: DeviceSettingsPanelProps) {
         <p className="text-[11px] text-muted-foreground mt-2">{t("storeDevice.leaveStoreModeHint")}</p>
       </div>
       <ExitStoreDrawer open={leaveOpen} onOpenChange={setLeaveOpen} />
+      <LicensesPanel open={licensesOpen} onOpenChange={setLicensesOpen} />
     </div>
   );
 }

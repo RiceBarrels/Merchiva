@@ -1,6 +1,7 @@
 "use client";
 
-// useState/useEffect handled by useSales hook
+// Data comes from the useSales hook; the only local state is the open tab.
+import { useState } from "react";
 import {
   TrendingUp,
   CloudSun,
@@ -44,6 +45,7 @@ import { useDateFormat } from "@/lib/i18n/use-date-format";
 import { SalesForecast } from "@/components/sales-forecast";
 import { ItemForecast } from "@/components/item-forecast";
 import { PageTabs } from "@/components/page-tabs";
+import { useSalesPageContext } from "@/app/manager/sales/use-sales-page-context";
 
 const weatherIcon = (w: string) => {
   if (w === "sunny") return <CloudSun className="h-4 w-4 text-amber-500" />;
@@ -91,6 +93,8 @@ export default function SalesPage() {
   const todayTotal = hourly.reduce((s, r) => s + r.actual, 0);
 
   const isEmpty = history.length === 0 && hourly.length === 0;
+  const [tab, setTab] = useState("history");
+  useSalesPageContext({ history, tab: isEmpty ? null : tab });
 
   return (
     <PermissionGuard section="sales">
@@ -133,7 +137,7 @@ export default function SalesPage() {
           />
         </Card>
       ) : (
-        <Tabs defaultValue="history">
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="history">{t("sales.tabs.history")}</TabsTrigger>
             <TabsTrigger value="hourly">{t("sales.tabs.hourly")}</TabsTrigger>

@@ -106,7 +106,7 @@ async function runDailyScan(req: NextRequest) {
           type: "order",
           title: copy.title,
           body: copy.body(lowItems.length, names),
-          link: "/manager/channel",
+          link: "/manager/inventory",
         });
         notified++;
       } catch (err) {

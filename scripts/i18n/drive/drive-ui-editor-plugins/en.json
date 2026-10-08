@@ -1,0 +1,16 @@
+{
+  "drive": {
+    "home": {
+      "newFromTemplate": "From a template",
+      "importFile": "Import a file…"
+    }
+  },
+  "device": {
+    "lite": {
+      "drive": {
+        "newFromTemplate": "Doc from a template",
+        "templatesTitle": "Pick a template"
+      }
+    }
+  }
+}

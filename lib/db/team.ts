@@ -17,6 +17,7 @@ export function defaultPermissions(): Permissions {
     website: { view: false, edit: false },
     training_grading: { view: false, edit: false },
     merchiva: { view: true },
+    drive: { view: false, edit: false },
   };
 }
 
@@ -33,6 +34,7 @@ export function ownerPermissions(): Permissions {
     website: { view: true, edit: true },
     training_grading: { view: true, edit: true },
     merchiva: { view: true },
+    drive: { view: true, edit: true },
   };
 }
 

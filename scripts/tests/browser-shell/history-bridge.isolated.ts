@@ -431,7 +431,8 @@ test("closing, reopening, pinned shortcut guard, duplicate and the New Tab fallb
   const C = opened(tabsStore.actions.duplicateTab(B));
   await settle();
   expect(activeId()).toBe(C);
-  expect(state().mountNonce).toBe(nonce + 1);
+  // A same-URL activation commits in place; it no longer remounts anything (per-tab keep-alive).
+  expect(state().mountNonce).toBe(nonce);
   expect(b.history.length).toBe(length);
   expect(readStamp(b.history.state)?.t).toBe(C);
 

@@ -5,7 +5,8 @@ import { LogOut, Coffee, Play, ClockAlert, DoorOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
-import { recordPunch } from "@/lib/spacetimedb/actions";
+import { recordOperatorPunch } from "@/lib/spacetimedb/actions/pin";
+import { pinErrorKey } from "@/lib/pin-attempt";
 import { DeviceDrawer, type DeviceDrawerOption, type OnShiftEntry } from "@/components/device";
 import type { StoreMember } from "./use-org-members";
 import { ExitStoreDrawer } from "./exit-store-drawer";
@@ -15,34 +16,36 @@ export interface LogoutDrawerProps {
   onOpenChange: (open: boolean) => void;
   /** The logged-in operator. */
   operator: StoreMember;
-  /** PIN the operator logged in with, held in memory for this session only —
-   *  `recordPunch` validates it server-side. Null after a QR log-in, which is
-   *  why punching is hidden then. */
+  /** PIN the operator logged in with, held in memory for this session only;
+   *  null after a QR log-in. Punches no longer use it (see `punch`). */
   operatorPin: string | null;
   /** Operator's open shift, or null when not punched in. */
   shift: OnShiftEntry | null;
   onLogout: () => void;
 }
 
-export function LogoutDrawer({ open, onOpenChange, operator, operatorPin, shift, onLogout }: LogoutDrawerProps) {
+export function LogoutDrawer({ open, onOpenChange, operator, shift, onLogout }: LogoutDrawerProps) {
   const t = useT();
   const [pane, setPane] = useState<"options" | "exitPin">("options");
   const [busy, setBusy] = useState(false);
-  // Punches go through the same PIN-based reducer as the terminal; a member
-  // who logged in by phone QR without a PIN can't punch from here.
-  const canPunch = !!operatorPin && !!shift;
+  // Punches are for the operator this tablet's own PIN or QR log-in resolved
+  // (its grant, lib/spacetimedb/actions/pin.ts), so the PIN is never re-sent
+  // and a QR log-in can punch too.
+  const canPunch = !!shift;
 
   const punch = async (action: "break-start" | "break-end" | "out") => {
-    if (!operatorPin || busy) return false;
+    if (busy) return false;
     setBusy(true);
     try {
-      if (action === "out" && shift?.onBreak) await recordPunch(operatorPin, "break-end");
-      await recordPunch(operatorPin, action);
+      if (action === "out" && shift?.onBreak) await recordOperatorPunch("break-end");
+      await recordOperatorPunch(action);
       hapticSuccess();
       return true;
     } catch (err) {
       hapticError();
-      toast.error(err instanceof Error ? err.message : t("storeDevice.punchFailed"));
+      const message = err instanceof Error ? err.message : "";
+      const key = pinErrorKey(message);
+      toast.error(key ? t(key) : message || t("storeDevice.punchFailed"));
       return false;
     } finally {
       setBusy(false);

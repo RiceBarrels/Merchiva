@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useDefaultLayout, usePanelRef, type PanelSize } from "react-resizable-panels";
 import { TabPageOutlet } from "@/components/browser-shell/core/tab-page-outlet";
+import { MerchivaDockLayout } from "@/components/merchiva-dock";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useActiveTab, useShellCommand, useTabContentHost, useTabPresentation } from "@/lib/browser-shell";
@@ -32,10 +33,11 @@ import { Toolbar } from "./toolbar";
  *
  *   <frame>
  *     skip link · TabStrip · toolbar area (Toolbar + BookmarksBar)     full width
- *     ResizablePanelGroup
- *       BrowserSidebar panel (hidden / icon rail / resizable) · handle
- *       #desktop-content  (role=tabpanel; DynamicUIElement push target)
- *         <TabPageOutlet>{children}</TabPageOutlet>   exactly once
+ *     MerchivaDockLayout  (page region · handle · Mr. Merchiva dock, collapsible to a rail)
+ *       ResizablePanelGroup
+ *         BrowserSidebar panel (hidden / icon rail / resizable) · handle
+ *         #desktop-content  (role=tabpanel; DynamicUIElement push target)
+ *           <TabPageOutlet>{children}</TabPageOutlet>   exactly once
  *   </frame>
  *
  * Plan §B2.2: the content element carries no inline transform / borderRadius / overflow
@@ -224,15 +226,17 @@ function DesktopFrame({ children }: { children: ReactNode }) {
         <Toolbar />
         {barVisible ? <BookmarksBar /> : null}
       </div>
-      <ResizablePanelGroup
-        orientation="horizontal"
-        dir={rtl ? "ltr" : undefined}
-        defaultLayout={defaultLayout}
-        onLayoutChanged={onLayoutChanged}
-        className="min-h-0 flex-1"
-      >
-        {rtl ? [contentSlot, handleSlot, sidebarSlot] : [sidebarSlot, handleSlot, contentSlot]}
-      </ResizablePanelGroup>
+      <MerchivaDockLayout>
+        <ResizablePanelGroup
+          orientation="horizontal"
+          dir={rtl ? "ltr" : undefined}
+          defaultLayout={defaultLayout}
+          onLayoutChanged={onLayoutChanged}
+          className="min-h-0 flex-1"
+        >
+          {rtl ? [contentSlot, handleSlot, sidebarSlot] : [sidebarSlot, handleSlot, contentSlot]}
+        </ResizablePanelGroup>
+      </MerchivaDockLayout>
       <PageLoadAnnouncer pending={presentation.pending} title={presentation.title} />
     </div>
   );

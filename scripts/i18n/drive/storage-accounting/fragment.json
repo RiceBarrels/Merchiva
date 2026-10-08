@@ -1,0 +1,11 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "storage-accounting S4",
+  "note": "Upload errors shared by every app that stores a file in the store's Blob quota (logo, avatars, chat, tasks, inventory, training, bugs, document images). quotaExceeded names Drive by each locale's nav.drive (es Archivos, fr Fichiers, ar الملفات, hi ड्राइव, zh-cn 云盘, zh-tw/zh-hk 雲端硬碟) and follows drive.errors.quotaExceeded's store wording. Upload verbs follow drive.upload: es subir, fr téléverser, ar رفع, zh-cn/zh-tw 上传/上傳, zh-hk 上載.",
+  "owned": [
+    "appUpload"
+  ],
+  "extends": null,
+  "overwrites": [],
+  "allowSameAsEn": []
+}

@@ -1,0 +1,16 @@
+{
+  "drive": {
+    "home": {
+      "newFromTemplate": "من قالب",
+      "importFile": "استيراد ملف…"
+    }
+  },
+  "device": {
+    "lite": {
+      "drive": {
+        "newFromTemplate": "مستند من قالب",
+        "templatesTitle": "اختر قالبًا"
+      }
+    }
+  }
+}

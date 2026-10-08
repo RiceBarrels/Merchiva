@@ -1,0 +1,12 @@
+{
+  "drive": {
+    "nav": {
+      "breadcrumbs": "Folder path",
+      "morePath": "Show the full path"
+    },
+    "list": {
+      "memberHint": "In {name}'s files. Store management can see it.",
+      "formerMemberHint": "In a former member's files. Store management can see it."
+    }
+  }
+}

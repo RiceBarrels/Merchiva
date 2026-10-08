@@ -6,13 +6,13 @@ import type { ShellCommand, ShortcutBinding } from "./types";
  * The single shortcut table (plan §B1.7). Mod = ⌘ on macOS, Ctrl elsewhere; keys match on
  * `e.code`. `inEditable` says whether a binding still fires while focus is in an input,
  * textarea, select, contenteditable or .ProseMirror (plan D21).
- * Never bound: Mod+Shift+M (quick dialog), Mod+D (team canvas), Mod+0 / Mod+= / Mod+-, and the
- * docs editor keymap (Mod+B/I/U/K/S and Mod+backslash, Mod+Shift+S/L/E/J/7/8/9/Z, Mod+Alt+0-3/M,
- * Mod+Enter). `toggleSidebar` is Alt+S in every environment: the natural Mod combos are taken
- * (Mod+B and Mod+backslash by the docs editor, Mod+Shift+B by the bookmarks bar), while Alt+S is
- * free of the core table, the docs keymap, the quick dialog and the browser/OS combos in Tauri, a
- * plain web tab and an installed PWA alike — and Alt bindings never fire while typing (plan D21),
- * so the docs editor keeps every key while the caret is in the document.
+ * Never bound: Mod+Shift+M (Mr. Merchiva dock), Mod+D (team canvas), Mod+0 / Mod+= / Mod+-, and
+ * the docs editor keymap (Mod+B/I/U/K/S and Mod+backslash, Mod+Shift+S/L/E/J/7/8/9/Z,
+ * Mod+Alt+0-3/M, Mod+Enter). `toggleSidebar` is Alt+S in every environment: the natural Mod combos
+ * are taken (Mod+B and Mod+backslash by the docs editor, Mod+Shift+B by the bookmarks bar), while
+ * Alt+S is free of the core table, the docs keymap, the Mr. Merchiva dock and the browser/OS combos
+ * in Tauri, a plain web tab and an installed PWA alike — and Alt bindings never fire while typing
+ * (plan D21), so the docs editor keeps every key while the caret is in the document.
  */
 
 export interface ShortcutEnv {

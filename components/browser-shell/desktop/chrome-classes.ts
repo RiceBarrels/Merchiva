@@ -95,7 +95,7 @@ export const CAPTION_CLOSE_CLASS = "hover:bg-red-600 hover:text-white focus-visi
 /** Shared chrome overrides for the base-nova context menu (desktop spec §11). */
 export const CHROME_MENU_CLASS = "rounded-[0.3rem] border border-border ring-0";
 
-/* ── Sidebar (desktop only) ─────────────────────────────────────────────────
+/* ── Sidebar (desktop; the phone drawer reuses it) ───────────────────────────
  * Same surface as the toolbar (light bg-background, dark bg-card) so the chrome reads as one
  * frame around the page; the resize handle draws the only divider. Rows keep the legacy
  * sidebar's sizes: 13px medium labels, 18px glyphs, 4px radius, active = inverted fill.
@@ -121,6 +121,22 @@ export const SIDEBAR_SUB_ROW_CLASS =
 
 export const SIDEBAR_ICON_BUTTON_CLASS =
   "flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 dark:hover:bg-background";
+
+/* The same sidebar as the /manager phone drawer (variant "drawer"): touch-sized, merged over the
+ * classes above with cn(). Rows, sub-rows and the sub-page disclosure are 44px tall. */
+
+export const SIDEBAR_DRAWER_HEADER_CLASS = "h-12";
+
+export const SIDEBAR_DRAWER_ROW_CLASS = "min-h-11";
+
+export const SIDEBAR_DRAWER_SUB_ROW_CLASS = "py-3 leading-5";
+
+export const SIDEBAR_DRAWER_ICON_BUTTON_CLASS = "size-11";
+
+/** The workspace switcher's trigger and its popover rows. */
+export const SIDEBAR_DRAWER_SWITCHER_CLASS = "min-h-12";
+
+export const SIDEBAR_DRAWER_POPOVER_CLASS = "w-[min(300px,calc(100vw-1rem))] [&_a]:min-h-11 [&_button]:min-h-11";
 
 /**
  * Drag handle between the sidebar and the page region (also the drag-to-collapse target).

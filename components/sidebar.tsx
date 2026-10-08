@@ -29,7 +29,7 @@ function SidebarTooltip({ label, show, children }: { label: string; show: boolea
 
 import type { StoredAccount } from "@/lib/auth/context";
 import { LogOut, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, UserPlus } from "lucide-react";
-import { APP_MODE_ICONS, AppStoreIcon, BugIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DocsIcon, FinancesIcon, InventoryIcon, ReportsIcon, SalesIcon, ScheduleIcon, SettingsIcon, SuppliersIcon, TasksIcon, TrainingIcon, WasteIcon, type AppIcon } from "@/components/device/app-icons";
+import { APP_MODE_ICONS, AppStoreIcon, BugIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DriveIcon, FinancesIcon, InventoryIcon, ReportsIcon, SalesIcon, ScheduleIcon, SettingsIcon, SuppliersIcon, TasksIcon, TrainingIcon, WasteIcon, type AppIcon } from "@/components/device/app-icons";
 import { useTabActions } from "@/lib/browser-shell/hooks";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
@@ -103,7 +103,7 @@ const navItems: NavItemExt[] = [
       { labelKey: "personnel.tabs.training", href: "/manager/personnel/training", icon: TrainingIcon },
     ] },
   { labelKey: "nav.chat",      href: "/manager/channel",        icon: ChannelIcon,     permissionKey: "staffing"  },
-  { labelKey: "nav.docs", href: "/manager/docs", icon: DocsIcon, permissionKey: "dashboard" },
+  { labelKey: "nav.drive", href: "/manager/drive", icon: DriveIcon, permissionKey: "dashboard" },
   { labelKey: "nav.bugs", href: "/manager/bugs", icon: BugIcon, permissionKey: "dashboard" },
   { labelKey: "nav.apps",      href: "/manager/apps",        icon: AppStoreIcon,    permissionKey: "settings" },
 ];

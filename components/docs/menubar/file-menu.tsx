@@ -23,7 +23,7 @@ export function FileMenu() {
   const t = useT();
   const label = useDocShortcutLabels();
   const finalFocus = useEditorFinalFocus();
-  const { doc, access, actions, canEditNow, contentEditor } = useDocEditor();
+  const { doc, access, actions, canEditNow, contentEditor, actingForOther } = useDocEditor();
 
   return (
     <DocMenu>
@@ -50,9 +50,12 @@ export function FileMenu() {
         <DocMenuItem icon={FolderOpen} shortcut={label("open")} onClick={actions.openDocumentPicker}>
           {t("docs.file.open")}
         </DocMenuItem>
-        <DocMenuItem icon={Copy} onClick={() => void actions.makeCopy()}>
-          {t("docs.menu.makeCopy")}
-        </DocMenuItem>
+        {/* On /store for an operator other than the tablet account the copy would be the tablet's. */}
+        {!actingForOther && (
+          <DocMenuItem icon={Copy} onClick={() => void actions.makeCopy()}>
+            {t("docs.menu.makeCopy")}
+          </DocMenuItem>
+        )}
         <DocMenuSeparator />
         <DocMenuItem icon={Share2} onClick={actions.openShare}>
           {t("docs.menu.share")}

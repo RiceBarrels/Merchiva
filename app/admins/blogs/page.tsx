@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import dynamic from "next/dynamic";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { UploadButton } from "@/lib/uploadthing";
+import { appUploadErrorKey, appUploadHeaders } from "@/lib/storage/app-upload";
 import { toast } from "sonner";
 import TurndownService from "turndown";
 import { markdownToQuillHtml } from "@/lib/blog/markdown";
@@ -482,13 +483,14 @@ function BlogEditor({
             ) : (
               <div className="mt-2">
                 <UploadButton
-                  endpoint="siteImage"
+                  endpoint="platformImage"
+                  headers={appUploadHeaders}
                   onClientUploadComplete={(res) => {
                     const url = res?.[0]?.url ?? res?.[0]?.serverData?.url;
                     if (url) onChange({ ...state, coverImage: url });
                   }}
                   onUploadError={(err) => {
-                    toast.error(err.message);
+                    toast.error(t(appUploadErrorKey(err)));
                   }}
                 />
               </div>

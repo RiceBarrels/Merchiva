@@ -1,0 +1,538 @@
+{
+ "slides": [
+  {
+   "fill": {
+    "type": "color",
+    "value": "#F0F0F0"
+   },
+   "elements": [
+    {
+     "left": 72,
+     "top": 72,
+     "width": 432,
+     "height": 72,
+     "borderColor": "#000000",
+     "borderWidth": 0,
+     "borderType": "solid",
+     "borderStrokeDasharray": "0",
+     "fill": null,
+     "content": "<p style=\"text-align: left;margin-left: 0pt;\"><span style=\"color: #FF0000;font-size: 32pt;font-family: Calibri;font-weight: bold;\">Hello&nbsp;</span><span style=\"color: #000000;font-size: 32pt;font-family: Calibri;font-style: italic;text-decoration: underline;\"><a href=\"https://example.com/a\" target=\"_blank\">world</a></span></p>",
+     "isFlipV": false,
+     "isFlipH": false,
+     "rotate": 0,
+     "vAlign": "mid",
+     "wrap": true,
+     "name": "Text 0",
+     "order": 1001,
+     "textInset": {
+      "l": 7.2,
+      "t": 3.6,
+      "r": 7.2,
+      "b": 3.6
+     },
+     "type": "shape",
+     "shapType": "rect",
+     "path": "M 0 0 L 432 0 L 432 72 L 0 72 Z",
+     "pathViewBox": {
+      "x": 0,
+      "y": 0,
+      "width": 432,
+      "height": 72
+     },
+     "keypoints": {},
+     "id": "2"
+    },
+    {
+     "left": 72,
+     "top": 180,
+     "width": 432,
+     "height": 144,
+     "borderColor": "#000000",
+     "borderWidth": 0,
+     "borderType": "solid",
+     "borderStrokeDasharray": "0",
+     "fill": null,
+     "content": "<ul><li><p style=\"text-align: left;\"><span style=\"color: #000000;font-size: 18pt;font-family: Calibri;\">one</span></p></li><ul><li><p style=\"text-align: left;\"><span style=\"color: #000000;font-size: 18pt;font-family: Calibri;\">two</span></p></li></ul></ul><ol><li><p style=\"text-align: left;\"><span style=\"color: #000000;font-size: 18pt;font-family: Calibri;\">three</span></p></li></ol>",
+     "isFlipV": false,
+     "isFlipH": false,
+     "rotate": 0,
+     "vAlign": "mid",
+     "wrap": true,
+     "name": "Text 1",
+     "order": 1045,
+     "textInset": {
+      "l": 7.2,
+      "t": 3.6,
+      "r": 7.2,
+      "b": 3.6
+     },
+     "type": "shape",
+     "shapType": "rect",
+     "path": "M 0 0 L 432 0 L 432 144 L 0 144 Z",
+     "pathViewBox": {
+      "x": 0,
+      "y": 0,
+      "width": 432,
+      "height": 144
+     },
+     "keypoints": {},
+     "id": "3"
+    },
+    {
+     "left": 576,
+     "top": 72,
+     "width": 144,
+     "height": 72,
+     "borderColor": "#000000",
+     "borderWidth": 2,
+     "borderType": "dashed",
+     "borderStrokeDasharray": "5",
+     "fill": {
+      "type": "color",
+      "value": "#00AA00"
+     },
+     "content": "",
+     "isFlipV": false,
+     "isFlipH": false,
+     "rotate": 30,
+     "vAlign": "up",
+     "wrap": true,
+     "name": "Shape 2",
+     "order": 1062,
+     "type": "shape",
+     "shapType": "rightArrow",
+     "path": "M 144 36 L 72 0 L 72 18 L 0 18 L 0 54 L 72 54 L 72 72 Z",
+     "pathViewBox": {
+      "x": 0,
+      "y": 0,
+      "width": 144,
+      "height": 72
+     },
+     "keypoints": {},
+     "id": "4"
+    },
+    {
+     "left": 72,
+     "top": 360,
+     "width": 288,
+     "height": 72,
+     "borderColor": "#333333",
+     "borderWidth": 3,
+     "borderType": "solid",
+     "borderStrokeDasharray": "0",
+     "fill": null,
+     "content": "",
+     "isFlipV": false,
+     "isFlipH": true,
+     "rotate": 0,
+     "vAlign": "up",
+     "wrap": true,
+     "name": "Shape 3",
+     "order": 1079,
+     "tailEnd": {
+      "type": "triangle"
+     },
+     "type": "shape",
+     "shapType": "line",
+     "path": "M 0 0 L 288 72",
+     "pathViewBox": {
+      "x": 0,
+      "y": 0,
+      "width": 288,
+      "height": 72
+     },
+     "keypoints": {},
+     "id": "5"
+    },
+    {
+     "type": "image",
+     "top": 216,
+     "left": 576,
+     "width": 144,
+     "height": 144,
+     "rotate": 0,
+     "ref": "ppt/media/image-1-1.png",
+     "base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+     "blob": "",
+     "isFlipV": false,
+     "isFlipH": false,
+     "order": 1096,
+     "geom": "ellipse",
+     "borderColor": "#000000",
+     "borderWidth": 0,
+     "borderType": "solid",
+     "borderStrokeDasharray": "0",
+     "id": "6"
+    },
+    {
+     "type": "table",
+     "top": 432,
+     "left": 72,
+     "width": 288,
+     "height": 72,
+     "data": [
+      [
+       {
+        "text": "<p style=\"text-align: left;margin-left: 0pt;text-indent: 0pt;\"><span style=\"color: #000000;font-size: 12pt;font-family: Calibri;font-weight: bold;\">A</span></p>",
+        "vAlign": "up",
+        "fillColor": "#DDDDDD",
+        "borders": {
+         "bottom": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         },
+         "top": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         },
+         "left": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         },
+         "right": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         }
+        }
+       },
+       {
+        "text": "<p style=\"text-align: left;margin-left: 0pt;text-indent: 0pt;\"><span style=\"color: #000000;font-size: 12pt;font-family: Calibri;\">B</span></p>",
+        "vAlign": "up",
+        "borders": {
+         "bottom": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         },
+         "top": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         },
+         "left": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         },
+         "right": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         }
+        }
+       }
+      ],
+      [
+       {
+        "text": "<p style=\"text-align: left;margin-left: 0pt;text-indent: 0pt;\"><span style=\"color: #000000;font-size: 12pt;font-family: Calibri;\">C</span></p>",
+        "colSpan": 2,
+        "vAlign": "up",
+        "borders": {
+         "bottom": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         },
+         "top": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         },
+         "left": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         },
+         "right": {
+          "borderColor": "#000000",
+          "borderWidth": 0,
+          "borderType": "solid",
+          "strokeDasharray": "0"
+         }
+        }
+       },
+       {
+        "text": "",
+        "hMerge": 1,
+        "vAlign": "up",
+        "borders": {}
+       }
+      ]
+     ],
+     "order": 1184,
+     "borders": {},
+     "rowHeights": [
+      0,
+      0
+     ],
+     "colWidths": [
+      144,
+      144
+     ],
+     "id": "2"
+    }
+   ],
+   "layoutElements": [
+    {
+     "left": 0,
+     "top": 0,
+     "width": 960,
+     "height": 36,
+     "borderColor": "#000000",
+     "borderWidth": 0,
+     "borderType": "solid",
+     "borderStrokeDasharray": "0",
+     "fill": {
+      "type": "color",
+      "value": "#0055AA"
+     },
+     "content": "",
+     "isFlipV": false,
+     "isFlipH": false,
+     "rotate": 0,
+     "vAlign": "up",
+     "wrap": true,
+     "name": "Shape 0",
+     "order": 501,
+     "type": "shape",
+     "shapType": "rect",
+     "path": "M 0 0 L 960 0 L 960 36 L 0 36 Z",
+     "pathViewBox": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 36
+     },
+     "keypoints": {},
+     "id": "2"
+    },
+    {
+     "type": "image",
+     "top": 468,
+     "left": 864,
+     "width": 72,
+     "height": 57.6,
+     "rotate": 0,
+     "ref": "ppt/media/image-1002-1.png",
+     "base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+     "blob": "",
+     "isFlipV": false,
+     "isFlipH": false,
+     "order": 518,
+     "geom": "rect",
+     "borderColor": "#000000",
+     "borderWidth": 0,
+     "borderType": "solid",
+     "borderStrokeDasharray": "0",
+     "id": "3"
+    }
+   ],
+   "note": "<p style=\"text-align:left;\">Speaker &lt;notes&gt; &amp; more</p>",
+   "transition": null
+  },
+  {
+   "fill": {
+    "type": "image",
+    "value": {
+     "ref": "ppt/media/Slide-2-image-1.png",
+     "base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVR42mNk+M9QzwAEjDAGNzYAAAYqAQhL0B4dAAAAAElFTkSuQmCC",
+     "blob": "",
+     "opacity": 1
+    }
+   },
+   "elements": [
+    {
+     "left": 72,
+     "top": 72,
+     "width": 288,
+     "height": 72,
+     "borderColor": "#000000",
+     "borderWidth": 0,
+     "borderType": "solid",
+     "borderStrokeDasharray": "0",
+     "fill": null,
+     "content": "<p style=\"text-align: left;margin-left: 0pt;text-indent: 0pt;\"><span style=\"color: #222222;font-size: 20pt;font-family: Arial;\">Plain&nbsp;&amp;&nbsp;simple</span></p>",
+     "isFlipV": false,
+     "isFlipH": false,
+     "rotate": 0,
+     "vAlign": "mid",
+     "wrap": true,
+     "name": "Text 0",
+     "order": 1297,
+     "textInset": {
+      "l": 7.2,
+      "t": 3.6,
+      "r": 7.2,
+      "b": 3.6
+     },
+     "type": "shape",
+     "shapType": "rect",
+     "path": "M 0 0 L 288 0 L 288 72 L 0 72 Z",
+     "pathViewBox": {
+      "x": 0,
+      "y": 0,
+      "width": 288,
+      "height": 72
+     },
+     "keypoints": {},
+     "id": "2"
+    },
+    {
+     "left": 216,
+     "top": 216,
+     "width": 144,
+     "height": 144,
+     "borderColor": "#000000",
+     "borderWidth": 0,
+     "borderType": "solid",
+     "borderStrokeDasharray": "0",
+     "fill": {
+      "type": "color",
+      "value": "#ffcc0080"
+     },
+     "content": "",
+     "isFlipV": false,
+     "isFlipH": false,
+     "rotate": 0,
+     "vAlign": "up",
+     "wrap": true,
+     "name": "Shape 1",
+     "order": 1316,
+     "shadow": {
+      "h": 2.8284271247461903,
+      "v": 2.82842712474619,
+      "blur": 3,
+      "color": "#00000080"
+     },
+     "type": "shape",
+     "shapType": "ellipse",
+     "path": "M 0,72 A 72,72 0 1,0 144,72 A 72,72 0 1,0 0,72 Z",
+     "pathViewBox": {
+      "x": 0,
+      "y": 0,
+      "width": 144,
+      "height": 144
+     },
+     "keypoints": {},
+     "id": "3"
+    },
+    {
+     "type": "chart",
+     "top": 72,
+     "left": 432,
+     "width": 288,
+     "height": 216,
+     "data": [
+      {
+       "key": "Sales",
+       "values": [
+        {
+         "x": "0",
+         "y": 1
+        },
+        {
+         "x": "1",
+         "y": 2
+        }
+       ],
+       "xlabels": {}
+      }
+     ],
+     "colors": [
+      "#C0504D"
+     ],
+     "chartType": "barChart",
+     "order": 1327,
+     "barDir": "col",
+     "grouping": "clustered",
+     "id": "4"
+    }
+   ],
+   "layoutElements": [
+    {
+     "left": 0,
+     "top": 0,
+     "width": 960,
+     "height": 36,
+     "borderColor": "#000000",
+     "borderWidth": 0,
+     "borderType": "solid",
+     "borderStrokeDasharray": "0",
+     "fill": {
+      "type": "color",
+      "value": "#0055AA"
+     },
+     "content": "",
+     "isFlipV": false,
+     "isFlipH": false,
+     "rotate": 0,
+     "vAlign": "up",
+     "wrap": true,
+     "name": "Shape 0",
+     "order": 501,
+     "type": "shape",
+     "shapType": "rect",
+     "path": "M 0 0 L 960 0 L 960 36 L 0 36 Z",
+     "pathViewBox": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 36
+     },
+     "keypoints": {},
+     "id": "2"
+    },
+    {
+     "type": "image",
+     "top": 468,
+     "left": 864,
+     "width": 72,
+     "height": 57.6,
+     "rotate": 0,
+     "ref": "ppt/media/image-1002-1.png",
+     "base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+     "blob": "",
+     "isFlipV": false,
+     "isFlipH": false,
+     "order": 518,
+     "geom": "rect",
+     "borderColor": "#000000",
+     "borderWidth": 0,
+     "borderType": "solid",
+     "borderStrokeDasharray": "0",
+     "id": "3"
+    }
+   ],
+   "note": "<p style=\"text-align:left;\"></p>",
+   "transition": null
+  }
+ ],
+ "usedFonts": [],
+ "themeColors": [
+  "#4472C4",
+  "#ED7D31",
+  "#A5A5A5",
+  "#FFC000",
+  "#5B9BD5",
+  "#70AD47"
+ ],
+ "size": {
+  "width": 960,
+  "height": 540
+ }
+}

@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { ChevronRight, History, LayoutGrid, SquarePlus, Star, X } from "lucide-react";
 import { motion } from "motion/react";
+import { NavPresence } from "@/components/presence/nav-presence";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -20,6 +21,7 @@ import { dayKey, labelForUrl, pathOfUrl } from "@/lib/browser-shell/mobile/label
 import { LOCALE_BCP47 } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
+import { navPresenceId } from "@/lib/presence/anchor";
 import { cn } from "@/lib/utils";
 import { ShellDrawer } from "./shell-drawer";
 
@@ -277,9 +279,15 @@ function AppsList({ onNavigate, onOpenInNewTab }: { onNavigate(url: TabUrl): voi
         return (
           <li key={section.href}>
             <div className={ROW}>
-              <button type="button" className={ROW_MAIN} onClick={() => onNavigate(section.href)}>
+              <button
+                type="button"
+                data-presence-id={navPresenceId(section.href)}
+                className={cn("relative", ROW_MAIN)}
+                onClick={() => onNavigate(section.href)}
+              >
                 <Icon className="h-5 w-5 shrink-0 text-foreground" />
                 <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-foreground">{title}</span>
+                <NavPresence href={section.href} level="section" childrenVisible={isOpen && section.children.length > 0} />
               </button>
               {section.children.length > 0 && (
                 <button
@@ -315,9 +323,15 @@ function AppsList({ onNavigate, onOpenInNewTab }: { onNavigate(url: TabUrl): voi
                   const childTitle = t(child.titleKey);
                   return (
                     <li key={child.href} className={ROW}>
-                      <button type="button" className={cn(ROW_MAIN, "ps-11")} onClick={() => onNavigate(child.href)}>
+                      <button
+                        type="button"
+                        data-presence-id={navPresenceId(child.href)}
+                        className={cn("relative", ROW_MAIN, "ps-11")}
+                        onClick={() => onNavigate(child.href)}
+                      >
                         <ChildIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
                         <span className="min-w-0 flex-1 truncate text-[14px] text-foreground">{childTitle}</span>
+                        <NavPresence href={child.href} level="child" />
                       </button>
                       <button
                         type="button"

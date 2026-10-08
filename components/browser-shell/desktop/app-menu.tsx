@@ -43,7 +43,7 @@ import {
   useTabPresentation,
   useTabsSnapshot,
 } from "@/lib/browser-shell";
-import { DOCS_HOME_HREF, documentHref } from "@/lib/docs/hrefs";
+import { DOCS_EDIT_PATH, documentHref } from "@/lib/docs/hrefs";
 import { LOCALES, LOCALE_LABELS, isLocale } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/context";
 import { createDocument } from "@/lib/spacetimedb/actions";
@@ -86,7 +86,8 @@ export function AppMenu() {
 
   useOverlayBackHandler(open, () => setOpen(false));
 
-  const docsAllowed = getRouteAccess(DOCS_HOME_HREF, ctx) === "allowed";
+  // New document makes a Doc: it needs the Docs plugin, and waits for the install state rather than guessing.
+  const docsAllowed = ctx.appsReady && getRouteAccess(DOCS_EDIT_PATH, ctx) === "allowed";
   const deviceMode = appMode === "store" || appMode === "personal" ? appMode : null;
   const label = t("browserDesktop.toolbar.menu");
   const toastMessage = (message: string) => toast(message);

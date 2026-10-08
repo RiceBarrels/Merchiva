@@ -8,7 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ClockCard, fmtDurationHMS, fmtHM, useNow, type OnShiftEntry, type PunchAction } from "@/components/device";
-import { recordPunch, setPunchInCode, type DeviceLoginIntent } from "@/lib/spacetimedb/actions";
+import type { DeviceLoginIntent } from "@/lib/spacetimedb/actions";
+import { recordSelfPunch, setOwnPunchCode } from "@/lib/spacetimedb/actions/pin";
+import { ownCodeNotice } from "@/lib/pin-attempt";
+import { fmt } from "@/lib/i18n/fmt";
 import { useT } from "@/lib/i18n/context";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { ScanPane } from "./scan-pane";
@@ -42,7 +45,9 @@ export function PunchPanel({
     if (!/^\d{4}$/.test(codeInput)) { toast.error(t("personalDevice.punch.codeFormat")); return; }
     setSavingCode(true);
     try {
-      await setPunchInCode(myMemberId, codeInput);
+      // Rate limited (a taken code names a colleague's PIN): the answer is a row.
+      const notice = ownCodeNotice(await setOwnPunchCode(codeInput));
+      if (notice) throw new Error(fmt(t(notice.key), notice.vars));
       hapticSuccess();
       toast.success(t("personalDevice.punch.codeSaved"));
       setCodeInput("");
@@ -60,7 +65,7 @@ export function PunchPanel({
     hapticLight();
     setBusy(action);
     try {
-      await recordPunch(myCode, action);
+      await recordSelfPunch(action);
       hapticSuccess();
       const label = {
         in: t("personalDevice.punch.punchedIn"),

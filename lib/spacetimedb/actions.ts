@@ -13,6 +13,7 @@ import { isOnline, mutationQueue } from "@/lib/offline";
 import { parseDeviceApps } from "@/lib/device-apps";
 import type { RoleTask, ShiftPreset } from "@/lib/types";
 import { bugDateStr, type BugContext, type BugSeverity, type BugStatus } from "@/lib/bugs";
+import { storedId } from "@/lib/merchiva/action-ids";
 import { Timestamp } from "spacetimedb";
 
 function currentLocale() {
@@ -255,8 +256,11 @@ function buildInventoryUpdatePayload(itemId: string, data: Record<string, any>) 
   const c = getConnection();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = (c as any)?.db?.inventoryItem?.iter ? [...(c as any).db.inventoryItem.iter()] : [];
+  // Ids arrive hyphenated (hooks and Mr. Merchiva's read tools use toString())
+  // or as bare hex (toHexString()); compare the 32 hex digits.
+  const hex = (id: unknown) => rowIdString(id).replace(/-/g, "").toLowerCase();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const current = rows.find((r: any) => r.organizationId === organizationId && rowIdString(r.id) === itemId);
+  const current = rows.find((r: any) => r.organizationId === organizationId && hex(r.id) === hex(itemId));
 
   const value = (key: string) => (hasOwn(data, key) ? data[key] : current?.[key]);
   const required = [
@@ -303,7 +307,7 @@ function buildInventoryUpdatePayload(itemId: string, data: Record<string, any>) 
 
   return {
     organizationId,
-    itemId,
+    itemId: storedId(itemId),
     name: requiredInventoryText(value("name"), "name"),
     category: String(value("category") ?? "General").trim() || "General",
     currentStock,
@@ -379,7 +383,7 @@ export async function updateInventoryItem(itemId: string, data: any): Promise<vo
 }
 
 export async function deleteInventoryItem(itemId: string): Promise<void> {
-  return offlineAware("deleteInventoryItem", { organizationId: orgId(), itemId });
+  return offlineAware("deleteInventoryItem", { organizationId: orgId(), itemId: storedId(itemId) });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1098,13 +1102,6 @@ export async function addMembersToConversation(convId: string, userIds: string[]
   return conn().reducers.addMembersToConversation({ conversationId: convId, userIds: JSON.stringify(userIds) });
 }
 
-// Invite / remove Mr. Merchiva from a conversation. The actual bot replies are
-// posted server-side (see /api/chat/merchiva via sendMerchivaMessage); this
-// only flips the conversation flag.
-export async function setConversationMerchiva(conversationId: string, enabled: boolean): Promise<void> {
-  return conn().reducers.setConversationMerchiva({ conversationId, enabled });
-}
-
 /**
  * Emoji reactions have no table and no reducer in the module yet.
  *
@@ -1396,13 +1393,8 @@ export async function deleteBugReport(bugId: string): Promise<void> {
 
 // ─── Punch Clock ─────────────────────────────────────────────────────────────
 
-export async function recordPunch(code: string, action: string): Promise<void> {
-  return conn().reducers.recordPunch({
-    organizationId: orgId(),
-    code,
-    action,
-  });
-}
+// Punching by PIN (`recordPunch`) is rate limited; clients punch without a PIN
+// through recordOperatorPunch / recordSelfPunch in ./actions/pin.ts.
 
 export async function managerRecordPunch(memberId: string, action: "in" | "out"): Promise<void> {
   return conn().reducers.managerRecordPunch({
@@ -1724,7 +1716,7 @@ export async function saveAiChatSession(
 ): Promise<void> {
   return conn().reducers.saveAiChatSession({
     organizationId: orgId(),
-    sessionId,
+    sessionId: storedId(sessionId),
     messages,
     title: title ?? undefined,
     summary: summary ?? undefined,
@@ -1733,7 +1725,7 @@ export async function saveAiChatSession(
 }
 
 export async function archiveAiChatSession(sessionId: string): Promise<void> {
-  return conn().reducers.archiveAiChatSession({ organizationId: orgId(), sessionId });
+  return conn().reducers.archiveAiChatSession({ organizationId: orgId(), sessionId: storedId(sessionId) });
 }
 
 // ─── AI background jobs (server-side generation) ───────────────────────────
@@ -2370,27 +2362,12 @@ export async function deleteDocumentComment(documentId: string, commentId: strin
 // else's. The three flows that used to compare PINs in the browser (device
 // unlock, manager exit-kiosk, "do I have a PIN set") now go through the module.
 
-/**
- * Resolve a PIN to the member standing at the shared store tablet. On success
- * the module writes the answer to `device_operator_session` for this identity;
- * read it with `useDeviceOperatorSession()`. Rejects on an unknown PIN.
- */
-export async function resolveDeviceOperator(code: string): Promise<void> {
-  return conn().reducers.resolveDeviceOperator({ organizationId: orgId(), code });
-}
+// Resolving a PIN to the store tablet's operator and checking a manager PIN are
+// rate limited and answer through `pin_attempt_result`: ./actions/pin.ts.
 
 /** Forget the resolved operator (device re-lock / sign-out). */
 export async function clearDeviceOperator(): Promise<void> {
   return conn().reducers.clearDeviceOperator({});
-}
-
-/**
- * Check that a PIN belongs to an active owner/manager of this org — used by the
- * "leave kiosk mode" gate. Resolves on success, rejects on a bad PIN; the PIN
- * itself never reaches the browser.
- */
-export async function verifyManagerPin(code: string): Promise<void> {
-  return conn().reducers.verifyManagerPin({ organizationId: orgId(), code });
 }
 
 // ─── Maintenance ─────────────────────────────────────────────────────────────
@@ -2411,4 +2388,52 @@ export async function migrateSecurityV1(): Promise<void> {
  */
 export async function pruneOrgHistory(keepDays: number, dryRun = true): Promise<void> {
   return conn().reducers.pruneOrgHistory({ organizationId: orgId(), keepDays, dryRun });
+}
+
+// ─── Page presence ───────────────────────────────────────────────────────────
+// Live cursors on /manager pages (`page_presence`). Best effort by design: never
+// queued (a cursor replayed after a reconnect is a lie), a missing connection or
+// reducer is a no-op, and a rejected call is swallowed — presence must never
+// surface an error. The module derives name / avatar / member itself and
+// validates the rest (spacetimedb/src/presence/validate.ts).
+
+export interface PagePresenceArgs {
+  organizationId: string;
+  kind: "user" | "agent";
+  /** Agent: the chat scope (tab id or "__window__"). User: "". */
+  slot: string;
+  pagePath: string;
+  anchor: string;
+  anchorX: number;
+  anchorY: number;
+  pointX: number;
+  pointY: number;
+  /** Wraps at 2^32. */
+  clickSeq: number;
+  /** Agent: the tool / action name. User: "". */
+  activity: string;
+}
+
+function callPresenceReducer(name: string, args: Record<string, unknown>): Promise<void> {
+  try {
+    const reducers = getConnection()?.reducers as Record<string, ((a: unknown) => Promise<void>) | undefined> | undefined;
+    const reducer = reducers?.[name];
+    if (typeof reducer !== "function") return Promise.resolve();
+    return Promise.resolve(reducer.call(reducers, args)).catch((err: unknown) => {
+      if (process.env.NODE_ENV === "development") console.debug(`[presence] ${name} rejected:`, err);
+    });
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") console.debug(`[presence] ${name} failed:`, err);
+    return Promise.resolve();
+  }
+}
+
+/** Upserts this tab's row for (kind, slot). Never rejects. */
+export function upsertPagePresence(args: PagePresenceArgs): Promise<void> {
+  return callPresenceReducer("upsertPagePresence", { ...args, clickSeq: Math.trunc(args.clickSeq) >>> 0 });
+}
+
+/** Removes this tab's row for (kind, slot). Never rejects. */
+export function removePagePresence(kind: PagePresenceArgs["kind"], slot: string): Promise<void> {
+  return callPresenceReducer("removePagePresence", { kind, slot });
 }

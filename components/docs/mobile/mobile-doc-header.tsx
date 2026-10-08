@@ -13,7 +13,7 @@ import { useDocEditor } from "@/components/docs/editor/doc-editor-context";
 import { PresenceAvatars } from "@/components/docs/editor/presence-avatars";
 import { SaveStatus } from "@/components/docs/editor/save-status";
 import { Button } from "@/components/ui/button";
-import { useShellInfo, useTabActions } from "@/lib/browser-shell";
+import { useActiveTab, useShellInfo, useTab, useTabActions, useTabHistory } from "@/lib/browser-shell";
 import { useDocsOpenOverride } from "@/components/docs/docs-open-context";
 import { DOCS_HOME_HREF } from "@/lib/docs/hrefs";
 import { useT } from "@/lib/i18n/context";
@@ -23,6 +23,9 @@ export function MobileDocHeader() {
   const router = useRouter();
   const shell = useShellInfo();
   const tabActions = useTabActions();
+  const activeTab = useActiveTab();
+  const tabHistory = useTabHistory(activeTab?.id ?? null);
+  const opener = useTab(activeTab?.openerTabId ?? null);
   const openDocs = useDocsOpenOverride();
   const { doc, ui, dispatch, actions, canEditNow, editor, threads, access } = useDocEditor();
   const editing = ui.mobileMode === "editing";
@@ -44,9 +47,12 @@ export function MobileDocHeader() {
 
   const back = () => {
     // On a device surface the panel owns the screen; everywhere else this is
-    // the shell's back (or a plain navigation outside it).
+    // the shell's back (or a plain navigation outside it). A tab with nothing
+    // to go back to (a cold deep link: no history, no opener) goes to Drive's
+    // documents view (DOCS_HOME_HREF redirects there).
     if (openDocs) openDocs(DOCS_HOME_HREF, "current");
-    else if (shell) tabActions.goBack({ closeToOpener: true });
+    else if (shell && (tabHistory.canGoBack || opener !== null)) tabActions.goBack({ closeToOpener: true });
+    else if (shell) tabActions.navigateActive(DOCS_HOME_HREF);
     else router.push(DOCS_HOME_HREF);
   };
 

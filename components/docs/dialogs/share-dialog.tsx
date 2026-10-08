@@ -3,11 +3,18 @@
 // Share settings for one document: add people from the store, change or remove
 // their access, set general access, copy the link.
 //
-// Loaded lazily by the docs home and the editor; must not import Tiptap or Yjs.
-// Reads live rows (the document, grants, members) so the dialog reflects changes
-// made by other people while it's open. Wording follows lead decision Q2: tables
-// are readable by every signed-in store client, so "private" is presented as
-// "Only people added" with an explicit not-for-confidential-information hint.
+// Loaded lazily by the docs home and the Docs, Sheets and Slides editors; must
+// not import Tiptap or Yjs. Reads live rows (the document of any file type,
+// grants, members) so the dialog reflects changes made by other people while
+// it's open, and the copied link opens the file's own editor. Only the people
+// who may open a document receive its rows (document_reader_index), and that
+// always includes store management: "private" reads "Only people added and
+// store management", and `docs.share.managersNote` says so.
+//
+// Only the owner may open a private file to the whole store (setDocumentVisibility,
+// mirrored by lib/docs/access.ts docVisibilityRule and checked against the member
+// the reducer sees: the tablet account on /store). For anyone else those options
+// are off, and making a store file private asks first, since they could not undo it.
 
 import { useId, useMemo, useState } from "react";
 import { Link2, Loader2, Lock, Store, UserPlus, X } from "lucide-react";
@@ -19,18 +26,19 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { IconTile } from "@/components/ui/icon-tile";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { MakePrivateDialog } from "@/components/docs/dialogs/make-private-dialog";
 import { memberCanUseDocs } from "@/components/docs/home/member-gate";
 import { usePermissions } from "@/lib/context/permissions";
-import { DOC_GRANT_ROLES } from "@/lib/docs/access";
+import { DOC_GRANT_ROLES, docVisibilityRule, sameMemberId } from "@/lib/docs/access";
 import { DOC_ERROR_I18N_KEYS, docErrorCode } from "@/lib/docs/errors";
-import { documentHref } from "@/lib/docs/hrefs";
 import { idString } from "@/lib/docs/mappers";
 import type { DocAccess, DocAccessGrant, DocGrantRole, DocVisibility, DocumentMeta } from "@/lib/docs/types";
+import { documentFileHref } from "@/lib/drive/hrefs";
 import { useI18n } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
 import { grantDocumentAccess, revokeDocumentAccess, setDocumentVisibility } from "@/lib/spacetimedb/actions";
 import { useOrgMembers } from "@/lib/spacetimedb/hooks";
-import { useCurrentMemberId, useDocuments } from "@/lib/spacetimedb/hooks/useDocs";
+import { useCurrentMemberId, useDocsSender, useDocuments } from "@/lib/spacetimedb/hooks/useDocs";
 
 export interface ShareDialogProps {
   open: boolean;
@@ -65,12 +73,15 @@ const VISIBILITY_HINT_KEYS: Readonly<Record<DocVisibility, string>> = {
 
 const DEFAULT_NEW_ROLE: DocGrantRole = "editor";
 
-/** Absolute link to the editor. On Capacitor the page origin is `capacitor://`, so prefer the public app URL. */
-function shareLink(documentId: string): string {
+/**
+ * Absolute link to the file's own editor (Docs, Sheets or Slides). On Capacitor the page origin is `capacitor://`,
+ * so prefer the public app URL.
+ */
+function shareLink(doc: Pick<DocumentMeta, "id" | "fileType">): string {
   const configured = (process.env.NEXT_PUBLIC_APP_URL ?? "").trim().replace(/\/+$/, "");
   const pageOrigin =
     typeof window !== "undefined" && /^https?:$/.test(window.location.protocol) ? window.location.origin : "";
-  return `${configured || pageOrigin}${documentHref(documentId)}`;
+  return `${configured || pageOrigin}${documentFileHref(doc)}`;
 }
 
 function PersonRow({
@@ -100,8 +111,10 @@ export function ShareDialog({ open, onOpenChange, doc: docProp, access: accessPr
   const generalHeadingId = useId();
   const hintId = useId();
 
-  const { docs, trashed, grants, accessFor } = useDocuments();
+  // Every file type: Sheets and Slides share through this dialog too.
+  const { docs, trashed, grants, accessFor } = useDocuments({ fileTypes: "all" });
   const memberId = useCurrentMemberId();
+  const sender = useDocsSender();
   const [memberRows] = useOrgMembers();
   const { organizations, currentOrg } = usePermissions();
 
@@ -138,6 +151,14 @@ export function ShareDialog({ open, onOpenChange, doc: docProp, access: accessPr
     }
     return byId;
   }, [memberRows, doc.organizationId]);
+
+  const owner = members.get(doc.ownerMemberId);
+  const visibilityRule = docVisibilityRule({
+    visibility: doc.visibility,
+    ownerMemberId: doc.ownerMemberId,
+    senderMemberId: sender.memberId,
+    ownerActive: owner?.active === true,
+  });
 
   const docGrants = useMemo(() => {
     const list: { grant: DocAccessGrant; member: ShareMember | null }[] = [];
@@ -193,12 +214,14 @@ export function ShareDialog({ open, onOpenChange, doc: docProp, access: accessPr
   const [adding, setAdding] = useState(false);
   const [pendingMemberIds, setPendingMemberIds] = useState<ReadonlySet<string>>(() => new Set());
   const [visibilityPending, setVisibilityPending] = useState(false);
+  const [confirmPrivate, setConfirmPrivate] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
       setSelectedMemberId(null);
       setNewRole(DEFAULT_NEW_ROLE);
+      setConfirmPrivate(false);
     }
   }
 
@@ -245,22 +268,38 @@ export function ShareDialog({ open, onOpenChange, doc: docProp, access: accessPr
     }
   };
 
-  const changeVisibility = async (visibility: DocVisibility) => {
-    if (visibility === doc.visibility || visibilityPending || !canManage) return;
+  const applyVisibility = async (visibility: DocVisibility) => {
+    const openingToStore = doc.visibility === "private" && visibility !== "private";
     setVisibilityPending(true);
     try {
       await setDocumentVisibility(doc.id, visibility);
       toast.success(t("docs.share.updated"));
     } catch (err) {
-      reportError(err);
+      // The owner rule refused it (the rows changed while this was open): say so, not "no access anymore".
+      const ownerRule = openingToStore && docErrorCode(err) === "forbidden" && !sameMemberId(sender.memberId, doc.ownerMemberId);
+      if (ownerRule) toast.error(t("docs.share.ownerOnlyStore"));
+      else reportError(err);
     } finally {
       setVisibilityPending(false);
     }
   };
 
+  const changeVisibility = (visibility: DocVisibility) => {
+    if (visibility === doc.visibility || visibilityPending || !canManage) return;
+    if (visibility !== "private" && visibilityRule.storeLocked) {
+      toast.error(t("docs.share.ownerOnlyStore"));
+      return;
+    }
+    if (visibility === "private" && visibilityRule.privateIsOneWay) {
+      setConfirmPrivate(true);
+      return;
+    }
+    void applyVisibility(visibility);
+  };
+
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(shareLink(doc.id));
+      await navigator.clipboard.writeText(shareLink(doc));
       toast.success(t("docs.share.linkCopied"));
     } catch {
       toast.error(t("docs.share.copyFailed"));
@@ -276,7 +315,6 @@ export function ShareDialog({ open, onOpenChange, doc: docProp, access: accessPr
   const memberDetail = (member: ShareMember | null | undefined) =>
     member && !member.canUseDocs ? t("docs.share.noDocsAccess") : member?.email;
 
-  const owner = members.get(doc.ownerMemberId);
   const docTitle = doc.title.trim() || t("docs.untitled");
 
   return (
@@ -427,7 +465,7 @@ export function ShareDialog({ open, onOpenChange, doc: docProp, access: accessPr
                   items={visibilityItems}
                   value={doc.visibility}
                   onValueChange={(value) => {
-                    if (value) void changeVisibility(value as DocVisibility);
+                    if (value) changeVisibility(value as DocVisibility);
                   }}
                   disabled={!canManage || visibilityPending}
                 >
@@ -442,7 +480,11 @@ export function ShareDialog({ open, onOpenChange, doc: docProp, access: accessPr
                   </SelectTrigger>
                   <SelectContent>
                     {visibilityItems.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
+                      <SelectItem
+                        key={item.value}
+                        value={item.value}
+                        disabled={item.value !== "private" && visibilityRule.storeLocked}
+                      >
                         {item.value === "private" ? <Lock aria-hidden /> : <Store aria-hidden />}
                         {item.label}
                       </SelectItem>
@@ -451,6 +493,7 @@ export function ShareDialog({ open, onOpenChange, doc: docProp, access: accessPr
                 </Select>
                 <p id={hintId} className="text-xs text-muted-foreground">
                   {t(VISIBILITY_HINT_KEYS[doc.visibility])}
+                  {canManage && visibilityRule.storeLocked && ` ${t("docs.share.ownerOnlyStore")}`}
                 </p>
               </div>
             </div>
@@ -468,6 +511,12 @@ export function ShareDialog({ open, onOpenChange, doc: docProp, access: accessPr
             </Button>
           </div>
         </div>
+        <MakePrivateDialog
+          open={confirmPrivate}
+          onOpenChange={setConfirmPrivate}
+          ownerName={owner?.name ?? t("docs.home.formerMember")}
+          onConfirm={() => void applyVisibility("private")}
+        />
       </SheetContent>
     </Sheet>
   );

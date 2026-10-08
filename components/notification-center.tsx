@@ -29,6 +29,7 @@ import {
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import type { NotificationType } from "@/lib/types";
+import { followNotificationLink } from "@/lib/notification-link";
 
 function timeAgo(dateStr: string, t: (k: string) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -152,7 +153,8 @@ export function NotificationCenter({ onNavigate }: { onNavigate?: (href: string)
                   }
                   if (notif.link) {
                     if (onNavigate) onNavigate(notif.link);
-                    else window.location.href = notif.link;
+                    // Attacker-controlled link: http(s) only, never `javascript:` (lib/notification-link.ts).
+                    else followNotificationLink(notif.link);
                   }
                 }}
               >

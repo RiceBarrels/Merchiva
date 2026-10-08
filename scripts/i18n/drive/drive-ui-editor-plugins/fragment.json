@@ -1,0 +1,9 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "editor-plugins E",
+  "note": "New leaves under drive-ui's prefixes for Drive's New menu once Docs is folded into Drive: a document from a template and importing a file (manager), and the template picker of the device app. Terms follow drive-ui and docs.home: zh-cn 模板/导入, zh-tw 範本/匯入, zh-hk 模板/匯入.",
+  "owned": [],
+  "extends": "drive-ui",
+  "overwrites": [],
+  "allowSameAsEn": []
+}

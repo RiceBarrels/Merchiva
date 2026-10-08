@@ -1,0 +1,16 @@
+{
+  "drive": {
+    "home": {
+      "newFromTemplate": "टेम्पलेट से",
+      "importFile": "फ़ाइल इंपोर्ट करें…"
+    }
+  },
+  "device": {
+    "lite": {
+      "drive": {
+        "newFromTemplate": "टेम्पलेट से दस्तावेज़",
+        "templatesTitle": "टेम्पलेट चुनें"
+      }
+    }
+  }
+}

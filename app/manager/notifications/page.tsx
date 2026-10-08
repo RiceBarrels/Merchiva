@@ -29,6 +29,7 @@ import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import type { NotificationType } from "@/lib/types";
+import { followNotificationLink } from "@/lib/notification-link";
 
 type FilterKey = "all" | NotificationType;
 
@@ -197,7 +198,8 @@ export default function NotificationsPage() {
                     if (!n.read) {
                       markNotificationRead(n.id.toString()).catch(console.error);
                     }
-                    if (n.link) window.location.href = n.link;
+                    // `link` is attacker-controlled: http(s) only, never `javascript:` (lib/notification-link.ts).
+                    followNotificationLink(n.link);
                   }}
                 >
                   <div className="flex items-center gap-2">

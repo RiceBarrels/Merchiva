@@ -19,12 +19,13 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { getRouteAccess, searchRoutes, useAccessContext, useNavSections } from "@/lib/browser-shell/access";
+import { anyDocumentEditorAllowed, getRouteAccess, openableDocuments, searchRoutes, useAccessContext, useNavSections } from "@/lib/browser-shell/access";
 import { dispositionFromKeyboard } from "@/lib/browser-shell/dispositions";
 import { presentTab, useClosedTabs, useTabActions, useTabsSnapshot } from "@/lib/browser-shell/hooks";
 import { matchRoute, titleForUrl } from "@/lib/browser-shell/routes";
 import { useShellInfo } from "@/lib/browser-shell/shell-context";
 import { getShortcutEnv } from "@/lib/browser-shell/shortcuts";
+import { useSingleTabShell } from "@/lib/browser-shell/single-tab";
 import {
   NEW_TAB_URL,
   currentEntry,
@@ -35,7 +36,7 @@ import {
 } from "@/lib/browser-shell/types";
 import { parseOmniboxInput } from "@/lib/browser-shell/url";
 import { DOC_ERROR_I18N_KEYS, docErrorCode } from "@/lib/docs/errors";
-import { DOCS_HOME_HREF, documentHref } from "@/lib/docs/hrefs";
+import { DOCS_EDIT_PATH, DOCS_HOME_HREF, documentHref } from "@/lib/docs/hrefs";
 import type { RecentDocumentItem } from "@/lib/docs/types";
 import { LOCALE_BCP47 } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/context";
@@ -49,7 +50,8 @@ import { cn } from "@/lib/utils";
  * The /manager/new-tab page (tab-state spec §15, plan §B2.3): one search field over open tabs,
  * pages, documents and recently closed tabs, then the app launcher, recent documents and
  * recently closed tabs. Works inside the browser shell and, through the §B1.5 fallbacks,
- * under the legacy shell.
+ * under the legacy shell. The single-tab phone layout (lib/browser-shell/single-tab.ts) leaves
+ * open and closed tabs out: it has no tabs to switch to or reopen.
  *
  * It is also the manager home page (HOME_URL / APP_MODE_HOME.admin), so it must stand on its
  * own as a landing page: the launcher lists every section the member may open, recent documents
@@ -158,13 +160,19 @@ export function NewTabPage() {
   const shell = useShellInfo();
   const narrow = useIsMobile(1024);
   const desktop = shell ? shell.layout === "desktop" : !narrow;
+  const phone = shell?.layout === "mobile";
   const coarse = shell?.coarse ?? false;
+  const singleTab = useSingleTabShell();
   const access = useAccessContext();
-  const docsAllowed = getRouteAccess(DOCS_HOME_HREF, access) === "allowed";
+  // Documents show while any editor plugin is open to this person, each listed only if its own editor is; New
+  // document makes a Doc, so it needs Docs, and waits for the install state rather than guessing.
+  const docsAllowed = anyDocumentEditorAllowed(access);
+  const canCreateDoc = access.appsReady && getRouteAccess(DOCS_EDIT_PATH, access) === "allowed";
   const snapshot = useTabsSnapshot();
   const closed = useClosedTabs();
   const actions = useTabActions();
-  const { items: documents, ready: documentsReady } = useRecentDocuments(SEARCHABLE_DOCUMENTS);
+  const { items: allDocuments, ready: documentsReady } = useRecentDocuments(SEARCHABLE_DOCUMENTS);
+  const documents = useMemo(() => openableDocuments(allDocuments, access), [allDocuments, access]);
   const backend = useDocsBackendStatus();
   const now = useSyncExternalStore(subscribeMinute, getMinuteNow, getServerMinuteNow);
   const relative = useMemo(() => new Intl.RelativeTimeFormat(LOCALE_BCP47[locale] ?? "en", { numeric: "auto" }), [locale]);
@@ -206,7 +214,7 @@ export function NewTabPage() {
     }
 
     let tabCount = 0;
-    for (const tab of snapshot.tabs) {
+    for (const tab of singleTab ? [] : snapshot.tabs) {
       if (tabCount >= MAX_TAB_RESULTS) break;
       if (tab.id === snapshot.activeTabId) continue;
       const presentation = presentTab(tab, snapshot, t);
@@ -245,7 +253,7 @@ export function NewTabPage() {
     }
 
     let closedCount = 0;
-    for (const record of closed) {
+    for (const record of singleTab ? [] : closed) {
       if (closedCount >= MAX_CLOSED_RESULTS) break;
       const entry = currentEntry(record.tab);
       const title = titleForUrl(entry.url, entry.title, t);
@@ -261,7 +269,7 @@ export function NewTabPage() {
       });
     }
     return out;
-  }, [trimmed, t, snapshot, actions, access, docsAllowed, documents, closed, reopenClosed]);
+  }, [trimmed, t, snapshot, singleTab, actions, access, docsAllowed, documents, closed, reopenClosed]);
 
   const [cursor, setCursor] = useState<{ query: string; index: number }>({ query: "", index: 0 });
   const activeIndex = suggestions.length === 0 ? -1 : cursor.query === trimmed ? Math.min(cursor.index, suggestions.length - 1) : 0;
@@ -320,11 +328,13 @@ export function NewTabPage() {
   const optionId = (index: number) => `${listId}-option-${index}`;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-2 pb-10 pt-6 sm:px-4 lg:pt-12">
+    // On the phone layout the search row shares its line with the corner menu button
+    // (components/ui/corner-button.ts) instead of sitting under it.
+    <div className={cn("mx-auto flex w-full max-w-3xl flex-col gap-6 px-2 pb-10 sm:px-4 lg:pt-12", phone ? "pt-3" : "pt-6")}>
       <h1 className="sr-only">{t("nav.home")}</h1>
 
       <div className="flex flex-col gap-2">
-        <InputGroup className="h-10 bg-background">
+        <InputGroup className={cn("h-10 bg-background", phone && "ms-11 w-auto")}>
           <InputGroupAddon>
             <Search aria-hidden />
           </InputGroupAddon>
@@ -396,12 +406,12 @@ export function NewTabPage() {
               ready={documentsReady && backend !== "checking"}
               backend={backend}
               creating={creating}
-              onCreate={createNewDocument}
+              onCreate={canCreateDoc ? createNewDocument : undefined}
               now={now}
               relative={relative}
             />
           )}
-          <RecentlyClosed t={t} records={closed.slice(0, RECENTLY_CLOSED)} onReopen={reopenClosed} />
+          {!singleTab && <RecentlyClosed t={t} records={closed.slice(0, RECENTLY_CLOSED)} onReopen={reopenClosed} />}
         </>
       )}
     </div>
@@ -544,7 +554,8 @@ function RecentDocuments({
   ready: boolean;
   backend: DocsBackendStatus;
   creating: boolean;
-  onCreate: () => void;
+  /** New document; omitted when this person cannot make a Doc. */
+  onCreate?: () => void;
   now: number;
   relative: Intl.RelativeTimeFormat;
 }) {
@@ -598,10 +609,12 @@ function RecentDocuments({
         >
           {t("browser.newTabPage.allDocuments")}
         </Link>
-        <Button variant="outline" size="sm" onClick={onCreate} disabled={creating || unavailable}>
-          {creating ? <Loader2 className="animate-spin" aria-hidden /> : <Plus aria-hidden />}
-          {t("browser.newTabPage.newDocument")}
-        </Button>
+        {onCreate && (
+          <Button variant="outline" size="sm" onClick={onCreate} disabled={creating || unavailable}>
+            {creating ? <Loader2 className="animate-spin" aria-hidden /> : <Plus aria-hidden />}
+            {t("browser.newTabPage.newDocument")}
+          </Button>
+        )}
       </div>
       <div className="overflow-hidden rounded-lg border border-border bg-background">{body}</div>
     </section>

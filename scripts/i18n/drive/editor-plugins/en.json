@@ -1,0 +1,37 @@
+{
+  "device": {
+    "catalog": {
+      "docs": "Docs",
+      "sheets": "Sheets",
+      "slides": "Slides"
+    },
+    "catalogDesc": {
+      "docs": "Documents for your store: write in Drive and open .docx files.",
+      "sheets": "Spreadsheets for your store: open .xlsx and .csv files and make new ones in Drive.",
+      "slides": "Presentations for your store: open .pptx files and make new decks in Drive."
+    }
+  },
+  "docs": {
+    "editor": {
+      "backToDocs": "Back to Drive"
+    },
+    "homeTooltip": "Drive"
+  },
+  "pluginInstall": {
+    "missingTitle": "{app} isn't installed",
+    "openBody": "Download {app} to open this file. It turns on for the whole store: the back office, the store tablet and staff phones.",
+    "createBody": "Download {app} to create this. It turns on for the whole store: the back office, the store tablet and staff phones.",
+    "pageBody": "This page is part of {app}. Download it to use it here and on your store's devices.",
+    "askManager": "Ask an owner or a manager to download {app} from Plugins.",
+    "download": "Download",
+    "downloading": "Downloading…",
+    "installed": "{app} is ready",
+    "failed": "Couldn't download {app}. Try again.",
+    "openPlugins": "Open Plugins",
+    "notNow": "Not now",
+    "offline": "You're offline. Connect to download plugins.",
+    "downloadFirst": "Download first",
+    "askOtherDevice": "This tablet's account can't download plugins. Download {app} from Plugins in the back office or on your own phone.",
+    "notInstalled": "Not installed"
+  }
+}

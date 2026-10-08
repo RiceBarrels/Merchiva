@@ -1,11 +1,10 @@
 /**
- * AI usage tracking — pricing, cost math, and a best-effort recorder that
- * writes one `ai_usage` row per LLM call through the SpacetimeDB service
- * identity.
+ * AI usage tracking — cost math and a best-effort recorder that writes one
+ * `ai_usage` row per LLM call through the SpacetimeDB service identity.
  *
- * Pricing (per 1,000,000 tokens):
- *   input:  $2
- *   output: $10
+ * Pricing is per model (lib/ai/pricing.ts): each call is billed at the price
+ * of the model that actually served it, so pass the real model id. Models not
+ * in the price list fall back to a flat $2 in / $10 out per 1M tokens.
  *
  * Call `recordAiUsage(...)` from any server route AFTER an AI call completes.
  * It never throws — a tracking failure must not break the user-facing request.
@@ -14,35 +13,16 @@
 import "server-only";
 
 import { getServiceConn, serviceRecordAiUsage } from "@/lib/spacetimedb/service-client";
+import { computeAiCost } from "@/lib/ai/pricing";
 
-/** USD per 1M tokens. */
-export const AI_PRICING = {
-  inputPerMillion: 2,
-  outputPerMillion: 10,
-} as const;
-
-export interface AiCostBreakdown {
-  inputTokens: number;
-  outputTokens: number;
-  inputCost: number;
-  outputCost: number;
-  cost: number;
-}
-
-/** Compute the per-call cost from token counts. */
-export function computeAiCost(inputTokens: number, outputTokens: number): AiCostBreakdown {
-  const i = Number.isFinite(inputTokens) ? Math.max(0, inputTokens) : 0;
-  const o = Number.isFinite(outputTokens) ? Math.max(0, outputTokens) : 0;
-  const inputCost = (i / 1_000_000) * AI_PRICING.inputPerMillion;
-  const outputCost = (o / 1_000_000) * AI_PRICING.outputPerMillion;
-  return {
-    inputTokens: i,
-    outputTokens: o,
-    inputCost,
-    outputCost,
-    cost: inputCost + outputCost,
-  };
-}
+export {
+  AI_MODEL_PRICING,
+  AI_PRICING,
+  computeAiCost,
+  pricingFor,
+  type AiCostBreakdown,
+  type ModelPricing,
+} from "@/lib/ai/pricing";
 
 /** UTC day (YYYY-MM-DD) and month (YYYY-MM) buckets for grouping. */
 export function utcDayMonth(date: Date = new Date()): { day: string; month: string } {
@@ -89,6 +69,7 @@ export interface RecordAiUsageArgs {
   userId?: string | null;
   /** Stable feature key, e.g. "mr_merchiva", "design_chat", "morning_briefing". */
   feature: string;
+  /** The OpenRouter model id that served the call; it sets the price. */
   model: string;
   inputTokens: number;
   outputTokens: number;
@@ -126,6 +107,7 @@ export async function recordAiUsage(args: RecordAiUsageArgs): Promise<void> {
     const { inputTokens, outputTokens, inputCost, outputCost, cost } = computeAiCost(
       args.inputTokens,
       args.outputTokens,
+      args.model,
     );
     if (inputTokens === 0 && outputTokens === 0) return;
 

@@ -10,6 +10,7 @@ import { TrainingTrainerView } from "@/components/training/trainer-view";
 import { TrainingInternView } from "@/components/training/intern-view";
 import { usePersonnelHub } from "@/components/personnel/hub-context";
 import { PersonnelLoading } from "@/components/personnel/hub-nav";
+import { useTrainingPageContext } from "@/components/personnel/use-page-context";
 
 const TRAINING_ROLE_STORAGE_KEY = "bz_personnel_training_role";
 
@@ -44,6 +45,8 @@ export default function PersonnelTrainingPage() {
       window.localStorage.setItem(TRAINING_ROLE_STORAGE_KEY, next);
     } catch {}
   };
+
+  useTrainingPageContext({ orgId: organizationId, view: effectiveRole });
 
   if (!organizationId) return <PersonnelLoading />;
 

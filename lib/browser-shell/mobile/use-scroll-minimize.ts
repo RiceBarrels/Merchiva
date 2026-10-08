@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { activeTabRoot } from "../scroll";
 import { SCROLL } from "./geometry";
 
-/** The only scroll-root marker (plan D14); set by TabPageOutlet and PageTransition. */
+/** The only scroll-root marker (plan D14); set by TabPageOutlet's slots and PageTransition. */
 const SCROLL_ROOT_SELECTOR = "[data-tab-scroll-root]";
 /** Opt-out for canvases, carousels and reverse chat lists. */
 const SCROLL_IGNORE_SELECTOR = "[data-shell-scroll-ignore]";
@@ -41,7 +42,8 @@ export function useScrollMinimize(root: HTMLElement | null, options: ScrollMinim
     let pending: HTMLElement | null = null;
 
     const pageScrollRoot = (): HTMLElement | null => {
-      const roots = root.querySelectorAll<HTMLElement>(SCROLL_ROOT_SELECTOR);
+      // Hidden keep-alive slots stay in #mobile-content: only the displayed tab page counts.
+      const roots = (activeTabRoot() ?? root).querySelectorAll<HTMLElement>(SCROLL_ROOT_SELECTOR);
       return roots.length > 0 ? roots[roots.length - 1] : null;
     };
 

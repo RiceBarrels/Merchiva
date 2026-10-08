@@ -192,7 +192,7 @@ export function MembersTable({
                   </div>
                 </div>
                 <p className="text-[11px] text-stone-500">
-                  Sections: dashboard, inventory, sales, staffing, products, settings, pos, team, website, training_grading, merchiva. Each has view and optionally edit / invite.
+                  Sections: dashboard, inventory, sales, staffing, products, settings, pos, team, website, training_grading, merchiva, drive. Each has view and optionally edit / invite.
                 </p>
               </div>
               <div className={fieldCls}>

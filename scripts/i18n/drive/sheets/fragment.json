@@ -1,0 +1,17 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "W1.2a",
+  "note": "Sheets editor copy (sheets.md §14, directory fragment per integration-legal.md §6.5). The complete key list of §14 plus three leaves the editor route needs and §14 does not name: sheets.editor.loading, sheets.editor.accessLost, sheets.lease.cancelRequest. Reused, not duplicated: docs.status.*, docs.presence.*, docs.versions.*, docs.edit.undo/redo, common.*, drive.disclosure.*, drive.errors.*. Terms: zh-cn 表格, zh-tw/zh-hk 試算表, es hoja de cálculo (tú), fr feuille de calcul (vous), hi स्प्रेडशीट, ar جدول بيانات; Drive = 云盘 / 雲端硬碟 / Archivos / Fichiers / ड्राइव / الملفات as in drive-ui. sheets.brand is the product name in every locale; lossy.items.macros and lossy.items.images are allowed to equal en because \"Macros\" and \"Images\" are the correct es/fr words. Later W1.2 units may append leaves here (SERIAL chain W1.2a→g). W1.2g appended sheets.import.beforeReplace (the name of the version saved before Import ▸ Replace this spreadsheet). W2.S appended sheets.lossy.items.definedNames (named ranges an .xlsx import or download leaves out).",
+  "owned": [
+    "sheets"
+  ],
+  "extends": null,
+  "overwrites": [],
+  "allowSameAsEn": [
+    "sheets.brand",
+    "sheets.menu.downloadXlsx",
+    "sheets.menu.downloadCsv",
+    "sheets.lossy.items.macros",
+    "sheets.lossy.items.images"
+  ]
+}

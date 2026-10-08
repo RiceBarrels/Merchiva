@@ -3,6 +3,7 @@
   "ignore": [
     "app/api/*",
     "app/merchivaAdmin/page.tsx",
-    "app/merchivaAdmin/*/page.tsx"
+    "app/merchivaAdmin/*/page.tsx",
+    "app/f"
   ]
 }

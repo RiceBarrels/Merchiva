@@ -1,0 +1,37 @@
+{
+  "device": {
+    "catalog": {
+      "docs": "文件",
+      "sheets": "試算表",
+      "slides": "簡報"
+    },
+    "catalogDesc": {
+      "docs": "店面的文件：在雲端硬碟中撰寫，也能開啟 .docx 檔案。",
+      "sheets": "店面的試算表：在雲端硬碟中開啟 .xlsx 和 .csv 檔案，或新增試算表。",
+      "slides": "店面的簡報：在雲端硬碟中開啟 .pptx 檔案，或新增簡報。"
+    }
+  },
+  "docs": {
+    "editor": {
+      "backToDocs": "返回雲端硬碟"
+    },
+    "homeTooltip": "雲端硬碟"
+  },
+  "pluginInstall": {
+    "missingTitle": "尚未安裝「{app}」",
+    "openBody": "下載「{app}」即可開啟這個檔案。它會在整家店開啟：後台、門市平板和員工手機都能使用。",
+    "createBody": "下載「{app}」即可新增。它會在整家店開啟：後台、門市平板和員工手機都能使用。",
+    "pageBody": "這個頁面屬於「{app}」。下載後即可在這裡和店內的裝置上使用。",
+    "askManager": "請店主或經理在外掛頁面下載「{app}」。",
+    "download": "下載",
+    "downloading": "正在下載…",
+    "installed": "「{app}」已可使用",
+    "failed": "「{app}」下載失敗，請再試一次。",
+    "openPlugins": "開啟外掛頁面",
+    "notNow": "暫時不要",
+    "offline": "你目前離線。連線後才能下載外掛。",
+    "downloadFirst": "需先下載",
+    "askOtherDevice": "這台平板登入的帳號無法下載外掛。請在後台或你自己的手機上，從外掛頁面下載「{app}」。",
+    "notInstalled": "未安裝"
+  }
+}

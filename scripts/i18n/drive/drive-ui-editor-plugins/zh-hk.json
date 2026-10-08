@@ -1,0 +1,16 @@
+{
+  "drive": {
+    "home": {
+      "newFromTemplate": "從模板新增",
+      "importFile": "匯入檔案…"
+    }
+  },
+  "device": {
+    "lite": {
+      "drive": {
+        "newFromTemplate": "以模板新增文檔",
+        "templatesTitle": "選擇模板"
+      }
+    }
+  }
+}

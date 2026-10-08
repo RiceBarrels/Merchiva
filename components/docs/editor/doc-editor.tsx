@@ -45,7 +45,7 @@ import { getCommentAnchor, getCommentDraft } from "@/lib/docs/extensions/comment
 import { useI18n, useT } from "@/lib/i18n/context";
 import { updateDocumentMeta } from "@/lib/spacetimedb/actions";
 import { useOrgMembers } from "@/lib/spacetimedb/hooks";
-import { useCurrentMemberId, useDocumentVersions } from "@/lib/spacetimedb/hooks/useDocs";
+import { useCurrentMemberId, useDocsSender, useDocumentVersions, type DocsSender } from "@/lib/spacetimedb/hooks/useDocs";
 import { useIsMobile } from "@/lib/use-is-mobile";
 
 import { DesktopDocEditor } from "./desktop-doc-editor";
@@ -94,6 +94,8 @@ export default function DocEditor(props: DocEditorProps) {
   const { doc, access } = props;
   const t = useT();
   const memberId = useCurrentMemberId();
+  // Comments, versions and edits are recorded for the signed-in account (on /store the tablet, not the operator).
+  const sender = useDocsSender();
   const [members] = useOrgMembers();
   const { user: authUser } = useAuth();
   const isMobile = useIsMobile() || props.mobile === true;
@@ -174,6 +176,7 @@ export default function DocEditor(props: DocEditorProps) {
       ydoc={collab.ydoc}
       provider={collab.provider}
       memberId={memberId}
+      sender={sender}
       user={user}
       memberNames={memberNames}
       isMobile={isMobile}
@@ -188,13 +191,14 @@ interface DocEditorSessionProps extends DocEditorProps {
   ydoc: Y.Doc;
   provider: LiveProvider;
   memberId: string;
+  sender: DocsSender;
   user: { name: string; color: string };
   memberNames: ReadonlyMap<string, string>;
   isMobile: boolean;
 }
 
 function DocEditorSession(props: DocEditorSessionProps) {
-  const { doc, access, isStarred, initialNew, threadParam, versionParam, collab, ydoc, provider, memberId, user, memberNames, isMobile } =
+  const { doc, access, isStarred, initialNew, threadParam, versionParam, collab, ydoc, provider, memberId, sender, user, memberNames, isMobile } =
     props;
   const t = useT();
   const { locale } = useI18n();
@@ -267,7 +271,7 @@ function DocEditorSession(props: DocEditorSessionProps) {
     openLinkEditor: () => latestHandlers.current.openLinkEditor?.(),
     addComment: () => latestHandlers.current.addComment?.(),
     activateComment: (threadId) => latestHandlers.current.activateComment?.(threadId),
-    uploadImage: (file) => uploadDocImage(file),
+    uploadImage: (file) => uploadDocImage(file, doc.organizationId),
     notify: (key, tone) => latestHandlers.current.notify?.(key, tone),
   }));
 
@@ -457,6 +461,7 @@ function DocEditorSession(props: DocEditorSessionProps) {
     findVersion,
     setPreviewVersion,
     pasteShortcut: shortcutLabel("paste"),
+    actingForOther: sender.actingForOther,
   });
 
   useLayoutEffect(() => {
@@ -504,7 +509,8 @@ function DocEditorSession(props: DocEditorSessionProps) {
       doc,
       access,
       isStarred,
-      memberId,
+      memberId: sender.memberId,
+      actingForOther: sender.actingForOther,
       editor,
       contentEditor,
       setPreviewEditor,
@@ -533,7 +539,7 @@ function DocEditorSession(props: DocEditorSessionProps) {
       memberName,
       findVersion,
     }),
-    [doc, access, isStarred, memberId, editor, contentEditor, collab, canEditNow, editable, uiView, threads, draft, previewVersionId, actions, pageSetup, setPageSetup, pageLayout, headerFooterEditing, setHeaderFooterEditing, locale, isMobile, coarsePointer, saveState, memberName, findVersion],
+    [doc, access, isStarred, sender, editor, contentEditor, collab, canEditNow, editable, uiView, threads, draft, previewVersionId, actions, pageSetup, setPageSetup, pageLayout, headerFooterEditing, setHeaderFooterEditing, locale, isMobile, coarsePointer, saveState, memberName, findVersion],
   );
 
   return (

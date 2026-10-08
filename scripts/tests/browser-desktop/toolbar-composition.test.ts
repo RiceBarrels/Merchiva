@@ -10,6 +10,8 @@ import { join } from "node:path";
  *     and no inline transform / borderRadius / overflow (DynamicUIElement owns those);
  *   - the content panel is never conditional, so toggling the sidebar cannot remount the page;
  *   - the toolbar's composition and order, with no profile button left behind;
+ *   - Mr. Merchiva opens from ⌘⇧M or his rail, never a toolbar button, and his dock is its own
+ *     resizable column beside the page;
  *   - the bookmarks bar holds user bookmarks only.
  */
 
@@ -33,13 +35,21 @@ describe("toolbar composition", () => {
   const toolbar = source("toolbar.tsx");
 
   test("the sidebar toggle is the first control, then the Chrome-style row", () => {
-    const order = ["<SidebarToggle />", "<NavButtons />", "<Omnibox />", "<MerchivaButton />", "<NotificationsButton />", "<AppMenu />"];
+    const order = ["<SidebarToggle />", "<NavButtons />", "<Omnibox />", "<NotificationsButton />", "<AppMenu />"];
     const positions = order.map((tag) => {
       const index = toolbar.indexOf(tag);
       expect(index, `${tag} is missing from the toolbar`).toBeGreaterThan(-1);
       return index;
     });
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+
+  test("Mr. Merchiva has no toolbar button or omnibox action — ⌘⇧M and his rail are the way in", () => {
+    expect(code(toolbar)).not.toContain("Merchiva");
+    expect(existsSync(join(DESKTOP, "merchiva-button.tsx"))).toBe(false);
+    expect(existsSync(join(DESKTOP, "merchiva-launch.ts"))).toBe(false);
+    expect(code(source("omnibox.tsx"))).not.toContain("Merchiva");
+    expect(code(source("omnibox-results.ts"))).not.toContain("ask-merchiva");
   });
 
   test("the profile button is gone and its file with it", () => {
@@ -138,6 +148,16 @@ describe("desktop frame layout", () => {
     expect(chrome).toContain("rtl ? [SIDEBAR_CONTENT_PANEL_ID, SIDEBAR_PANEL_ID] : [SIDEBAR_PANEL_ID, SIDEBAR_CONTENT_PANEL_ID]");
   });
 
+  test("the Mr. Merchiva dock wraps the page's panel group, so it gets its own resizable column", () => {
+    expect(countOf(chrome, "<MerchivaDockLayout>")).toBe(1);
+    const open = chrome.indexOf("<MerchivaDockLayout>");
+    const close = chrome.indexOf("</MerchivaDockLayout>");
+    const group = chrome.indexOf("<ResizablePanelGroup");
+    expect(open).toBeGreaterThan(-1);
+    expect(group).toBeGreaterThan(open);
+    expect(close).toBeGreaterThan(chrome.indexOf("</ResizablePanelGroup>"));
+  });
+
   test("the chrome writes no history, document title or global key listener", () => {
     const body = code(chrome);
     for (const forbidden of ["document.title", "window.addEventListener", "history.pushState", "history.replaceState"]) {
@@ -145,9 +165,17 @@ describe("desktop frame layout", () => {
     }
   });
 
-  test("the sidebar is desktop-only: the mobile chrome never mounts it", () => {
-    const mobile = join(import.meta.dir, "..", "..", "..", "components", "browser-shell", "mobile", "mobile-browser-chrome.tsx");
-    expect(readFileSync(mobile, "utf8")).not.toContain("BrowserSidebar");
+  test("the phone drawer reuses the sidebar at touch size; only the desktop chrome gets the collapse control", () => {
+    const drawer = join(import.meta.dir, "..", "..", "..", "components", "browser-shell", "mobile-app", "sidebar-drawer.tsx");
+    const drawerCode = code(readFileSync(drawer, "utf8"));
+    expect(countOf(drawerCode, "<BrowserSidebar ")).toBe(1);
+    expect(drawerCode).toContain('variant="drawer"');
+    // No icon rail on a phone: without onToggleCollapse the sidebar renders no collapse control.
+    expect(drawerCode).not.toContain("onToggleCollapse");
+    expect(source("sidebar", "sidebar.tsx")).toContain(
+      "{onToggleCollapse ? <CollapseControl collapsed={collapsed} onToggle={onToggleCollapse} /> : null}",
+    );
+    expect(chrome).toContain("onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}");
   });
 });
 

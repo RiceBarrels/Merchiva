@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { safeNextPath } from "@/lib/auth/safe-next";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, ShieldCheck, Sparkles, Fingerprint } from "lucide-react";
 import { MerchivaLogo } from "@/components/logo";
 import { BrandPanel } from "@/components/brand-panel";
@@ -25,7 +26,7 @@ function LoginForm() {
   const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/choose";
+  const next = safeNextPath(searchParams.get("next"));
   const isAddAccount = searchParams.get("addAccount") === "1";
   const { isLoaded, isSignedIn, signIn, getToken } = useAuth();
 
@@ -80,7 +81,7 @@ function LoginForm() {
     try {
       const parsedUser = JSON.parse(user);
       addAccountToStorage(access_token, refresh_token, parsedUser);
-      window.location.href = redirect_to || "/choose";
+      window.location.href = safeNextPath(redirect_to);
     } catch {
       setError(t("login.oauthFailed"));
     }

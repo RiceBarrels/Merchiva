@@ -14,8 +14,6 @@ import "server-only";
 
 import { DbConnection } from "./generated";
 import type { Identity } from "spacetimedb";
-import { buildBriefingContext, type BriefingContext } from "@/lib/insights/build-context";
-import { productsFromInventoryRows } from "@/lib/products/from-inventory";
 import {
   normalizeSupplierInboundPrefix,
   supplierInboundAddressForOrg,
@@ -167,109 +165,6 @@ export async function getSubscribedServiceConn(
     await subscribeAndWait(conn, queries, timeoutMs);
     return conn;
   }
-}
-
-// ─── Live store context (server-side, for group-chat Mr. Merchiva) ──────────────
-//
-// Builds the SAME LIVE STORE DATA shape the right-panel assistant feeds its
-// model, but from the service connection — so the group-chat endpoint can be
-// as data-aware as the dedicated DM assistant without the client shipping a
-// context blob. Reuses buildBriefingContext (which intentionally mirrors that
-// shape).
-
-const STORE_CONTEXT_QUERIES = [
-  "SELECT * FROM organization",
-  "SELECT * FROM org_member",
-  "SELECT * FROM staff_member",
-  "SELECT * FROM inventory_item",
-  "SELECT * FROM shift",
-  "SELECT * FROM time_off_request",
-  "SELECT * FROM shift_trade",
-  "SELECT * FROM sales_record",
-  "SELECT * FROM payment",
-  "SELECT * FROM staff_role",
-  "SELECT * FROM role_task",
-  "SELECT * FROM role_task_assignment",
-  "SELECT * FROM notification",
-  "SELECT * FROM shift_preset",
-  "SELECT * FROM staff_availability",
-  "SELECT * FROM coupon",
-  "SELECT * FROM settings",
-];
-
-// Connections we've already subscribed on. The service connection is cached
-// across warm invocations and its subscriptions stay live, so we subscribe
-// once per connection and then just read the (continuously updated) cache —
-// no re-subscribe per message, no accumulating subscriptions.
-const storeContextSubscribed = new WeakSet<object>();
-
-/** YYYY-MM-DD for the given timezone (en-CA formats as ISO date). */
-function dateInTimezone(tz: string, now: Date): string {
-  try {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(now);
-  } catch {
-    return now.toISOString().slice(0, 10);
-  }
-}
-
-/**
- * Snapshot the org's live store data and build the Mr. Merchiva context object.
- * `today` is computed in the org's configured timezone (settings.timezone).
- */
-export async function getOrgStoreContext(
-  conn: ServiceConn,
-  organizationId: string,
-  locale = "en",
-): Promise<BriefingContext> {
-  if (!storeContextSubscribed.has(conn)) {
-    await subscribeAndWait(conn, STORE_CONTEXT_QUERIES);
-    storeContextSubscribed.add(conn);
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const allRows = (table: string): any[] => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const t = (conn.db as any)[table];
-    return t && typeof t.iter === "function" ? [...t.iter()] : [];
-  };
-
-  const settings = allRows("settings");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const setting = settings.find((s: any) => s.organizationId === organizationId);
-  const tz = (setting?.timezone as string | undefined) || "UTC";
-  const today = dateInTimezone(tz, new Date());
-
-  return buildBriefingContext(
-    {
-      organizations: allRows("organization"),
-      orgMembers: allRows("orgMember"),
-      staffMembers: allRows("staffMember"),
-      inventoryItems: allRows("inventoryItem"),
-      shifts: allRows("shift"),
-      timeOff: allRows("timeOffRequest"),
-      shiftTrades: allRows("shiftTrade"),
-      salesRecords: allRows("salesRecord"),
-      payments: allRows("payment"),
-      // product table no longer exists — retail-enabled inventory rows ARE the products
-      products: productsFromInventoryRows(allRows("inventoryItem")),
-      staffRoles: allRows("staffRole"),
-      roleTasks: allRows("roleTask"),
-      roleTaskAssignments: allRows("roleTaskAssignment"),
-      notifications: allRows("notification"),
-      shiftPresets: allRows("shiftPreset"),
-      staffAvailability: allRows("staffAvailability"),
-      coupons: allRows("coupon"),
-      settings,
-    },
-    organizationId,
-    today,
-    locale,
-  );
 }
 
 // ─── Mr. Merchiva background-reply notification target ──────────────────────────

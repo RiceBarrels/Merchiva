@@ -90,6 +90,28 @@ const TABLE_DEFS: readonly TableDef[] = [
   { accessor: "documentAccess", sqlName: "document_access", primaryKey: "id", indexes: { byDocumentId: "documentId", byOrganizationId: "organizationId" } },
   { accessor: "orgMember", sqlName: "org_member", primaryKey: "id", indexes: { byOrganizationId: "organizationId", byUserId: "userId" } },
   { accessor: "notification", sqlName: "notification", primaryKey: "id", indexes: {} },
+  // spacetimedb/src/drive/tables.ts: docs reducers keep the reader index current; sheets touch the other two.
+  { accessor: "documentReaderIndex", sqlName: "document_reader_index", primaryKey: "id", indexes: { byDocumentId: "documentId", byUserId: "userId" } },
+  {
+    accessor: "documentEditLease",
+    sqlName: "document_edit_lease",
+    primaryKey: "documentId",
+    indexes: { byOrganizationId: "organizationId", byHolderConnectionId: "holderConnectionId", byRequestedByConnectionId: "requestedByConnectionId" },
+  },
+  {
+    accessor: "documentVersionState",
+    sqlName: "document_version_state",
+    primaryKey: "versionId",
+    indexes: { byDocumentId: "documentId", byOrganizationId: "organizationId" },
+  },
+  // A document's Drive type and folder (drive/document-file.ts): restoreDocument and setDocumentVisibility read it.
+  { accessor: "documentFile", sqlName: "document_file", primaryKey: "documentId", indexes: { byOrganizationId: "organizationId" } },
+  // Storage accounting (drive/storage.ts): new documents check the org's quota and keep a document_size row.
+  { accessor: "driveUsage", sqlName: "drive_usage", primaryKey: "organizationId", indexes: { byScope: "scope" } },
+  { accessor: "orgStorageUsage", sqlName: "org_storage_usage", primaryKey: "organizationId", indexes: {} },
+  { accessor: "documentSize", sqlName: "document_size", primaryKey: "documentId", indexes: { byOrganizationId: "organizationId" } },
+  // Allowed, not yet recorded app uploads count toward the same quota (orgStorageTotal).
+  { accessor: "appUploadHold", sqlName: "app_upload_hold", primaryKey: "id", autoInc: true, indexes: { byOrganizationId: "organizationId" } },
 ];
 
 /** Reducers the fake server exposes, taken verbatim from the module. */
@@ -185,7 +207,8 @@ class ServerTable {
       iter: () => [...this.rows.values()],
       count: () => BigInt(this.rows.size),
       [pk]: {
-        find: (value: unknown) => this.rows.get(keyOf(value)),
+        // null on a miss, like the SDK's unique-index find (never undefined).
+        find: (value: unknown) => this.rows.get(keyOf(value)) ?? null,
         update: (row: Record<string, unknown>) => this.update(row),
         delete: (value: unknown) => this.deleteKey(value),
       },

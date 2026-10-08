@@ -9,6 +9,7 @@ import { tables } from "@/lib/spacetimedb/generated";
 import { sendMessage } from "@/lib/spacetimedb/actions";
 import { uploadChatFile } from "@/lib/db/chat";
 import { useT } from "@/lib/i18n/context";
+import { appUploadErrorKey } from "@/lib/storage/app-upload";
 import { initialsOf } from "./time";
 import type { Channel, ChannelMessage, PttResult } from "./types";
 
@@ -65,7 +66,16 @@ export function useChannels(opts: UseChannelsOptions): UseChannelsResult {
   const [memberRows, membersReady] = useTable(tables.chatMember);
   const [messageRows, messagesReady] = useTable(tables.chatMessage);
   const [orgMemberRows, orgReady] = useTable(tables.orgMember);
+  // Thread replies and deleted thread parents (spacetimedb/src/chat/tables.ts)
+  // belong to the full channel page; the walkie list shows the main flow only.
+  const [extRows] = useTable(tables.chatMessageExt);
   const [activeIndexState, setActiveIndexState] = useState(0);
+
+  const hiddenIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of extRows) if (e.threadParentId || e.deletedAt != null) set.add(e.messageId);
+    return set;
+  }, [extRows]);
 
   // userId hex → display name within this org.
   const nameByUser = useMemo(() => {
@@ -124,7 +134,7 @@ export function useChannels(opts: UseChannelsOptions): UseChannelsResult {
 
   const messages = useMemo<ChannelMessage[]>(() => {
     if (!activeChannel) return [];
-    const rows = messageRows.filter((r) => r.conversationId === activeChannel.id);
+    const rows = messageRows.filter((r) => r.conversationId === activeChannel.id && !hiddenIds.has(r.id.toString()));
     const mapped = rows.map<ChannelMessage>((r) => {
       const senderId = idHex(r.senderId);
       const isMerchiva = r.isMerchiva === true;
@@ -151,7 +161,7 @@ export function useChannels(opts: UseChannelsOptions): UseChannelsResult {
     });
     mapped.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     return mapped;
-  }, [messageRows, activeChannel, nameByUser, meUserId, t]);
+  }, [messageRows, activeChannel, nameByUser, meUserId, t, hiddenIds]);
 
   const setActiveIndex = useCallback((i: number) => {
     setActiveIndexState((prev) => {
@@ -167,9 +177,9 @@ export function useChannels(opts: UseChannelsOptions): UseChannelsResult {
   const uploadVoice = useCallback(async (blob: Blob) => {
     const ext = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "m4a" : "webm";
     const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type || "audio/webm" });
-    const res = await uploadChatFile(file);
+    const res = await uploadChatFile(file, organizationId);
     return { url: res.url, type: "audio", name: res.name };
-  }, []);
+  }, [organizationId]);
 
   const sendVoice = useCallback(async (result: PttResult): Promise<string> => {
     if (result.mode === "delete" || !result.blob) return t("device.toastDeleted");
@@ -177,7 +187,12 @@ export function useChannels(opts: UseChannelsOptions): UseChannelsResult {
     const channelName = activeChannel.name;
 
     if (result.mode === "original") {
-      const attachment = await uploadVoice(result.blob);
+      let attachment: Awaited<ReturnType<typeof uploadVoice>>;
+      try {
+        attachment = await uploadVoice(result.blob);
+      } catch (err) {
+        return t(appUploadErrorKey(err));
+      }
       await sendMessage(activeChannel.id, "", undefined, attachment, null);
       return t("device.toastOriginalSent");
     }
@@ -186,7 +201,11 @@ export function useChannels(opts: UseChannelsOptions): UseChannelsResult {
     const fd = new FormData();
     fd.append("audio", result.blob, "voice.webm");
     fd.append("lang", locale);
-    const uploadPromise = uploadVoice(result.blob).catch(() => null);
+    let uploadError: unknown = null;
+    const uploadPromise = uploadVoice(result.blob).catch((err: unknown) => {
+      uploadError = err;
+      return null;
+    });
     const res = await fetch("/api/walkie/transcribe", { method: "POST", body: fd });
     const data = (await res.json().catch(() => ({}))) as TranscribeResponse;
     if (!res.ok) throw new Error(data.error || t("device.toastTranscribeFailed"));
@@ -195,6 +214,8 @@ export function useChannels(opts: UseChannelsOptions): UseChannelsResult {
     if (!transcript) return t("device.toastNothingHeard");
     const attachment = await uploadPromise;
     await sendMessage(activeChannel.id, summary, undefined, attachment, transcript);
+    // The summary goes out without its recording when the upload failed (a full store, say): say why.
+    if (uploadError !== null) return `${t("device.toastSummarySent")} ${channelName} · ${t(appUploadErrorKey(uploadError))}`;
     return `${t("device.toastSummarySent")} ${channelName}`;
   }, [activeChannel, locale, t, uploadVoice]);
 

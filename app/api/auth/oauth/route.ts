@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { workos, clientId } from "@/lib/auth/workos";
 import { handleOptions, jsonWithCors } from "@/lib/api-cors";
+import { safeNextPath } from "@/lib/auth/safe-next";
 
 // `passkey` and `authkit` both route through AuthKit's hosted UI. WorkOS's
 // Node SDK doesn't expose a direct passkey API — passkey sign-in is only
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
     const useProtocolCallback =
       client === "desktop" || client === "electron" || client === "capacitor";
     const statePayload = {
-      redirectTo: redirectTo || "/choose",
+      redirectTo: safeNextPath(redirectTo),
       client: useProtocolCallback ? "desktop" : "web",
     };
 

@@ -4,55 +4,10 @@ use tauri::LogicalPosition;
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_opener::OpenerExt;
 
-// macOS: promote the quick-dialog overlay so it draws over fullscreen apps.
-//
-// By default tao's `set_always_on_top(true)` only raises the NSWindow to
-// `NSFloatingWindowLevel` (3), which sits over normal windows but NOT over a
-// fullscreen app — fullscreen apps own their own Space, and a floating window
-// without `FullScreenAuxiliary` in its collection behavior is excluded from it.
-//
-// We fix both halves:
-//   • add `NSWindowCollectionBehaviorFullScreenAuxiliary` (and CanJoinAllSpaces
-//     + Stationary) so the window is allowed into a fullscreen Space and stays
-//     put when switching Spaces;
-//   • raise the level to `NSPopUpMenuWindowLevel` (101) so it sits above the
-//     fullscreen app's own contents.
-#[cfg(target_os = "macos")]
-fn configure_overlay_for_fullscreen(window: &tauri::WebviewWindow) {
-    use objc2::msg_send;
-    use objc2::runtime::AnyObject;
-
-    let Ok(ns_window_ptr) = window.ns_window() else { return };
-    if ns_window_ptr.is_null() {
-        return;
-    }
-
-    // Constants from <AppKit/NSWindow.h>
-    const CAN_JOIN_ALL_SPACES: usize = 1 << 0;
-    const STATIONARY: usize = 1 << 4;
-    const FULLSCREEN_AUXILIARY: usize = 1 << 8;
-    const POPUP_MENU_LEVEL: isize = 101;
-
-    unsafe {
-        let obj: &AnyObject = &*(ns_window_ptr as *const AnyObject);
-        let current: usize = msg_send![obj, collectionBehavior];
-        let merged: usize = current | CAN_JOIN_ALL_SPACES | STATIONARY | FULLSCREEN_AUXILIARY;
-        let _: () = msg_send![obj, setCollectionBehavior: merged];
-        let _: () = msg_send![obj, setLevel: POPUP_MENU_LEVEL];
-    }
-}
-
 #[cfg(debug_assertions)]
 const APP_URL: &str = "http://localhost:3000/login";
 #[cfg(not(debug_assertions))]
 const APP_URL: &str = "https://merchiva.com/login";
-
-// The Mr. Merchiva quick-dialog overlay loads this lightweight, public route.
-// It renders only the dialog with a transparent body (see app/quick-overlay).
-#[cfg(debug_assertions)]
-const QUICK_URL: &str = "http://localhost:3000/quick-overlay";
-#[cfg(not(debug_assertions))]
-const QUICK_URL: &str = "https://merchiva.com/quick-overlay";
 
 // Renderer → main: open an http(s) URL in the user's default browser. Used by
 // the WorkOS OAuth flow so Google/Apple don't reject our embedded webview.
@@ -84,125 +39,6 @@ async fn nav_forward(window: tauri::WebviewWindow) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-// Renderer (overlay) → main: hide the quick-dialog overlay window.
-#[tauri::command]
-async fn hide_quick(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(w) = app.get_webview_window("quick") {
-        let _ = w.hide();
-    }
-    Ok(())
-}
-
-// Renderer (overlay) → main: jump the main window to the full Mr. Merchiva
-// assistant and dismiss the overlay.
-#[tauri::command]
-async fn open_chat(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(main) = app.get_webview_window("main") {
-        let _ = main.eval("window.location.assign('/manager/chat')");
-        let _ = main.unminimize();
-        let _ = main.show();
-        let _ = main.set_focus();
-    }
-    if let Some(quick) = app.get_webview_window("quick") {
-        let _ = quick.hide();
-    }
-    Ok(())
-}
-
-// Place the overlay over the monitor under the cursor, reveal it, and tell the
-// renderer where the pointer is (in that monitor's logical pixels) so it can
-// drop the dialog beside the cursor with the same edge-aware logic as the web.
-#[cfg(desktop)]
-fn show_quick_overlay(app: &tauri::AppHandle) {
-    let Some(overlay) = app.get_webview_window("quick") else {
-        return;
-    };
-    let cursor = overlay
-        .cursor_position()
-        .unwrap_or(tauri::PhysicalPosition::new(0.0, 0.0));
-    let (cx, cy) = (cursor.x as i32, cursor.y as i32);
-
-    let monitor = overlay
-        .available_monitors()
-        .unwrap_or_default()
-        .into_iter()
-        .find(|m| {
-            let p = m.position();
-            let s = m.size();
-            cx >= p.x && cx < p.x + s.width as i32 && cy >= p.y && cy < p.y + s.height as i32
-        })
-        .or_else(|| overlay.primary_monitor().ok().flatten());
-
-    // Compact, dialog-sized window placed beside the cursor (NOT the whole
-    // monitor). PAD/WIN_* are logical and MUST match app/quick-overlay/page.tsx.
-    const WIN_W: f64 = 480.0;
-    const WIN_H: f64 = 580.0;
-    const PAD: f64 = 48.0; // transparent room so the panel's shadow isn't clipped
-    const GAP: f64 = 14.0; // pointer ↔ panel
-    const PANEL_W: f64 = 380.0;
-    const PANEL_H: f64 = 470.0;
-
-    let scale = monitor.as_ref().map(|m| m.scale_factor()).unwrap_or(1.0);
-    let win_w = WIN_W * scale;
-    let win_h = WIN_H * scale;
-    let pad = PAD * scale;
-    let gap = GAP * scale;
-
-    let (mon_x, mon_y, mon_right, mon_bottom) = match monitor.as_ref() {
-        Some(m) => {
-            let p = m.position();
-            let s = m.size();
-            (
-                p.x as f64,
-                p.y as f64,
-                p.x as f64 + s.width as f64,
-                p.y as f64 + s.height as f64,
-            )
-        }
-        None => (0.0, 0.0, cursor.x + win_w, cursor.y + win_h),
-    };
-
-    let flip_x = cursor.x + gap + PANEL_W * scale > mon_right;
-    let flip_y = cursor.y + gap + PANEL_H * scale > mon_bottom;
-
-    let mut win_x = if flip_x { cursor.x - gap - win_w + pad } else { cursor.x + gap - pad };
-    let mut win_y = if flip_y { cursor.y - gap - win_h + pad } else { cursor.y + gap - pad };
-    // Keep the window fully on the target monitor.
-    win_x = win_x.max(mon_x).min((mon_right - win_w).max(mon_x));
-    win_y = win_y.max(mon_y).min((mon_bottom - win_h).max(mon_y));
-
-    let _ = overlay.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
-        win_w as u32,
-        win_h as u32,
-    )));
-    let _ = overlay.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(
-        win_x as i32,
-        win_y as i32,
-    )));
-    let _ = overlay.emit("quick-open", serde_json::json!({ "flipX": flip_x, "flipY": flip_y }));
-
-    let _ = overlay.set_always_on_top(true);
-    // Show over fullscreen apps / other Spaces (macOS) and every workspace.
-    let _ = overlay.set_visible_on_all_workspaces(true);
-    // macOS: re-apply our higher window level + FullScreenAuxiliary AFTER
-    // set_always_on_top (which would otherwise pin the level back to floating).
-    #[cfg(target_os = "macos")]
-    configure_overlay_for_fullscreen(&overlay);
-    let _ = overlay.show();
-    let _ = overlay.set_focus();
-}
-
-#[cfg(desktop)]
-fn toggle_quick_overlay(app: &tauri::AppHandle) {
-    if let Some(overlay) = app.get_webview_window("quick") {
-        if overlay.is_visible().unwrap_or(false) {
-            let _ = overlay.hide();
-            return;
-        }
-    }
-    show_quick_overlay(app);
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
@@ -219,22 +55,6 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }));
-
-        // OS-global shortcut so Mr. Merchiva can be summoned from ANY app, not
-        // just when Merchiva is focused. The handler toggles the cursor-anchored
-        // overlay window. Registered (the actual key combo) in setup() below.
-        builder = builder.plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, _shortcut, event| {
-                    if matches!(
-                        event.state(),
-                        tauri_plugin_global_shortcut::ShortcutState::Pressed
-                    ) {
-                        toggle_quick_overlay(app);
-                    }
-                })
-                .build(),
-        );
     }
 
     builder
@@ -274,45 +94,6 @@ pub fn run() {
 
             builder.build()?;
 
-            // ── Mr. Merchiva quick-dialog overlay window ──────────────────────
-            // Frameless, transparent, always-on-top. Hidden until the global
-            // shortcut summons it (see toggle_quick_overlay). It loads a public,
-            // chrome-less route that renders only the dialog over the desktop.
-            #[cfg(desktop)]
-            {
-                let quick_url = QUICK_URL.parse().expect("QUICK_URL must be a valid URL");
-                let overlay =
-                    WebviewWindowBuilder::new(app, "quick", WebviewUrl::External(quick_url))
-                        .title("Mr. Merchiva")
-                        .inner_size(480.0, 580.0)
-                        .resizable(false)
-                        .decorations(false)
-                        .transparent(true)
-                        .always_on_top(true)
-                        .visible_on_all_workspaces(true)
-                        .skip_taskbar(true)
-                        .shadow(false)
-                        .visible(false)
-                        .focused(false)
-                        .build()?;
-
-                // Dismiss the overlay when it loses focus (Spotlight behaviour).
-                let overlay_for_event = overlay.clone();
-                overlay.on_window_event(move |event| {
-                    if matches!(event, tauri::WindowEvent::Focused(false)) {
-                        let _ = overlay_for_event.hide();
-                    }
-                });
-
-                // macOS: allow the overlay into fullscreen Spaces + raise its level.
-                #[cfg(target_os = "macos")]
-                configure_overlay_for_fullscreen(&overlay);
-
-                // Summon with ⌘⇧M (macOS) / Ctrl+Shift+M (Windows/Linux), system-wide.
-                use tauri_plugin_global_shortcut::GlobalShortcutExt;
-                app.global_shortcut().register("CommandOrControl+Shift+M")?;
-            }
-
             // Auto-updater — desktop only. The check runs on a background task
             // and the dialog/restart flow lives in the renderer.
             #[cfg(desktop)]
@@ -344,9 +125,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_external,
             nav_back,
-            nav_forward,
-            hide_quick,
-            open_chat
+            nav_forward
         ])
         .run(tauri::generate_context!())
         .expect("error while running merchiva");

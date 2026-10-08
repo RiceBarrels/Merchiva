@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MoreHorizontal, X } from "lucide-react";
-import { AppStoreIcon, BugIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DocsIcon, InventoryIcon, ReportsIcon, SalesIcon, SettingsIcon } from "@/components/device/app-icons";
+import { AppStoreIcon, BugIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DriveIcon, FormsIcon, InventoryIcon, ReportsIcon, SalesIcon, SettingsIcon } from "@/components/device/app-icons";
 import { usePermissions } from "@/lib/context/permissions";
 import { useStoreMachineMode } from "@/lib/store-machine-mode";
 import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
@@ -39,7 +39,8 @@ const NAV_ITEMS: NavItem[] = [
   { labelKey: "nav.personnel", href: "/manager/personnel/schedule", icon: DirectoryIcon, permissionKey: "staffing" },
   { labelKey: "nav.reports",   href: "/manager/reports",         icon: ReportsIcon,     permissionKey: "sales" },
   { labelKey: "nav.chat",      href: "/manager/channel",            icon: ChannelIcon,     permissionKey: "staffing" },
-  { labelKey: "nav.docs", href: "/manager/docs", icon: DocsIcon, permissionKey: "dashboard" },
+  { labelKey: "nav.drive", href: "/manager/drive", icon: DriveIcon, permissionKey: "dashboard" },
+  { labelKey: "nav.forms", href: "/manager/forms", icon: FormsIcon, permissionKey: "dashboard" },
   { labelKey: "nav.bugs", href: "/manager/bugs", icon: BugIcon, permissionKey: "dashboard" },
   { labelKey: "nav.apps",      href: "/manager/apps",            icon: AppStoreIcon,    permissionKey: "settings" },
   { labelKey: "nav.settings",  href: "/manager/settings",        icon: SettingsIcon },

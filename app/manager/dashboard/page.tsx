@@ -5,6 +5,8 @@ import { DesktopMerchivaDashboard, MobileMerchivaDashboard } from "@/components/
 import { useT } from "@/lib/i18n/context";
 import { useDateFormat } from "@/lib/i18n/use-date-format";
 import { useNow } from "@/lib/use-now";
+import { dateKey } from "@/lib/date-key";
+import { useDashboardPageContext } from "@/app/manager/dashboard/use-dashboard-page-context";
 
 export default function DashboardPage() {
   const t = useT();
@@ -13,6 +15,7 @@ export default function DashboardPage() {
   // over at midnight on a screen that stays open all day.
   const today = useNow(60_000);
   const subtitle = formatDate(today, { weekday: "long", month: "long", day: "numeric" });
+  useDashboardPageContext(dateKey(today));
 
   return (
     <>

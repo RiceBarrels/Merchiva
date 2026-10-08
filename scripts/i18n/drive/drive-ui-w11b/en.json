@@ -1,0 +1,16 @@
+{
+  "drive": {
+    "preview": {
+      "rowsShown": "Showing the first {count} rows.",
+      "rowsShownOne": "Showing the first row.",
+      "columnsShown": "Showing the first {count} columns.",
+      "openBlocked": "Your browser blocked the new window. Try again.",
+      "pdfExternal": "Open the PDF to read it."
+    },
+    "apps": {
+      "empty": "No files from this app yet.",
+      "latest": "Last added {date}",
+      "unavailable": "Files from this app aren't available to you here."
+    }
+  }
+}

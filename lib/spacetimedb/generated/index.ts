@@ -34,7 +34,10 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AbortDriveUploadReducer from "./abort_drive_upload_reducer";
 import AcceptInvitationReducer from "./accept_invitation_reducer";
+import AcknowledgeDriveNoticeReducer from "./acknowledge_drive_notice_reducer";
+import AcquireSheetLeaseReducer from "./acquire_sheet_lease_reducer";
 import AddCouponReducer from "./add_coupon_reducer";
 import AddDocumentCommentReducer from "./add_document_comment_reducer";
 import AddExpenseReducer from "./add_expense_reducer";
@@ -60,14 +63,22 @@ import AddWasteLogReducer from "./add_waste_log_reducer";
 import AppendAiJobChunkReducer from "./append_ai_job_chunk_reducer";
 import ApproveDeviceLoginReducer from "./approve_device_login_reducer";
 import ArchiveAiChatSessionReducer from "./archive_ai_chat_session_reducer";
+import AssignFormReducer from "./assign_form_reducer";
 import AssignRoleTaskReducer from "./assign_role_task_reducer";
 import AssignTierReducer from "./assign_tier_reducer";
+import AuthorizeDriveUploadReducer from "./authorize_drive_upload_reducer";
+import BackfillDriveAccessV1Reducer from "./backfill_drive_access_v_1_reducer";
+import BeginAppUploadReducer from "./begin_app_upload_reducer";
+import BeginDriveUploadReducer from "./begin_drive_upload_reducer";
 import CancelInvitationReducer from "./cancel_invitation_reducer";
+import CancelSheetLeaseRequestReducer from "./cancel_sheet_lease_request_reducer";
 import ClaimFirstAdminReducer from "./claim_first_admin_reducer";
 import ClaimPerkReducer from "./claim_perk_reducer";
 import ClearDeviceOperatorReducer from "./clear_device_operator_reducer";
+import ClearPinLockoutsReducer from "./clear_pin_lockouts_reducer";
 import ClearTrainingObjectiveGradeReducer from "./clear_training_objective_grade_reducer";
 import CompactDocumentReducer from "./compact_document_reducer";
+import CompactSheetReducer from "./compact_sheet_reducer";
 import CompleteRoleTaskReducer from "./complete_role_task_reducer";
 import ConsumeAiJobReducer from "./consume_ai_job_reducer";
 import ConsumeDeviceLoginReducer from "./consume_device_login_reducer";
@@ -78,6 +89,9 @@ import CreateConversationReducer from "./create_conversation_reducer";
 import CreateDesignReducer from "./create_design_reducer";
 import CreateDeviceLoginRequestReducer from "./create_device_login_request_reducer";
 import CreateDocumentReducer from "./create_document_reducer";
+import CreateDriveDocumentReducer from "./create_drive_document_reducer";
+import CreateDriveFolderReducer from "./create_drive_folder_reducer";
+import CreateFormReducer from "./create_form_reducer";
 import CreateMembershipTierReducer from "./create_membership_tier_reducer";
 import CreateNotificationReducer from "./create_notification_reducer";
 import CreateOrgReducer from "./create_org_reducer";
@@ -89,6 +103,7 @@ import CreateSiteBookingReducer from "./create_site_booking_reducer";
 import CreateSiteOrderReducer from "./create_site_order_reducer";
 import CreateTimeOffRequestReducer from "./create_time_off_request_reducer";
 import CreateUserReducer from "./create_user_reducer";
+import DeclineSheetLeaseRequestReducer from "./decline_sheet_lease_request_reducer";
 import DeleteAiJobReducer from "./delete_ai_job_reducer";
 import DeleteBlogPostReducer from "./delete_blog_post_reducer";
 import DeleteBugReportReducer from "./delete_bug_report_reducer";
@@ -98,7 +113,10 @@ import DeleteDesignReducer from "./delete_design_reducer";
 import DeleteDocumentCommentReducer from "./delete_document_comment_reducer";
 import DeleteDocumentForeverReducer from "./delete_document_forever_reducer";
 import DeleteDocumentVersionReducer from "./delete_document_version_reducer";
+import DeleteDriveEntriesForeverReducer from "./delete_drive_entries_forever_reducer";
 import DeleteExpenseReducer from "./delete_expense_reducer";
+import DeleteFormReducer from "./delete_form_reducer";
+import DeleteFormResponseReducer from "./delete_form_response_reducer";
 import DeleteInventoryItemReducer from "./delete_inventory_item_reducer";
 import DeleteLocationReducer from "./delete_location_reducer";
 import DeleteMessageReducer from "./delete_message_reducer";
@@ -123,23 +141,29 @@ import DisconnectCloverReducer from "./disconnect_clover_reducer";
 import DisconnectScheduleIntegrationReducer from "./disconnect_schedule_integration_reducer";
 import DismissNotificationReducer from "./dismiss_notification_reducer";
 import DuplicateDocumentReducer from "./duplicate_document_reducer";
+import EditChatMessageReducer from "./edit_chat_message_reducer";
 import EditDocumentCommentReducer from "./edit_document_comment_reducer";
+import EmptyDriveTrashReducer from "./empty_drive_trash_reducer";
 import FinalizeAiJobReducer from "./finalize_ai_job_reducer";
 import GradeTrainingDayReducer from "./grade_training_day_reducer";
 import GradeTrainingObjectiveReducer from "./grade_training_objective_reducer";
 import GrantDocumentAccessReducer from "./grant_document_access_reducer";
+import HeartbeatSheetLeaseReducer from "./heartbeat_sheet_lease_reducer";
 import InviteToOrgReducer from "./invite_to_org_reducer";
+import LeaveConversationReducer from "./leave_conversation_reducer";
 import LeaveOrgReducer from "./leave_org_reducer";
 import LogSupplierMessageReducer from "./log_supplier_message_reducer";
 import LoginWithPasswordReducer from "./login_with_password_reducer";
 import ManagerRecordPunchReducer from "./manager_record_punch_reducer";
 import ManagerSetPunchWindowReducer from "./manager_set_punch_window_reducer";
 import MarkAllNotificationsReadReducer from "./mark_all_notifications_read_reducer";
+import MarkChatReadReducer from "./mark_chat_read_reducer";
 import MarkNotificationReadReducer from "./mark_notification_read_reducer";
 import MigrateMoneyV1Reducer from "./migrate_money_v_1_reducer";
 import MigrateOwnerPermissionsV1Reducer from "./migrate_owner_permissions_v_1_reducer";
 import MigratePunchCodeFlagsV1Reducer from "./migrate_punch_code_flags_v_1_reducer";
 import MigrateSecurityV1Reducer from "./migrate_security_v_1_reducer";
+import MoveDriveEntriesReducer from "./move_drive_entries_reducer";
 import PlatformAdminAddReducer from "./platform_admin_add_reducer";
 import PlatformAdminRemoveReducer from "./platform_admin_remove_reducer";
 import PlatformAdminSetPasswordReducer from "./platform_admin_set_password_reducer";
@@ -147,56 +171,101 @@ import PlatformAdminVerifyReducer from "./platform_admin_verify_reducer";
 import PruneEphemeralReducer from "./prune_ephemeral_reducer";
 import PruneOrgHistoryReducer from "./prune_org_history_reducer";
 import PushDocumentUpdateReducer from "./push_document_update_reducer";
+import PushSheetOpsReducer from "./push_sheet_ops_reducer";
+import RecordOperatorPunchReducer from "./record_operator_punch_reducer";
 import RecordPunchReducer from "./record_punch_reducer";
+import RecordSelfPunchReducer from "./record_self_punch_reducer";
 import RecordSupplierOrderReducer from "./record_supplier_order_reducer";
 import RecordTaskCompletionReducer from "./record_task_completion_reducer";
 import RedeemCouponReducer from "./redeem_coupon_reducer";
 import RedeemPointsReducer from "./redeem_points_reducer";
+import RefreshMyDriveAccessReducer from "./refresh_my_drive_access_reducer";
 import RefundPaymentReducer from "./refund_payment_reducer";
 import RegisterCustomerReducer from "./register_customer_reducer";
 import RegisterDeviceReducer from "./register_device_reducer";
 import RegisterServiceIdentityReducer from "./register_service_identity_reducer";
+import ReleaseSheetLeaseReducer from "./release_sheet_lease_reducer";
+import RemoveConversationMemberReducer from "./remove_conversation_member_reducer";
 import RemoveDocumentPresenceReducer from "./remove_document_presence_reducer";
+import RemovePagePresenceReducer from "./remove_page_presence_reducer";
 import RemoveStoreDeviceReducer from "./remove_store_device_reducer";
 import RenameDocumentReducer from "./rename_document_reducer";
 import RenameDocumentVersionReducer from "./rename_document_version_reducer";
+import RenameDriveDocumentReducer from "./rename_drive_document_reducer";
+import RenameDriveItemReducer from "./rename_drive_item_reducer";
 import ReplyDocumentCommentReducer from "./reply_document_comment_reducer";
 import ReportBugReducer from "./report_bug_reducer";
 import RequestTrainingReviewReducer from "./request_training_review_reducer";
+import ResetSheetContentReducer from "./reset_sheet_content_reducer";
 import ResolveDeviceOperatorReducer from "./resolve_device_operator_reducer";
+import ResolveDeviceOperatorAttemptReducer from "./resolve_device_operator_attempt_reducer";
 import ResolveDocumentCommentReducer from "./resolve_document_comment_reducer";
 import ResolveTrainingReviewReducer from "./resolve_training_review_reducer";
 import RestoreDocumentReducer from "./restore_document_reducer";
+import RestoreDriveEntriesReducer from "./restore_drive_entries_reducer";
+import ReviewFormResponseReducer from "./review_form_response_reducer";
 import RevokeDocumentAccessReducer from "./revoke_document_access_reducer";
 import SaveAiChatSessionReducer from "./save_ai_chat_session_reducer";
 import SaveComponentReducer from "./save_component_reducer";
 import SaveDailyBriefingReducer from "./save_daily_briefing_reducer";
 import SaveDocumentVersionReducer from "./save_document_version_reducer";
 import SavePushSubscriptionReducer from "./save_push_subscription_reducer";
+import SaveSheetVersionReducer from "./save_sheet_version_reducer";
 import SendMerchivaMessageReducer from "./send_merchiva_message_reducer";
 import SendMessageReducer from "./send_message_reducer";
+import SendThreadReplyReducer from "./send_thread_reply_reducer";
+import ServiceAckDriveBlobGcReducer from "./service_ack_drive_blob_gc_reducer";
+import ServiceBackfillAppFilesReducer from "./service_backfill_app_files_reducer";
+import ServiceCommitDriveUploadReducer from "./service_commit_drive_upload_reducer";
 import ServiceCreateNotificationReducer from "./service_create_notification_reducer";
+import ServiceDiscardDriveBlobReducer from "./service_discard_drive_blob_reducer";
+import ServiceDriveSweepReducer from "./service_drive_sweep_reducer";
+import ServiceEnqueueOrphanDriveBlobsReducer from "./service_enqueue_orphan_drive_blobs_reducer";
+import ServiceEnsureDriveReaderReducer from "./service_ensure_drive_reader_reducer";
+import ServiceFailDriveBlobGcReducer from "./service_fail_drive_blob_gc_reducer";
+import ServiceFailDriveUploadReducer from "./service_fail_drive_upload_reducer";
+import ServiceFinishDriveReconcileReducer from "./service_finish_drive_reconcile_reducer";
 import ServiceLogSupplierMessageReducer from "./service_log_supplier_message_reducer";
+import ServiceRecomputeStorageReducer from "./service_recompute_storage_reducer";
 import ServiceRecordAiUsageReducer from "./service_record_ai_usage_reducer";
+import ServiceRecordAppFileReducer from "./service_record_app_file_reducer";
 import ServiceRecordScheduleSyncReducer from "./service_record_schedule_sync_reducer";
 import ServiceRepairInventoryItemReducer from "./service_repair_inventory_item_reducer";
+import ServiceSetDriveQuotaReducer from "./service_set_drive_quota_reducer";
+import ServiceSetDriveThumbReducer from "./service_set_drive_thumb_reducer";
 import ServiceSetScheduleIntegrationReducer from "./service_set_schedule_integration_reducer";
+import ServiceSubmitPublicFormResponseReducer from "./service_submit_public_form_response_reducer";
 import SetAiUsageQuotaReducer from "./set_ai_usage_quota_reducer";
 import SetAssistantConfigReducer from "./set_assistant_config_reducer";
 import SetBetaFeaturesReducer from "./set_beta_features_reducer";
+import SetChannelTopicReducer from "./set_channel_topic_reducer";
+import SetChatMessagePinnedReducer from "./set_chat_message_pinned_reducer";
+import SetChatMutedReducer from "./set_chat_muted_reducer";
+import SetChatStarredReducer from "./set_chat_starred_reducer";
 import SetConversationMerchivaReducer from "./set_conversation_merchiva_reducer";
 import SetDeviceAppsReducer from "./set_device_apps_reducer";
+import SetDocumentFolderReducer from "./set_document_folder_reducer";
 import SetDocumentVisibilityReducer from "./set_document_visibility_reducer";
+import SetFormPublicLinkReducer from "./set_form_public_link_reducer";
+import SetFormStatusReducer from "./set_form_status_reducer";
 import SetMemberHourlyRateReducer from "./set_member_hourly_rate_reducer";
+import SetMemberPunchInCodeReducer from "./set_member_punch_in_code_reducer";
 import SetMemberStatusReducer from "./set_member_status_reducer";
+import SetOwnPunchInCodeReducer from "./set_own_punch_in_code_reducer";
 import SetPunchInCodeReducer from "./set_punch_in_code_reducer";
 import SetScheduleIntegrationReducer from "./set_schedule_integration_reducer";
 import SetSupplierInboundPrefixReducer from "./set_supplier_inbound_prefix_reducer";
 import SetUserAdminReducer from "./set_user_admin_reducer";
 import SkipRoleTaskReducer from "./skip_role_task_reducer";
+import SubmitFormResponseReducer from "./submit_form_response_reducer";
+import ToggleChatReactionReducer from "./toggle_chat_reaction_reducer";
 import ToggleDocumentStarReducer from "./toggle_document_star_reducer";
+import ToggleDriveStarReducer from "./toggle_drive_star_reducer";
 import ToggleTodoReducer from "./toggle_todo_reducer";
+import TransferFormReducer from "./transfer_form_reducer";
 import TrashDocumentReducer from "./trash_document_reducer";
+import TrashDriveEntriesReducer from "./trash_drive_entries_reducer";
+import UnassignFormReducer from "./unassign_form_reducer";
 import UpdateBlogPostReducer from "./update_blog_post_reducer";
 import UpdateBookingStatusReducer from "./update_booking_status_reducer";
 import UpdateBugReportReducer from "./update_bug_report_reducer";
@@ -205,6 +274,8 @@ import UpdateDesignReducer from "./update_design_reducer";
 import UpdateDisplayNameReducer from "./update_display_name_reducer";
 import UpdateDocumentMetaReducer from "./update_document_meta_reducer";
 import UpdateExpenseReducer from "./update_expense_reducer";
+import UpdateFormDefinitionReducer from "./update_form_definition_reducer";
+import UpdateFormSettingsReducer from "./update_form_settings_reducer";
 import UpdateInventoryItemReducer from "./update_inventory_item_reducer";
 import UpdateLocationReducer from "./update_location_reducer";
 import UpdateMemberPermissionsReducer from "./update_member_permissions_reducer";
@@ -234,7 +305,9 @@ import UpdateTrainingDayReducer from "./update_training_day_reducer";
 import UpdateTrainingObjectiveReducer from "./update_training_objective_reducer";
 import UpsertAvailabilityReducer from "./upsert_availability_reducer";
 import UpsertDocumentPresenceReducer from "./upsert_document_presence_reducer";
+import UpsertPagePresenceReducer from "./upsert_page_presence_reducer";
 import VerifyManagerPinReducer from "./verify_manager_pin_reducer";
+import VerifyManagerPinAttemptReducer from "./verify_manager_pin_attempt_reducer";
 
 // Import all procedure arg schemas
 
@@ -243,26 +316,51 @@ import AiChatSessionRow from "./ai_chat_session_table";
 import AiJobRow from "./ai_job_table";
 import AiUsageRow from "./ai_usage_table";
 import AiUsageQuotaRow from "./ai_usage_quota_table";
+import AppFileRow from "./app_file_table";
 import BlogPostRow from "./blog_post_table";
 import BugReportRow from "./bug_report_table";
+import ChatChannelInfoRow from "./chat_channel_info_table";
 import ChatConversationRow from "./chat_conversation_table";
 import ChatMemberRow from "./chat_member_table";
+import ChatMemberStateRow from "./chat_member_state_table";
 import ChatMembershipIndexRow from "./chat_membership_index_table";
 import ChatMessageRow from "./chat_message_table";
+import ChatMessageExtRow from "./chat_message_ext_table";
+import ChatReactionRow from "./chat_reaction_table";
 import CouponRow from "./coupon_table";
 import DailyBriefingRow from "./daily_briefing_table";
 import DesignRow from "./design_table";
 import DeviceLoginRequestRow from "./device_login_request_table";
+import DeviceLoginRequesterRow from "./device_login_requester_table";
 import DeviceOperatorSessionRow from "./device_operator_session_table";
 import DocumentRow from "./document_table";
 import DocumentAccessRow from "./document_access_table";
 import DocumentCommentRow from "./document_comment_table";
+import DocumentEditLeaseRow from "./document_edit_lease_table";
+import DocumentFileRow from "./document_file_table";
 import DocumentPresenceRow from "./document_presence_table";
+import DocumentReaderIndexRow from "./document_reader_index_table";
+import DocumentSizeRow from "./document_size_table";
 import DocumentSnapshotRow from "./document_snapshot_table";
 import DocumentStarRow from "./document_star_table";
 import DocumentUpdateRow from "./document_update_table";
 import DocumentVersionRow from "./document_version_table";
+import DocumentVersionStateRow from "./document_version_state_table";
+import DriveAdminIndexRow from "./drive_admin_index_table";
+import DriveBlobGcRow from "./drive_blob_gc_table";
+import DriveItemRow from "./drive_item_table";
+import DriveNoticeAckRow from "./drive_notice_ack_table";
+import DriveServiceReaderRow from "./drive_service_reader_table";
+import DriveStarRow from "./drive_star_table";
+import DriveUsageRow from "./drive_usage_table";
 import ExpenseRow from "./expense_table";
+import FormRow from "./form_table";
+import FormAssignmentRow from "./form_assignment_table";
+import FormCompletionRow from "./form_completion_table";
+import FormMetaRow from "./form_meta_table";
+import FormPublicRow from "./form_public_table";
+import FormResponseRow from "./form_response_table";
+import FormResponseReviewRow from "./form_response_review_table";
 import InventoryItemRow from "./inventory_item_table";
 import InventoryTransactionRow from "./inventory_transaction_table";
 import LocationRow from "./location_table";
@@ -271,8 +369,11 @@ import NotificationRow from "./notification_table";
 import OrgInvitationRow from "./org_invitation_table";
 import OrgMemberRow from "./org_member_table";
 import OrgMembershipIndexRow from "./org_membership_index_table";
+import OrgStorageUsageRow from "./org_storage_usage_table";
 import OrganizationRow from "./organization_table";
+import PagePresenceRow from "./page_presence_table";
 import PaymentRow from "./payment_table";
+import PinAttemptResultRow from "./pin_attempt_result_table";
 import PunchEventRow from "./punch_event_table";
 import PurchaseOrderRow from "./purchase_order_table";
 import PushSubscriptionRow from "./push_subscription_table";
@@ -371,6 +472,20 @@ const tablesSchema = __schema({
       { name: 'ai_usage_quota_organization_id_key', constraint: 'unique', columns: ['organizationId'] },
     ],
   }, AiUsageQuotaRow),
+  appFile: __table({
+    name: 'app_file',
+    indexes: [
+      { accessor: 'keyHash', name: 'app_file_key_hash_idx_btree', algorithm: 'btree', columns: [
+        'keyHash',
+      ] },
+      { accessor: 'byOrganizationId', name: 'app_file_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'app_file_key_hash_key', constraint: 'unique', columns: ['keyHash'] },
+    ],
+  }, AppFileRow),
   blogPost: __table({
     name: 'blog_post',
     indexes: [
@@ -405,6 +520,17 @@ const tablesSchema = __schema({
       { name: 'bug_report_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, BugReportRow),
+  chatChannelInfo: __table({
+    name: 'chat_channel_info',
+    indexes: [
+      { accessor: 'conversationId', name: 'chat_channel_info_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_channel_info_conversation_id_key', constraint: 'unique', columns: ['conversationId'] },
+    ],
+  }, ChatChannelInfoRow),
   chatConversation: __table({
     name: 'chat_conversation',
     indexes: [
@@ -436,6 +562,23 @@ const tablesSchema = __schema({
       { name: 'chat_member_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ChatMemberRow),
+  chatMemberState: __table({
+    name: 'chat_member_state',
+    indexes: [
+      { accessor: 'byConversationId', name: 'chat_member_state_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+      { accessor: 'id', name: 'chat_member_state_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byUserId', name: 'chat_member_state_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_member_state_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChatMemberStateRow),
   chatMembershipIndex: __table({
     name: 'chat_membership_index',
     indexes: [
@@ -467,6 +610,40 @@ const tablesSchema = __schema({
       { name: 'chat_message_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ChatMessageRow),
+  chatMessageExt: __table({
+    name: 'chat_message_ext',
+    indexes: [
+      { accessor: 'byConversationId', name: 'chat_message_ext_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+      { accessor: 'messageId', name: 'chat_message_ext_message_id_idx_btree', algorithm: 'btree', columns: [
+        'messageId',
+      ] },
+      { accessor: 'byThreadParentId', name: 'chat_message_ext_thread_parent_id_idx_btree', algorithm: 'btree', columns: [
+        'threadParentId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_message_ext_message_id_key', constraint: 'unique', columns: ['messageId'] },
+    ],
+  }, ChatMessageExtRow),
+  chatReaction: __table({
+    name: 'chat_reaction',
+    indexes: [
+      { accessor: 'byConversationId', name: 'chat_reaction_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+      { accessor: 'id', name: 'chat_reaction_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byMessageId', name: 'chat_reaction_message_id_idx_btree', algorithm: 'btree', columns: [
+        'messageId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_reaction_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChatReactionRow),
   coupon: __table({
     name: 'coupon',
     indexes: [
@@ -532,6 +709,23 @@ const tablesSchema = __schema({
       { name: 'device_login_request_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, DeviceLoginRequestRow),
+  deviceLoginRequester: __table({
+    name: 'device_login_requester',
+    indexes: [
+      { accessor: 'byOrganizationId', name: 'device_login_requester_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'requestId', name: 'device_login_requester_request_id_idx_btree', algorithm: 'btree', columns: [
+        'requestId',
+      ] },
+      { accessor: 'byRequesterIdentity', name: 'device_login_requester_requester_identity_idx_btree', algorithm: 'btree', columns: [
+        'requesterIdentity',
+      ] },
+    ],
+    constraints: [
+      { name: 'device_login_requester_request_id_key', constraint: 'unique', columns: ['requestId'] },
+    ],
+  }, DeviceLoginRequesterRow),
   deviceOperatorSession: __table({
     name: 'device_operator_session',
     indexes: [
@@ -597,6 +791,40 @@ const tablesSchema = __schema({
       { name: 'document_comment_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, DocumentCommentRow),
+  documentEditLease: __table({
+    name: 'document_edit_lease',
+    indexes: [
+      { accessor: 'documentId', name: 'document_edit_lease_document_id_idx_btree', algorithm: 'btree', columns: [
+        'documentId',
+      ] },
+      { accessor: 'byHolderConnectionId', name: 'document_edit_lease_holder_connection_id_idx_btree', algorithm: 'btree', columns: [
+        'holderConnectionId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'document_edit_lease_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byRequestedByConnectionId', name: 'document_edit_lease_requested_by_connection_id_idx_btree', algorithm: 'btree', columns: [
+        'requestedByConnectionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'document_edit_lease_document_id_key', constraint: 'unique', columns: ['documentId'] },
+    ],
+  }, DocumentEditLeaseRow),
+  documentFile: __table({
+    name: 'document_file',
+    indexes: [
+      { accessor: 'documentId', name: 'document_file_document_id_idx_btree', algorithm: 'btree', columns: [
+        'documentId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'document_file_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'document_file_document_id_key', constraint: 'unique', columns: ['documentId'] },
+    ],
+  }, DocumentFileRow),
   documentPresence: __table({
     name: 'document_presence',
     indexes: [
@@ -617,6 +845,37 @@ const tablesSchema = __schema({
       { name: 'document_presence_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, DocumentPresenceRow),
+  documentReaderIndex: __table({
+    name: 'document_reader_index',
+    indexes: [
+      { accessor: 'byDocumentId', name: 'document_reader_index_document_id_idx_btree', algorithm: 'btree', columns: [
+        'documentId',
+      ] },
+      { accessor: 'id', name: 'document_reader_index_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byUserId', name: 'document_reader_index_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'document_reader_index_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, DocumentReaderIndexRow),
+  documentSize: __table({
+    name: 'document_size',
+    indexes: [
+      { accessor: 'documentId', name: 'document_size_document_id_idx_btree', algorithm: 'btree', columns: [
+        'documentId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'document_size_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'document_size_document_id_key', constraint: 'unique', columns: ['documentId'] },
+    ],
+  }, DocumentSizeRow),
   documentSnapshot: __table({
     name: 'document_snapshot',
     indexes: [
@@ -682,6 +941,169 @@ const tablesSchema = __schema({
       { name: 'document_version_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, DocumentVersionRow),
+  documentVersionState: __table({
+    name: 'document_version_state',
+    indexes: [
+      { accessor: 'byDocumentId', name: 'document_version_state_document_id_idx_btree', algorithm: 'btree', columns: [
+        'documentId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'document_version_state_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'versionId', name: 'document_version_state_version_id_idx_btree', algorithm: 'btree', columns: [
+        'versionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'document_version_state_version_id_key', constraint: 'unique', columns: ['versionId'] },
+    ],
+  }, DocumentVersionStateRow),
+  driveAdminIndex: __table({
+    name: 'drive_admin_index',
+    indexes: [
+      { accessor: 'byAdminScope', name: 'drive_admin_index_admin_scope_idx_btree', algorithm: 'btree', columns: [
+        'adminScope',
+      ] },
+      { accessor: 'id', name: 'drive_admin_index_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byUserId', name: 'drive_admin_index_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'drive_admin_index_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, DriveAdminIndexRow),
+  driveBlobGc: __table({
+    name: 'drive_blob_gc',
+    indexes: [
+      { accessor: 'byAction', name: 'drive_blob_gc_action_idx_btree', algorithm: 'btree', columns: [
+        'action',
+      ] },
+      { accessor: 'blobKey', name: 'drive_blob_gc_blob_key_idx_btree', algorithm: 'btree', columns: [
+        'blobKey',
+      ] },
+      { accessor: 'byItemId', name: 'drive_blob_gc_item_id_idx_btree', algorithm: 'btree', columns: [
+        'itemId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'drive_blob_gc_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byScope', name: 'drive_blob_gc_scope_idx_btree', algorithm: 'btree', columns: [
+        'scope',
+      ] },
+    ],
+    constraints: [
+      { name: 'drive_blob_gc_blob_key_key', constraint: 'unique', columns: ['blobKey'] },
+    ],
+  }, DriveBlobGcRow),
+  driveItem: __table({
+    name: 'drive_item',
+    indexes: [
+      { accessor: 'byAdminScope', name: 'drive_item_admin_scope_idx_btree', algorithm: 'btree', columns: [
+        'adminScope',
+      ] },
+      { accessor: 'id', name: 'drive_item_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'drive_item_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byOwnerMemberId', name: 'drive_item_owner_member_id_idx_btree', algorithm: 'btree', columns: [
+        'ownerMemberId',
+      ] },
+      { accessor: 'byParentId', name: 'drive_item_parent_id_idx_btree', algorithm: 'btree', columns: [
+        'parentId',
+      ] },
+      { accessor: 'byStatus', name: 'drive_item_status_idx_btree', algorithm: 'btree', columns: [
+        'status',
+      ] },
+      { accessor: 'byTrashRootAt', name: 'drive_item_trash_root_at_idx_btree', algorithm: 'btree', columns: [
+        'trashRootAt',
+      ] },
+      { accessor: 'byTrashRootId', name: 'drive_item_trash_root_id_idx_btree', algorithm: 'btree', columns: [
+        'trashRootId',
+      ] },
+      { accessor: 'byTrashed', name: 'drive_item_trashed_idx_btree', algorithm: 'btree', columns: [
+        'trashed',
+      ] },
+      { accessor: 'byUploaderIdentity', name: 'drive_item_uploader_identity_idx_btree', algorithm: 'btree', columns: [
+        'uploaderIdentity',
+      ] },
+    ],
+    constraints: [
+      { name: 'drive_item_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, DriveItemRow),
+  driveNoticeAck: __table({
+    name: 'drive_notice_ack',
+    indexes: [
+      { accessor: 'id', name: 'drive_notice_ack_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byMemberId', name: 'drive_notice_ack_member_id_idx_btree', algorithm: 'btree', columns: [
+        'memberId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'drive_notice_ack_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byUserId', name: 'drive_notice_ack_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'drive_notice_ack_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, DriveNoticeAckRow),
+  driveServiceReader: __table({
+    name: 'drive_service_reader',
+    indexes: [
+      { accessor: 'identityHex', name: 'drive_service_reader_identity_hex_idx_btree', algorithm: 'btree', columns: [
+        'identityHex',
+      ] },
+      { accessor: 'byScope', name: 'drive_service_reader_scope_idx_btree', algorithm: 'btree', columns: [
+        'scope',
+      ] },
+      { accessor: 'byUserId', name: 'drive_service_reader_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'drive_service_reader_identity_hex_key', constraint: 'unique', columns: ['identityHex'] },
+    ],
+  }, DriveServiceReaderRow),
+  driveStar: __table({
+    name: 'drive_star',
+    indexes: [
+      { accessor: 'id', name: 'drive_star_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byItemId', name: 'drive_star_item_id_idx_btree', algorithm: 'btree', columns: [
+        'itemId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'drive_star_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'drive_star_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, DriveStarRow),
+  driveUsage: __table({
+    name: 'drive_usage',
+    indexes: [
+      { accessor: 'organizationId', name: 'drive_usage_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byScope', name: 'drive_usage_scope_idx_btree', algorithm: 'btree', columns: [
+        'scope',
+      ] },
+    ],
+    constraints: [
+      { name: 'drive_usage_organization_id_key', constraint: 'unique', columns: ['organizationId'] },
+    ],
+  }, DriveUsageRow),
   expense: __table({
     name: 'expense',
     indexes: [
@@ -699,6 +1121,146 @@ const tablesSchema = __schema({
       { name: 'expense_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ExpenseRow),
+  form: __table({
+    name: 'form',
+    indexes: [
+      { accessor: 'byAdminScope', name: 'form_admin_scope_idx_btree', algorithm: 'btree', columns: [
+        'adminScope',
+      ] },
+      { accessor: 'id', name: 'form_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'form_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byOwnerMemberId', name: 'form_owner_member_id_idx_btree', algorithm: 'btree', columns: [
+        'ownerMemberId',
+      ] },
+    ],
+    constraints: [
+      { name: 'form_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, FormRow),
+  formAssignment: __table({
+    name: 'form_assignment',
+    indexes: [
+      { accessor: 'byFormId', name: 'form_assignment_form_id_idx_btree', algorithm: 'btree', columns: [
+        'formId',
+      ] },
+      { accessor: 'id', name: 'form_assignment_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byMemberId', name: 'form_assignment_member_id_idx_btree', algorithm: 'btree', columns: [
+        'memberId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'form_assignment_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'form_assignment_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, FormAssignmentRow),
+  formCompletion: __table({
+    name: 'form_completion',
+    indexes: [
+      { accessor: 'byFormId', name: 'form_completion_form_id_idx_btree', algorithm: 'btree', columns: [
+        'formId',
+      ] },
+      { accessor: 'id', name: 'form_completion_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byMemberId', name: 'form_completion_member_id_idx_btree', algorithm: 'btree', columns: [
+        'memberId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'form_completion_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'form_completion_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, FormCompletionRow),
+  formMeta: __table({
+    name: 'form_meta',
+    indexes: [
+      { accessor: 'byAdminScope', name: 'form_meta_admin_scope_idx_btree', algorithm: 'btree', columns: [
+        'adminScope',
+      ] },
+      { accessor: 'formId', name: 'form_meta_form_id_idx_btree', algorithm: 'btree', columns: [
+        'formId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'form_meta_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byOwnerMemberId', name: 'form_meta_owner_member_id_idx_btree', algorithm: 'btree', columns: [
+        'ownerMemberId',
+      ] },
+    ],
+    constraints: [
+      { name: 'form_meta_form_id_key', constraint: 'unique', columns: ['formId'] },
+    ],
+  }, FormMetaRow),
+  formPublic: __table({
+    name: 'form_public',
+    indexes: [
+      { accessor: 'byFormId', name: 'form_public_form_id_idx_btree', algorithm: 'btree', columns: [
+        'formId',
+      ] },
+      { accessor: 'byScope', name: 'form_public_scope_idx_btree', algorithm: 'btree', columns: [
+        'scope',
+      ] },
+      { accessor: 'token', name: 'form_public_token_idx_btree', algorithm: 'btree', columns: [
+        'token',
+      ] },
+    ],
+    constraints: [
+      { name: 'form_public_token_key', constraint: 'unique', columns: ['token'] },
+    ],
+  }, FormPublicRow),
+  formResponse: __table({
+    name: 'form_response',
+    indexes: [
+      { accessor: 'byAdminScope', name: 'form_response_admin_scope_idx_btree', algorithm: 'btree', columns: [
+        'adminScope',
+      ] },
+      { accessor: 'byFormId', name: 'form_response_form_id_idx_btree', algorithm: 'btree', columns: [
+        'formId',
+      ] },
+      { accessor: 'byFormOwnerMemberId', name: 'form_response_form_owner_member_id_idx_btree', algorithm: 'btree', columns: [
+        'formOwnerMemberId',
+      ] },
+      { accessor: 'id', name: 'form_response_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'form_response_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byRespondentMemberId', name: 'form_response_respondent_member_id_idx_btree', algorithm: 'btree', columns: [
+        'respondentMemberId',
+      ] },
+    ],
+    constraints: [
+      { name: 'form_response_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, FormResponseRow),
+  formResponseReview: __table({
+    name: 'form_response_review',
+    indexes: [
+      { accessor: 'byAdminScope', name: 'form_response_review_admin_scope_idx_btree', algorithm: 'btree', columns: [
+        'adminScope',
+      ] },
+      { accessor: 'byFormId', name: 'form_response_review_form_id_idx_btree', algorithm: 'btree', columns: [
+        'formId',
+      ] },
+      { accessor: 'responseId', name: 'form_response_review_response_id_idx_btree', algorithm: 'btree', columns: [
+        'responseId',
+      ] },
+    ],
+    constraints: [
+      { name: 'form_response_review_response_id_key', constraint: 'unique', columns: ['responseId'] },
+    ],
+  }, FormResponseReviewRow),
   inventoryItem: __table({
     name: 'inventory_item',
     indexes: [
@@ -832,6 +1394,17 @@ const tablesSchema = __schema({
       { name: 'org_membership_index_member_id_key', constraint: 'unique', columns: ['memberId'] },
     ],
   }, OrgMembershipIndexRow),
+  orgStorageUsage: __table({
+    name: 'org_storage_usage',
+    indexes: [
+      { accessor: 'organizationId', name: 'org_storage_usage_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'org_storage_usage_organization_id_key', constraint: 'unique', columns: ['organizationId'] },
+    ],
+  }, OrgStorageUsageRow),
   organization: __table({
     name: 'organization',
     indexes: [
@@ -852,6 +1425,23 @@ const tablesSchema = __schema({
       { name: 'organization_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, OrganizationRow),
+  pagePresence: __table({
+    name: 'page_presence',
+    indexes: [
+      { accessor: 'byConnectionId', name: 'page_presence_connection_id_idx_btree', algorithm: 'btree', columns: [
+        'connectionId',
+      ] },
+      { accessor: 'id', name: 'page_presence_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'page_presence_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'page_presence_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, PagePresenceRow),
   payment: __table({
     name: 'payment',
     indexes: [
@@ -869,6 +1459,20 @@ const tablesSchema = __schema({
       { name: 'payment_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, PaymentRow),
+  pinAttemptResult: __table({
+    name: 'pin_attempt_result',
+    indexes: [
+      { accessor: 'identity', name: 'pin_attempt_result_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'byOrganizationId', name: 'pin_attempt_result_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'pin_attempt_result_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PinAttemptResultRow),
   punchEvent: __table({
     name: 'punch_event',
     indexes: [
@@ -1391,7 +1995,10 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("abort_drive_upload", AbortDriveUploadReducer),
   __reducerSchema("accept_invitation", AcceptInvitationReducer),
+  __reducerSchema("acknowledge_drive_notice", AcknowledgeDriveNoticeReducer),
+  __reducerSchema("acquire_sheet_lease", AcquireSheetLeaseReducer),
   __reducerSchema("add_coupon", AddCouponReducer),
   __reducerSchema("add_document_comment", AddDocumentCommentReducer),
   __reducerSchema("add_expense", AddExpenseReducer),
@@ -1417,14 +2024,22 @@ const reducersSchema = __reducers(
   __reducerSchema("append_ai_job_chunk", AppendAiJobChunkReducer),
   __reducerSchema("approve_device_login", ApproveDeviceLoginReducer),
   __reducerSchema("archive_ai_chat_session", ArchiveAiChatSessionReducer),
+  __reducerSchema("assign_form", AssignFormReducer),
   __reducerSchema("assign_role_task", AssignRoleTaskReducer),
   __reducerSchema("assign_tier", AssignTierReducer),
+  __reducerSchema("authorize_drive_upload", AuthorizeDriveUploadReducer),
+  __reducerSchema("backfill_drive_access_v_1", BackfillDriveAccessV1Reducer),
+  __reducerSchema("begin_app_upload", BeginAppUploadReducer),
+  __reducerSchema("begin_drive_upload", BeginDriveUploadReducer),
   __reducerSchema("cancel_invitation", CancelInvitationReducer),
+  __reducerSchema("cancel_sheet_lease_request", CancelSheetLeaseRequestReducer),
   __reducerSchema("claim_first_admin", ClaimFirstAdminReducer),
   __reducerSchema("claim_perk", ClaimPerkReducer),
   __reducerSchema("clear_device_operator", ClearDeviceOperatorReducer),
+  __reducerSchema("clear_pin_lockouts", ClearPinLockoutsReducer),
   __reducerSchema("clear_training_objective_grade", ClearTrainingObjectiveGradeReducer),
   __reducerSchema("compact_document", CompactDocumentReducer),
+  __reducerSchema("compact_sheet", CompactSheetReducer),
   __reducerSchema("complete_role_task", CompleteRoleTaskReducer),
   __reducerSchema("consume_ai_job", ConsumeAiJobReducer),
   __reducerSchema("consume_device_login", ConsumeDeviceLoginReducer),
@@ -1435,6 +2050,9 @@ const reducersSchema = __reducers(
   __reducerSchema("create_design", CreateDesignReducer),
   __reducerSchema("create_device_login_request", CreateDeviceLoginRequestReducer),
   __reducerSchema("create_document", CreateDocumentReducer),
+  __reducerSchema("create_drive_document", CreateDriveDocumentReducer),
+  __reducerSchema("create_drive_folder", CreateDriveFolderReducer),
+  __reducerSchema("create_form", CreateFormReducer),
   __reducerSchema("create_membership_tier", CreateMembershipTierReducer),
   __reducerSchema("create_notification", CreateNotificationReducer),
   __reducerSchema("create_org", CreateOrgReducer),
@@ -1446,6 +2064,7 @@ const reducersSchema = __reducers(
   __reducerSchema("create_site_order", CreateSiteOrderReducer),
   __reducerSchema("create_time_off_request", CreateTimeOffRequestReducer),
   __reducerSchema("create_user", CreateUserReducer),
+  __reducerSchema("decline_sheet_lease_request", DeclineSheetLeaseRequestReducer),
   __reducerSchema("delete_ai_job", DeleteAiJobReducer),
   __reducerSchema("delete_blog_post", DeleteBlogPostReducer),
   __reducerSchema("delete_bug_report", DeleteBugReportReducer),
@@ -1455,7 +2074,10 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_document_comment", DeleteDocumentCommentReducer),
   __reducerSchema("delete_document_forever", DeleteDocumentForeverReducer),
   __reducerSchema("delete_document_version", DeleteDocumentVersionReducer),
+  __reducerSchema("delete_drive_entries_forever", DeleteDriveEntriesForeverReducer),
   __reducerSchema("delete_expense", DeleteExpenseReducer),
+  __reducerSchema("delete_form", DeleteFormReducer),
+  __reducerSchema("delete_form_response", DeleteFormResponseReducer),
   __reducerSchema("delete_inventory_item", DeleteInventoryItemReducer),
   __reducerSchema("delete_location", DeleteLocationReducer),
   __reducerSchema("delete_message", DeleteMessageReducer),
@@ -1480,23 +2102,29 @@ const reducersSchema = __reducers(
   __reducerSchema("disconnect_schedule_integration", DisconnectScheduleIntegrationReducer),
   __reducerSchema("dismiss_notification", DismissNotificationReducer),
   __reducerSchema("duplicate_document", DuplicateDocumentReducer),
+  __reducerSchema("edit_chat_message", EditChatMessageReducer),
   __reducerSchema("edit_document_comment", EditDocumentCommentReducer),
+  __reducerSchema("empty_drive_trash", EmptyDriveTrashReducer),
   __reducerSchema("finalize_ai_job", FinalizeAiJobReducer),
   __reducerSchema("grade_training_day", GradeTrainingDayReducer),
   __reducerSchema("grade_training_objective", GradeTrainingObjectiveReducer),
   __reducerSchema("grant_document_access", GrantDocumentAccessReducer),
+  __reducerSchema("heartbeat_sheet_lease", HeartbeatSheetLeaseReducer),
   __reducerSchema("invite_to_org", InviteToOrgReducer),
+  __reducerSchema("leave_conversation", LeaveConversationReducer),
   __reducerSchema("leave_org", LeaveOrgReducer),
   __reducerSchema("log_supplier_message", LogSupplierMessageReducer),
   __reducerSchema("login_with_password", LoginWithPasswordReducer),
   __reducerSchema("manager_record_punch", ManagerRecordPunchReducer),
   __reducerSchema("manager_set_punch_window", ManagerSetPunchWindowReducer),
   __reducerSchema("mark_all_notifications_read", MarkAllNotificationsReadReducer),
+  __reducerSchema("mark_chat_read", MarkChatReadReducer),
   __reducerSchema("mark_notification_read", MarkNotificationReadReducer),
   __reducerSchema("migrate_money_v_1", MigrateMoneyV1Reducer),
   __reducerSchema("migrate_owner_permissions_v_1", MigrateOwnerPermissionsV1Reducer),
   __reducerSchema("migrate_punch_code_flags_v_1", MigratePunchCodeFlagsV1Reducer),
   __reducerSchema("migrate_security_v_1", MigrateSecurityV1Reducer),
+  __reducerSchema("move_drive_entries", MoveDriveEntriesReducer),
   __reducerSchema("platform_admin_add", PlatformAdminAddReducer),
   __reducerSchema("platform_admin_remove", PlatformAdminRemoveReducer),
   __reducerSchema("platform_admin_set_password", PlatformAdminSetPasswordReducer),
@@ -1504,56 +2132,101 @@ const reducersSchema = __reducers(
   __reducerSchema("prune_ephemeral", PruneEphemeralReducer),
   __reducerSchema("prune_org_history", PruneOrgHistoryReducer),
   __reducerSchema("push_document_update", PushDocumentUpdateReducer),
+  __reducerSchema("push_sheet_ops", PushSheetOpsReducer),
+  __reducerSchema("record_operator_punch", RecordOperatorPunchReducer),
   __reducerSchema("record_punch", RecordPunchReducer),
+  __reducerSchema("record_self_punch", RecordSelfPunchReducer),
   __reducerSchema("record_supplier_order", RecordSupplierOrderReducer),
   __reducerSchema("record_task_completion", RecordTaskCompletionReducer),
   __reducerSchema("redeem_coupon", RedeemCouponReducer),
   __reducerSchema("redeem_points", RedeemPointsReducer),
+  __reducerSchema("refresh_my_drive_access", RefreshMyDriveAccessReducer),
   __reducerSchema("refund_payment", RefundPaymentReducer),
   __reducerSchema("register_customer", RegisterCustomerReducer),
   __reducerSchema("register_device", RegisterDeviceReducer),
   __reducerSchema("register_service_identity", RegisterServiceIdentityReducer),
+  __reducerSchema("release_sheet_lease", ReleaseSheetLeaseReducer),
+  __reducerSchema("remove_conversation_member", RemoveConversationMemberReducer),
   __reducerSchema("remove_document_presence", RemoveDocumentPresenceReducer),
+  __reducerSchema("remove_page_presence", RemovePagePresenceReducer),
   __reducerSchema("remove_store_device", RemoveStoreDeviceReducer),
   __reducerSchema("rename_document", RenameDocumentReducer),
   __reducerSchema("rename_document_version", RenameDocumentVersionReducer),
+  __reducerSchema("rename_drive_document", RenameDriveDocumentReducer),
+  __reducerSchema("rename_drive_item", RenameDriveItemReducer),
   __reducerSchema("reply_document_comment", ReplyDocumentCommentReducer),
   __reducerSchema("report_bug", ReportBugReducer),
   __reducerSchema("request_training_review", RequestTrainingReviewReducer),
+  __reducerSchema("reset_sheet_content", ResetSheetContentReducer),
   __reducerSchema("resolve_device_operator", ResolveDeviceOperatorReducer),
+  __reducerSchema("resolve_device_operator_attempt", ResolveDeviceOperatorAttemptReducer),
   __reducerSchema("resolve_document_comment", ResolveDocumentCommentReducer),
   __reducerSchema("resolve_training_review", ResolveTrainingReviewReducer),
   __reducerSchema("restore_document", RestoreDocumentReducer),
+  __reducerSchema("restore_drive_entries", RestoreDriveEntriesReducer),
+  __reducerSchema("review_form_response", ReviewFormResponseReducer),
   __reducerSchema("revoke_document_access", RevokeDocumentAccessReducer),
   __reducerSchema("save_ai_chat_session", SaveAiChatSessionReducer),
   __reducerSchema("save_component", SaveComponentReducer),
   __reducerSchema("save_daily_briefing", SaveDailyBriefingReducer),
   __reducerSchema("save_document_version", SaveDocumentVersionReducer),
   __reducerSchema("save_push_subscription", SavePushSubscriptionReducer),
+  __reducerSchema("save_sheet_version", SaveSheetVersionReducer),
   __reducerSchema("send_merchiva_message", SendMerchivaMessageReducer),
   __reducerSchema("send_message", SendMessageReducer),
+  __reducerSchema("send_thread_reply", SendThreadReplyReducer),
+  __reducerSchema("service_ack_drive_blob_gc", ServiceAckDriveBlobGcReducer),
+  __reducerSchema("service_backfill_app_files", ServiceBackfillAppFilesReducer),
+  __reducerSchema("service_commit_drive_upload", ServiceCommitDriveUploadReducer),
   __reducerSchema("service_create_notification", ServiceCreateNotificationReducer),
+  __reducerSchema("service_discard_drive_blob", ServiceDiscardDriveBlobReducer),
+  __reducerSchema("service_drive_sweep", ServiceDriveSweepReducer),
+  __reducerSchema("service_enqueue_orphan_drive_blobs", ServiceEnqueueOrphanDriveBlobsReducer),
+  __reducerSchema("service_ensure_drive_reader", ServiceEnsureDriveReaderReducer),
+  __reducerSchema("service_fail_drive_blob_gc", ServiceFailDriveBlobGcReducer),
+  __reducerSchema("service_fail_drive_upload", ServiceFailDriveUploadReducer),
+  __reducerSchema("service_finish_drive_reconcile", ServiceFinishDriveReconcileReducer),
   __reducerSchema("service_log_supplier_message", ServiceLogSupplierMessageReducer),
+  __reducerSchema("service_recompute_storage", ServiceRecomputeStorageReducer),
   __reducerSchema("service_record_ai_usage", ServiceRecordAiUsageReducer),
+  __reducerSchema("service_record_app_file", ServiceRecordAppFileReducer),
   __reducerSchema("service_record_schedule_sync", ServiceRecordScheduleSyncReducer),
   __reducerSchema("service_repair_inventory_item", ServiceRepairInventoryItemReducer),
+  __reducerSchema("service_set_drive_quota", ServiceSetDriveQuotaReducer),
+  __reducerSchema("service_set_drive_thumb", ServiceSetDriveThumbReducer),
   __reducerSchema("service_set_schedule_integration", ServiceSetScheduleIntegrationReducer),
+  __reducerSchema("service_submit_public_form_response", ServiceSubmitPublicFormResponseReducer),
   __reducerSchema("set_ai_usage_quota", SetAiUsageQuotaReducer),
   __reducerSchema("set_assistant_config", SetAssistantConfigReducer),
   __reducerSchema("set_beta_features", SetBetaFeaturesReducer),
+  __reducerSchema("set_channel_topic", SetChannelTopicReducer),
+  __reducerSchema("set_chat_message_pinned", SetChatMessagePinnedReducer),
+  __reducerSchema("set_chat_muted", SetChatMutedReducer),
+  __reducerSchema("set_chat_starred", SetChatStarredReducer),
   __reducerSchema("set_conversation_merchiva", SetConversationMerchivaReducer),
   __reducerSchema("set_device_apps", SetDeviceAppsReducer),
+  __reducerSchema("set_document_folder", SetDocumentFolderReducer),
   __reducerSchema("set_document_visibility", SetDocumentVisibilityReducer),
+  __reducerSchema("set_form_public_link", SetFormPublicLinkReducer),
+  __reducerSchema("set_form_status", SetFormStatusReducer),
   __reducerSchema("set_member_hourly_rate", SetMemberHourlyRateReducer),
+  __reducerSchema("set_member_punch_in_code", SetMemberPunchInCodeReducer),
   __reducerSchema("set_member_status", SetMemberStatusReducer),
+  __reducerSchema("set_own_punch_in_code", SetOwnPunchInCodeReducer),
   __reducerSchema("set_punch_in_code", SetPunchInCodeReducer),
   __reducerSchema("set_schedule_integration", SetScheduleIntegrationReducer),
   __reducerSchema("set_supplier_inbound_prefix", SetSupplierInboundPrefixReducer),
   __reducerSchema("set_user_admin", SetUserAdminReducer),
   __reducerSchema("skip_role_task", SkipRoleTaskReducer),
+  __reducerSchema("submit_form_response", SubmitFormResponseReducer),
+  __reducerSchema("toggle_chat_reaction", ToggleChatReactionReducer),
   __reducerSchema("toggle_document_star", ToggleDocumentStarReducer),
+  __reducerSchema("toggle_drive_star", ToggleDriveStarReducer),
   __reducerSchema("toggle_todo", ToggleTodoReducer),
+  __reducerSchema("transfer_form", TransferFormReducer),
   __reducerSchema("trash_document", TrashDocumentReducer),
+  __reducerSchema("trash_drive_entries", TrashDriveEntriesReducer),
+  __reducerSchema("unassign_form", UnassignFormReducer),
   __reducerSchema("update_blog_post", UpdateBlogPostReducer),
   __reducerSchema("update_booking_status", UpdateBookingStatusReducer),
   __reducerSchema("update_bug_report", UpdateBugReportReducer),
@@ -1562,6 +2235,8 @@ const reducersSchema = __reducers(
   __reducerSchema("update_display_name", UpdateDisplayNameReducer),
   __reducerSchema("update_document_meta", UpdateDocumentMetaReducer),
   __reducerSchema("update_expense", UpdateExpenseReducer),
+  __reducerSchema("update_form_definition", UpdateFormDefinitionReducer),
+  __reducerSchema("update_form_settings", UpdateFormSettingsReducer),
   __reducerSchema("update_inventory_item", UpdateInventoryItemReducer),
   __reducerSchema("update_location", UpdateLocationReducer),
   __reducerSchema("update_member_permissions", UpdateMemberPermissionsReducer),
@@ -1591,7 +2266,9 @@ const reducersSchema = __reducers(
   __reducerSchema("update_training_objective", UpdateTrainingObjectiveReducer),
   __reducerSchema("upsert_availability", UpsertAvailabilityReducer),
   __reducerSchema("upsert_document_presence", UpsertDocumentPresenceReducer),
+  __reducerSchema("upsert_page_presence", UpsertPagePresenceReducer),
   __reducerSchema("verify_manager_pin", VerifyManagerPinReducer),
+  __reducerSchema("verify_manager_pin_attempt", VerifyManagerPinAttemptReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

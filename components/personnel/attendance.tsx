@@ -19,6 +19,7 @@ import { StatGrid, StatTile } from "@/components/ui/stat-tile";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { dateKey, mondayOf } from "@/lib/date-key";
 import { intlLocaleTag } from "@/lib/i18n/dates";
+import { useAttendancePageContext } from "@/components/personnel/use-page-context";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -373,7 +374,15 @@ function CellContent({ cell, t }: { cell: DayCell; t: (k: string) => string }) {
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
-export function AttendanceWeek({ orgId }: { orgId: string }) {
+export function AttendanceWeek({
+  orgId,
+  shownOn,
+}: {
+  orgId: string;
+  /** Set when the host mounts this instance for one layout and hides it on the other, so only
+   *  the visible instance describes the page to Mr. Merchiva. */
+  shownOn?: "mobile" | "desktop";
+}) {
   const t = useT();
   const { locale } = useI18n();
   const isMobile = useIsMobile();
@@ -554,6 +563,7 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
   const editingCell = editing
     ? memberWeeks.find((mw) => mw.member.id === editing.memberId)?.cells[weekIsos.indexOf(editing.date)] ?? null
     : null;
+  useAttendancePageContext({ shownOn, canManage, weekIsos, day: selDate, members, weekStats, dayStats, editing });
 
   if (!canManage) return null;
 

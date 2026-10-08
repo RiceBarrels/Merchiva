@@ -22,7 +22,7 @@ import {
   type BugSurface,
 } from "@/lib/bugs";
 import { usePermissions } from "@/lib/context/permissions";
-import { useUploadThing } from "@/lib/uploadthing";
+import { appUploadErrorKey, uploadAppFiles } from "@/lib/storage/app-upload";
 import { reportBug } from "@/lib/spacetimedb/actions";
 import { useBugReports, useSpacetimeDB } from "@/lib/spacetimedb/hooks";
 
@@ -96,8 +96,8 @@ export interface UseBugReportDraftResult {
   severity: BugSeverity;
   setSeverity: (v: BugSeverity) => void;
   screenshot: BugScreenshot | null;
-  /** Upload a picked file; resolves false and sets `error` on failure. */
-  attach: (file: File) => Promise<boolean>;
+  /** Upload a picked file; resolves null, or the `error` it set on failure ("upload" | "quota"). */
+  attach: (file: File) => Promise<BugDraftError | null>;
   removeScreenshot: () => void;
   uploading: boolean;
   submitting: boolean;
@@ -108,12 +108,13 @@ export interface UseBugReportDraftResult {
   /** Sends the report; resolves false and sets `error` on failure. */
   submit: (route?: string) => Promise<boolean>;
   reset: () => void;
-  /** "upload" | "submit" | "title" — the caller picks the wording. */
+  /** "upload" | "quota" | "submit" | "title" — the caller picks the wording. */
   error: BugDraftError | null;
   clearError: () => void;
 }
 
-export type BugDraftError = "upload" | "submit" | "title";
+/** "quota": the store is out of storage (appUpload.quotaExceeded). */
+export type BugDraftError = "upload" | "quota" | "submit" | "title";
 
 /** 8MB is the `generalFile` image limit in app/api/uploadthing/core.ts. */
 const SCREENSHOT_MAX_BYTES = 8 * 1024 * 1024;
@@ -124,7 +125,7 @@ const SCREENSHOT_MAX_BYTES = 8 * 1024 * 1024;
  * captured at submit time so they describe the moment, not the form.
  */
 export function useBugReportDraft(surface: BugSurface): UseBugReportDraftResult {
-  const { startUpload } = useUploadThing("generalFile");
+  const { organizationId } = usePermissions();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [severity, setSeverity] = useState<BugSeverity>("normal");
@@ -143,27 +144,28 @@ export function useBugReportDraft(surface: BugSurface): UseBugReportDraftResult 
 
   const attach = useCallback(
     async (file: File) => {
-      if (file.size > SCREENSHOT_MAX_BYTES) {
+      if (file.size > SCREENSHOT_MAX_BYTES || !organizationId) {
         setError("upload");
-        return false;
+        return "upload";
       }
       setUploading(true);
       setError(null);
       try {
-        const res = await startUpload([file]);
+        const res = await uploadAppFiles("generalFile", { files: [file], organizationId, source: "bugs" });
         const url = (res?.[0]?.serverData as { url?: string } | undefined)?.url;
         if (!url) throw new Error("upload returned no url");
         setScreenshot({ url, name: file.name });
-        return true;
+        return null;
       } catch (err) {
         console.error("Bug screenshot upload failed:", err);
-        setError("upload");
-        return false;
+        const problem: BugDraftError = appUploadErrorKey(err) === "appUpload.quotaExceeded" ? "quota" : "upload";
+        setError(problem);
+        return problem;
       } finally {
         setUploading(false);
       }
     },
-    [startUpload],
+    [organizationId],
   );
 
   const submit = useCallback(

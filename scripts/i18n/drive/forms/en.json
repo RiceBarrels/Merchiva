@@ -1,0 +1,623 @@
+{
+  "forms": {
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "not_connected": "Not connected. Check your connection and try again.",
+      "not_published": "Forms isn't available yet for this store.",
+      "network": "You're offline. Try again when you're back online.",
+      "forbidden": "You don't have permission to do that.",
+      "not_found": "This form no longer exists.",
+      "invalid": "Something in this request isn't valid.",
+      "exists": "This already exists.",
+      "conflict": "Someone else saved this form in the meantime. Reload to see their changes.",
+      "operator": "The person using this device can't do that.",
+      "not_open": "This form isn't open for responses.",
+      "closed": "This form is closed.",
+      "not_assigned": "This form isn't assigned to you.",
+      "invalid_date": "The date on this device looks wrong. Check the device clock.",
+      "already_submitted": "You've already answered this form for now.",
+      "response_limit": "This form isn't taking more responses.",
+      "too_many_forms": "This store has reached its limit of forms.",
+      "org_storage_full": "This store has no room for more form answers.",
+      "file_not_found": "An attached file is missing. Attach it again.",
+      "files_not_allowed": "Files and photos can't be added here.",
+      "public_unsafe": "Forms with file or photo questions can't be shared by link.",
+      "rate_limited": "Too many responses right now. Try again later.",
+      "invalid_settings": "Some settings aren't valid.",
+      "invalid_status": "That status isn't valid.",
+      "invalid_definition": "This form can't be read.",
+      "definition_too_large": "This form is too large.",
+      "title_required": "Give the form a title.",
+      "title_too_long": "The title is too long.",
+      "description_too_long": "The description is too long.",
+      "confirmation_too_long": "The confirmation message is too long.",
+      "no_questions": "Add at least one question.",
+      "too_many_questions": "This form has too many questions.",
+      "invalid_question": "A question isn't valid.",
+      "invalid_question_id": "A question isn't valid.",
+      "duplicate_question_id": "Two questions are the same.",
+      "invalid_question_type": "A question type isn't supported.",
+      "question_title_required": "Every question needs a title.",
+      "question_title_too_long": "A question's title is too long.",
+      "help_too_long": "A question's help text is too long.",
+      "options_required": "Add at least one option.",
+      "too_many_options": "A question has too many options.",
+      "invalid_option_id": "An option isn't valid.",
+      "duplicate_option_id": "Two options are the same.",
+      "option_label_required": "Every option needs a label.",
+      "option_label_too_long": "An option's label is too long.",
+      "invalid_range": "The range isn't valid.",
+      "scale_label_too_long": "A scale label is too long.",
+      "invalid_max_files": "The number of files isn't valid.",
+      "invalid_accept": "The allowed file types aren't valid.",
+      "question_removed": "Questions with answers can't be removed. Hide them instead.",
+      "question_type_changed": "A question with answers can't change its type.",
+      "option_removed": "Options with answers can't be removed.",
+      "invalid_answers": "These answers can't be read.",
+      "answers_too_large": "These answers are too long.",
+      "unknown_question": "An answer belongs to a question that no longer exists. Reload the form.",
+      "required": "Answer every required question.",
+      "invalid_answer": "An answer isn't valid.",
+      "text_too_long": "An answer is too long.",
+      "unknown_option": "An option you chose no longer exists. Reload the form.",
+      "out_of_range": "A number is out of range.",
+      "too_many_selections": "Too many options are selected.",
+      "too_few_selections": "Too few options are selected.",
+      "too_many_files": "Too many files for this question."
+    },
+    "disclosure": {
+      "respondentNote": "Your store's management can see your answers.",
+      "managersTitle": "Management can see every answer",
+      "managersNote": "The store owner, managers and members who can see all files can read every response to this form, including files people attach. People who answer are told this."
+    },
+    "title": "Forms",
+    "list": {
+      "subtitleBuilder": "Checklists, reports and surveys for your team",
+      "subtitleMember": "Forms waiting for you and what you've sent",
+      "new": "New form",
+      "search": "Search forms",
+      "fill": "Fill in",
+      "questions": "{n} questions",
+      "responses": "{n} responses",
+      "updated": "Updated {date}",
+      "due": "Due {date}",
+      "closes": "Closes {date}",
+      "notPublished": "Forms isn't available yet",
+      "notPublishedDesc": "Forms hasn't been turned on for this store yet. Try again later.",
+      "filter": {
+        "active": "Active",
+        "drafts": "Drafts",
+        "closed": "Closed",
+        "archived": "Archived",
+        "toFill": "To fill",
+        "mine": "My submissions"
+      },
+      "stats": {
+        "open": "Open forms",
+        "drafts": "Drafts",
+        "responses": "Responses",
+        "toFill": "To fill",
+        "submitted": "Submitted",
+        "last90": "Last 90 days",
+        "reviewed": "Reviewed"
+      },
+      "empty": {
+        "search": "No forms match your search",
+        "active": "No open forms",
+        "activeDesc": "Open a draft, or start a new form from a template.",
+        "drafts": "No drafts",
+        "draftsDesc": "New forms start here until you open them.",
+        "closed": "No closed forms",
+        "closedDesc": "Forms you close stop taking answers and show up here.",
+        "archived": "No archived forms",
+        "archivedDesc": "Archive forms you no longer use to keep this list short.",
+        "toFill": "Nothing to fill in",
+        "toFillDesc": "Forms your managers share with you will show up here.",
+        "mine": "No submissions yet",
+        "mineDesc": "Forms you send in the last 90 days show up here."
+      },
+      "view": {
+        "manage": "Manage",
+        "mine": "My forms"
+      }
+    },
+    "status": {
+      "draft": "Draft",
+      "open": "Open",
+      "closed": "Closed",
+      "archived": "Archived"
+    },
+    "kind": {
+      "form": "Form",
+      "checklist": "Checklist",
+      "report": "Report",
+      "survey": "Survey"
+    },
+    "perMember": {
+      "unlimited": "Any number of times",
+      "once": "Once",
+      "daily": "Once a day",
+      "weekly": "Once a week"
+    },
+    "reviewStatus": {
+      "new": "Sent",
+      "reviewed": "Reviewed"
+    },
+    "types": {
+      "section": "Section",
+      "short_text": "Short answer",
+      "long_text": "Paragraph",
+      "single_choice": "Multiple choice",
+      "multi_choice": "Checkboxes",
+      "dropdown": "Dropdown",
+      "yes_no": "Yes / no",
+      "number": "Number",
+      "date": "Date",
+      "time": "Time",
+      "rating": "Star rating",
+      "scale": "Scale",
+      "checklist_item": "Checklist item",
+      "photo": "Photo",
+      "file": "File upload"
+    },
+    "newForm": {
+      "title": "New form",
+      "description": "Start from a template or a blank form. You can change everything later.",
+      "templates": "Templates",
+      "create": "Create",
+      "kindHint": "Checklists show on the store tablet as today's checks, and reports under Report something. The type can't be changed later."
+    },
+    "edit": {
+      "notFound": "Form not found",
+      "notFoundDesc": "It may have been deleted, or you don't have access to it.",
+      "backToList": "Back to Forms",
+      "more": "More actions",
+      "view": {
+        "build": "Build",
+        "preview": "Preview",
+        "responses": "Responses",
+        "share": "Share"
+      },
+      "action": {
+        "draft": "Open for answers",
+        "open": "Close",
+        "closed": "Reopen"
+      },
+      "statusChanged": {
+        "draft": "Moved back to drafts",
+        "open": "The form is open for answers",
+        "closed": "The form is closed",
+        "archived": "The form is archived"
+      },
+      "backToDraft": "Move back to drafts",
+      "archive": "Archive",
+      "unarchive": "Unarchive",
+      "delete": "Delete form",
+      "deleteTitle": "Delete this form?",
+      "deleteDesc": "The form and all of its responses are deleted for good. Files people attached stay in their My files.",
+      "deleted": "Form deleted"
+    },
+    "builder": {
+      "details": "Form details",
+      "formTitle": "Title",
+      "description": "Description",
+      "descriptionPlaceholder": "What is this form for?",
+      "confirmation": "Message after sending",
+      "confirmationHint": "Leave empty to show a simple thank-you.",
+      "confirmationPlaceholder": "Thanks! Your answers were sent.",
+      "status": {
+        "saved": "All changes saved",
+        "pending": "Saving…",
+        "saving": "Saving…",
+        "invalid": "Not saved: fix the marked fields",
+        "error": "Not saved"
+      },
+      "retry": "Try again",
+      "conflictTitle": "Someone else changed this form",
+      "conflictDesc": "Your latest edits aren't saved yet. Keep your version to save it over theirs, or load theirs and lose your unsaved edits.",
+      "keepMine": "Keep my version",
+      "loadTheirs": "Load theirs",
+      "lockedNote": "This form has responses. Removing a question archives it so past answers keep it, and question types can't change.",
+      "publicNote": "The public link is on, so photo and file questions can't be added.",
+      "brokenTitle": "This form can't be opened",
+      "brokenDesc": "Its questions couldn't be read. Its responses are still safe.",
+      "newQuestion": "Untitled question",
+      "newSection": "New section",
+      "newOption": "Option {n}",
+      "untitledQuestion": "Untitled question",
+      "addQuestion": "Add question",
+      "questionTitle": "Question",
+      "sectionTitle": "Section title",
+      "type": "Type",
+      "typeLocked": "Can't change after responses",
+      "help": "Help text",
+      "helpPlaceholder": "Optional hint shown under the question",
+      "required": "Required",
+      "duplicate": "Duplicate",
+      "remove": "Delete",
+      "archive": "Archive",
+      "archived": "Archived",
+      "archivedNote": "Archived: hidden from new answers, kept in past responses.",
+      "restore": "Restore",
+      "needsFix": "Needs a fix",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "options": "Options",
+      "optionLabel": "Option text",
+      "addOption": "Add option",
+      "removeOption": "Remove option",
+      "optionLocked": "This option has answers. Rename it instead.",
+      "minSelections": "At least",
+      "maxSelections": "At most",
+      "minValue": "Lowest number",
+      "maxValue": "Highest number",
+      "scaleFrom": "From",
+      "scaleTo": "To",
+      "scaleLowLabel": "Label at the low end",
+      "scaleHighLabel": "Label at the high end",
+      "maxFiles": "Files per answer",
+      "accept": "Allowed file types",
+      "acceptHint": "Extensions or types separated by commas. Leave empty to allow any file.",
+      "filesNote": "Files are saved in the sender's My files and count toward your store's storage. Files can't be added on a shared store tablet or through a public link."
+    },
+    "share": {
+      "audienceTitle": "Who can answer",
+      "audience": {
+        "members": "Everyone",
+        "assigned": "Only assigned",
+        "private": "Only me"
+      },
+      "audienceDesc": {
+        "members": "Every member of the store can answer while the form is open.",
+        "assigned": "Only the members you assign below can answer.",
+        "private": "No one else sees this form. Use it to try things out before sharing."
+      },
+      "assignees": "Assigned to",
+      "assigneesOnly": "Only these members can answer. Add a due date to remind them.",
+      "assigneesHint": "Optional: assign members to put the form on their list with a due date.",
+      "noMembers": "No active members to assign yet.",
+      "dueDate": "Due date",
+      "role": {
+        "owner": "Owner",
+        "manager": "Manager",
+        "staff": "Staff"
+      },
+      "rulesTitle": "Answers",
+      "perMember": "Each person can answer",
+      "responseLimit": "Stop after (responses)",
+      "closesOn": "Closes at the end of",
+      "never": "Never",
+      "trackCompletion": "Show who has done it",
+      "trackCompletionHint": "The store tablet lists who finished it today, without showing their answers.",
+      "notifyOwner": "Notify me about new responses",
+      "notifyOwnerHint": "The form's owner gets a notification for every response.",
+      "publicTitle": "Anyone with the link",
+      "publicDesc": "People outside your store can answer without signing in.",
+      "publicOwnerOnly": "Only the store owner can turn on the public link.",
+      "publicUrl": "Public link",
+      "copy": "Copy",
+      "publicCopied": "Link copied",
+      "publicRotate": "Make a new link",
+      "publicRotateTitle": "Make a new link?",
+      "publicRotateDesc": "The current link and QR code stop working right away. Anyone who has them will need the new one.",
+      "publicRotated": "New link ready",
+      "publicOpenOnly": "The link only takes answers while the form is open.",
+      "publicNote": "Answers from the link show as Public in Responses. Don't ask for passwords or payment details."
+    },
+    "templates": {
+      "blank": {
+        "title": "Blank form",
+        "description": "Start from scratch with your own questions.",
+        "untitled": "Untitled form",
+        "q": {
+          "first": "Untitled question"
+        }
+      },
+      "openingChecklist": {
+        "title": "Opening checklist",
+        "description": "Everything to check before the doors open.",
+        "q": {
+          "alarmOff": "Alarm turned off",
+          "lightsOn": "Lights and signs on",
+          "cashFloat": "Cash in the register at opening",
+          "fridgesOk": "Fridges and freezers working",
+          "floorClean": "Floor and entrance clean",
+          "shelvesStocked": "Shelves stocked",
+          "notes": "Anything to report?"
+        },
+        "h": {
+          "cashFloat": "Count the starting cash and enter the total."
+        }
+      },
+      "closingChecklist": {
+        "title": "Closing checklist",
+        "description": "Everything to do before locking up.",
+        "q": {
+          "cashCounted": "Cash in the register at closing",
+          "equipmentOff": "Equipment turned off",
+          "trashOut": "Trash taken out",
+          "doorsLocked": "Doors and windows locked",
+          "alarmSet": "Alarm set",
+          "notes": "Anything to report?"
+        },
+        "h": {
+          "cashCounted": "Count the cash and enter the total."
+        }
+      },
+      "incidentReport": {
+        "title": "Incident report",
+        "description": "Report an accident, a theft, damage or a problem with a customer.",
+        "confirmation": "Thanks for reporting this. A manager will follow up.",
+        "q": {
+          "details": "What happened",
+          "date": "Date",
+          "time": "Time",
+          "category": "Type of incident",
+          "what": "Describe what happened",
+          "injured": "Was anyone hurt?",
+          "followUp": "Follow-up",
+          "actions": "What has been done so far?",
+          "photos": "Photos"
+        },
+        "o": {
+          "injury": "Injury",
+          "theft": "Theft",
+          "damage": "Damage",
+          "customer": "Customer issue",
+          "other": "Other"
+        },
+        "h": {
+          "what": "Who was involved, where it happened and what you saw."
+        }
+      },
+      "customerFeedback": {
+        "title": "Customer feedback",
+        "description": "Ask customers how their visit went.",
+        "confirmation": "Thanks for your feedback!",
+        "q": {
+          "overall": "How was your visit?",
+          "recommend": "How likely are you to recommend us to a friend?",
+          "liked": "What did you like?",
+          "comments": "Anything else you'd like to tell us?",
+          "contact": "Your email or phone (optional)"
+        },
+        "l": {
+          "recommendLow": "Not likely",
+          "recommendHigh": "Very likely"
+        },
+        "o": {
+          "service": "Service",
+          "speed": "Speed",
+          "quality": "Quality",
+          "price": "Price",
+          "cleanliness": "Cleanliness"
+        },
+        "h": {
+          "contact": "Only if you'd like us to get back to you."
+        }
+      },
+      "equipmentCheck": {
+        "title": "Temperature and equipment check",
+        "description": "Log fridge and freezer temperatures and flag broken equipment.",
+        "q": {
+          "fridgeTemp": "Fridge temperature",
+          "freezerTemp": "Freezer temperature",
+          "equipmentOk": "Is all equipment working?",
+          "issue": "What isn't working?",
+          "photo": "Photo"
+        },
+        "h": {
+          "fridgeTemp": "Read the fridge thermometer and enter the number.",
+          "freezerTemp": "Read the freezer thermometer and enter the number."
+        }
+      }
+    },
+    "runtime": {
+      "filesUnavailableHere": "Files and photos can't be added on this device.",
+      "previewNoUpload": "Files can't be added in a preview.",
+      "checklistRequired": "Check this item before sending.",
+      "defaultConfirmation": "Thanks! Your answers were sent.",
+      "pagePrevText": "Back",
+      "pageNextText": "Next",
+      "completeText": "Send",
+      "progressText": "Page {0} of {1}",
+      "emptySurvey": "This form has no questions yet.",
+      "completingSurvey": "Thanks! Your answers were sent.",
+      "loadingSurvey": "Loading…",
+      "placeholder": "Choose…",
+      "ratingOptionsCaption": "Choose…",
+      "requiredError": "This question needs an answer.",
+      "numericError": "Enter a number.",
+      "minError": "Enter {0} or more.",
+      "maxError": "Enter {0} or less.",
+      "numericMinMax": "Enter a number from {1} to {2}.",
+      "numericMin": "Enter {1} or more.",
+      "numericMax": "Enter {1} or less.",
+      "invalidInputError": "This answer isn't valid.",
+      "textMaxLength": "Use {0} characters or fewer.",
+      "minSelectError": "Choose at least {0}.",
+      "maxSelectError": "Choose no more than {0}.",
+      "exceedMaxSize": "Each file can be up to {0}.",
+      "fileSizeUnits": "bytes, KB, MB, GB, TB",
+      "exceedMaxFiles": "You can add up to {0} files.",
+      "uploadingFile": "A file is still uploading. Wait a moment and try again.",
+      "loadingFile": "Loading…",
+      "chooseFile": "Choose files…",
+      "noFileChosen": "No file chosen",
+      "filePlaceholder": "Drag a file here, or choose one below.",
+      "chooseFileCaption": "Choose file",
+      "takePhotoCaption": "Take photo",
+      "photoPlaceholder": "Take a photo with the button below.",
+      "fileOrPhotoPlaceholder": "Drag a file here, choose one, or take a photo.",
+      "replaceFileCaption": "Replace file",
+      "removeFileCaption": "Remove this file",
+      "confirmRemoveFile": "Remove {0}?",
+      "confirmRemoveAllFiles": "Remove all files?",
+      "clearCaption": "Clear",
+      "selectCaption": "Choose",
+      "booleanCheckedLabel": "Yes",
+      "booleanUncheckedLabel": "No",
+      "savingData": "Sending…",
+      "savingDataError": "Your answers weren't sent.",
+      "savingDataSuccess": "Sent.",
+      "saveAgainButton": "Try again",
+      "modalApplyButtonText": "Apply",
+      "modalCancelButtonText": "Cancel",
+      "filterStringPlaceholder": "Type to search…",
+      "emptyMessage": "Nothing to show",
+      "loadingData": "Loading…",
+      "tagboxDoneButtonCaption": "OK",
+      "more": "More",
+      "ok": "OK",
+      "cancel": "Cancel"
+    },
+    "fill": {
+      "title": "Fill in a form",
+      "subtitle": "Answer the questions, then send.",
+      "backToForms": "Back to forms",
+      "another": "Send another response",
+      "filesNote": "Files and photos you add are saved in your My files in Drive.",
+      "required": "Required",
+      "ratingLabel": "{n} of {max} stars",
+      "uploading": "Uploading…",
+      "addPhoto": "Take or choose a photo",
+      "addFile": "Choose a file",
+      "filesAttached": "{count} of {max} attached",
+      "removeFiles": "Remove"
+    },
+    "preview": {
+      "notice": "This is a preview. Answers aren't saved, and files can't be added.",
+      "widthLabel": "Preview width",
+      "desktop": "Desktop",
+      "phone": "Phone",
+      "restart": "Start over",
+      "emptyTitle": "No questions yet",
+      "emptyBody": "Add a question in Build to see it here.",
+      "completed": "That's the end of the form. A real response would be sent now.",
+      "invalidDraft": "Your latest edits need fixing before they can be saved, so this preview shows the last saved version."
+    },
+    "responses": {
+      "total": "Responses",
+      "toReview": "To review",
+      "last": "Last response",
+      "viewLabel": "Responses view",
+      "summary": "Summary",
+      "table": "List",
+      "export": "Export",
+      "exportCsv": "Download .csv",
+      "exportXlsx": "Download .xlsx",
+      "openAsSheet": "Open as spreadsheet",
+      "exportFailed": "The export didn't work. Try again.",
+      "fileName": "Form responses",
+      "sheetName": "Responses",
+      "loadFailed": "Some responses couldn't be loaded. Reload to try again.",
+      "emptyTitle": "No responses yet",
+      "emptyBody": "Responses show up here as soon as someone sends the form.",
+      "count": "Responses",
+      "average": "Average",
+      "min": "Lowest",
+      "max": "Highest",
+      "noAnswers": "No answers yet",
+      "fileCount": "{count} files attached",
+      "answeredOf": "{answered} of {total} answered",
+      "archivedQuestion": "Removed question",
+      "file": "File",
+      "review": "Review",
+      "notePlaceholder": "Add a note about this response",
+      "noteBy": "Last note by",
+      "noteHint": "Owners, managers and members with full Drive access can read notes. The person who answered can't.",
+      "save": "Save",
+      "close": "Close",
+      "cancel": "Cancel",
+      "delete": "Delete response",
+      "deleteTitle": "Delete this response?",
+      "deleteBody": "The answers and the note are deleted for good. Attached files stay in the respondent's My files."
+    },
+    "export": {
+      "submittedAt": "Submitted",
+      "respondent": "Respondent",
+      "sourceHeader": "Sent from",
+      "reviewHeader": "Status",
+      "anonymous": "Anonymous",
+      "yes": "Yes",
+      "no": "No",
+      "removedOption": "Removed option",
+      "source": {
+        "manager": "Back office",
+        "store": "Store tablet",
+        "personal": "Phone",
+        "public": "Public link"
+      },
+      "review": {
+        "new": "New",
+        "reviewed": "Reviewed"
+      }
+    },
+    "public": {
+      "answersGoTo": "Your answers go to {store}. They can see everything you enter here.",
+      "noSecrets": "Never enter passwords or payment card details in a form.",
+      "honeypotLabel": "Leave this field empty",
+      "notFoundTitle": "This link doesn't work",
+      "notFoundBody": "The form may have been removed, or its link was changed. Ask the store for a new link.",
+      "unavailableTitle": "This form can't be opened right now",
+      "unavailableBody": "Please try again in a few minutes.",
+      "closedTitle": "This form isn't taking responses",
+      "closedBody": "It was closed by the store. Ask them if you still need to reach them.",
+      "sentTitle": "Your answers were sent"
+    }
+  },
+  "device": {
+    "catalog": {
+      "forms": "Forms"
+    },
+    "catalogDesc": {
+      "forms": "Checklists, reports and surveys your team fills in on the tablet or their phone."
+    },
+    "lite": {
+      "forms": {
+        "checklistsLeft": "Checklists left today",
+        "checklistsLeftHint": "Tap a checklist to fill it in.",
+        "allDone": "All done. Nice work!",
+        "today": "Today",
+        "doneBy": "Done · {name} {time}",
+        "doneByYou": "You did this already",
+        "notDone": "Not done yet",
+        "report": "Report something",
+        "other": "Other forms",
+        "toFill": "To fill",
+        "toFillHint": "Forms your store asked you to fill in.",
+        "due": "Due {date}",
+        "overdue": "Late · was due {date}",
+        "noDue": "No due date",
+        "openToAll": "Open to everyone",
+        "doneForNow": "Done for now",
+        "mySubmissions": "My submissions",
+        "noSubmissions": "Nothing sent yet",
+        "sentOn": "Sent {date}",
+        "status": {
+          "new": "Waiting",
+          "reviewed": "Reviewed"
+        },
+        "unavailable": "This form is no longer available, so its answers can't be shown.",
+        "filesAdded": "{count} files",
+        "none": "No forms right now",
+        "noneHint": "When your store shares a form, it shows up here.",
+        "checklistHint": "Tick every item",
+        "progress": "{n}/{total}",
+        "send": "Send",
+        "confirmTitle": "Send your answers?",
+        "confirmSend": "Yes, send",
+        "confirmSub": "You can't change them after sending.",
+        "keepEditing": "Keep editing",
+        "leaveTitle": "Leave this form?",
+        "leave": "Leave",
+        "leaveSub": "Your answers will be lost.",
+        "thanks": "Thank you! Your answers were sent.",
+        "filesOffTablet": "Photos and files can't be added on this shared tablet. Use your own phone to answer this question."
+      }
+    }
+  },
+  "nav": {
+    "forms": "Forms"
+  }
+}

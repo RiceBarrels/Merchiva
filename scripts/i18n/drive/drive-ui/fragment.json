@@ -1,0 +1,46 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "W0.7b",
+  "note": "Drive UI copy (drive-ui.md §17 as amended by CONTRACTS C31-C33). docs.share.managersNote and personnel.team.permissionSection.drive are copied verbatim from specs/i18n/permissions-and-docs-share.json (C31). drive.home.trashNotice states the 30-day retention of folders and uploaded files (DECISIONS U1; lib/drive/rules.ts DRIVE_TRASH_RETENTION_MS; the sweep deletes every trash root with its subtree, data-server.md serviceDriveSweep phase 2) while Docs, Sheets and Slides stay. Terms follow integration-legal.md §6.6: zh-cn 云盘/门店/回收站, zh-tw 雲端硬碟/店面/垃圾桶, zh-hk 雲端硬碟/店舖/回收站 in formal written Chinese. Later units add leaves in drive-ui-<unit>/ fragments with extends: drive-ui.",
+  "owned": [
+    "drive.home",
+    "drive.nav",
+    "drive.list",
+    "drive.menu",
+    "drive.dialogs",
+    "drive.upload",
+    "drive.preview",
+    "drive.apps",
+    "drive.members",
+    "drive.storage",
+    "drive.kind",
+    "device.lite.drive",
+    "nav.drive",
+    "nav.sheets",
+    "nav.slides",
+    "device.catalog.drive",
+    "device.catalogDesc.drive",
+    "personnel.team.permissionSection.drive"
+  ],
+  "extends": null,
+  "overwrites": [
+    "docs.share.managersNote",
+    "docs.share.visibilityPrivate",
+    "device.catalogDesc.drive",
+    "drive.apps.notIncluded"
+  ],
+  "allowSameAsEn": [
+    "drive.kind.pdf",
+    "drive.kind.csv",
+    "drive.kind.image",
+    "drive.kind.video",
+    "drive.kind.audio",
+    "drive.list.type.image",
+    "drive.list.type.video",
+    "drive.list.type.audio",
+    "drive.list.col.actions",
+    "device.lite.drive.actions",
+    "drive.upload.photoName",
+    "drive.apps.sources.chat"
+  ]
+}

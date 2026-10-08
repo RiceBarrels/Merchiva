@@ -1,0 +1,149 @@
+{
+  "$schema": "merchiva-i18n-fragment/1",
+  "unit": "W0.7",
+  "note": "SEED from integration-legal.md (rev. 2). Copy to scripts/i18n/drive/drive-disclosure.json (owner W0.7). Legal copy: keep meaning identical across locales ('open and view everything; some can also edit'); zh-hk uses formal written Chinese here, not Cantonese colloquial; zh-tw uses 擁有者 (tw-terms.ts).",
+  "owned": [
+    "drive.disclosure"
+  ],
+  "allowSameAsEn": [],
+  "locales": {
+    "en": {
+      "drive": {
+        "disclosure": {
+          "title": "Your store's management can see your files",
+          "short": "Everything you upload or create here, including Docs, can be viewed by your store's management.",
+          "body": "The store owner, managers and team members they allow can open and view everything you upload or create in Merchiva: your files, folders, spreadsheets, presentations and Docs, including items in My files. Some of them can also edit it. Don't store anything here that you wouldn't want them to see.",
+          "ackTitle": "Before you start",
+          "ackConfirm": "I understand",
+          "learnMore": "Learn more",
+          "whoCanSee": "Who can see this",
+          "myFilesHint": "Only you, your store's management and people you share with can open items in My files.",
+          "storeFilesHint": "Everyone in your store can see Store files.",
+          "uploadNote": "Your store's management can see what you upload.",
+          "sharedDeviceNote": "This tablet is shared. Other people who use it may be able to reach what you save here, so keep private files on your own phone."
+        }
+      }
+    },
+    "es": {
+      "drive": {
+        "disclosure": {
+          "title": "La dirección de tu tienda puede ver tus archivos",
+          "short": "Todo lo que subas o crees aquí, incluidos los Documentos, puede verlo la dirección de tu tienda.",
+          "body": "El propietario de la tienda, los gerentes y los miembros del equipo que ellos autoricen pueden abrir y ver todo lo que subas o crees en Merchiva: tus archivos, carpetas, hojas de cálculo, presentaciones y Documentos, incluido lo que esté en Mis archivos. Algunos de ellos también pueden editarlo. No guardes aquí nada que no quieras que vean.",
+          "ackTitle": "Antes de empezar",
+          "ackConfirm": "Entendido",
+          "learnMore": "Más información",
+          "whoCanSee": "Quién puede verlo",
+          "myFilesHint": "Solo tú, la dirección de tu tienda y las personas con quienes compartas pueden abrir lo que está en Mis archivos.",
+          "storeFilesHint": "Todos en tu tienda pueden ver los Archivos de la tienda.",
+          "uploadNote": "La dirección de tu tienda puede ver lo que subas.",
+          "sharedDeviceNote": "Esta tableta es compartida. Otras personas que la usen podrían acceder a lo que guardes aquí, así que guarda tus archivos privados en tu propio teléfono."
+        }
+      }
+    },
+    "fr": {
+      "drive": {
+        "disclosure": {
+          "title": "La direction de votre magasin peut voir vos fichiers",
+          "short": "Tout ce que vous téléversez ou créez ici, y compris les Documents, peut être consulté par la direction de votre magasin.",
+          "body": "Le propriétaire du magasin, les responsables et les membres de l'équipe qu'ils autorisent peuvent ouvrir et consulter tout ce que vous téléversez ou créez dans Merchiva : vos fichiers, dossiers, feuilles de calcul, présentations et Documents, y compris ce qui se trouve dans Mes fichiers. Certains d'entre eux peuvent aussi le modifier. N'enregistrez ici rien que vous ne voudriez pas qu'ils voient.",
+          "ackTitle": "Avant de commencer",
+          "ackConfirm": "J'ai compris",
+          "learnMore": "En savoir plus",
+          "whoCanSee": "Qui peut voir ceci",
+          "myFilesHint": "Seuls vous, la direction de votre magasin et les personnes avec qui vous partagez pouvez ouvrir ce qui se trouve dans Mes fichiers.",
+          "storeFilesHint": "Tout le monde dans votre magasin peut voir les Fichiers du magasin.",
+          "uploadNote": "La direction de votre magasin peut voir ce que vous téléversez.",
+          "sharedDeviceNote": "Cette tablette est partagée. D'autres personnes qui l'utilisent pourraient accéder à ce que vous enregistrez ici : gardez vos fichiers privés sur votre propre téléphone."
+        }
+      }
+    },
+    "hi": {
+      "drive": {
+        "disclosure": {
+          "title": "आपके स्टोर का प्रबंधन आपकी फ़ाइलें देख सकता है",
+          "short": "आप यहाँ जो कुछ भी अपलोड करते हैं या बनाते हैं, दस्तावेज़ों सहित, उसे आपके स्टोर का प्रबंधन देख सकता है।",
+          "body": "स्टोर के स्वामी, प्रबंधक और जिन टीम सदस्यों को वे अनुमति देते हैं, वे Merchiva में आपके द्वारा अपलोड की गई या बनाई गई हर चीज़ खोल और देख सकते हैं: आपकी फ़ाइलें, फ़ोल्डर, स्प्रेडशीट, प्रेज़ेंटेशन और दस्तावेज़, मेरी फ़ाइलें में रखी चीज़ें भी। उनमें से कुछ इसे संपादित भी कर सकते हैं। यहाँ ऐसा कुछ भी न रखें जो आप उन्हें दिखाना नहीं चाहते।",
+          "ackTitle": "शुरू करने से पहले",
+          "ackConfirm": "मुझे समझ आ गया",
+          "learnMore": "और जानें",
+          "whoCanSee": "इसे कौन देख सकता है",
+          "myFilesHint": "मेरी फ़ाइलें में रखी चीज़ें केवल आप, आपके स्टोर का प्रबंधन और वे लोग खोल सकते हैं जिनके साथ आप साझा करते हैं।",
+          "storeFilesHint": "स्टोर की फ़ाइलें आपके स्टोर में हर कोई देख सकता है।",
+          "uploadNote": "आप जो अपलोड करते हैं, उसे आपके स्टोर का प्रबंधन देख सकता है।",
+          "sharedDeviceNote": "यह टैबलेट साझा है। इसका उपयोग करने वाले दूसरे लोग यहाँ सहेजी गई चीज़ों तक पहुँच सकते हैं, इसलिए निजी फ़ाइलें अपने फ़ोन पर ही रखें।"
+        }
+      }
+    },
+    "ar": {
+      "drive": {
+        "disclosure": {
+          "title": "يمكن لإدارة متجرك رؤية ملفاتك",
+          "short": "يمكن لإدارة متجرك الاطلاع على كل ما ترفعه أو تنشئه هنا، بما في ذلك المستندات.",
+          "body": "يمكن لمالك المتجر والمديرين وأعضاء الفريق الذين يأذنون لهم فتح وعرض كل ما ترفعه أو تنشئه في Merchiva: ملفاتك ومجلداتك وجداول البيانات والعروض التقديمية والمستندات، بما في ذلك العناصر الموجودة في «ملفاتي». ويمكن لبعضهم أيضًا تعديله. لا تحفظ هنا أي شيء لا تريدهم أن يروه.",
+          "ackTitle": "قبل أن تبدأ",
+          "ackConfirm": "فهمت",
+          "learnMore": "اعرف المزيد",
+          "whoCanSee": "من يمكنه رؤية هذا",
+          "myFilesHint": "لا يمكن فتح العناصر الموجودة في «ملفاتي» إلا لك ولإدارة متجرك وللأشخاص الذين تشاركها معهم.",
+          "storeFilesHint": "يمكن لكل من في متجرك رؤية «ملفات المتجر».",
+          "uploadNote": "يمكن لإدارة متجرك رؤية ما ترفعه.",
+          "sharedDeviceNote": "هذا الجهاز اللوحي مشترك. قد يتمكن الآخرون الذين يستخدمونه من الوصول إلى ما تحفظه هنا، لذا احتفظ بملفاتك الخاصة على هاتفك."
+        }
+      }
+    },
+    "zh-cn": {
+      "drive": {
+        "disclosure": {
+          "title": "门店管理层可以查看你的文件",
+          "short": "你在这里上传或创建的所有内容（包括文档）都可以被门店管理层查看。",
+          "body": "门店所有者、经理以及他们授权的团队成员可以打开和查看你在 Merchiva 中上传或创建的所有内容：你的文件、文件夹、表格、演示文稿和文档，即使放在“我的文件”中也不例外。其中部分人员还可以编辑这些内容。请不要在这里存放任何你不希望他们看到的内容。",
+          "ackTitle": "开始之前",
+          "ackConfirm": "我已了解",
+          "learnMore": "了解详情",
+          "whoCanSee": "谁可以查看",
+          "myFilesHint": "只有你、门店管理层以及你共享的对象可以打开“我的文件”中的内容。",
+          "storeFilesHint": "门店里的所有人都可以查看“门店文件”。",
+          "uploadNote": "门店管理层可以查看你上传的内容。",
+          "sharedDeviceNote": "这台平板是共用的。其他使用者可能会看到你在这里保存的内容，私人文件请存放在你自己的手机上。"
+        }
+      }
+    },
+    "zh-tw": {
+      "drive": {
+        "disclosure": {
+          "title": "店面管理層可以查看你的檔案",
+          "short": "你在這裡上傳或建立的所有內容（包括文件）都可被店面管理層查看。",
+          "body": "店面擁有者、經理以及他們授權的團隊成員可以開啟和查看你在 Merchiva 中上傳或建立的所有內容：你的檔案、資料夾、試算表、簡報和文件，即使放在「我的檔案」中也不例外。其中部分人員還可以編輯這些內容。請勿在此存放任何你不希望他們看到的內容。",
+          "ackTitle": "開始之前",
+          "ackConfirm": "我已瞭解",
+          "learnMore": "瞭解詳情",
+          "whoCanSee": "誰可以查看",
+          "myFilesHint": "只有你、店面管理層以及你共用的對象可以開啟「我的檔案」中的內容。",
+          "storeFilesHint": "店面裡的所有人都可以查看「店面檔案」。",
+          "uploadNote": "店面管理層可以查看你上傳的內容。",
+          "sharedDeviceNote": "這台平板是共用的。其他使用者可能會看到你在這裡儲存的內容，私人檔案請存放在你自己的手機上。"
+        }
+      }
+    },
+    "zh-hk": {
+      "drive": {
+        "disclosure": {
+          "title": "店舖管理層可以查看你的檔案",
+          "short": "你在此上載或建立的所有內容（包括文檔）均可由店舖管理層查看。",
+          "body": "店舖所有者、經理以及他們授權的團隊成員可以開啟及查看你在 Merchiva 上載或建立的所有內容：你的檔案、資料夾、試算表、簡報及文檔，即使放在「我的檔案」中亦然。其中部分人員亦可以編輯這些內容。請勿在此存放任何你不希望他們看到的內容。",
+          "ackTitle": "開始之前",
+          "ackConfirm": "我已明白",
+          "learnMore": "了解詳情",
+          "whoCanSee": "誰可以查看",
+          "myFilesHint": "只有你、店舖管理層及你共享的對象可以開啟「我的檔案」中的內容。",
+          "storeFilesHint": "店舖內所有人都可以查看「店舖檔案」。",
+          "uploadNote": "店舖管理層可以查看你上載的內容。",
+          "sharedDeviceNote": "這部平板電腦是共用的。其他使用者可能會看到你在此儲存的內容，私人檔案請存放在你自己的手機上。"
+        }
+      }
+    }
+  },
+  "extends": null,
+  "overwrites": []
+}

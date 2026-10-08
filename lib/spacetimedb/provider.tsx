@@ -177,6 +177,48 @@ function bugSubscriptions(orgId: string): string[] {
   return [`SELECT * FROM bug_report WHERE organization_id = '${orgId}'`];
 }
 
+/**
+ * Page presence (live cursors), on its own for the same reason as bug reports:
+ * a module without `page_presence` loses only the cursors, never the org batch.
+ */
+function presenceSubscriptions(orgId: string): string[] {
+  if (!isUuid(orgId)) return [];
+  return [`SELECT * FROM page_presence WHERE organization_id = '${orgId}'`];
+}
+
+/**
+ * Forms (spacetimedb/src/forms/tables.ts), on their own for the same reason as
+ * bug reports: a module without them loses only Forms, never the org batch. RLS
+ * narrows `form` to member-visible forms (plus every form for Drive admins) and
+ * `form_meta` to Drive admins. Responses are not here: they are subscribed on
+ * demand by lib/spacetimedb/hooks/useForms.ts, scoped to a form or to the member.
+ */
+function formSubscriptions(orgId: string): string[] {
+  if (!isUuid(orgId)) return [];
+  const org = `organization_id = '${orgId}'`;
+  return [
+    `SELECT * FROM form WHERE ${org}`,
+    `SELECT * FROM form_meta WHERE ${org}`,
+    `SELECT * FROM form_assignment WHERE ${org}`,
+    `SELECT * FROM form_completion WHERE ${org} AND date >= '${isoDaysAgo(7)}'`,
+  ];
+}
+
+/**
+ * Channel side tables (spacetimedb/src/chat/tables.ts), on their own for the
+ * same reason as bug reports: a module without them loses only reactions,
+ * threads, pins, topics and read state, never the org batch. RLS narrows each
+ * to conversations the user is in (chat_member_state: the user's own rows).
+ */
+function chatSideSubscriptions(): string[] {
+  return [
+    "SELECT * FROM chat_reaction",
+    "SELECT * FROM chat_message_ext",
+    "SELECT * FROM chat_channel_info",
+    "SELECT * FROM chat_member_state",
+  ];
+}
+
 interface SpacetimeProviderProps {
   children: ReactNode;
 }
@@ -356,6 +398,17 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
         // Subscribe only to what this identity may see, and only for the
         // active store. See SUBSCRIPTION NOTES at the bottom of this file.
         conn.subscriptionBuilder().subscribe(BOOTSTRAP_SUBSCRIPTIONS);
+        // The answer to this identity's latest PIN attempt (RLS: identity =
+        // :sender). On its own, like bug_report below: a module without the
+        // table loses only the answers, never the bootstrap batch.
+        try {
+          conn
+            .subscriptionBuilder()
+            .onError(() => console.warn("[SpacetimeDB] pin_attempt_result subscription failed — is the module published?"))
+            .subscribe(["SELECT * FROM pin_attempt_result"]);
+        } catch (err) {
+          console.warn("[SpacetimeDB] PIN attempt subscription failed:", err);
+        }
         const bootOrgId = activeOrgId();
         if (bootOrgId) {
           try {
@@ -385,6 +438,36 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
               .subscribe(bugSubscriptions(bootOrgId));
           } catch (err) {
             console.warn("[SpacetimeDB] Bug report subscription failed:", err);
+          }
+          try {
+            conn
+              .subscriptionBuilder()
+              .onError(() =>
+                console.warn("[SpacetimeDB] page_presence subscription failed — is the module published?"),
+              )
+              .subscribe(presenceSubscriptions(bootOrgId));
+          } catch (err) {
+            console.warn("[SpacetimeDB] Page presence subscription failed:", err);
+          }
+          try {
+            conn
+              .subscriptionBuilder()
+              .onError(() =>
+                console.warn("[SpacetimeDB] forms subscription failed — is the module published?"),
+              )
+              .subscribe(formSubscriptions(bootOrgId));
+          } catch (err) {
+            console.warn("[SpacetimeDB] Forms subscription failed:", err);
+          }
+          try {
+            conn
+              .subscriptionBuilder()
+              .onError(() =>
+                console.warn("[SpacetimeDB] chat side-table subscription failed — is the module published?"),
+              )
+              .subscribe(chatSideSubscriptions());
+          } catch (err) {
+            console.warn("[SpacetimeDB] Chat side-table subscription failed:", err);
           }
         }
       })

@@ -9,6 +9,62 @@ function esc(s: string): string {
   );
 }
 
+// Email look follows the app theme in app/globals.css (hex copies of its oklch
+// tokens: mail clients do not parse oklch): black 1px borders on a pale ground,
+// indigo primary, a 1rem radius, DM Sans, Space Mono for amounts. Inline styles
+// and a table frame, because mail clients drop <style>.
+const INK = "#000000"; // --foreground
+const MUTED = "#333333"; // --muted-foreground
+const FAINT = "#737373"; // --input
+const BORDER = "#000000"; // --border
+const GROUND = "#f7f9f3"; // --background
+const PRIMARY = "#4f46e5"; // --primary
+const RADIUS = "16px"; // --radius
+const RADIUS_INNER = "14px"; // --radius-md
+const FONT = "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const MONO = "'Space Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+// The PWA icon on the production site: mail clients need an absolute https URL
+// and most of them do not render SVG.
+const LOGO_URL = "https://www.merchiva.com/icon-192.png";
+const BRAND_LINE = "Merchiva — AI-powered business management";
+
+/** Card-framed email: brand row, body, footer under the card. Every argument is already-escaped HTML. */
+function emailLayout({ brand, body, footer, dir = "ltr" }: { brand: string; body: string; footer: string; dir?: "ltr" | "rtl" }): string {
+  return `
+    <div dir="${dir}" style="margin:0;padding:32px 16px;background:${GROUND};font-family:${FONT};color:${INK};">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid ${BORDER};border-radius:${RADIUS};border-collapse:separate;">
+        <tr>
+          <td style="padding:16px 24px;border-bottom:1px solid ${BORDER};">
+            <img src="${LOGO_URL}" width="24" height="24" alt="" style="display:inline-block;vertical-align:middle;border:0;border-radius:6px;" />
+            <span style="display:inline-block;vertical-align:middle;margin:0 8px;font-size:14px;font-weight:600;letter-spacing:-0.01em;color:${INK};">${brand}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px;">${body}</td>
+        </tr>
+      </table>
+      <p style="max-width:560px;margin:16px auto 0;font-size:12px;line-height:1.5;color:${FAINT};text-align:center;">${footer}</p>
+    </div>
+  `;
+}
+
+function emailHeading(text: string): string {
+  return `<h1 style="margin:0 0 8px;font-size:18px;font-weight:600;line-height:1.3;letter-spacing:-0.01em;color:${INK};">${text}</h1>`;
+}
+
+function emailText(html: string): string {
+  return `<p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${INK};">${html}</p>`;
+}
+
+/** Secondary line; `box` sets its margin (and any separator) as inline CSS. */
+function emailNote(html: string, box = "margin:20px 0 0;"): string {
+  return `<p style="${box}font-size:13px;line-height:1.5;color:${MUTED};">${html}</p>`;
+}
+
+function emailButton(href: string, label: string): string {
+  return `<a href="${href}" style="display:inline-block;background:${PRIMARY};color:#ffffff;padding:10px 20px;border-radius:${RADIUS};text-decoration:none;font-size:14px;font-weight:500;line-height:20px;">${label}</a>`;
+}
+
 function cleanEmailDisplayName(name: string): string {
   return name.replace(/[<>"\r\n,]/g, " ").replace(/\s+/g, " ").trim() || "Merchiva";
 }
@@ -202,58 +258,64 @@ export async function sendSupplierPOEmail({
   const emailLanguage = normalizeSupplierEmailLanguage(language);
   const copy = SUPPLIER_PO_COPY[emailLanguage];
   const greeting = copy.greeting(esc(contactName || supplierName));
+  const rtl = emailLanguage === "ar";
+  const start = rtl ? "right" : "left";
+  const end = rtl ? "left" : "right";
+  const cell = `padding:8px 12px;border-bottom:1px solid ${BORDER};font-size:14px;line-height:1.4;`;
+  const figure = `font-family:${MONO};font-variant-numeric:tabular-nums;white-space:nowrap;`;
+  const head = `padding:8px 12px;border-bottom:1px solid ${BORDER};font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:${MUTED};`;
   const rows = items
     .map((it) => {
       const qty = formatSupplierQuantity(it, emailLanguage);
       const line = it.unitCost != null ? `${esc(currency)}${(it.unitCost * it.quantity).toFixed(2)}` : "—";
       return `
         <tr>
-          <td style="padding:8px 12px;border-bottom:1px solid #e7e5e4;font-size:14px;color:#1c1917;">${esc(supplierItemName(it))}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #e7e5e4;font-size:14px;color:#57534e;text-align:right;">${esc(qty)}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #e7e5e4;font-size:14px;color:#57534e;text-align:right;">${line}</td>
+          <td style="${cell}text-align:${start};color:${INK};">${esc(supplierItemName(it))}</td>
+          <td style="${cell}${figure}text-align:${end};color:${INK};">${esc(qty)}</td>
+          <td style="${cell}${figure}text-align:${end};color:${MUTED};">${line}</td>
         </tr>`;
     })
     .join("");
   const notesBlock = notes
-    ? `<p style="color:#57534e;font-size:14px;line-height:1.6;margin:16px 0 0;"><strong style="color:#1c1917;">${esc(copy.notes)}:</strong> ${esc(notes)}</p>`
+    ? `<div style="margin:16px 0 0;padding:12px 14px;border:1px solid ${BORDER};border-radius:${RADIUS_INNER};font-size:14px;line-height:1.6;color:${INK};">
+        <div style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:${MUTED};">${esc(copy.notes)}</div>
+        ${esc(notes).replace(/\n/g, "<br/>")}
+      </div>`
     : "";
   const totalLabel = total > 0 ? `${currency}${total.toFixed(2)}` : copy.pendingQuote;
+  const totalStyle = total > 0 ? `${figure}font-size:14px;font-weight:600;color:${INK};` : `font-size:13px;color:${MUTED};`;
   const { error } = await resend.emails.send({
     from: supplierThreadFrom(orgName, replyTo),
     to,
     ...(replyTo ? { replyTo } : {}),
     subject: copy.subject(orgName),
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
-        <div style="margin-bottom: 32px;">
-          <div style="display: inline-block; background: #1c1917; color: white; width: 32px; height: 32px; text-align: center; line-height: 32px; border-radius: 4px; font-size: 14px; font-weight: bold;">⚡</div>
-          <span style="margin-left: 8px; font-weight: 700; font-size: 16px; color: #1c1917;">${esc(orgName)}</span>
-        </div>
-        <h1 style="font-size: 20px; font-weight: 700; color: #1c1917; margin: 0 0 8px;">${esc(copy.title)}</h1>
-        <p style="color: #57534e; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
-          ${greeting} ${esc(copy.intro)}
-        </p>
-        <table style="width:100%;border-collapse:collapse;border-top:1px solid #e7e5e4;">
+    html: emailLayout({
+      dir: rtl ? "rtl" : "ltr",
+      brand: esc(orgName),
+      footer: esc(copy.brand),
+      body: `
+        ${emailHeading(esc(copy.title))}
+        ${emailText(`${greeting} ${esc(copy.intro)}`)}
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${BORDER};border-radius:${RADIUS_INNER};border-collapse:separate;border-spacing:0;">
           <thead>
             <tr>
-              <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;border-bottom:1px solid #e7e5e4;">${esc(copy.item)}</th>
-              <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;border-bottom:1px solid #e7e5e4;">${esc(copy.qty)}</th>
-              <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;border-bottom:1px solid #e7e5e4;">${esc(copy.estCost)}</th>
+              <th style="${head}text-align:${start};">${esc(copy.item)}</th>
+              <th style="${head}text-align:${end};">${esc(copy.qty)}</th>
+              <th style="${head}text-align:${end};">${esc(copy.estCost)}</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2" style="padding:10px 12px;font-size:13px;color:${MUTED};text-align:${start};">${esc(copy.estimatedTotal)}</td>
+              <td style="padding:10px 12px;text-align:${end};${totalStyle}">${esc(totalLabel)}</td>
+            </tr>
+          </tfoot>
         </table>
-        <p style="color:#1c1917;font-size:15px;font-weight:600;margin:16px 0 0;text-align:right;">
-          ${esc(copy.estimatedTotal)}: ${esc(totalLabel)}
-        </p>
         ${notesBlock}
-        <p style="color: #a8a29e; font-size: 13px; line-height: 1.5; margin: 28px 0 0;">
-          ${esc(copy.footer(orgName))}
-        </p>
-        <hr style="border: none; border-top: 1px solid #e7e5e4; margin: 28px 0 16px;" />
-        <p style="color: #a8a29e; font-size: 12px; margin: 0;">${esc(copy.brand)}</p>
-      </div>
-    `,
+        ${emailNote(esc(copy.footer(orgName)), "margin:24px 0 0;")}
+      `,
+    }),
   });
 
   if (error) {
@@ -278,44 +340,37 @@ export async function sendTeamInviteEmail({
   phone?: string;
 }) {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  // Escape phone for safe HTML rendering since it comes from user input.
-  const safePhone = phone
-    ? phone.replace(/[<>&"']/g, (c) =>
-        ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c] ?? c),
-      )
-    : null;
+  // Every value is user-chosen (store name, display name, phone): escape them
+  // all for the HTML, and keep the subject on one line.
+  const safePhone = phone ? esc(phone) : null;
+  // Store and display names are free text anyone can set: keep them short, on one line.
+  const short = (s: string) => {
+    const one = s.replace(/\s+/g, " ").trim();
+    return one.length > 60 ? `${one.slice(0, 59)}…` : one;
+  };
+  const safeInviter = esc(short(inviterEmail));
+  const safeOrg = esc(short(orgName));
+  // A fixed word, never the stored text: inviteToOrg accepts any role string.
+  const safeRole = ({ owner: "Owner", manager: "Manager", staff: "Staff" } as Record<string, string>)[role] ?? "Team member";
+  const safeUrl = esc(inviteUrl);
+  const subjectOrg = short(orgName);
   const phoneLine = safePhone
-    ? `
-        <p style="color: #78716c; font-size: 13px; line-height: 1.5; margin: 16px 0 0;">
-          We'll also keep <strong style="color: #1c1917;">${safePhone}</strong> on file for shift reminders once you join.
-        </p>`
+    ? emailNote(`We'll also keep <strong style="color:${INK};font-weight:500;">${safePhone}</strong> on file for shift reminders once you join.`, "margin:16px 0 0;")
     : "";
   const { error } = await resend.emails.send({
     from: FROM,
     to,
-    subject: `You're invited to join ${orgName} on Merchiva`,
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
-        <div style="margin-bottom: 32px;">
-          <div style="display: inline-block; background: #1c1917; color: white; width: 32px; height: 32px; text-align: center; line-height: 32px; border-radius: 4px; font-size: 14px; font-weight: bold;">⚡</div>
-          <span style="margin-left: 8px; font-weight: 700; font-size: 16px; color: #1c1917;">Merchiva</span>
-        </div>
-        <h1 style="font-size: 22px; font-weight: 700; color: #1c1917; margin: 0 0 8px;">You're invited!</h1>
-        <p style="color: #57534e; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
-          <strong>${inviterEmail}</strong> has invited you to join <strong>${orgName}</strong> on Merchiva as a <strong style="text-transform: capitalize;">${role}</strong>.
-        </p>
-        <a href="${inviteUrl}" style="display: inline-block; background: #1c1917; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 14px;">
-          Accept Invitation
-        </a>${phoneLine}
-        <p style="color: #a8a29e; font-size: 13px; line-height: 1.5; margin: 24px 0 0;">
-          This invitation expires in 7 days. If you didn't expect this email, you can safely ignore it.
-        </p>
-        <hr style="border: none; border-top: 1px solid #e7e5e4; margin: 32px 0 16px;" />
-        <p style="color: #a8a29e; font-size: 12px; margin: 0;">
-          Merchiva — AI-powered business management
-        </p>
-      </div>
-    `,
+    subject: `You're invited to join ${subjectOrg} on Merchiva`,
+    html: emailLayout({
+      brand: "Merchiva",
+      footer: BRAND_LINE,
+      body: `
+        ${emailHeading(`Join ${safeOrg} on Merchiva`)}
+        ${emailText(`<strong style="font-weight:600;">${safeInviter}</strong> has invited you to join <strong style="font-weight:600;">${safeOrg}</strong> as <strong style="font-weight:600;">${safeRole}</strong>.`)}
+        ${emailButton(safeUrl, "Accept invitation")}${phoneLine}
+        ${emailNote("This invitation expires in 7 days. If you didn't expect this email, you can safely ignore it.", `margin:24px 0 0;padding:16px 0 0;border-top:1px solid ${BORDER};`)}
+      `,
+    }),
   });
 
   if (error) {
@@ -349,10 +404,11 @@ export async function sendSupplierReplyEmail({
     to,
     ...(replyTo ? { replyTo } : {}),
     subject: subject || `Re: your message — ${orgName}`,
+    // A reply in a conversation: plain text, no card, only the shared type and grays.
     html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 20px;">
-        <p style="color:#1c1917;font-size:15px;line-height:1.6;margin:0 0 16px;white-space:pre-wrap;">${safeBody}</p>
-        <p style="color:#a8a29e;font-size:12px;line-height:1.5;margin:24px 0 0;">
+      <div style="font-family:${FONT};max-width:560px;margin:0 auto;padding:24px 16px;color:${INK};">
+        <p style="margin:0;font-size:14px;line-height:1.6;color:${INK};">${safeBody}</p>
+        <p style="margin:24px 0 0;padding:12px 0 0;border-top:1px solid ${BORDER};font-size:12px;line-height:1.5;color:${FAINT};">
           ${esc(orgName)} · sent via Merchiva. Reply to this email to continue.
         </p>
       </div>
@@ -376,33 +432,21 @@ export async function sendMorningReminderEmail({
   dashboardUrl: string;
 }) {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const greeting = ownerName ? `Good morning, ${ownerName}` : "Good morning";
+  const greeting = ownerName ? `Good morning, ${esc(ownerName)}` : "Good morning";
   const { error } = await resend.emails.send({
     from: FROM,
     to,
     subject: `Today's briefing for ${orgName} is ready`,
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
-        <div style="margin-bottom: 32px;">
-          <div style="display: inline-block; background: #1c1917; color: white; width: 32px; height: 32px; text-align: center; line-height: 32px; border-radius: 4px; font-size: 14px; font-weight: bold;">⚡</div>
-          <span style="margin-left: 8px; font-weight: 700; font-size: 16px; color: #1c1917;">Merchiva</span>
-        </div>
-        <h1 style="font-size: 22px; font-weight: 700; color: #1c1917; margin: 0 0 8px;">${greeting}.</h1>
-        <p style="color: #57534e; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
-          Mr. Merchiva has your morning briefing for <strong>${orgName}</strong> waiting — what needs attention today, plus a draft of next week's schedule if you haven't set one yet.
-        </p>
-        <a href="${dashboardUrl}" style="display: inline-block; background: #1c1917; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 14px;">
-          Open dashboard
-        </a>
-        <p style="color: #a8a29e; font-size: 13px; line-height: 1.5; margin: 24px 0 0;">
-          Don't want these reminders? Reply to this email and we'll turn them off.
-        </p>
-        <hr style="border: none; border-top: 1px solid #e7e5e4; margin: 32px 0 16px;" />
-        <p style="color: #a8a29e; font-size: 12px; margin: 0;">
-          Merchiva — AI-powered business management
-        </p>
-      </div>
-    `,
+    html: emailLayout({
+      brand: "Merchiva",
+      footer: BRAND_LINE,
+      body: `
+        ${emailHeading(`${greeting}.`)}
+        ${emailText(`Mr. Merchiva has your morning briefing for <strong style="font-weight:600;">${esc(orgName)}</strong> waiting — what needs attention today, plus a draft of next week's schedule if you haven't set one yet.`)}
+        ${emailButton(esc(dashboardUrl), "Open dashboard")}
+        ${emailNote("Don't want these reminders? Reply to this email and we'll turn them off.", `margin:24px 0 0;padding:16px 0 0;border-top:1px solid ${BORDER};`)}
+      `,
+    }),
   });
   if (error) {
     console.error("[email/morning-reminder] Resend error:", error);

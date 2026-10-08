@@ -1,0 +1,12 @@
+{
+  "drive": {
+    "home": {
+      "noticeRequired": "Primero lee el aviso sobre quién puede ver tus archivos."
+    },
+    "members": {
+      "col": {
+        "member": "Miembro"
+      }
+    }
+  }
+}

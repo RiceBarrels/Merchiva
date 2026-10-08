@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
-import { createOpenAI } from "@ai-sdk/openai";
-import { streamText, generateObject, stepCountIs } from "ai";
-import { z } from "zod";
-import { getAllPromptSegments } from "@/lib/merchiva/skills/registry";
-import {
-  buildMerchivaTools,
-  buildSlimContext,
-  merchivaToolsEnabled,
-  TOOLS_PROMPT_BLOCK,
-} from "@/lib/merchiva/tools";
+import { streamText, stepCountIs } from "ai";
+import { buildMerchivaTools, merchivaToolsEnabled } from "@/lib/merchiva/tools";
+import { allowedMerchivaTools } from "@/lib/merchiva/tools/access";
+import { validTimeZone } from "@/lib/merchiva/tools/store-time";
 import { buildMcpToolContext, closeMcpClients } from "@/lib/merchiva/mcp/ai-tools";
+import {
+  MERCHIVA_DISABLED_ERROR,
+  canUseMerchiva,
+  permissionSummary,
+  verifyActiveMember,
+  type MemberAccess,
+} from "@/lib/auth/verify-member";
 import { callReducer } from "@/lib/spacetimedb/server-rpc";
 import {
   getServiceConn,
@@ -19,33 +20,35 @@ import {
 } from "@/lib/spacetimedb/service-client";
 import { sendWebPush } from "@/lib/push/send";
 import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
+import { tierLabel, tierModel, tierModelId, type AiTier } from "@/lib/ai/models";
+import { fallbackTier, routeRequest } from "@/lib/ai/router";
+import { ackFor, conversationMessages, shouldReplyDirectly } from "@/lib/ai/triage";
+import { runTriage } from "@/lib/ai/run-triage";
+import { buildSystemPrompt } from "@/lib/ai/store-ai-prompt";
+import { ackSentinel, replyString, stripIncompleteTrailingAction } from "@/lib/ai/reply-text";
+import { toolFrameCallbacks } from "@/lib/ai/tool-stream";
+import { BLANK_RETRY_MAX_STEPS, withBlankRetry } from "@/lib/ai/blank-reply";
+import { createJobFlusher } from "@/lib/ai/job-flusher";
+import { pageTriageNote, sanitizeCurrentPage, withCurrentPage, type CurrentPage } from "@/lib/ai/page-prompt";
 
-// ── OpenRouter setup (mirrors /api/store-ai) ─────────────────────────────────
+// Background replies are delivered through the ai_job row and their actions
+// run only when the job is finalized, so the prompt says so — and repeats the
+// no-hallucinated-success rule this path has always carried.
+const BACKGROUND_NOTE = `
 
-function getOpenRouter() {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) throw new Error("OPENROUTER_API_KEY not configured");
-  return createOpenAI({
-    apiKey: key,
-    baseURL: "https://openrouter.ai/api/v1",
-    headers: {
-      "HTTP-Referer": "https://merchiva.com",
-      "X-Title": "Merchiva Mr. Merchiva (background)",
-    },
-  });
-}
+Output your reply as plain text plus \`\`\`action\`\`\` JSON blocks for any actions. The client will execute the actions when it receives the finalized job result.
 
-// Default to the OSS model (gpt-oss-120b); override with OPENROUTER_MODEL.
-const MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b";
-const FAST_MODEL = process.env.OPENROUTER_FAST_MODEL || "openai/gpt-oss-120b";
-// Reserved for requests flagged as needing deep reasoning.
-const THINKING_MODEL = process.env.OPENROUTER_THINKING_MODEL || "x-ai/grok-4.3";
+🚨 CRITICAL — NEVER HALLUCINATE SUCCESS:
+- When the user asks to ADD / CREATE / EDIT / DELETE anything (training docs, products, shifts, roles, values, pages, etc.), you MUST emit a \`\`\`action\`\`\` block with the matching action name. NEVER respond with "已为您添加…" / "Done, added X" / "Added the training doc" without a preceding \`\`\`action\`\`\` block — those are hallucinations, the action did not happen.
+- If you don't have enough info yet (missing title, missing id), ASK ONCE for the missing piece. Don't pretend.
+- If you don't know which action name applies, look at the actions catalog above; pick the closest one. If genuinely none applies, say so honestly: "I don't have a tool for that yet."
+- After emitting the action block, you may add a one-line confirmation in plain text, but the block itself is what actually executes — the text alone does nothing.`;
 
-const triageSchema = z.object({
-  needsThinking: z.boolean(),
-  needsDeepThinking: z.boolean().optional(),
-  message: z.string(),
-});
+// Room for a full week of engine-proposed addShift blocks. There is no
+// continuation batch on this path (unlike /api/store-ai), and the old 1500
+// cut a week's schedule off mid-block; a reply that still hits the cap has its
+// incomplete trailing action trimmed so the rest parses.
+const MAX_OUTPUT_TOKENS = 4000;
 
 // ── Request schema ───────────────────────────────────────────────────────────
 
@@ -60,11 +63,9 @@ interface EnqueueBody {
   lang?: string;
   memory?: { summary?: string; storeOverview?: string; userPreferences?: string };
   mcpServers?: unknown;
-  permissions?: {
-    isOwner?: boolean;
-    role?: string;
-    sections?: Record<string, { view?: boolean; edit?: boolean }>;
-  };
+  // The page the user is looking at in the chat's tab (lib/merchiva/current-page.ts).
+  // Untrusted: sanitizeCurrentPage decides what of it reaches the prompts.
+  page?: unknown;
   // Job id is generated client-side so the response can return it before the
   // background work has even started talking to SpacetimeDB.
   jobId?: string;
@@ -80,11 +81,21 @@ interface EnqueueBody {
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as EnqueueBody;
-    const { token, organizationId, sessionId, message, history, context, lang, memory, permissions } = body;
+    const { token, organizationId, sessionId, message, history, context, lang, memory } = body;
 
     if (!token) return NextResponse.json({ error: "Missing token" }, { status: 401 });
     if (!organizationId || !sessionId || !message) {
       return NextResponse.json({ error: "Missing organizationId, sessionId, or message" }, { status: 400 });
+    }
+    // createAiJob below would refuse a non-member too, but the job also reads
+    // the org's data with this token: prove the membership here, and take the
+    // role and section permissions that decide the read tools from it — never
+    // from the body.
+    const auth = await verifyActiveMember(token, organizationId);
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    // Mr. Merchiva switched off for this member by an admin: no job, no reply.
+    if (!canUseMerchiva(auth.access)) {
+      return NextResponse.json({ error: MERCHIVA_DISABLED_ERROR }, { status: 403 });
     }
     if (!process.env.OPENROUTER_API_KEY) {
       return NextResponse.json({ error: "AI not configured (OPENROUTER_API_KEY missing)" }, { status: 503 });
@@ -130,7 +141,8 @@ export async function POST(req: NextRequest) {
           lang: lang ?? "en",
           memory: memory ?? {},
           mcpServers: body.mcpServers,
-          permissions,
+          access: auth.access,
+          page: sanitizeCurrentPage(body.page),
         });
       } catch (err) {
         console.error("[enqueue] background job crashed:", err);
@@ -157,7 +169,10 @@ interface RunJobArgs {
   lang: string;
   memory: { summary?: string; storeOverview?: string; userPreferences?: string };
   mcpServers?: unknown;
-  permissions?: EnqueueBody["permissions"];
+  // The verified membership (verifyActiveMember in POST).
+  access: MemberAccess;
+  // The sanitized current page, or null.
+  page: CurrentPage | null;
 }
 
 async function runJob(args: RunJobArgs): Promise<void> {
@@ -171,45 +186,32 @@ async function runJob(args: RunJobArgs): Promise<void> {
     return;
   }
 
+  // Stream chunks into the job row. Text is coalesced so we don't hammer the
+  // database with one reducer call per token; tool frames go out at once.
+  const flusher = createJobFlusher((chunk, setRunning) =>
+    callReducer({
+      token: args.token,
+      name: "appendAiJobChunk",
+      args: [args.organizationId, jobId, chunk, setRunning],
+    }),
+  );
+
   try {
-    const openrouter = getOpenRouter();
-    // Triage: cheap classifier decides direct-answer vs. escalate.
-    let triage: { needsThinking: boolean; needsDeepThinking?: boolean; message: string };
-    try {
-      const triageRes = await generateObject({
-        model: openrouter.chat(FAST_MODEL),
-        schema: triageSchema,
-        system: buildTriagePrompt(args.lang),
-        messages: [
-          ...args.history.slice(-10).map((m) => ({
-            role: m.role as "user" | "assistant",
-            content: m.content,
-          })),
-          { role: "user" as const, content: args.message },
-        ],
-        maxOutputTokens: 800,
-        temperature: 0.3,
-      });
-      triage = triageRes.object;
-      await recordAiUsage({
-        organizationId: args.organizationId,
-        feature: "store_ai_bg_triage",
-        model: FAST_MODEL,
-        description: args.message,
-        ...normalizeUsage(triageRes.usage),
-      });
-    } catch (e) {
-      console.warn("[runJob] triage failed; escalating:", e);
-      triage = { needsThinking: true, message: "" };
-    }
+    const messages = conversationMessages(args.history, args.message);
+    // Triage (L1) decides direct answer vs. escalation, and scores the rest.
+    const triage = await runTriage({
+      mode: "chat",
+      lang: args.lang,
+      messages,
+      organizationId: args.organizationId,
+      feature: "store_ai_bg_triage",
+      description: args.message,
+      pageNote: pageTriageNote(args.page),
+    });
 
-    // Stream chunks into the job row. We buffer small chunks so we don't
-    // hammer the database with one reducer call per token.
-    const flusher = makeChunkFlusher(args.token, args.organizationId, jobId);
-
-    if (!triage.needsThinking) {
+    if (triage && shouldReplyDirectly(triage, "chat")) {
       flusher.push(triage.message);
-      await flusher.flush(true);
+      await flusher.flush();
       await callReducer({
         token: args.token,
         name: "finalizeAiJob",
@@ -221,75 +223,135 @@ async function runJob(args: RunJobArgs): Promise<void> {
     // Emit the short ack wrapped in a sentinel so the client can peel it off
     // into its own chat bubble, separate from the substantive reply that
     // follows. Kept inline (rather than a header) because the background job
-    // delivers everything through the single ai_job row.
-    if (triage.message) flusher.push("[[MERCHIVA_ACK]]" + triage.message + "[[/MERCHIVA_ACK]]");
+    // delivers everything through the single ai_job row. It leads both the
+    // partial and the final text; tool frames and reply text follow in the
+    // order they happened.
+    const ack = ackFor(triage);
+    let transcript = ackSentinel(ack);
+    if (transcript) flusher.pushNow(transcript);
 
-    // Read-tools: same as the streaming route, only when the service
-    // connection + org id are available.
-    const toolsEnabled = merchivaToolsEnabled() && !!args.organizationId;
-    const mcpContext = await buildMcpToolContext(args.mcpServers);
-    const systemPrompt = buildSystemPrompt(
-      args.context,
-      args.lang,
-      args.memory,
-      args.permissions,
-      toolsEnabled,
-      mcpContext.prompt,
+    // Every tier runs with the tools; only the model changes.
+    const route = triage ? routeRequest(triage.signals, { mode: "chat" }) : null;
+    const tier: AiTier = route?.tier ?? fallbackTier("chat");
+    const modelId = tierModelId(tier);
+    console.log(
+      route
+        ? `[runJob] Route: score=${route.score} [${route.signals.join(", ") || "no signals"}] → ${tierLabel(tier)} ${modelId}`
+        : `[runJob] Route: no triage → ${tierLabel(tier)} ${modelId}`,
     );
-    const ackNote = triage.message
-      ? `\n\nNOTE: An acknowledgment has ALREADY been sent: "${triage.message}". Skip greetings.`
+
+    // Read-tools: same as the streaming route — read as the caller with their
+    // token, and only those the member's permissions allow.
+    const readTools =
+      merchivaToolsEnabled(args.token) && !!args.organizationId ? allowedMerchivaTools(args.access) : null;
+    const mcpContext = await buildMcpToolContext(args.mcpServers);
+    const systemPrompt = withCurrentPage(
+      buildSystemPrompt(
+        args.context,
+        args.lang,
+        args.memory,
+        permissionSummary(args.access),
+        "chat",
+        readTools,
+        mcpContext.prompt,
+      ),
+      args.page,
+    );
+    const ackNote = ack
+      ? `\n\nNOTE: An acknowledgment has ALREADY been sent: "${ack}". Skip greetings.`
       : "\n\nNOTE: Skip greetings; go straight to substantive answer or action blocks.";
 
-    const useThinking = triage.needsDeepThinking === true;
-    const localTools = toolsEnabled
+    const localTools = readTools
       ? buildMerchivaTools({
+          token: args.token,
           organizationId: args.organizationId,
-          today: (args.context as Record<string, unknown> | undefined)?.today as string | undefined,
+          allowed: readTools,
+          today: args.context.today as string | undefined,
+          timeZone: validTimeZone(args.context.timeZone) ?? undefined,
         })
       : {};
     const allTools = { ...localTools, ...mcpContext.tools };
+    const hasTools = Object.keys(allTools).length > 0;
 
     let fullReply = "";
-    let stream: ReturnType<typeof streamText> | null = null;
+    const usage = { inputTokens: 0, outputTokens: 0 };
     try {
-      stream = streamText({
-        model: openrouter.chat(useThinking ? THINKING_MODEL : MODEL),
-        system: systemPrompt + ackNote,
-        messages: [
-          ...args.history.slice(-10).map((m) => ({
-            role: m.role as "user" | "assistant",
-            content: m.content,
-          })),
-          { role: "user" as const, content: args.message },
-        ],
-        maxOutputTokens: 1500,
-        temperature: 0.2,
-        ...(Object.keys(allTools).length > 0
-          ? { tools: allTools, stopWhen: stepCountIs(6) }
-          : {}),
-      });
+      // A reply that comes back blank gets one retry with the tool results it
+      // already fetched, then the fallback line (lib/ai/blank-reply.ts).
+      const { retried, blank } = await withBlankRetry(
+        { system: systemPrompt + BACKGROUND_NOTE + ackNote, messages },
+        async (attempt) => {
+          const stream = streamText({
+            model: tierModel(tier),
+            system: attempt.system,
+            messages: attempt.messages,
+            maxOutputTokens: MAX_OUTPUT_TOKENS,
+            temperature: 0.2,
+            ...(hasTools
+              ? { tools: allTools, stopWhen: stepCountIs(attempt.retry ? BLANK_RETRY_MAX_STEPS : 6) }
+              : {}),
+            // Each tool call lands in the row the moment it starts and finishes.
+            ...(hasTools
+              ? toolFrameCallbacks(
+                  (frame) => {
+                    transcript += frame;
+                    flusher.pushNow(frame);
+                  },
+                  { mcpLabels: mcpContext.connected.map((server) => server.label) },
+                )
+              : {}),
+          });
 
-      for await (const chunk of stream.textStream) {
-        fullReply += chunk;
-        flusher.push(chunk);
-        await flusher.maybeFlush();
+          let text = "";
+          for await (const chunk of stream.textStream) {
+            text += chunk;
+            transcript += chunk;
+            flusher.push(chunk);
+            await flusher.maybeFlush();
+          }
+          await flusher.flush();
+
+          if ((await stream.finishReason) === "length") {
+            // Cut mid-block: drop the incomplete trailing action so the blocks
+            // before it still parse on the client.
+            const { trimmed, stripped } = stripIncompleteTrailingAction(transcript);
+            if (stripped) {
+              console.log(`[runJob] finishReason=length; stripped ${transcript.length - trimmed.length} char incomplete trailing action`);
+              transcript = trimmed;
+              text = stripIncompleteTrailingAction(text).trimmed;
+            }
+          }
+          fullReply += text;
+          // Every step of the tool loop, not just the last one.
+          const spent = normalizeUsage(await stream.totalUsage);
+          usage.inputTokens += spent.inputTokens;
+          usage.outputTokens += spent.outputTokens;
+          return { text, messages: (await stream.response).messages };
+        },
+      );
+      if (retried) console.log(`[runJob] blank reply retried once → ${blank ? "still blank" : "answered"}`);
+      if (blank) {
+        // Never finalize a job that holds only the ack and tool steps.
+        fullReply = replyString(args.lang, "merchiva.errors.chatFallback");
+        transcript += fullReply;
+        flusher.push(fullReply);
+        await flusher.flush();
       }
-      await flusher.flush(true);
       await recordAiUsage({
         organizationId: args.organizationId,
         feature: "store_ai_bg",
-        model: useThinking ? THINKING_MODEL : MODEL,
+        model: modelId,
         description: args.message,
-        ...normalizeUsage(await stream.usage),
+        ...usage,
       });
     } finally {
       await closeMcpClients(mcpContext.clients);
     }
 
-    // finalText mirrors the streamed partial: ack wrapped in the sentinel so
-    // the client splits it into its own bubble on the final render too.
-    const finalText =
-      (triage.message ? "[[MERCHIVA_ACK]]" + triage.message + "[[/MERCHIVA_ACK]]" : "") + fullReply;
+    // finalText mirrors the streamed partial: the ack sentinel first, then
+    // tool frames and text in order, so the client renders the same thing on
+    // the final pass.
+    const finalText = transcript;
     await callReducer({
       token: args.token,
       name: "finalizeAiJob",
@@ -305,6 +367,9 @@ async function runJob(args: RunJobArgs): Promise<void> {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[runJob] generation failed:", msg);
     try {
+      // Let queued chunk writes land first, so none arrives after the job
+      // is marked failed.
+      await flusher.flush();
       await callReducer({
         token: args.token,
         name: "finalizeAiJob",
@@ -317,44 +382,6 @@ async function runJob(args: RunJobArgs): Promise<void> {
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-
-// Coalesce token-level chunks into ~250ms / 600-char batches before flushing
-// to SpacetimeDB. Reducer calls are not free; one per token would melt the DB
-// and waste a lot of round-trip latency for no perceptible UX gain.
-function makeChunkFlusher(token: string, organizationId: string, jobId: string) {
-  let buf = "";
-  let lastFlushAt = Date.now();
-  let firstFlush = true;
-  const FLUSH_EVERY_MS = 250;
-  const FLUSH_AT_CHARS = 600;
-  return {
-    push(text: string) { buf += text; },
-    async maybeFlush() {
-      const now = Date.now();
-      if (buf.length >= FLUSH_AT_CHARS || now - lastFlushAt >= FLUSH_EVERY_MS) {
-        await this.flush(false);
-      }
-    },
-    async flush(final: boolean) {
-      if (!buf && !firstFlush && !final) return;
-      const chunk = buf;
-      buf = "";
-      lastFlushAt = Date.now();
-      const setRunning = firstFlush;
-      firstFlush = false;
-      if (!chunk && !setRunning) return;
-      try {
-        await callReducer({
-          token,
-          name: "appendAiJobChunk",
-          args: [organizationId, jobId, chunk, setRunning],
-        });
-      } catch (err) {
-        console.error("[chunk-flusher] reducer failed:", err);
-      }
-    },
-  };
-}
 
 // Find the most recently-created pending job for this session. The reducer
 // just inserted one, so it should exist. We use the database HTTP `sql`
@@ -401,24 +428,6 @@ async function findLatestPendingJobId(token: string, organizationId: string, ses
 
 // ── Completion notification (in-app + web push) ──────────────────────────────
 
-const REPLY_TITLE: Record<string, string> = {
-  en: "Mr. Merchiva replied",
-  zh: "Mr. Merchiva 回复了",
-  es: "Mr. Merchiva respondió",
-  fr: "Mr. Merchiva a répondu",
-  ar: "رد عليك السيد ميرشيفا",
-  hi: "Mr. Merchiva ने जवाब दिया",
-};
-
-const REPLY_FALLBACK_BODY: Record<string, string> = {
-  en: "Your reply is ready.",
-  zh: "你的回复已经准备好了。",
-  es: "Tu respuesta está lista.",
-  fr: "Votre réponse est prête.",
-  ar: "ردك جاهز.",
-  hi: "आपका जवाब तैयार है।",
-};
-
 // Strip ```action``` blocks / bare action JSON so the notification preview shows
 // the conversational reply, not machine instructions.
 function stripActionsForPreview(text: string): string {
@@ -436,17 +445,18 @@ async function notifyReplyReady(
   fullReply: string,
 ): Promise<void> {
   try {
-    const lang = args.lang || "en";
-    const title = REPLY_TITLE[lang] ?? REPLY_TITLE.en;
+    const title = replyString(args.lang, "merchiva.replyReady.title");
     const preview = stripActionsForPreview(fullReply);
     const body = preview
       ? preview.length > 140
         ? preview.slice(0, 139) + "…"
         : preview
-      : REPLY_FALLBACK_BODY[lang] ?? REPLY_FALLBACK_BODY.en;
-    // Carries the session id so the client can suppress the bell entry when the
-    // user actually watched the reply stream in (see merchiva-chat-dashboard).
-    const link = `/manager/channel?mvsession=${encodeURIComponent(args.sessionId)}`;
+      : replyString(args.lang, "merchiva.replyReady.body");
+    // Mr. Merchiva lives in the dock beside every /manager page (one conversation
+    // per browser tab), so the link just lands in /manager. It carries the session
+    // id so the client can suppress the bell entry when the user actually watched
+    // the reply stream in (see merchiva-chat-dashboard).
+    const link = `/manager/dashboard?mvsession=${encodeURIComponent(args.sessionId)}`;
 
     const conn = await getServiceConn();
     const target = await getAiReplyTarget(conn, args.organizationId, args.sessionId);
@@ -475,64 +485,4 @@ async function notifyReplyReady(
     // unconfigured — the in-chat result still renders, so this is non-fatal.
     console.warn("[notifyReplyReady] skipped:", err instanceof Error ? err.message : err);
   }
-}
-
-// ── Prompt builders (trimmed copies of /api/store-ai logic) ──────────────────
-
-function languageNameFor(lang: string): string {
-  return lang === "zh" ? "Chinese (简体中文)"
-    : lang === "es" ? "Spanish (Español)"
-    : lang === "fr" ? "French (Français)"
-    : lang === "ar" ? "Arabic (العربية)"
-    : lang === "hi" ? "Hindi (हिन्दी)"
-    : "English";
-}
-
-function buildTriagePrompt(lang: string): string {
-  return `You are Mr. Merchiva's triage layer. Decide if the user's request is simple (needsThinking=false, you answer directly) or complex (needsThinking=true, escalate). Reply in ${languageNameFor(lang)}. Keep ack messages short and concrete.
-
-Also set needsDeepThinking=true ONLY for the rare requests that genuinely need heavy step-by-step reasoning — optimizing a whole week's schedule under competing constraints, root-cause analysis across multiple data sources, multi-variable forecasting, or untangling a very tangled multi-part request. For ordinary complex tasks (single data lookup, straightforward bulk write, normal recommendations) leave needsDeepThinking=false. When unsure, false.`;
-}
-
-function buildSystemPrompt(
-  context: Record<string, unknown>,
-  lang: string,
-  memory: { summary?: string; storeOverview?: string; userPreferences?: string },
-  permissions?: EnqueueBody["permissions"],
-  toolsEnabled = false,
-  mcpPrompt = "",
-): string {
-  const skillPrompts = getAllPromptSegments();
-  const langName = languageNameFor(lang);
-  const memoryBlock = [
-    memory.summary && `CONVERSATION SUMMARY:\n${memory.summary}`,
-    memory.storeOverview && `STORE OVERVIEW:\n${memory.storeOverview}`,
-    memory.userPreferences && `USER PREFERENCES:\n${memory.userPreferences}`,
-  ].filter(Boolean).join("\n\n");
-  const permBlock = permissions?.isOwner
-    ? `USER ROLE: Owner (full access)`
-    : permissions
-      ? `USER ROLE: ${permissions.role ?? "staff"}`
-      : "";
-  const dataBlock = toolsEnabled
-    ? `${TOOLS_PROMPT_BLOCK}\n\nSTORE OVERVIEW:\n${buildSlimContext(context)}`
-    : `LIVE STORE DATA:\n${JSON.stringify(context, null, 2)}`;
-  return `You are Mr. Merchiva, an AI ops agent for a small business. Reply in ${langName}.
-
-${permBlock}
-
-${memoryBlock}
-
-${dataBlock}
-
-${skillPrompts}
-${mcpPrompt ? `\n${mcpPrompt}\n` : ""}
-
-Output your reply as plain text plus \`\`\`action\`\`\` JSON blocks for any actions. The client will execute the actions when it receives the finalized job result.
-
-🚨 CRITICAL — NEVER HALLUCINATE SUCCESS:
-- When the user asks to ADD / CREATE / EDIT / DELETE anything (training docs, products, shifts, roles, values, pages, etc.), you MUST emit a \`\`\`action\`\`\` block with the matching action name. NEVER respond with "已为您添加…" / "Done, added X" / "Added the training doc" without a preceding \`\`\`action\`\`\` block — those are hallucinations, the action did not happen.
-- If you don't have enough info yet (missing title, missing id), ASK ONCE for the missing piece. Don't pretend.
-- If you don't know which action name applies, look at the actions catalog above; pick the closest one. If genuinely none applies, say so honestly: "I don't have a tool for that yet."
-- After emitting the action block, you may add a one-line confirmation in plain text, but the block itself is what actually executes — the text alone does nothing.`;
 }

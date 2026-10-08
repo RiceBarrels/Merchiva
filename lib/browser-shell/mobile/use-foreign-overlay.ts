@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
+import { inHiddenSubtree } from "../shell-dom";
 
 /**
  * Overlays that are not the shell's own sheets but can open on top of a DynamicUIElement page:
@@ -25,7 +26,8 @@ export const FOREIGN_OVERLAY_ATTRIBUTES: readonly string[] = ["data-state", "dat
 
 function readForeignOverlay(): boolean {
   try {
-    return document.querySelector(FOREIGN_OVERLAY_SELECTOR) !== null;
+    // Overlays of kept-alive background tabs stay in the document, hidden: they don't count.
+    return Array.from(document.querySelectorAll(FOREIGN_OVERLAY_SELECTOR)).some((el) => !inHiddenSubtree(el));
   } catch {
     return false;
   }

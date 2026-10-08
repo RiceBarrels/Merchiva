@@ -31,7 +31,8 @@ export interface Permissions {
   settings: PermissionSection;
   team: PermissionSection;    // view=see team list, invite=send invites, edit=change roles/codes
   training_grading: PermissionSection; // view=see trainee grades, edit=grade trainees
-  merchiva: PermissionSection; // view=can use the Mr. Merchiva assistant (chat + quick dialog)
+  merchiva: PermissionSection; // view=can use the Mr. Merchiva assistant (the ⌘⇧M dock)
+  drive: PermissionSection;    // view=see everyone's files (Drive, incl. Docs/Sheets/Slides), edit=also change them (not trash/delete); only owners grant it
 }
 
 export type OrgRole = "owner" | "manager" | "staff";

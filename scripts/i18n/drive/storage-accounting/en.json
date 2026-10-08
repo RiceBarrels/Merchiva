@@ -1,0 +1,7 @@
+{
+  "appUpload": {
+    "quotaExceeded": "Your store's storage is full. Delete files in Drive to free up space.",
+    "failed": "Couldn't upload the file. Try again.",
+    "signInRequired": "Sign in again to upload files."
+  }
+}

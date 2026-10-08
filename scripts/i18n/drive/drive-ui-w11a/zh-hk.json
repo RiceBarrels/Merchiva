@@ -1,0 +1,18 @@
+{
+  "drive": {
+    "upload": {
+      "preparing": "正在準備…",
+      "finishing": "即將完成…",
+      "expand": "展開",
+      "readFailed": "無法讀取拖放的檔案，請改用「上載」選擇檔案。",
+      "folderFailed": "未能建立資料夾「{name}」，因此沒有上載任何內容。",
+      "skipped": "已略過 {count} 個檔案：檔案名稱或所在資料夾無法使用，或嵌套層級過深。",
+      "skippedOne": "已略過 1 個檔案：檔案名稱或所在資料夾無法使用，或嵌套層級過深。"
+    },
+    "home": {
+      "downloadBlocked": "瀏覽器封鎖了下載，請再試一次。",
+      "downloadPartial": "已儲存 {saved}/{total} 個檔案。其餘檔案請逐一儲存。",
+      "downloadNext": "儲存下一個（尚餘 {count} 個）"
+    }
+  }
+}

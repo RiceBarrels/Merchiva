@@ -1,0 +1,28 @@
+{
+  "unit": "forms-i18n",
+  "note": "Forms plugin: manager pages, builder, responses, public link page, renderer runtime strings (forms.runtime.*, fed to the form renderer), device lite app and catalog entry. forms.disclosure.* is disclosure copy: same meaning in all 8 locales, never softened.",
+  "owned": [
+    "forms",
+    "nav.forms",
+    "device.catalog.forms",
+    "device.catalogDesc.forms",
+    "device.lite.forms"
+  ],
+  "extends": null,
+  "overwrites": [],
+  "allowSameAsEn": [
+    "forms.list.questions",
+    "forms.types.section",
+    "forms.types.date",
+    "forms.types.photo",
+    "forms.builder.description",
+    "forms.builder.questionTitle",
+    "forms.builder.type",
+    "forms.templates.incidentReport.q.date",
+    "forms.templates.incidentReport.q.photos",
+    "forms.templates.equipmentCheck.q.photo",
+    "forms.runtime.fileSizeUnits",
+    "forms.runtime.booleanUncheckedLabel",
+    "forms.export.no"
+  ]
+}

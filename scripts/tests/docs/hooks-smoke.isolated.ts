@@ -33,6 +33,7 @@ const DOC_ACCESSORS = [
   "documentVersion",
   "documentStar",
   "documentAccess",
+  "documentFile",
 ];
 
 function fakeDocTable(accessor: string) {
@@ -106,6 +107,7 @@ test(`docs hooks render empty without throwing (${SCENARIO})`, async () => {
     if (SCENARIO === "pre-codegen") {
       value.rawRows = [
         rawHooks.useDocumentRows(ORG_ID),
+        rawHooks.useDocumentFileRows(ORG_ID),
         rawHooks.useDocumentStarRows(ORG_ID),
         rawHooks.useDocumentAccessRows(ORG_ID),
         rawHooks.useDocumentCommentRows(DOC_ID),
@@ -152,7 +154,7 @@ test(`docs hooks render empty without throwing (${SCENARIO})`, async () => {
     expect(c.versions.isReady).toBe(true);
     expect(c.recent.ready).toBe(true);
     // Raw hooks fall back to the stable empty tuple; nothing subscribes to docs tables.
-    expect(c.rawRows).toEqual([[[], false], [[], false], [[], false], [[], false], [[], false]]);
+    expect(c.rawRows).toEqual([[[], false], [[], false], [[], false], [[], false], [[], false], [[], false]]);
     expect(tableCalls.filter((call) => call.accessor !== "orgMember")).toEqual([]);
   } else {
     expect(docsHooks.DOCS_BINDINGS_GENERATED).toBe(true);
@@ -166,6 +168,7 @@ test(`docs hooks render empty without throwing (${SCENARIO})`, async () => {
     expect(docCalls.length).toBeGreaterThan(0);
     for (const call of docCalls) expect(call.enabled).toBe(false);
     expect(docCalls.find((call) => call.accessor === "document")?.predicate).toEqual({ column: "organizationId", value: "" });
+    expect(docCalls.find((call) => call.accessor === "documentFile")?.predicate).toEqual({ column: "organizationId", value: "" });
     expect(docCalls.find((call) => call.accessor === "documentComment")?.predicate).toEqual({ column: "documentId", value: "" });
   }
 });

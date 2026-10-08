@@ -1,0 +1,22 @@
+/*
+ * Forms renderer: the few deltas between the vendor shadcn adapter and Merchiva's design system (design B.7,
+ * decision C3). Imported only by components/forms/renderer/survey-host.tsx, which loads lazily on /manager.
+ * Next.js keeps an imported stylesheet after navigation, so every rule is scoped under the host root.
+ */
+.forms-survey-host.sjs-theme-overrides,
+.forms-survey-host .sjs-theme-overrides {
+  /* Our UI font, not the vendor's default. */
+  --sjs2-typography-font-family-text: var(--font-sans);
+  /* The form sits on the page's own surface: no tinted body behind the questions. */
+  --sjs2-color-utility-body: transparent;
+  --sjs2-color-utility-surface-survey: transparent;
+}
+
+.forms-survey-host .sd-root-modern {
+  background-color: transparent;
+}
+
+/* Inside a page or a panel the host already pads its content. */
+.forms-survey-host .sd-body.sd-body--responsive {
+  padding-inline: 0;
+}

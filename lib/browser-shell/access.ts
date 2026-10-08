@@ -4,6 +4,8 @@ import { PERSONAL_MODE_HREFS, useAppMode } from "@/lib/app-mode";
 import { isCapacitorHiddenPath, useIsCapacitor } from "@/lib/capacitor";
 import { usePermissions } from "@/lib/context/permissions";
 import { isManagerRouteEnabled } from "@/lib/device-apps";
+import { DOCS_EDIT_PATH } from "@/lib/docs/hrefs";
+import { SHEET_EDIT_PATH, SLIDES_EDIT_PATH } from "@/lib/drive/hrefs";
 import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
 import type { Permissions } from "@/lib/types";
 import { ROUTES, matchRoute } from "./routes";
@@ -43,6 +45,19 @@ export function getRouteAccess(url: TabUrl, ctx: AccessContext): RouteAccess {
   if (ctx.isCapacitor && isCapacitorHiddenPath(pathname)) return "forbidden";
   if (ctx.appsReady && !isManagerRouteEnabled(pathname, ctx.installedApps)) return "featureOff";
   return "allowed";
+}
+
+/** The editor routes of the document types, each owned by its own plugin (Docs, Sheets, Slides). */
+const DOCUMENT_EDITOR_PATHS: readonly string[] = [DOCS_EDIT_PATH, SHEET_EDIT_PATH, SLIDES_EDIT_PATH];
+
+/** Some document editor is open to this person, so the shell's document search and recent lists apply. */
+export function anyDocumentEditorAllowed(ctx: AccessContext): boolean {
+  return DOCUMENT_EDITOR_PATHS.some((path) => getRouteAccess(path, ctx) === "allowed");
+}
+
+/** The documents this person can open from the shell: each by its own editor (a sheet needs Sheets, not Docs). */
+export function openableDocuments<T extends { href: string }>(items: readonly T[], ctx: AccessContext): T[] {
+  return items.filter((item) => getRouteAccess(item.href, ctx) === "allowed");
 }
 
 /** Same filters as the sidebar children (sidebar.tsx:961-968). */
@@ -92,7 +107,9 @@ export function listNavSections(ctx: AccessContext): NavSection[] {
  * (`kind: "gate"`) are excluded separately, by kind. Shared with the desktop omnibox so both
  * search fields offer the same pages.
  */
-export const NOT_SEARCHABLE: ReadonlySet<string> = new Set(["/manager", "/manager/docs/edit", "/manager/usage"]);
+export const NOT_SEARCHABLE: ReadonlySet<string> = new Set([
+  "/manager", "/manager/docs/edit", "/manager/drive/sheet", "/manager/drive/slides", "/manager/usage",
+]);
 
 function matchStrength(query: string, text: string): number {
   const haystack = text.toLocaleLowerCase();

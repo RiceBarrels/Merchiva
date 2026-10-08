@@ -1,0 +1,18 @@
+{
+  "drive": {
+    "upload": {
+      "preparing": "正在准备…",
+      "finishing": "即将完成…",
+      "expand": "展开",
+      "readFailed": "无法读取拖入的文件，请改用“上传”选择文件。",
+      "folderFailed": "无法创建文件夹“{name}”，因此未上传任何内容。",
+      "skipped": "已跳过 {count} 个文件：其名称或所在文件夹无法使用，或嵌套层级过深。",
+      "skippedOne": "已跳过 1 个文件：其名称或所在文件夹无法使用，或嵌套层级过深。"
+    },
+    "home": {
+      "downloadBlocked": "浏览器阻止了下载，请重试。",
+      "downloadPartial": "已保存 {saved}/{total} 个文件。其余文件请逐个保存。",
+      "downloadNext": "保存下一个（剩余 {count} 个）"
+    }
+  }
+}

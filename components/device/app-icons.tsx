@@ -432,12 +432,75 @@ export function NotificationsIcon({ className }: P) {
   );
 }
 
+/** Drive: blue folder holding a white page with a green sheet bar and an orange slide bar. */
+export function DriveIcon({ className }: P) {
+  return (
+    <Svg className={className}>
+      <path d="M2.5 6.4a2 2 0 0 1 2-2h4.4l2 2.1h8.6a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2z" fill={BLUE} />
+      <rect x="6" y="2.6" width="12" height="9.2" rx="1" fill={WHITE} stroke={LIGHT} strokeWidth="1" />
+      <rect x="7.8" y="4.3" width="5" height="1.5" rx=".75" fill={GREEN} />
+      <rect x="7.8" y="6.6" width="8.4" height="1.5" rx=".75" fill={ORANGE} />
+      <path d="M2.5 10.4a2 2 0 0 1 2-2h15a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2z" fill={SKY} />
+    </Svg>
+  );
+}
+
+/** Sheets: white page holding a green grid with a dark-green header row and one amber cell. */
+export function SheetsIcon({ className }: P) {
+  return (
+    <Svg className={className}>
+      <path d="M6 2.5h8l5.5 5.5v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-15.5a2 2 0 0 1 2-2z" fill={WHITE} stroke={LIGHT} strokeWidth="1" />
+      <path d="M14 2.5V8h5.5z" fill={LIGHT} />
+      <rect x="6.5" y="10" width="11" height="9.5" rx="1" fill={GREEN} />
+      <path d="M7.5 10h9a1 1 0 0 1 1 1v2H6.5v-2a1 1 0 0 1 1-1z" fill="#15803d" />
+      <path d="M10.2 10v9.5M13.8 10v9.5M6.5 13h11M6.5 16.2h11" stroke={WHITE} strokeWidth=".9" />
+      <rect x="10.65" y="13.45" width="2.7" height="2.3" fill={YELLOW} />
+    </Svg>
+  );
+}
+
+/** Slides: orange presentation board on a dark stand, a white slide with an amber pie and blue lines. */
+export function SlidesIcon({ className }: P) {
+  return (
+    <Svg className={className}>
+      <path d="M12 17.5v4M12 17.5l-4.2 4.3M12 17.5l4.2 4.3" fill="none" stroke={INK} strokeWidth="1.6" strokeLinecap="round" />
+      <rect x="10.8" y="1.8" width="2.4" height="2.8" rx=".7" fill={INK} />
+      <rect x="2.5" y="4" width="19" height="14" rx="1.8" fill={ORANGE} />
+      <rect x="4.6" y="6" width="14.8" height="10" rx=".9" fill={WHITE} />
+      <circle cx="9.2" cy="11" r="2.9" fill={AMBER} />
+      <path d="M9.2 11V8.1a2.9 2.9 0 0 1 2.9 2.9z" fill={RED} />
+      <rect x="13.4" y="8.6" width="4.2" height="1.4" rx=".7" fill={BLUE} />
+      <rect x="13.4" y="11.2" width="3" height="1.4" rx=".7" fill={BLUE} opacity=".6" />
+    </Svg>
+  );
+}
+
+/** Forms: teal clipboard with an ink clip, a green ticked box, an amber empty box and gray answer lines. */
+export function FormsIcon({ className }: P) {
+  return (
+    <Svg className={className}>
+      <rect x="3.5" y="3" width="17" height="18.5" rx="2.2" fill={TEAL} />
+      <rect x="5.5" y="5" width="13" height="14.5" rx="1" fill={WHITE} />
+      <rect x="8.5" y="1.6" width="7" height="3.4" rx="1.2" fill={INK} />
+      <rect x="7" y="8" width="3.4" height="3.4" rx=".7" fill={GREEN} />
+      <path d="M7.8 9.7l.8.8 1.2-1.4" fill="none" stroke={WHITE} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="11.6" y="9" width="5.4" height="1.5" rx=".75" fill={GRAY} />
+      <rect x="7" y="13.6" width="3.4" height="3.4" rx=".7" fill="none" stroke={AMBER} strokeWidth="1.1" />
+      <rect x="11.6" y="14.6" width="4.2" height="1.5" rx=".75" fill={LIGHT} />
+    </Svg>
+  );
+}
+
 /** Icon for a grid app id (built-ins + catalog ids); undefined when unknown. */
 export const APP_ICONS: Record<string, AppIcon> = {
   "punch-in": PunchInIcon,
   merchiva: MerchivaAppIcon,
   requests: RequestsIcon,
   docs: DocsIcon,
+  drive: DriveIcon,
+  sheets: SheetsIcon,
+  slides: SlidesIcon,
+  forms: FormsIcon,
   directory: DirectoryIcon,
   settings: SettingsIcon,
   schedule: ScheduleIcon,

@@ -108,14 +108,26 @@ function handleLocale(req: NextRequest): NextResponse {
   return res;
 }
 
+// Public form links (/f/<token>) keep their URL: the visitor's locale only
+// sets <html lang>/dir and seeds the i18n provider, never a redirect.
+function handlePublicFormLocale(req: NextRequest): NextResponse {
+  const locale = detectLocale(req);
+  const headers = new Headers(req.headers);
+  headers.set("x-locale", locale);
+  headers.set("x-dir", RTL_LOCALES.has(locale as never) ? "rtl" : "ltr");
+  return NextResponse.next({ request: { headers } });
+}
+
 // ─── Entry ──────────────────────────────────────────────────────────────────
 
 export default function proxy(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/api")) return handleApiCors(req);
+  if (req.nextUrl.pathname.startsWith("/f/")) return handlePublicFormLocale(req);
   return handleLocale(req);
 }
 
-// Union of: /api/* (CORS) and the public marketing routes (locale routing).
+// Union of: /api/* (CORS), the public marketing routes (locale routing) and
+// public form links (/f/*, locale headers only).
 // Everything else — /manager/, /s, /login, /admins, etc. — is absent on purpose.
 export const config = {
   matcher: [
@@ -127,6 +139,7 @@ export const config = {
     "/changelog/:path*",
     "/blogs/:path*",
     "/download/:path*",
+    "/f/:path*",
     "/:locale(en|zh-cn|zh-tw|zh-hk|fr|es|hi|ar)/:path*",
   ],
 };

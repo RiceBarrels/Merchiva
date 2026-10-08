@@ -221,7 +221,14 @@ export interface DocEditorContextValue {
   readonly doc: DocumentMeta;
   readonly access: DocAccess;
   readonly isStarred: boolean;
+  /**
+   * Who this person's comments, versions and edits are recorded as, for "mine" checks (edit or delete my comment,
+   * delete my version, "last edit by you"): useDocsSender().memberId — on /store the tablet account, which the Docs
+   * reducers record and check, not the PIN operator.
+   */
   readonly memberId: string | null;
+  /** On /store the operator is not the tablet account: star and "Make a copy" are not offered. */
+  readonly actingForOther: boolean;
   /** Live collaborative editor (null until created). */
   readonly editor: Editor | null;
   /** Editor whose content export, print and word count use: the version preview while previewing. */

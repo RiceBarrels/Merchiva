@@ -17,18 +17,20 @@
  * encodings for the user's languages), not assumed to be UTF-8.
  *
  * Error contract: both async functions reject with `DocImportError` (`code` `tooLarge`,
- * `unsupported` or `failed`; `docCode` when document creation failed with a docs reducer error) for expected
- * failures. Callers show `toast.error(t(importErrorMessageKey(err)))`, which maps reducer codes to `docs.errors.*`
- * and unknown errors to `docs.import.failed`.
+ * `unsupported` or `failed`; `docCode` when document creation failed with a docs reducer error, `driveKey` when a
+ * placed create failed with a Drive error) for expected failures. Callers show `toast.error(t(importErrorMessageKey(err)))`,
+ * which maps reducer codes to `docs.errors.*` / `drive.errors.*` and unknown errors to `docs.import.failed`.
  * Successful imports with lost formatting are reported by the caller from `result.warnings`
  * (`docs.import.warnings`) and `result.skippedImages` (`docs.import.imagesSkipped`).
  */
 import type { JSONContent } from "@tiptap/core";
 
+import type { DocPlacement } from "@/lib/docs/create";
 import { DOC_ERROR_I18N_KEYS, docErrorCode } from "@/lib/docs/errors";
 import type { HeaderFooterVariant } from "@/lib/docs/header-footer";
 import { defaultPageSetup, normalizePageSetup, type DocPageSetup } from "@/lib/docs/page-setup";
 import type { DocErrorCode } from "@/lib/docs/types";
+import { isQuotaExceededError } from "@/lib/storage/quota-error";
 
 import { decodeImportText } from "./decode";
 
@@ -96,11 +98,18 @@ export class DocImportError extends Error {
   readonly code: DocImportErrorCode;
   /** Set when document creation failed with a docs reducer error (e.g. `too_large` above the server's 8 MB state limit). */
   readonly docCode: DocErrorCode | null;
-  constructor(code: DocImportErrorCode, message?: string, options?: { cause?: unknown; docCode?: DocErrorCode | null }) {
+  /** Set when a placed create (a /store panel) failed with a Drive error: its `drive.errors.*` key (`placedCreateErrorKey`). */
+  readonly driveKey: string | null;
+  constructor(
+    code: DocImportErrorCode,
+    message?: string,
+    options?: { cause?: unknown; docCode?: DocErrorCode | null; driveKey?: string | null },
+  ) {
     super(message ?? `Import failed: ${code}`, options);
     this.name = "DocImportError";
     this.code = code;
     this.docCode = options?.docCode ?? null;
+    this.driveKey = options?.driveKey ?? null;
   }
 }
 
@@ -119,9 +128,11 @@ const ERROR_KEYS: Readonly<Record<DocImportErrorCode, string>> = {
 
 /**
  * i18n key for any error thrown by `importFile` / `importAsNewDocument`. Reducer failures with a specific docs code
- * (too large to save, not published, …) use that code's `docs.errors.*` message; `invalid` stays generic.
+ * (too large to save, not published, …) use that code's `docs.errors.*` message; `invalid` stays generic. A placed
+ * create's Drive failure (operator, device_scope, …) uses its `drive.errors.*` message.
  */
 export function importErrorMessageKey(err: unknown): string {
+  if (err instanceof DocImportError && err.driveKey) return err.driveKey;
   const docCode = err instanceof DocImportError ? err.docCode : docErrorCode(err);
   if (docCode && docCode !== "invalid") return DOC_ERROR_I18N_KEYS[docCode];
   return err instanceof DocImportError ? ERROR_KEYS[err.code] : ERROR_KEYS.failed;
@@ -147,9 +158,9 @@ export interface ImportFileDeps {
   uploadImage(file: File): Promise<string>;
 }
 
-function asImportError(err: unknown): DocImportError {
+function asImportError(err: unknown, driveKey: string | null = null): DocImportError {
   if (err instanceof DocImportError) return err;
-  return new DocImportError("failed", err instanceof Error ? err.message : undefined, { cause: err, docCode: docErrorCode(err) });
+  return new DocImportError("failed", err instanceof Error ? err.message : undefined, { cause: err, docCode: docErrorCode(err), driveKey });
 }
 
 async function readText(file: File, kind: "txt" | "md" | "html"): Promise<string> {
@@ -219,17 +230,19 @@ export async function importFile(file: File, deps: ImportFileDeps): Promise<Impo
       skippedImages: skippedImages + prepared.skippedImages,
     };
   } catch (err) {
-    throw asImportError(err);
+    // An image refused for a full store: say so, not "the import failed".
+    throw asImportError(err, isQuotaExceededError(err) ? "appUpload.quotaExceeded" : null);
   }
 }
 
 /**
- * `importFile` + seed + `createDocument({ templateId: "blank" })` (visibility `org_edit`, D40).
+ * `importFile` + seed + `createDocument({ templateId: "blank" })` (visibility `org_edit`, D40), or with
+ * `deps.placement` (a device panel on /store) `createDriveDocument` in that container, owned by the PIN operator.
  * Resolves with the new document id; the caller opens `documentHref(documentId, { isNew: true })`.
  */
 export async function importAsNewDocument(
   file: File,
-  deps: { t: (key: string) => string; locale: string },
+  deps: { t: (key: string) => string; locale: string; organizationId: string; placement?: DocPlacement | null },
 ): Promise<{ documentId: string; result: ImportResult }> {
   const problem = validateImportFile(file);
   if (problem) throw new DocImportError(problem);
@@ -240,9 +253,10 @@ export async function importAsNewDocument(
   } catch (err) {
     throw asImportError(err);
   }
-  const [{ uploadDocImage }, { createDocumentFromContent }] = modules;
+  const [{ uploadDocImage }, { createDocumentFromContent, placedCreateErrorKey }] = modules;
 
-  const result = await importFile(file, { t: deps.t, locale: deps.locale, uploadImage: uploadDocImage });
+  const uploadImage = (image: File) => uploadDocImage(image, deps.organizationId);
+  const result = await importFile(file, { t: deps.t, locale: deps.locale, uploadImage });
   try {
     const documentId = await createDocumentFromContent({
       title: result.title,
@@ -251,9 +265,10 @@ export async function importAsNewDocument(
       pageSetup: result.pageSetup,
       headers: result.headers,
       footers: result.footers,
+      placement: deps.placement,
     });
     return { documentId, result };
   } catch (err) {
-    throw asImportError(err);
+    throw asImportError(err, placedCreateErrorKey(err));
   }
 }

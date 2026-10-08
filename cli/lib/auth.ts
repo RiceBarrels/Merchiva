@@ -120,6 +120,16 @@ export async function ensureFreshToken(): Promise<string | undefined> {
   return loadConfig().token;
 }
 
+/**
+ * A new access token after the server refused the current one, or undefined
+ * when there is nothing to renew: a MERCHIVA_TOKEN override can't be
+ * refreshed, and neither can a login without a refresh token.
+ */
+export async function renewToken(): Promise<string | undefined> {
+  if (process.env.MERCHIVA_TOKEN) return undefined;
+  return (await refresh()) ? loadConfig().token : undefined;
+}
+
 export function logout() {
   saveConfig({ token: undefined, refreshToken: undefined, userEmail: undefined });
 }

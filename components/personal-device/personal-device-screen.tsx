@@ -85,6 +85,8 @@ export function PersonalDeviceScreen() {
   const [page, setPage] = useState(0);
   const [openApp, setOpenApp] = useState<DeviceApp["id"] | null>(null);
   const [openRoute, setOpenRoute] = useState<string | null>(null);
+  // The tapped tile's icon: the app grows out of it (MiniAppShell).
+  const [openOrigin, setOpenOrigin] = useState<HTMLElement | null>(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   // The phone always boots onto the lock screen; the first swipe-to-unlock is
@@ -123,9 +125,9 @@ export function PersonalDeviceScreen() {
   const isBuiltIn = !!openApp && DEFAULT_DEVICE_APPS.some((a) => a.id === openApp);
   const openCatalogEntry = openApp && !isBuiltIn ? APP_CATALOG.find((a) => a.id === openApp) ?? null : null;
   const CatalogComponent = openCatalogEntry?.component ?? null;
-  const appTitle = openApp
-    ? (apps.find((a) => a.id === openApp)?.label ?? t(`personalDevice.apps.${openApp}`))
-    : "";
+  const openEntry = openApp ? apps.find((a) => a.id === openApp) ?? null : null;
+  const appTitle = openApp ? (openEntry?.label ?? t(`personalDevice.apps.${openApp}`)) : "";
+  const openFromGrid = (id: DeviceApp["id"], origin?: HTMLElement) => { setOpenApp(id); setOpenOrigin(origin ?? null); };
 
   if (!me.ready || !me.myMember) {
     return (
@@ -170,7 +172,15 @@ export function PersonalDeviceScreen() {
     );
 
   const appPanel = (
-    <MiniAppShell open={openApp !== null} title={appTitle} onClose={() => setOpenApp(null)}>
+    <MiniAppShell
+      open={openApp !== null}
+      title={appTitle}
+      app={openEntry}
+      origin={openOrigin}
+      // lock() closes the app under the lock screen: no close animation.
+      instantClose={locked}
+      onClose={() => setOpenApp(null)}
+    >
       {openApp === "punch-in" && (
         <PunchPanel
           organizationId={me.organizationId}
@@ -250,7 +260,7 @@ export function PersonalDeviceScreen() {
                     className="h-full"
                     pages={[
                       messagesPage,
-                      <AppsGrid key="apps" apps={apps} onOpen={(id) => setOpenApp(id)} columns={4} size="md" className="h-full" />,
+                      <AppsGrid key="apps" apps={apps} onOpen={openFromGrid} columns={4} size="md" className="h-full" />,
                     ]}
                   />
                   {appPanel}
@@ -265,7 +275,7 @@ export function PersonalDeviceScreen() {
                   {talkBar}
                 </div>
                 <div className="relative min-h-0 overflow-hidden">
-                  <AppsGrid apps={apps} onOpen={(id) => setOpenApp(id)} columns={6} size="lg" className="absolute inset-0" />
+                  <AppsGrid apps={apps} onOpen={openFromGrid} columns={6} size="lg" className="absolute inset-0" />
                   {appPanel}
                 </div>
               </div>

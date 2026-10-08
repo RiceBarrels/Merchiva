@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateText } from "ai";
 import { SttError, transcribeAudio } from "@/lib/stt";
-import { getOpenRouterFastModel } from "@/app/api/store-ai/route";
+import { tierModel } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -17,9 +17,10 @@ function wordCount(s: string): number {
   return latin + Math.ceil(cjk / 2);
 }
 
+// A light rewrite that must keep every number verbatim: L1.
 async function summarize(transcript: string): Promise<string> {
   const { text } = await generateText({
-    model: getOpenRouterFastModel(),
+    model: tierModel(1),
     temperature: 0.2,
     maxOutputTokens: 160,
     system: [

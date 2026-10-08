@@ -1,0 +1,7 @@
+{
+  "appUpload": {
+    "quotaExceeded": "Le stockage de votre magasin est plein. Supprimez des fichiers dans Fichiers pour libérer de l'espace.",
+    "failed": "Impossible de téléverser le fichier. Réessayez.",
+    "signInRequired": "Reconnectez-vous pour téléverser des fichiers."
+  }
+}

@@ -1,0 +1,623 @@
+{
+  "forms": {
+    "errors": {
+      "generic": "Algo salió mal. Inténtalo de nuevo.",
+      "not_connected": "Sin conexión. Revisa tu conexión e inténtalo de nuevo.",
+      "not_published": "Formularios aún no está disponible en esta tienda.",
+      "network": "Estás sin conexión. Inténtalo cuando vuelvas a estar en línea.",
+      "forbidden": "No tienes permiso para hacer eso.",
+      "not_found": "Este formulario ya no existe.",
+      "invalid": "Algo en esta solicitud no es válido.",
+      "exists": "Esto ya existe.",
+      "conflict": "Otra persona guardó este formulario mientras tanto. Recarga para ver sus cambios.",
+      "operator": "La persona que usa este dispositivo no puede hacer eso.",
+      "not_open": "Este formulario no está abierto a respuestas.",
+      "closed": "Este formulario está cerrado.",
+      "not_assigned": "Este formulario no está asignado a ti.",
+      "invalid_date": "La fecha de este dispositivo parece incorrecta. Revisa el reloj del dispositivo.",
+      "already_submitted": "Ya respondiste este formulario por ahora.",
+      "response_limit": "Este formulario ya no acepta más respuestas.",
+      "too_many_forms": "Esta tienda alcanzó su límite de formularios.",
+      "org_storage_full": "Esta tienda no tiene espacio para más respuestas de formularios.",
+      "file_not_found": "Falta un archivo adjunto. Vuelve a adjuntarlo.",
+      "files_not_allowed": "Aquí no se pueden añadir archivos ni fotos.",
+      "public_unsafe": "Los formularios con preguntas de archivo o foto no se pueden compartir por enlace.",
+      "rate_limited": "Hay demasiadas respuestas en este momento. Inténtalo más tarde.",
+      "invalid_settings": "Algunos ajustes no son válidos.",
+      "invalid_status": "Ese estado no es válido.",
+      "invalid_definition": "Este formulario no se puede leer.",
+      "definition_too_large": "Este formulario es demasiado grande.",
+      "title_required": "Ponle un título al formulario.",
+      "title_too_long": "El título es demasiado largo.",
+      "description_too_long": "La descripción es demasiado larga.",
+      "confirmation_too_long": "El mensaje de confirmación es demasiado largo.",
+      "no_questions": "Añade al menos una pregunta.",
+      "too_many_questions": "Este formulario tiene demasiadas preguntas.",
+      "invalid_question": "Una pregunta no es válida.",
+      "invalid_question_id": "Una pregunta no es válida.",
+      "duplicate_question_id": "Dos preguntas son iguales.",
+      "invalid_question_type": "Un tipo de pregunta no es compatible.",
+      "question_title_required": "Cada pregunta necesita un título.",
+      "question_title_too_long": "El título de una pregunta es demasiado largo.",
+      "help_too_long": "El texto de ayuda de una pregunta es demasiado largo.",
+      "options_required": "Añade al menos una opción.",
+      "too_many_options": "Una pregunta tiene demasiadas opciones.",
+      "invalid_option_id": "Una opción no es válida.",
+      "duplicate_option_id": "Dos opciones son iguales.",
+      "option_label_required": "Cada opción necesita un texto.",
+      "option_label_too_long": "El texto de una opción es demasiado largo.",
+      "invalid_range": "El rango no es válido.",
+      "scale_label_too_long": "Una etiqueta de la escala es demasiado larga.",
+      "invalid_max_files": "El número de archivos no es válido.",
+      "invalid_accept": "Los tipos de archivo permitidos no son válidos.",
+      "question_removed": "Las preguntas con respuestas no se pueden quitar. Ocúltalas en su lugar.",
+      "question_type_changed": "Una pregunta con respuestas no puede cambiar de tipo.",
+      "option_removed": "Las opciones con respuestas no se pueden quitar.",
+      "invalid_answers": "Estas respuestas no se pueden leer.",
+      "answers_too_large": "Estas respuestas son demasiado largas.",
+      "unknown_question": "Una respuesta pertenece a una pregunta que ya no existe. Recarga el formulario.",
+      "required": "Responde todas las preguntas obligatorias.",
+      "invalid_answer": "Una respuesta no es válida.",
+      "text_too_long": "Una respuesta es demasiado larga.",
+      "unknown_option": "Una opción que elegiste ya no existe. Recarga el formulario.",
+      "out_of_range": "Un número está fuera de rango.",
+      "too_many_selections": "Hay demasiadas opciones seleccionadas.",
+      "too_few_selections": "Hay muy pocas opciones seleccionadas.",
+      "too_many_files": "Demasiados archivos para esta pregunta."
+    },
+    "disclosure": {
+      "respondentNote": "La dirección de tu tienda puede ver tus respuestas.",
+      "managersTitle": "La dirección puede ver cada respuesta",
+      "managersNote": "El dueño de la tienda, los gerentes y los miembros que pueden ver todos los archivos pueden leer cada respuesta a este formulario, incluidos los archivos adjuntos. A quienes responden se les avisa de esto."
+    },
+    "title": "Formularios",
+    "list": {
+      "subtitleBuilder": "Listas de control, reportes y encuestas para tu equipo",
+      "subtitleMember": "Formularios pendientes y lo que has enviado",
+      "new": "Nuevo formulario",
+      "search": "Buscar formularios",
+      "fill": "Completar",
+      "questions": "{n} preguntas",
+      "responses": "{n} respuestas",
+      "updated": "Actualizado el {date}",
+      "due": "Vence el {date}",
+      "closes": "Cierra el {date}",
+      "notPublished": "Formularios aún no está disponible",
+      "notPublishedDesc": "Formularios todavía no se ha activado en esta tienda. Inténtalo más tarde.",
+      "filter": {
+        "active": "Activos",
+        "drafts": "Borradores",
+        "closed": "Cerrados",
+        "archived": "Archivados",
+        "toFill": "Por completar",
+        "mine": "Mis envíos"
+      },
+      "stats": {
+        "open": "Formularios abiertos",
+        "drafts": "Borradores",
+        "responses": "Respuestas",
+        "toFill": "Por completar",
+        "submitted": "Enviados",
+        "last90": "Últimos 90 días",
+        "reviewed": "Revisados"
+      },
+      "empty": {
+        "search": "Ningún formulario coincide con tu búsqueda",
+        "active": "No hay formularios abiertos",
+        "activeDesc": "Abre un borrador o crea un formulario nuevo a partir de una plantilla.",
+        "drafts": "No hay borradores",
+        "draftsDesc": "Los formularios nuevos empiezan aquí hasta que los abres.",
+        "closed": "No hay formularios cerrados",
+        "closedDesc": "Los formularios que cierras dejan de recibir respuestas y aparecen aquí.",
+        "archived": "No hay formularios archivados",
+        "archivedDesc": "Archiva los formularios que ya no usas para mantener esta lista corta.",
+        "toFill": "Nada por completar",
+        "toFillDesc": "Los formularios que tus gerentes compartan contigo aparecerán aquí.",
+        "mine": "Aún no hay envíos",
+        "mineDesc": "Aquí aparecen los formularios que envíes en los últimos 90 días."
+      },
+      "view": {
+        "manage": "Gestionar",
+        "mine": "Mis formularios"
+      }
+    },
+    "status": {
+      "draft": "Borrador",
+      "open": "Abierto",
+      "closed": "Cerrado",
+      "archived": "Archivado"
+    },
+    "kind": {
+      "form": "Formulario",
+      "checklist": "Lista de control",
+      "report": "Reporte",
+      "survey": "Encuesta"
+    },
+    "perMember": {
+      "unlimited": "Las veces que quiera",
+      "once": "Una vez",
+      "daily": "Una vez al día",
+      "weekly": "Una vez a la semana"
+    },
+    "reviewStatus": {
+      "new": "Enviado",
+      "reviewed": "Revisado"
+    },
+    "types": {
+      "section": "Sección",
+      "short_text": "Respuesta corta",
+      "long_text": "Párrafo",
+      "single_choice": "Opción múltiple",
+      "multi_choice": "Casillas",
+      "dropdown": "Desplegable",
+      "yes_no": "Sí / no",
+      "number": "Número",
+      "date": "Fecha",
+      "time": "Hora",
+      "rating": "Valoración con estrellas",
+      "scale": "Escala",
+      "checklist_item": "Punto de la lista",
+      "photo": "Foto",
+      "file": "Subir archivo"
+    },
+    "newForm": {
+      "title": "Nuevo formulario",
+      "description": "Empieza con una plantilla o un formulario en blanco. Puedes cambiarlo todo después.",
+      "templates": "Plantillas",
+      "create": "Crear",
+      "kindHint": "Las listas de control aparecen en la tableta de la tienda como las revisiones de hoy, y los reportes en «Reportar algo». El tipo no se puede cambiar después."
+    },
+    "edit": {
+      "notFound": "Formulario no encontrado",
+      "notFoundDesc": "Puede que se haya eliminado o que no tengas acceso.",
+      "backToList": "Volver a Formularios",
+      "more": "Más acciones",
+      "view": {
+        "build": "Editar",
+        "preview": "Vista previa",
+        "responses": "Respuestas",
+        "share": "Compartir"
+      },
+      "action": {
+        "draft": "Abrir a respuestas",
+        "open": "Cerrar",
+        "closed": "Reabrir"
+      },
+      "statusChanged": {
+        "draft": "Devuelto a borradores",
+        "open": "El formulario está abierto a respuestas",
+        "closed": "El formulario está cerrado",
+        "archived": "El formulario está archivado"
+      },
+      "backToDraft": "Devolver a borradores",
+      "archive": "Archivar",
+      "unarchive": "Desarchivar",
+      "delete": "Eliminar formulario",
+      "deleteTitle": "¿Eliminar este formulario?",
+      "deleteDesc": "El formulario y todas sus respuestas se eliminan para siempre. Los archivos adjuntos se quedan en Mis archivos de cada persona.",
+      "deleted": "Formulario eliminado"
+    },
+    "builder": {
+      "details": "Detalles del formulario",
+      "formTitle": "Título",
+      "description": "Descripción",
+      "descriptionPlaceholder": "¿Para qué es este formulario?",
+      "confirmation": "Mensaje después de enviar",
+      "confirmationHint": "Déjalo vacío para mostrar un simple agradecimiento.",
+      "confirmationPlaceholder": "¡Gracias! Tus respuestas se enviaron.",
+      "status": {
+        "saved": "Todos los cambios guardados",
+        "pending": "Guardando…",
+        "saving": "Guardando…",
+        "invalid": "No guardado: corrige los campos marcados",
+        "error": "No guardado"
+      },
+      "retry": "Reintentar",
+      "conflictTitle": "Otra persona cambió este formulario",
+      "conflictDesc": "Tus últimos cambios aún no están guardados. Conserva tu versión para guardarla sobre la suya, o carga la suya y pierde tus cambios sin guardar.",
+      "keepMine": "Conservar mi versión",
+      "loadTheirs": "Cargar la suya",
+      "lockedNote": "Este formulario tiene respuestas. Quitar una pregunta la archiva para que las respuestas anteriores la conserven, y los tipos de pregunta no se pueden cambiar.",
+      "publicNote": "El enlace público está activado, así que no se pueden añadir preguntas de foto ni de archivo.",
+      "brokenTitle": "Este formulario no se puede abrir",
+      "brokenDesc": "No se pudieron leer sus preguntas. Sus respuestas siguen a salvo.",
+      "newQuestion": "Pregunta sin título",
+      "newSection": "Nueva sección",
+      "newOption": "Opción {n}",
+      "untitledQuestion": "Pregunta sin título",
+      "addQuestion": "Añadir pregunta",
+      "questionTitle": "Pregunta",
+      "sectionTitle": "Título de la sección",
+      "type": "Tipo",
+      "typeLocked": "No se puede cambiar si hay respuestas",
+      "help": "Texto de ayuda",
+      "helpPlaceholder": "Pista opcional que aparece bajo la pregunta",
+      "required": "Obligatoria",
+      "duplicate": "Duplicar",
+      "remove": "Eliminar",
+      "archive": "Archivar",
+      "archived": "Archivada",
+      "archivedNote": "Archivada: oculta en las nuevas respuestas, conservada en las anteriores.",
+      "restore": "Restaurar",
+      "needsFix": "Necesita corrección",
+      "moveUp": "Subir",
+      "moveDown": "Bajar",
+      "options": "Opciones",
+      "optionLabel": "Texto de la opción",
+      "addOption": "Añadir opción",
+      "removeOption": "Quitar opción",
+      "optionLocked": "Esta opción tiene respuestas. Cámbiale el nombre en su lugar.",
+      "minSelections": "Como mínimo",
+      "maxSelections": "Como máximo",
+      "minValue": "Número más bajo",
+      "maxValue": "Número más alto",
+      "scaleFrom": "Desde",
+      "scaleTo": "Hasta",
+      "scaleLowLabel": "Etiqueta del extremo bajo",
+      "scaleHighLabel": "Etiqueta del extremo alto",
+      "maxFiles": "Archivos por respuesta",
+      "accept": "Tipos de archivo permitidos",
+      "acceptHint": "Extensiones o tipos separados por comas. Déjalo vacío para permitir cualquier archivo.",
+      "filesNote": "Los archivos se guardan en Mis archivos de quien envía y cuentan para el almacenamiento de tu tienda. No se pueden añadir archivos en una tableta compartida de la tienda ni a través de un enlace público."
+    },
+    "share": {
+      "audienceTitle": "Quién puede responder",
+      "audience": {
+        "members": "Todos",
+        "assigned": "Solo asignados",
+        "private": "Solo yo"
+      },
+      "audienceDesc": {
+        "members": "Todos los miembros de la tienda pueden responder mientras el formulario esté abierto.",
+        "assigned": "Solo pueden responder los miembros que asignes abajo.",
+        "private": "Nadie más ve este formulario. Úsalo para probar antes de compartirlo."
+      },
+      "assignees": "Asignado a",
+      "assigneesOnly": "Solo estos miembros pueden responder. Añade una fecha límite para recordárselo.",
+      "assigneesHint": "Opcional: asigna miembros para poner el formulario en su lista con una fecha límite.",
+      "noMembers": "Aún no hay miembros activos para asignar.",
+      "dueDate": "Fecha límite",
+      "role": {
+        "owner": "Dueño",
+        "manager": "Gerente",
+        "staff": "Personal"
+      },
+      "rulesTitle": "Respuestas",
+      "perMember": "Cada persona puede responder",
+      "responseLimit": "Detener después de (respuestas)",
+      "closesOn": "Cierra al final del día",
+      "never": "Nunca",
+      "trackCompletion": "Mostrar quién lo hizo",
+      "trackCompletionHint": "La tableta de la tienda muestra quién lo terminó hoy, sin mostrar sus respuestas.",
+      "notifyOwner": "Avisarme de nuevas respuestas",
+      "notifyOwnerHint": "El responsable del formulario recibe una notificación por cada respuesta.",
+      "publicTitle": "Cualquier persona con el enlace",
+      "publicDesc": "Personas de fuera de tu tienda pueden responder sin iniciar sesión.",
+      "publicOwnerOnly": "Solo el dueño de la tienda puede activar el enlace público.",
+      "publicUrl": "Enlace público",
+      "copy": "Copiar",
+      "publicCopied": "Enlace copiado",
+      "publicRotate": "Crear un enlace nuevo",
+      "publicRotateTitle": "¿Crear un enlace nuevo?",
+      "publicRotateDesc": "El enlace y el código QR actuales dejan de funcionar de inmediato. Quien los tenga necesitará el nuevo.",
+      "publicRotated": "Enlace nuevo listo",
+      "publicOpenOnly": "El enlace solo recibe respuestas mientras el formulario está abierto.",
+      "publicNote": "Las respuestas del enlace aparecen como Público en Respuestas. No pidas contraseñas ni datos de pago."
+    },
+    "templates": {
+      "blank": {
+        "title": "Formulario en blanco",
+        "description": "Empieza desde cero con tus propias preguntas.",
+        "untitled": "Formulario sin título",
+        "q": {
+          "first": "Pregunta sin título"
+        }
+      },
+      "openingChecklist": {
+        "title": "Lista de apertura",
+        "description": "Todo lo que hay que revisar antes de abrir las puertas.",
+        "q": {
+          "alarmOff": "Alarma desactivada",
+          "lightsOn": "Luces y letreros encendidos",
+          "cashFloat": "Efectivo en la caja al abrir",
+          "fridgesOk": "Refrigeradores y congeladores funcionando",
+          "floorClean": "Piso y entrada limpios",
+          "shelvesStocked": "Estantes surtidos",
+          "notes": "¿Algo que reportar?"
+        },
+        "h": {
+          "cashFloat": "Cuenta el efectivo inicial e ingresa el total."
+        }
+      },
+      "closingChecklist": {
+        "title": "Lista de cierre",
+        "description": "Todo lo que hay que hacer antes de cerrar con llave.",
+        "q": {
+          "cashCounted": "Efectivo en la caja al cerrar",
+          "equipmentOff": "Equipos apagados",
+          "trashOut": "Basura sacada",
+          "doorsLocked": "Puertas y ventanas cerradas con llave",
+          "alarmSet": "Alarma activada",
+          "notes": "¿Algo que reportar?"
+        },
+        "h": {
+          "cashCounted": "Cuenta el efectivo e ingresa el total."
+        }
+      },
+      "incidentReport": {
+        "title": "Reporte de incidente",
+        "description": "Reporta un accidente, un robo, un daño o un problema con un cliente.",
+        "confirmation": "Gracias por reportarlo. Un gerente le dará seguimiento.",
+        "q": {
+          "details": "Qué pasó",
+          "date": "Fecha",
+          "time": "Hora",
+          "category": "Tipo de incidente",
+          "what": "Describe lo que pasó",
+          "injured": "¿Alguien resultó herido?",
+          "followUp": "Seguimiento",
+          "actions": "¿Qué se ha hecho hasta ahora?",
+          "photos": "Fotos"
+        },
+        "o": {
+          "injury": "Lesión",
+          "theft": "Robo",
+          "damage": "Daño",
+          "customer": "Problema con un cliente",
+          "other": "Otro"
+        },
+        "h": {
+          "what": "Quiénes estuvieron involucrados, dónde ocurrió y qué viste."
+        }
+      },
+      "customerFeedback": {
+        "title": "Opinión de clientes",
+        "description": "Pregunta a los clientes cómo fue su visita.",
+        "confirmation": "¡Gracias por tu opinión!",
+        "q": {
+          "overall": "¿Cómo fue tu visita?",
+          "recommend": "¿Qué tan probable es que nos recomiendes a un amigo?",
+          "liked": "¿Qué te gustó?",
+          "comments": "¿Algo más que quieras contarnos?",
+          "contact": "Tu correo o teléfono (opcional)"
+        },
+        "l": {
+          "recommendLow": "Poco probable",
+          "recommendHigh": "Muy probable"
+        },
+        "o": {
+          "service": "Atención",
+          "speed": "Rapidez",
+          "quality": "Calidad",
+          "price": "Precio",
+          "cleanliness": "Limpieza"
+        },
+        "h": {
+          "contact": "Solo si quieres que te contactemos."
+        }
+      },
+      "equipmentCheck": {
+        "title": "Control de temperatura y equipos",
+        "description": "Registra la temperatura de refrigeradores y congeladores y señala equipos averiados.",
+        "q": {
+          "fridgeTemp": "Temperatura del refrigerador",
+          "freezerTemp": "Temperatura del congelador",
+          "equipmentOk": "¿Funcionan todos los equipos?",
+          "issue": "¿Qué no funciona?",
+          "photo": "Foto"
+        },
+        "h": {
+          "fridgeTemp": "Lee el termómetro del refrigerador e ingresa el número.",
+          "freezerTemp": "Lee el termómetro del congelador e ingresa el número."
+        }
+      }
+    },
+    "runtime": {
+      "filesUnavailableHere": "En este dispositivo no se pueden añadir archivos ni fotos.",
+      "previewNoUpload": "En la vista previa no se pueden añadir archivos.",
+      "checklistRequired": "Marca este punto antes de enviar.",
+      "defaultConfirmation": "¡Gracias! Tus respuestas se enviaron.",
+      "pagePrevText": "Atrás",
+      "pageNextText": "Siguiente",
+      "completeText": "Enviar",
+      "progressText": "Página {0} de {1}",
+      "emptySurvey": "Este formulario aún no tiene preguntas.",
+      "completingSurvey": "¡Gracias! Tus respuestas se enviaron.",
+      "loadingSurvey": "Cargando…",
+      "placeholder": "Elige…",
+      "ratingOptionsCaption": "Elige…",
+      "requiredError": "Esta pregunta necesita una respuesta.",
+      "numericError": "Ingresa un número.",
+      "minError": "Ingresa {0} o más.",
+      "maxError": "Ingresa {0} o menos.",
+      "numericMinMax": "Ingresa un número entre {1} y {2}.",
+      "numericMin": "Ingresa {1} o más.",
+      "numericMax": "Ingresa {1} o menos.",
+      "invalidInputError": "Esta respuesta no es válida.",
+      "textMaxLength": "Usa {0} caracteres o menos.",
+      "minSelectError": "Elige al menos {0}.",
+      "maxSelectError": "Elige como máximo {0}.",
+      "exceedMaxSize": "Cada archivo puede ocupar hasta {0}.",
+      "fileSizeUnits": "bytes, KB, MB, GB, TB",
+      "exceedMaxFiles": "Puedes añadir hasta {0} archivos.",
+      "uploadingFile": "Todavía se está subiendo un archivo. Espera un momento y vuelve a intentarlo.",
+      "loadingFile": "Cargando…",
+      "chooseFile": "Elegir archivos…",
+      "noFileChosen": "Ningún archivo elegido",
+      "filePlaceholder": "Arrastra un archivo aquí o elige uno abajo.",
+      "chooseFileCaption": "Elegir archivo",
+      "takePhotoCaption": "Tomar foto",
+      "photoPlaceholder": "Toma una foto con el botón de abajo.",
+      "fileOrPhotoPlaceholder": "Arrastra un archivo aquí, elige uno o toma una foto.",
+      "replaceFileCaption": "Reemplazar archivo",
+      "removeFileCaption": "Quitar este archivo",
+      "confirmRemoveFile": "¿Quitar {0}?",
+      "confirmRemoveAllFiles": "¿Quitar todos los archivos?",
+      "clearCaption": "Borrar",
+      "selectCaption": "Elegir",
+      "booleanCheckedLabel": "Sí",
+      "booleanUncheckedLabel": "No",
+      "savingData": "Enviando…",
+      "savingDataError": "Tus respuestas no se enviaron.",
+      "savingDataSuccess": "Enviado.",
+      "saveAgainButton": "Reintentar",
+      "modalApplyButtonText": "Aplicar",
+      "modalCancelButtonText": "Cancelar",
+      "filterStringPlaceholder": "Escribe para buscar…",
+      "emptyMessage": "Nada que mostrar",
+      "loadingData": "Cargando…",
+      "tagboxDoneButtonCaption": "Aceptar",
+      "more": "Más",
+      "ok": "Aceptar",
+      "cancel": "Cancelar"
+    },
+    "fill": {
+      "title": "Completar un formulario",
+      "subtitle": "Responde las preguntas y luego envía.",
+      "backToForms": "Volver a formularios",
+      "another": "Enviar otra respuesta",
+      "filesNote": "Los archivos y fotos que añadas se guardan en Mis archivos, dentro de Archivos.",
+      "required": "Obligatoria",
+      "ratingLabel": "{n} de {max} estrellas",
+      "uploading": "Subiendo…",
+      "addPhoto": "Tomar o elegir una foto",
+      "addFile": "Elegir un archivo",
+      "filesAttached": "{count} de {max} adjuntos",
+      "removeFiles": "Quitar"
+    },
+    "preview": {
+      "notice": "Esto es una vista previa. Las respuestas no se guardan y no se pueden añadir archivos.",
+      "widthLabel": "Ancho de la vista previa",
+      "desktop": "Computadora",
+      "phone": "Teléfono",
+      "restart": "Empezar de nuevo",
+      "emptyTitle": "Aún no hay preguntas",
+      "emptyBody": "Añade una pregunta en Editar para verla aquí.",
+      "completed": "Ese es el final del formulario. Una respuesta real se enviaría ahora.",
+      "invalidDraft": "Tus últimos cambios deben corregirse antes de poder guardarse, así que esta vista previa muestra la última versión guardada."
+    },
+    "responses": {
+      "total": "Respuestas",
+      "toReview": "Por revisar",
+      "last": "Última respuesta",
+      "viewLabel": "Vista de respuestas",
+      "summary": "Resumen",
+      "table": "Lista",
+      "export": "Exportar",
+      "exportCsv": "Descargar .csv",
+      "exportXlsx": "Descargar .xlsx",
+      "openAsSheet": "Abrir como hoja de cálculo",
+      "exportFailed": "La exportación no funcionó. Inténtalo de nuevo.",
+      "fileName": "Respuestas del formulario",
+      "sheetName": "Respuestas",
+      "loadFailed": "Algunas respuestas no se pudieron cargar. Recarga para intentarlo de nuevo.",
+      "emptyTitle": "Aún no hay respuestas",
+      "emptyBody": "Las respuestas aparecen aquí en cuanto alguien envía el formulario.",
+      "count": "Respuestas",
+      "average": "Promedio",
+      "min": "Mínimo",
+      "max": "Máximo",
+      "noAnswers": "Aún no hay respuestas",
+      "fileCount": "{count} archivos adjuntos",
+      "answeredOf": "{answered} de {total} respondieron",
+      "archivedQuestion": "Pregunta eliminada",
+      "file": "Archivo",
+      "review": "Revisar",
+      "notePlaceholder": "Añade una nota sobre esta respuesta",
+      "noteBy": "Última nota de",
+      "noteHint": "Los dueños, los gerentes y los miembros con acceso completo a Archivos pueden leer las notas. Quien respondió no puede.",
+      "save": "Guardar",
+      "close": "Cerrar",
+      "cancel": "Cancelar",
+      "delete": "Eliminar respuesta",
+      "deleteTitle": "¿Eliminar esta respuesta?",
+      "deleteBody": "Las respuestas y la nota se eliminan para siempre. Los archivos adjuntos se quedan en Mis archivos de quien respondió."
+    },
+    "export": {
+      "submittedAt": "Enviado",
+      "respondent": "Persona que respondió",
+      "sourceHeader": "Enviado desde",
+      "reviewHeader": "Estado",
+      "anonymous": "Anónimo",
+      "yes": "Sí",
+      "no": "No",
+      "removedOption": "Opción eliminada",
+      "source": {
+        "manager": "Oficina",
+        "store": "Tableta de la tienda",
+        "personal": "Teléfono",
+        "public": "Enlace público"
+      },
+      "review": {
+        "new": "Nueva",
+        "reviewed": "Revisada"
+      }
+    },
+    "public": {
+      "answersGoTo": "Tus respuestas van a {store}, que puede ver todo lo que escribas aquí.",
+      "noSecrets": "Nunca escribas contraseñas ni datos de tarjetas de pago en un formulario.",
+      "honeypotLabel": "Deja este campo vacío",
+      "notFoundTitle": "Este enlace no funciona",
+      "notFoundBody": "Puede que el formulario se haya eliminado o que su enlace haya cambiado. Pide un enlace nuevo a la tienda.",
+      "unavailableTitle": "Este formulario no se puede abrir ahora",
+      "unavailableBody": "Inténtalo de nuevo en unos minutos.",
+      "closedTitle": "Este formulario no está recibiendo respuestas",
+      "closedBody": "La tienda lo cerró. Pregúntales si todavía necesitas comunicarte con ellos.",
+      "sentTitle": "Tus respuestas se enviaron"
+    }
+  },
+  "device": {
+    "catalog": {
+      "forms": "Formularios"
+    },
+    "catalogDesc": {
+      "forms": "Listas de control, reportes y encuestas que tu equipo completa en la tableta o en su teléfono."
+    },
+    "lite": {
+      "forms": {
+        "checklistsLeft": "Listas de control pendientes hoy",
+        "checklistsLeftHint": "Toca una lista de control para completarla.",
+        "allDone": "Todo listo. ¡Buen trabajo!",
+        "today": "Hoy",
+        "doneBy": "Hecho · {name} {time}",
+        "doneByYou": "Ya lo hiciste",
+        "notDone": "Aún sin hacer",
+        "report": "Reportar algo",
+        "other": "Otros formularios",
+        "toFill": "Por completar",
+        "toFillHint": "Formularios que tu tienda te pidió completar.",
+        "due": "Vence el {date}",
+        "overdue": "Atrasado · vencía el {date}",
+        "noDue": "Sin fecha límite",
+        "openToAll": "Abierto a todos",
+        "doneForNow": "Hecho por ahora",
+        "mySubmissions": "Mis envíos",
+        "noSubmissions": "Aún no has enviado nada",
+        "sentOn": "Enviado el {date}",
+        "status": {
+          "new": "En espera",
+          "reviewed": "Revisado"
+        },
+        "unavailable": "Este formulario ya no está disponible, así que sus respuestas no se pueden mostrar.",
+        "filesAdded": "{count} archivos",
+        "none": "No hay formularios por ahora",
+        "noneHint": "Cuando tu tienda comparta un formulario, aparecerá aquí.",
+        "checklistHint": "Marca cada punto",
+        "progress": "{n}/{total}",
+        "send": "Enviar",
+        "confirmTitle": "¿Enviar tus respuestas?",
+        "confirmSend": "Sí, enviar",
+        "confirmSub": "No podrás cambiarlas después de enviarlas.",
+        "keepEditing": "Seguir editando",
+        "leaveTitle": "¿Salir de este formulario?",
+        "leave": "Salir",
+        "leaveSub": "Se perderán tus respuestas.",
+        "thanks": "¡Gracias! Tus respuestas se enviaron.",
+        "filesOffTablet": "En esta tableta compartida no se pueden añadir fotos ni archivos. Usa tu propio teléfono para responder esta pregunta."
+      }
+    }
+  },
+  "nav": {
+    "forms": "Formularios"
+  }
+}

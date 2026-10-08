@@ -17,7 +17,10 @@ import { useT } from "@/lib/i18n/context";
 import { useAuth } from "@/lib/auth/context";
 import { usePermissions } from "@/lib/context/permissions";
 import { tables } from "@/lib/spacetimedb/generated";
-import { registerStoreDevice, setPunchInCode } from "@/lib/spacetimedb/actions";
+import { registerStoreDevice } from "@/lib/spacetimedb/actions";
+import { setOwnPunchCode } from "@/lib/spacetimedb/actions/pin";
+import { ownCodeNotice } from "@/lib/pin-attempt";
+import { fmt } from "@/lib/i18n/fmt";
 import { getAppMode, setAppMode, APP_MODE_HOME, type AppMode } from "@/lib/app-mode";
 import { setStoreMachineMode, setDeviceName, getDeviceName, getOrCreateDeviceId } from "@/lib/store-machine-mode";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
@@ -162,7 +165,9 @@ function ChooseModeInner() {
     try {
       if (mode === "store") {
         if (!hasPin && myMember) {
-          await setPunchInCode(myMember.id.toString(), pinInput);
+          // Rate limited (a taken code names a colleague's PIN): the answer is a row.
+          const notice = ownCodeNotice(await setOwnPunchCode(pinInput));
+          if (notice) throw new Error(fmt(t(notice.key), notice.vars));
         }
         const name = deviceNameInput.trim();
         setDeviceName(name);

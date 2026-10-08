@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useId } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Settings,
@@ -101,8 +101,11 @@ import { hapticSuccess, hapticMedium } from "@/lib/haptics";
 import { useAuth } from "@/lib/auth/context";
 import { useStoreMachineMode, useDeviceName, getOrCreateDeviceId } from "@/lib/store-machine-mode";
 import { useAutolockSeconds, AUTOLOCK_OPTIONS, type AutolockSeconds } from "@/lib/store-device-lock";
-import { registerStoreDevice, removeStoreDevice, updateStoreDevice, verifyManagerPin } from "@/lib/spacetimedb/actions";
-import { uploadFiles } from "@/lib/uploadthing";
+import { registerStoreDevice, removeStoreDevice, updateStoreDevice } from "@/lib/spacetimedb/actions";
+import { attemptManagerPin } from "@/lib/spacetimedb/actions/pin";
+import { pinNotice } from "@/lib/pin-attempt";
+import { fmt } from "@/lib/i18n/fmt";
+import { appUploadErrorKeyOr, uploadAppFiles } from "@/lib/storage/app-upload";
 import { toast } from "sonner";
 import { useT, useI18n } from "@/lib/i18n/context";
 import { LOCALE_LABELS } from "@/lib/i18n/config";
@@ -172,6 +175,7 @@ export default function SettingsPage() {
   const [personalName, setPersonalName] = useState("");
   const [personalBirthday, setPersonalBirthday] = useState("");
   const [savingPersonal, setSavingPersonal] = useState(false);
+  const personalFieldId = useId(); // unique per page instance: keep-alive tabs can hold two settings pages
   const [assistantSaving, setAssistantSaving] = useState(false);
   const [weeklyRestockTime, setWeeklyRestockTime] = useState("09:00");
 
@@ -295,8 +299,8 @@ export default function SettingsPage() {
   const [exitPinBusy, setExitPinBusy] = useState(false);
 
   /**
-   * Leave kiosk mode. The PIN is checked by the `verifyManagerPin` reducer,
-   * which resolves only for an active owner/manager of this org.
+   * Leave kiosk mode. The PIN is checked by the rate-limited
+   * `verifyManagerPinAttempt` reducer: "ok" only for an active owner/manager.
    *
    * This used to compare `exitPinInput` against the `punchInCode` of every
    * subscribed org_member row — which meant any staff member's browser held
@@ -307,14 +311,16 @@ export default function SettingsPage() {
     if (exitPinInput.length !== 4 || exitPinBusy) return;
     setExitPinBusy(true);
     try {
-      await verifyManagerPin(exitPinInput);
+      const answer = await attemptManagerPin(exitPinInput);
+      const notice = pinNotice(answer);
+      if (answer.outcome !== "ok") throw new Error(notice ? fmt(t(notice.key), notice.vars) : invalidMessage);
       setStoreMachine(false);
       updateStoreDevice(getOrCreateDeviceId(), { enabled: false }).catch(console.error);
       setExitPinDialog(false);
       hapticSuccess();
       toast.success(t("settings.toastStoreModeDisabled"));
-    } catch {
-      setExitPinError(invalidMessage);
+    } catch (err) {
+      setExitPinError(err instanceof Error && err.message ? err.message : invalidMessage);
     } finally {
       setExitPinBusy(false);
     }
@@ -721,7 +727,7 @@ export default function SettingsPage() {
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !userId) return;
+    if (!file || !userId || !organizationId) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error(t("components.imageUpload.unsupportedType"));
@@ -734,7 +740,7 @@ export default function SettingsPage() {
 
     setUploadingAvatar(true);
     try {
-      const [res] = await uploadFiles("avatar", { files: [file] });
+      const [res] = await uploadAppFiles("avatar", { files: [file], organizationId, source: "avatar" });
       const url = res.ufsUrl;
 
       await updateProfile({
@@ -746,7 +752,7 @@ export default function SettingsPage() {
       toast.success(t("settings.avatarSaved"));
     } catch (err) {
       console.error("Avatar upload failed:", err);
-      toast.error(t("settings.avatarUploadFailed"));
+      toast.error(t(appUploadErrorKeyOr(err, "settings.avatarUploadFailed")));
     } finally {
       setUploadingAvatar(false);
     }
@@ -1830,11 +1836,11 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-4 px-[18px] py-4">
             <div className="space-y-1.5">
-              <Label htmlFor="personal-name" className="text-xs font-medium text-muted-foreground">
+              <Label htmlFor={`${personalFieldId}-name`} className="text-xs font-medium text-muted-foreground">
                 {t("settings.personalName")}
               </Label>
               <Input
-                id="personal-name"
+                id={`${personalFieldId}-name`}
                 value={personalName}
                 onChange={(e) => setPersonalName(e.target.value)}
                 placeholder={t("settings.personalNamePlaceholder")}
@@ -1842,11 +1848,11 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="personal-birthday" className="text-xs font-medium text-muted-foreground">
+              <Label htmlFor={`${personalFieldId}-birthday`} className="text-xs font-medium text-muted-foreground">
                 {t("settings.birthday")}
               </Label>
               <Input
-                id="personal-birthday"
+                id={`${personalFieldId}-birthday`}
                 type="date"
                 value={personalBirthday}
                 onChange={(e) => setPersonalBirthday(e.target.value)}
@@ -1857,11 +1863,11 @@ export default function SettingsPage() {
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="personal-email" className="text-xs font-medium text-muted-foreground">
+              <Label htmlFor={`${personalFieldId}-email`} className="text-xs font-medium text-muted-foreground">
                 {t("settings.personalEmail")}
               </Label>
               <Input
-                id="personal-email"
+                id={`${personalFieldId}-email`}
                 value={userEmail || t("settings.emailFallback")}
                 disabled
                 className="h-10 font-mono text-xs"

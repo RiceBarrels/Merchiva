@@ -32,9 +32,10 @@ self.addEventListener("push", (event) => {
     requireInteraction: false,
   };
 
-  // Mr. Merchiva reply pings exist for when the user has LEFT the page. If a
-  // chat/dashboard tab is focused and visible, they're already watching the
-  // reply stream in — suppress the redundant OS notification.
+  // Mr. Merchiva reply pings exist for when the user has LEFT the app. His chat
+  // is the ⌘⇧M dock, which can sit beside any /manager page, so a focused and
+  // visible /manager tab means they're still here — suppress the OS notification
+  // (the in-app bell still gets its entry).
   if (payload.type === "merchiva_reply") {
     event.waitUntil(
       self.clients
@@ -43,10 +44,7 @@ self.addEventListener("push", (event) => {
           const watching = clients.some((c) => {
             if (c.visibilityState !== "visible" || !c.focused) return false;
             const path = new URL(c.url).pathname;
-            // /manager/chat redirects to /manager/channel (next.config.ts), so
-            // matching the old path meant this never suppressed a notification
-            // for someone already reading the thread.
-            return path.startsWith("/manager/channel") || path.startsWith("/manager/dashboard");
+            return path === "/manager" || path.startsWith("/manager/");
           });
           if (watching) return;
           return self.registration.showNotification(title, options);

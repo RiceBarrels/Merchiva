@@ -59,7 +59,7 @@ const DEFAULT_CONFIG: ScheduleConfig = {
   staffPerShift: {},
 };
 
-const DEFAULT_PRESETS: ShiftPreset[] = [
+export const DEFAULT_PRESETS: ShiftPreset[] = [
   {
     id: "default-morning",
     organizationId: "",
