@@ -17,21 +17,33 @@ import { Identity, Timestamp, Uuid } from 'spacetimedb';
 import { pagePresenceTable } from './presence/tables';
 import { definePagePresenceReducers } from './presence/reducers';
 import { chatChannelInfoTable, chatMemberStateTable, chatMessageExtTable, chatReactionTable } from './chat/tables';
-import { defineChatReducers, deleteChatMessageCascade, notifyChatMessage, rekeyChatIdentity } from './chat/reducers';
+import { defineChatReducers, deleteChatMessageCascade, notifyChatMessage } from './chat/reducers';
 import { isChannelManagerRole } from './chat/logic';
 import {
   driveItemTable, driveOrgStateTable, driveAdminIndexTable, documentReaderIndexTable, driveUsageTable,
   driveStarTable, driveNoticeAckTable, driveServiceReaderTable, driveBlobGcTable, documentEditLeaseTable,
-  documentVersionStateTable, documentFileTable,
+  documentVersionStateTable, documentFileTable, appFileTable, orgStorageUsageTable, documentSizeTable,
+  appFilePrivateTable, appUploadHoldTable,
 } from './drive/tables';
 import { deviceLoginRequesterTable } from './device/tables';
+import { deviceOperatorGrantTable, pinAttemptCounterTable, pinAttemptResultTable } from './device/pin-tables';
+import { pinLockedUntilFor, recordPinMiss } from './device/pin-guard';
+import { PIN_PATTERN } from './device/pin-limit';
+import {
+  activeMemberByPunchCode, definePinReducers, pinCallerOf, pinLimitExempt, setPunchCodeCounted, storePunchCode,
+  writeOperatorGrant, type PinDeps,
+} from './device/pin-reducers';
+import {
+  formTable, formMetaTable, formResponseTable, formAssignmentTable, formCompletionTable, formPublicTable,
+  formResponseReviewTable, formPeriodMarkTable,
+} from './forms/tables';
 import {
   deviceLoginRequesterOf, dropDeviceLoginRequester, isDeviceLoginRequester, recordDeviceLoginRequester,
 } from './device/login-requester';
 import { docFileKind, docFileTypeOf, docFolderIdOf, dropDocumentFile, documentFileOf, setDocumentFile } from './drive/document-file';
 import { driveAccessOf, withoutDrivePower } from './drive/logic';
 import {
-  dropDocumentReaders, dropDriveAdminIndex, dropMemberDocReaders, rekeyAccessIdentity, syncDocumentReaders,
+  dropDocumentReaders, dropDriveAdminIndex, dropMemberDocReaders, syncDocumentReaders,
   syncDriveAdminIndex, syncMemberDocReaders,
 } from './drive/access-index';
 import { addDriveUsage, driveFolderFits, driveSpaceOfDoc, driveUsageRow, type DriveDeps } from './drive/context';
@@ -41,9 +53,15 @@ import { defineDriveTrashReducers } from './drive/trash';
 import { defineDriveDocumentReducers } from './drive/documents';
 import { defineDriveUploadReducers } from './drive/uploads';
 import { defineDriveServiceReducers } from './drive/service';
+import { defineStorageReducers } from './drive/storage-reducers';
+import { defineFormReducers } from './forms/reducers';
 import {
-  defineSheetReducers, sheetBytesOfDocument, sheetLeaseWithoutHolder, sheetLeaseWithoutRequest, type SheetDeps,
+  defineSheetReducers, sheetLeaseWithoutHolder, sheetLeaseWithoutRequest, type SheetDeps,
 } from './drive/sheets';
+import {
+  assertOrgStorageRoom, documentInitialBytes, documentLiveBytes, dropDocumentSize, refreshDocumentSize,
+  sheetBytesOfDocument,
+} from './drive/storage';
 import { sheetBytesFit } from './drive/sheet-logic';
 
 // ─── Helper: throw on unauthorized ───────────────────────────────────────────
@@ -2522,12 +2540,33 @@ const spacetimedb = schema({
   // for older clients (scripts/tests/drive/client-compat-schema.test.ts).
   documentFile: documentFileTable,
   deviceLoginRequester: deviceLoginRequesterTable,
+  // Punch-PIN attempt limiter (./device/pin-tables.ts): private counters, self-scoped outcomes,
+  // and private per-log-in operator grants (recordOperatorPunch).
+  pinAttemptCounter: pinAttemptCounterTable,
+  pinAttemptResult: pinAttemptResultTable,
+  deviceOperatorGrant: deviceOperatorGrantTable,
+  // Storage accounting beyond Blob uploads (./drive/storage.ts): app files, the
+  // org's document + app totals, and each document's stored bytes.
+  appFile: appFileTable,
+  appFilePrivate: appFilePrivateTable,
+  appUploadHold: appUploadHoldTable,
+  orgStorageUsage: orgStorageUsageTable,
+  documentSize: documentSizeTable,
   // Channel side tables (./chat/tables.ts): chat_message / chat_conversation are
   // frozen for older clients, like document above.
   chatReaction: chatReactionTable,
   chatMessageExt: chatMessageExtTable,
   chatChannelInfo: chatChannelInfoTable,
   chatMemberState: chatMemberStateTable,
+  // Forms (./forms/tables.ts).
+  form: formTable,
+  formMeta: formMetaTable,
+  formResponse: formResponseTable,
+  formAssignment: formAssignmentTable,
+  formCompletion: formCompletionTable,
+  formPublic: formPublicTable,
+  formResponseReview: formResponseReviewTable,
+  formPeriodMark: formPeriodMarkTable,
 });
 
 export default spacetimedb;
@@ -2617,7 +2656,9 @@ const RLS_ORG_SCOPED: Array<string | [table: string, column: string]> = [
   // member's private conversation with Mr. Merchiva, not org data.
   'ai_usage', 'ai_usage_quota',
   'bug_report', 'chat_conversation', 'coupon', 'daily_briefing', 'design',
-  'drive_star', 'drive_usage',
+  'drive_star', 'drive_usage', 'app_file', 'org_storage_usage',
+  // Forms: who must fill what, and "Done · Ana 08:02" — never answers.
+  'form_assignment', 'form_completion',
   // PHASE A ONLY. These nine are also reader-scoped (RLS_DOC_READER_SCOPED
   // below). The org rule stays until document_reader_index is backfilled, so
   // nobody loses a document in between; phase B deletes the next two lines.
@@ -2654,6 +2695,8 @@ const RLS_SELF_SCOPED: Array<[table: string, column: string]> = [
   ['user_briefing_pref', 'userId'],
   ['member_punch_code', 'userId'],
   ['device_operator_session', 'identity'],
+  // The outcome of the caller's latest PIN attempt (./device/pin-tables.ts).
+  ['pin_attempt_result', 'identity'],
   // Read position, mute and star of one member in one conversation.
   ['chat_member_state', 'userId'],
   // device_login_request is self-scoped too, but through a join: see
@@ -2679,6 +2722,7 @@ const RLS_DOC_READER_SCOPED: Array<[table: string, column: string]> = [
   ['document_snapshot', 'documentId'], ['document_star', 'documentId'],
   ['document_update', 'documentId'], ['document_version', 'documentId'],
   ['document_version_state', 'documentId'], ['document_file', 'documentId'],
+  ['document_size', 'documentId'],
 ];
 
 /**
@@ -2932,6 +2976,58 @@ rlsRules.rls_drive_usage_service = spacetimedb.clientVisibilityFilter.sql(
   `WHERE r.userId = :sender`
 );
 
+// form: two rules, OR'd.
+//   member — every active member sees a form while memberVisible (open or
+//            closed, and not private). Drafts and archived forms stay hidden.
+//   admin  — owners, managers and drive.view/edit members (drive_admin_index)
+//            see every form carrying their org's opaque scope.
+// There is deliberately no rule on ownerMemberId: building is by role (C2),
+// every builder is a Drive admin by role, and a builder demoted to staff must
+// lose their forms' responses, counters and public token at once.
+// form_meta (counters + the public token) and form_response are never
+// org-wide: meta is admin only; a response is respondent + admin. The
+// respondent joins by member id, so the operator's phone sees what the store
+// tablet submitted for them; the tablet itself reads none of it. A reviewer's
+// note (form_response_review) is admin only, never the respondent's.
+rlsRules.rls_form_member = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT x.* FROM form x ` +
+  `JOIN org_membership_index mi ON x.organizationId = mi.organizationId ` +
+  `WHERE mi.userId = :sender AND x.memberVisible = true`
+);
+rlsRules.rls_form_admin = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT x.* FROM form x ` +
+  `JOIN drive_admin_index a ON x.adminScope = a.adminScope ` +
+  `WHERE a.userId = :sender`
+);
+rlsRules.rls_form_meta_admin = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT x.* FROM form_meta x ` +
+  `JOIN drive_admin_index a ON x.adminScope = a.adminScope ` +
+  `WHERE a.userId = :sender`
+);
+rlsRules.rls_form_response_respondent = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT x.* FROM form_response x ` +
+  `JOIN org_membership_index mi ON x.respondentMemberId = mi.memberId ` +
+  `WHERE mi.userId = :sender`
+);
+rlsRules.rls_form_response_admin = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT x.* FROM form_response x ` +
+  `JOIN drive_admin_index a ON x.adminScope = a.adminScope ` +
+  `WHERE a.userId = :sender`
+);
+rlsRules.rls_form_response_review_admin = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT x.* FROM form_response_review x ` +
+  `JOIN drive_admin_index a ON x.adminScope = a.adminScope ` +
+  `WHERE a.userId = :sender`
+);
+// form_public: the service identity only (it serves /f/<token>), through
+// drive_service_reader like drive_blob_gc / drive_usage — this extends
+// exception U14 by one table. No client ever reads it.
+rlsRules.rls_form_public_service = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT p.* FROM form_public p ` +
+  `JOIN drive_service_reader r ON p.scope = r.scope ` +
+  `WHERE r.userId = :sender`
+);
+
 // device_login_request: only the identity that asked for a QR (the store
 // tablet's account) reads it; the phone that scans it needs no row. The nonce
 // is the QR's whole secret: when these rows were org-readable, any colleague
@@ -2980,15 +3076,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
 //
 // The legacy `user.passwordHash` column cannot be dropped (SpacetimeDB has no
 // automatic column removal), so it is blanked by `migrateSecurityV1` and never
-// written again. `readPasswordHash` still falls back to it so a login attempt
-// that arrives before the migration has run does not fail.
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function readPasswordHash(ctx: any, user: { identity: unknown; passwordHash?: string }): string | undefined {
-  const secret = ctx.db.userSecret.identity.find(user.identity);
-  if (secret) return secret.passwordHash as string;
-  return user.passwordHash;               // pre-migration fallback
-}
+// written again. Nothing reads the hashes any more: password sign-in (loginWithPassword) is retired.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function writePasswordHash(ctx: any, identity: unknown, passwordHash: string): void {
@@ -3046,106 +3134,18 @@ export const createUser = spacetimedb.reducer(
 );
 
 /**
- * Authenticate with email + password hash when no stored token is available.
- * Migrates all user data from the old Identity to the calling Identity so the
- * new token can fully replace the old one.
+ * Retired: password sign-in moved to WorkOS, and no client calls this any more. It used to take a client-sent
+ * password hash with no attempt limit, tell which emails exist, and move a matching account (memberships, Drive and
+ * Docs access, chat) onto whatever identity asked — an unthrottled account-takeover path. It now refuses every call.
+ * The reducer stays (same parameters) because deployed clients' bindings still list it.
  */
 export const loginWithPassword = spacetimedb.reducer(
   {
     email: t.string(),
     passwordHash: t.string(),
   },
-  (ctx, { email, passwordHash }) => {
-    // Find existing account by email
-    const existingUser = [...ctx.db.user.byEmail.filter(email)][0];
-    if (!existingUser) throw new SenderError('Invalid email or password');
-    const storedHash = readPasswordHash(ctx, existingUser);
-    if (!storedHash) throw new SenderError('Account has no password set');
-    if (storedHash !== passwordHash) throw new SenderError('Invalid email or password');
-
-    const oldIdentity = existingUser.identity;
-    const newIdentity = ctx.sender;
-
-    // If same identity (token is already valid), nothing to migrate
-    if (oldIdentity.toString() === newIdentity.toString()) return;
-
-    // Delete the auto-created empty user row for the new anonymous identity
-    const autoCreated = ctx.db.user.identity.find(newIdentity);
-    if (autoCreated && autoCreated.email === '') {
-      ctx.db.user.delete(autoCreated);
-    }
-
-    // Migrate user record to new identity
-    ctx.db.user.delete(existingUser);
-    ctx.db.user.insert({ ...existingUser, identity: newIdentity, passwordHash: undefined });
-
-    // Move the password hash onto the new identity, then drop the old secret.
-    const oldSecret = ctx.db.userSecret.identity.find(oldIdentity);
-    writePasswordHash(ctx, newIdentity, storedHash);
-    if (oldSecret) ctx.db.userSecret.delete(oldSecret);
-
-    // Drive / Docs access indexes and upload rows are keyed by identity too.
-    rekeyAccessIdentity(ctx, oldIdentity, newIdentity);
-
-    // Migrate org memberships
-    for (const m of [...ctx.db.orgMember.byUserId.filter(oldIdentity)]) {
-      ctx.db.orgMember.id.update({ ...m, userId: newIdentity });
-      syncOrgMembershipIndex(ctx, { ...m, userId: newIdentity });
-    }
-
-    // Migrate staff availability
-    for (const a of [...ctx.db.staffAvailability.byUserId.filter(oldIdentity)]) {
-      ctx.db.staffAvailability.id.update({ ...a, userId: newIdentity });
-    }
-
-    // Migrate time-off requests
-    for (const r of [...ctx.db.timeOffRequest.byUserId.filter(oldIdentity)]) {
-      ctx.db.timeOffRequest.id.update({ ...r, userId: newIdentity });
-    }
-
-    // Migrate chat memberships (read / mute / star state and reactions first:
-    // rekeyChatIdentity finds them through the old identity's memberships).
-    rekeyChatIdentity(ctx, oldIdentity, newIdentity);
-    for (const cm of [...ctx.db.chatMember.byUserId.filter(oldIdentity)]) {
-      ctx.db.chatMember.id.update({ ...cm, userId: newIdentity });
-      syncChatMembershipIndex(ctx, { ...cm, userId: newIdentity });
-    }
-
-    // Migrate todos
-    for (const td of [...ctx.db.todo.byUserId.filter(oldIdentity)]) {
-      ctx.db.todo.id.update({ ...td, userId: newIdentity });
-    }
-
-    // Migrate bug reports — `reporterId` is what makes "my reports" work on
-    // the device surfaces, so a report filed before a re-login must follow.
-    for (const b of [...ctx.db.bugReport.byReporterId.filter(oldIdentity)]) {
-      ctx.db.bugReport.id.update({ ...b, reporterId: newIdentity });
-    }
-
-    // ── Identity-keyed rows that were previously left behind ────────────────
-    // These were never migrated before. It did not show because every client
-    // subscribed to every row of these tables and filtered in JavaScript; now
-    // that RLS scopes them by `:sender`, an un-migrated row would simply
-    // vanish for the user (lost notifications, dead push subscriptions, a
-    // punch-in PIN that no longer opens the store device).
-    for (const n of [...ctx.db.notification.iter()]) {
-      if (n.targetId.toString() === oldIdentity.toString()) {
-        ctx.db.notification.id.update({ ...n, targetId: newIdentity });
-      }
-    }
-    for (const p of [...ctx.db.pushSubscription.iter()]) {
-      if (p.targetId.toString() === oldIdentity.toString()) {
-        ctx.db.pushSubscription.id.update({ ...p, targetId: newIdentity });
-      }
-    }
-    for (const c of [...ctx.db.memberPunchCode.byUserId.filter(oldIdentity)]) {
-      ctx.db.memberPunchCode.memberId.update({ ...c, userId: newIdentity });
-    }
-    const pref = ctx.db.userBriefingPref.userId.find(oldIdentity);
-    if (pref) {
-      ctx.db.userBriefingPref.delete(pref);
-      ctx.db.userBriefingPref.insert({ ...pref, userId: newIdentity });
-    }
+  () => {
+    throw new SenderError('Password sign-in is retired. Sign in with your Merchiva account.');
   }
 );
 
@@ -3593,36 +3593,24 @@ export const setPunchInCode = spacetimedb.reducer(
     // Validate code shape when setting (exactly 4 digits). Clearing is always allowed.
     if (code !== undefined) {
       if (!/^[0-9]{4}$/.test(code)) throw new SenderError('Code must be 4 digits');
-      // Prevent collisions within the same org so punch-in lookups remain unambiguous.
-      const collision = [...ctx.db.memberPunchCode.byOrganizationId.filter(organizationId)]
-        .find(c => c.memberId !== memberId && c.code === code);
-      if (collision) throw new SenderError('Code already in use at this store');
+      // Codes are unique per store so punch-in lookups stay unambiguous, which
+      // makes "already in use" name a colleague's PIN — for a team editor too,
+      // who learns it without changing anything. Only owners and the service
+      // identity get that answer uncounted (and as an error). For anyone else
+      // an in-use code counts as a PIN guess (./device/pin-guard.ts) and is
+      // left unchanged WITHOUT a throw, which would roll the counted guess back.
+      // New clients call setMemberPunchInCode / setOwnPunchInCode and read the outcome.
+      const { outcome } = setPunchCodeCounted(pinDeps, ctx, organizationId, caller, target, code);
+      if (outcome === 'locked') throw new SenderError('PIN_LOCKED');
+      if (outcome === 'in_use' && pinLimitExempt(pinDeps, ctx, caller)) {
+        throw new SenderError('Code already in use at this store');
+      }
+      return;
     }
 
-    // The code now lives in `member_punch_code`, whose RLS rule matches
-    // `userId = :sender` — a colleague can no longer read it. Writing it back
-    // onto the org_member row would undo that, so the legacy column is always
-    // cleared here.
-    const existingCode = ctx.db.memberPunchCode.memberId.find(memberId);
-    if (code === undefined) {
-      if (existingCode) ctx.db.memberPunchCode.delete(existingCode);
-    } else if (existingCode) {
-      ctx.db.memberPunchCode.memberId.update({
-        ...existingCode, organizationId, userId: target.userId, code, updatedAt: ctx.timestamp,
-      });
-    } else {
-      ctx.db.memberPunchCode.insert({
-        memberId, organizationId, userId: target.userId, code, updatedAt: ctx.timestamp,
-      });
-    }
-
-    // `hasPunchCode` says only whether a code exists; the digits stay in
-    // `member_punch_code`. The legacy column is cleared on every write so it
-    // can never become readable again.
-    const hasPunchCode = code !== undefined;
-    if (target.punchInCode !== undefined || target.hasPunchCode !== hasPunchCode) {
-      ctx.db.orgMember.id.update({ ...target, punchInCode: undefined, hasPunchCode });
-    }
+    // The code lives in `member_punch_code`, whose RLS rule matches
+    // `userId = :sender` — a colleague cannot read it.
+    storePunchCode(ctx, organizationId, target, code);
   }
 );
 
@@ -3639,23 +3627,27 @@ export const setPunchInCode = spacetimedb.reducer(
 /**
  * Resolve a punch-in PIN to the member it belongs to, for the shared store
  * tablet. Writes the answer to `device_operator_session` for the calling
- * identity only. Throws if the PIN matches nobody, so a failed unlock is
- * indistinguishable from a wrong code.
+ * identity only. Kept for clients from before resolveDeviceOperatorAttempt
+ * (./device/pin-reducers.ts), and limited like it (./device/pin-guard.ts): a
+ * wrong PIN is counted and ends any earlier session, and the call RETURNS —
+ * a throw would roll the counted miss back. Those clients wait for a new session
+ * row and time out to "PIN not recognized". While the caller or the store is
+ * locked it throws PIN_LOCKED without comparing anything.
  */
 export const resolveDeviceOperator = spacetimedb.reducer(
   { organizationId: t.string(), code: t.string() },
   (ctx, { organizationId, code }) => {
-    findActiveMember(ctx, organizationId);
-    if (!/^[0-9]{4}$/.test(code)) throw new SenderError('PIN_NOT_RECOGNIZED');
+    const caller = findActiveMember(ctx, organizationId);
+    if (pinLockedUntilFor(ctx, organizationId, pinCallerOf(caller)) > 0n) throw new SenderError('PIN_LOCKED');
+    if (!PIN_PATTERN.test(code)) throw new SenderError('PIN_NOT_RECOGNIZED');   // tests no code: not counted
 
-    const entry = [...ctx.db.memberPunchCode.byOrganizationId.filter(organizationId)]
-      .find(c => c.code === code);
-    if (!entry) throw new SenderError('PIN_NOT_RECOGNIZED');
-
-    const member = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
-      .find(m => m.id.toString() === entry.memberId);
-    if (!member || member.status !== 'active') throw new SenderError('PIN_NOT_RECOGNIZED');
-
+    const member = activeMemberByPunchCode(ctx, organizationId, code);
+    if (!member) {
+      const existing = ctx.db.deviceOperatorSession.identity.find(ctx.sender);
+      if (existing) ctx.db.deviceOperatorSession.delete(existing);
+      recordPinMiss(ctx, organizationId, pinCallerOf(caller), notifyManagers);
+      return;
+    }
     writeDeviceOperatorSession(ctx, organizationId, member);
   }
 );
@@ -3684,23 +3676,17 @@ export const clearDeviceOperator = spacetimedb.reducer(
   }
 );
 
+/**
+ * Retired: always refuses. Its clients read "no throw" as a manager's PIN, so a
+ * wrong PIN has to throw, and a throw rolls back any count of it — this check
+ * could never be limited. Clients call verifyManagerPinAttempt
+ * (./device/pin-reducers.ts), which answers through pin_attempt_result.
+ */
 export const verifyManagerPin = spacetimedb.reducer(
   { organizationId: t.string(), code: t.string() },
-  (ctx, { organizationId, code }) => {
+  (ctx, { organizationId }) => {
     findActiveMember(ctx, organizationId);   // caller must belong to this org
-    if (!/^[0-9]{4}$/.test(code)) throw new SenderError('Invalid code');
-
-    const match = [...ctx.db.memberPunchCode.byOrganizationId.filter(organizationId)]
-      .find(c => c.code === code);
-    if (!match) throw new SenderError('Invalid code');
-
-    const member = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
-      .find(m => m.id.toString() === match.memberId);
-    if (!member || member.status !== 'active') throw new SenderError('Invalid code');
-    if (member.role !== 'owner' && member.role !== 'manager') {
-      throw new SenderError('Invalid code');
-    }
-    // Success is the absence of a SenderError — reducers cannot return values.
+    throw new SenderError('UPDATE_REQUIRED: reload the app to check a manager PIN');
   }
 );
 
@@ -3839,16 +3825,18 @@ export const recordPunch = spacetimedb.reducer(
     action: t.string(), // "in" | "out" | "break-start" | "break-end"
   },
   (ctx, { organizationId, code, action }) => {
-    findActiveMember(ctx, organizationId);
+    const caller = findActiveMember(ctx, organizationId);
 
-    // Codes moved to the private-by-RLS `member_punch_code` table.
-    const entry = [...ctx.db.memberPunchCode.byOrganizationId.filter(organizationId)]
-      .find(c => c.code === code);
-    if (!entry) throw new SenderError('Invalid punch-in code');
-
-    const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
-      .find(m => m.id.toString() === entry.memberId && m.status === 'active');
-    if (!target) throw new SenderError('Invalid punch-in code');
+    // A PIN oracle unless limited (./device/pin-guard.ts): refused while locked,
+    // and a wrong code is counted and RETURNS — a throw would roll the count
+    // back. New clients punch without a PIN: recordOperatorPunch / recordSelfPunch.
+    if (pinLockedUntilFor(ctx, organizationId, pinCallerOf(caller)) > 0n) throw new SenderError('PIN_LOCKED');
+    if (!PIN_PATTERN.test(code)) throw new SenderError('Invalid punch-in code');   // tests no code: not counted
+    const target = activeMemberByPunchCode(ctx, organizationId, code);
+    if (!target) {
+      recordPinMiss(ctx, organizationId, pinCallerOf(caller), notifyManagers);
+      return;
+    }
 
     // The PIN was verified above; it is deliberately not passed on, because
     // nothing downstream may persist it — see PUNCH_PIN_REDACTED.
@@ -4225,7 +4213,12 @@ export const consumeDeviceLogin = spacetimedb.reducer(
         && row.expiresAt.microsSinceUnixEpoch >= ctx.timestamp.microsSinceUnixEpoch) {
       const operator = [...ctx.db.orgMember.byOrganizationId.filter(row.organizationId)]
         .find(m => m.id.toString() === row.memberId && m.status === 'active');
-      if (operator) writeDeviceOperatorSession(ctx, row.organizationId, operator);
+      if (operator) {
+        writeDeviceOperatorSession(ctx, row.organizationId, operator);
+        // The tablet punches this operator with the request id as its grant
+        // (recordOperatorPunch), so another tablet's log-in never redirects it.
+        writeOperatorGrant(ctx, row.organizationId, row.id.toString(), operator.id.toString());
+      }
     }
     ctx.db.deviceLoginRequest.delete(row);
     ctx.db.deviceLoginRequest.insert({ ...row, status: 'consumed' });
@@ -8990,6 +8983,7 @@ function purgeDocumentRows(ctx: any, doc: any): void {
   const lease = ctx.db.documentEditLease.documentId.find(id);
   if (lease) ctx.db.documentEditLease.delete(lease);
   dropDocumentReaders(ctx, id);
+  dropDocumentSize(ctx, id);
   dropDocumentFile(ctx, id);
   ctx.db.document.delete(doc);
 }
@@ -9222,6 +9216,10 @@ export const createDocument = spacetimedb.reducer(
 
     const memberId = member.id.toString();
     const plainText = clampChars(args.plainText ?? '', DOC_TEXT_MAX_CHARS);
+    const html = clampChars(args.html ?? '', DOC_HTML_MAX_CHARS);
+    // A new document counts toward the store's one storage quota (editing one never is refused).
+    assertOrgStorageRoom(ctx, { SenderError }, args.organizationId,
+      init && init.length > 0 ? documentInitialBytes(init.length, html, plainText) : 0n);
     const templateId = args.templateId ? clampChars(args.templateId.trim(), DOC_TEMPLATE_ID_MAX) : '';
     const doc = ctx.db.document.insert({
       id,
@@ -9248,12 +9246,13 @@ export const createDocument = spacetimedb.reducer(
         state: init,
         throughUpdateId: 0n,
         byteLength: init.length,
-        html: clampChars(args.html ?? '', DOC_HTML_MAX_CHARS),
+        html,
         plainText,
         compactedAt: ctx.timestamp,
         compactedByMemberId: memberId,
       });
     }
+    refreshDocumentSize(ctx, doc);
   }
 );
 
@@ -9278,6 +9277,8 @@ export const duplicateDocument = spacetimedb.reducer(
     const srcFile = documentFileOf(ctx, src.id);
     const sheetBytes = docFileKind(srcFile.fileType) === 'sheet' ? sheetLiveBytes(ctx, src.id) : 0n;
     assertSheetBytesFit(ctx, src.organizationId, sheetBytes); // no-op for other types (growth 0)
+    // The copy counts toward the store's storage quota: its live content (versions are not copied).
+    assertOrgStorageRoom(ctx, { SenderError }, src.organizationId, documentLiveBytes(ctx, src.id, docFileKind(srcFile.fileType)));
     const now = ctx.timestamp;
     const copy = ctx.db.document.insert({
       ...src,
@@ -9305,6 +9306,7 @@ export const duplicateDocument = spacetimedb.reducer(
       ctx.db.documentUpdate.insert({ ...r, id: 0n, documentId: id, memberId, createdAt: now });
     }
     adjustSheetBytes(ctx, src.organizationId, sheetBytes);
+    refreshDocumentSize(ctx, copy);
   }
 );
 
@@ -9552,6 +9554,7 @@ export const compactDocument = spacetimedb.reducer(
     if (excerpt !== doc.excerpt || args.wordCount !== doc.wordCount) {
       ctx.db.document.id.update({ ...doc, excerpt, wordCount: args.wordCount });
     }
+    refreshDocumentSize(ctx, doc, { keepVersions: true });
   }
 );
 
@@ -9613,6 +9616,7 @@ export const saveDocumentVersion = spacetimedb.reducer(
         .sort((a, b) => (b.createdAt.microsSinceUnixEpoch > a.createdAt.microsSinceUnixEpoch ? 1 : -1));
       for (const old of autos.slice(DOC_AUTO_VERSION_KEEP)) ctx.db.documentVersion.delete(old);
     }
+    refreshDocumentSize(ctx, doc);
   }
 );
 
@@ -9651,6 +9655,7 @@ export const deleteDocumentVersion = spacetimedb.reducer(
       ctx.db.documentVersionState.delete(state);
       adjustSheetBytes(ctx, doc.organizationId, -BigInt(state.byteLength));
     }
+    refreshDocumentSize(ctx, doc);
   }
 );
 
@@ -9967,6 +9972,14 @@ export const {
   serviceEnsureDriveReader, serviceDriveSweep, serviceAckDriveBlobGc, serviceFailDriveBlobGc,
   serviceEnqueueOrphanDriveBlobs, serviceFinishDriveReconcile, serviceSetDriveQuota, backfillDriveAccessV1,
 } = defineDriveServiceReducers(spacetimedb, driveDeps);
+export const { beginAppUpload, serviceRecordAppFile, serviceBackfillAppFiles, serviceRecomputeStorage } =
+  defineStorageReducers(spacetimedb, driveDeps);
+
+// Forms (./forms/*.ts): lifecycle, assignments, member and public responses, review.
+export const {
+  createForm, updateFormDefinition, updateFormSettings, setFormStatus, setFormPublicLink, transferForm, deleteForm,
+  assignForm, unassignForm, submitFormResponse, serviceSubmitPublicFormResponse, reviewFormResponse, deleteFormResponse,
+} = defineFormReducers(spacetimedb, driveDeps);
 
 // Sheets (./drive/sheets.ts): the edit lease and the content reducers of a spreadsheet.
 const sheetDeps: SheetDeps = {
@@ -9993,6 +10006,18 @@ export const {
   toggleChatReaction, editChatMessage, sendThreadReply, setChatMessagePinned, setChannelTopic,
   markChatRead, setChatMuted, setChatStarred, leaveConversation, removeConversationMember,
 } = defineChatReducers(spacetimedb, { t, SenderError, Identity, findById });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PUNCH-PIN REDUCERS (./device/pin-reducers.ts): limited PIN checks answered in
+// pin_attempt_result, and punches that never re-send a PIN.
+// ═══════════════════════════════════════════════════════════════════════════════
+const pinDeps: PinDeps = {
+  t, SenderError, findActiveMember, isServiceCaller, writeDeviceOperatorSession, applyPunch, notifyManagers,
+};
+export const {
+  resolveDeviceOperatorAttempt, verifyManagerPinAttempt, recordOperatorPunch, recordSelfPunch, setOwnPunchInCode,
+  setMemberPunchInCode, clearPinLockouts,
+} = definePinReducers(spacetimedb, pinDeps);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // BUG REPORT REDUCERS

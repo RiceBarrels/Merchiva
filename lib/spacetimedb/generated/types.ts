@@ -65,6 +65,34 @@ export const AiUsageQuota = __t.object("AiUsageQuota", {
 });
 export type AiUsageQuota = __Infer<typeof AiUsageQuota>;
 
+export const AppFile = __t.object("AppFile", {
+  keyHash: __t.string(),
+  organizationId: __t.string(),
+  source: __t.string(),
+  sizeBytes: __t.u64(),
+  mimeType: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type AppFile = __Infer<typeof AppFile>;
+
+export const AppFilePrivate = __t.object("AppFilePrivate", {
+  keyHash: __t.string(),
+  organizationId: __t.string(),
+  source: __t.string(),
+  sizeBytes: __t.u64(),
+  mimeType: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type AppFilePrivate = __Infer<typeof AppFilePrivate>;
+
+export const AppUploadHold = __t.object("AppUploadHold", {
+  id: __t.u64(),
+  organizationId: __t.string(),
+  bytes: __t.u64(),
+  expiresAt: __t.timestamp(),
+});
+export type AppUploadHold = __Infer<typeof AppUploadHold>;
+
 export const BlogPost = __t.object("BlogPost", {
   id: __t.uuid(),
   slug: __t.string(),
@@ -261,6 +289,14 @@ export const DeviceLoginRequester = __t.object("DeviceLoginRequester", {
 });
 export type DeviceLoginRequester = __Infer<typeof DeviceLoginRequester>;
 
+export const DeviceOperatorGrant = __t.object("DeviceOperatorGrant", {
+  key: __t.string(),
+  organizationId: __t.string(),
+  memberId: __t.string(),
+  resolvedAt: __t.timestamp(),
+});
+export type DeviceOperatorGrant = __Infer<typeof DeviceOperatorGrant>;
+
 export const DeviceOperatorSession = __t.object("DeviceOperatorSession", {
   identity: __t.identity(),
   organizationId: __t.string(),
@@ -378,6 +414,16 @@ export const DocumentReaderIndex = __t.object("DocumentReaderIndex", {
   userId: __t.identity(),
 });
 export type DocumentReaderIndex = __Infer<typeof DocumentReaderIndex>;
+
+export const DocumentSize = __t.object("DocumentSize", {
+  documentId: __t.string(),
+  organizationId: __t.string(),
+  fileType: __t.string(),
+  bytes: __t.u64(),
+  versionBytes: __t.u64(),
+  updatedAt: __t.timestamp(),
+});
+export type DocumentSize = __Infer<typeof DocumentSize>;
 
 export const DocumentSnapshot = __t.object("DocumentSnapshot", {
   documentId: __t.string(),
@@ -558,6 +604,136 @@ export const Expense = __t.object("Expense", {
 });
 export type Expense = __Infer<typeof Expense>;
 
+export const Form = __t.object("Form", {
+  id: __t.string(),
+  organizationId: __t.string(),
+  adminScope: __t.string(),
+  ownerMemberId: __t.string(),
+  title: __t.string(),
+  kind: __t.string(),
+  status: __t.string(),
+  audience: __t.string(),
+  memberVisible: __t.bool(),
+  definitionJson: __t.string(),
+  definitionBytes: __t.u32(),
+  version: __t.u32(),
+  perMember: __t.string(),
+  responseLimit: __t.u32(),
+  closesAt: __t.u64(),
+  publicEnabled: __t.bool(),
+  hasFileQuestions: __t.bool(),
+  trackCompletion: __t.bool(),
+  notifyOwner: __t.bool(),
+  createdByMemberId: __t.string(),
+  updatedByMemberId: __t.string(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type Form = __Infer<typeof Form>;
+
+export const FormAssignment = __t.object("FormAssignment", {
+  id: __t.string(),
+  organizationId: __t.string(),
+  formId: __t.string(),
+  memberId: __t.string(),
+  dueDate: __t.string(),
+  createdByMemberId: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type FormAssignment = __Infer<typeof FormAssignment>;
+
+export const FormCompletion = __t.object("FormCompletion", {
+  id: __t.string(),
+  organizationId: __t.string(),
+  formId: __t.string(),
+  memberId: __t.string(),
+  memberName: __t.string(),
+  period: __t.string(),
+  date: __t.string(),
+  completedAt: __t.timestamp(),
+});
+export type FormCompletion = __Infer<typeof FormCompletion>;
+
+export const FormMeta = __t.object("FormMeta", {
+  formId: __t.string(),
+  organizationId: __t.string(),
+  adminScope: __t.string(),
+  ownerMemberId: __t.string(),
+  publicToken: __t.string(),
+  responseCount: __t.u32(),
+  answerBytes: __t.u64(),
+  fileBytes: __t.u64(),
+  fileCount: __t.u32(),
+  lastResponseAt: __t.u64(),
+  publicWindowStart: __t.u64(),
+  publicWindowCount: __t.u32(),
+  updatedAt: __t.timestamp(),
+  publicResponseCount: __t.u32(),
+  publicAnswerBytes: __t.u64(),
+  publicPrevWindowCount: __t.u32(),
+});
+export type FormMeta = __Infer<typeof FormMeta>;
+
+export const FormPeriodMark = __t.object("FormPeriodMark", {
+  id: __t.string(),
+  organizationId: __t.string(),
+  formId: __t.string(),
+  memberId: __t.string(),
+  count: __t.u32(),
+});
+export type FormPeriodMark = __Infer<typeof FormPeriodMark>;
+
+export const FormPublic = __t.object("FormPublic", {
+  token: __t.string(),
+  scope: __t.string(),
+  formId: __t.string(),
+  organizationId: __t.string(),
+  storeName: __t.string(),
+  title: __t.string(),
+  definitionJson: __t.string(),
+  version: __t.u32(),
+  status: __t.string(),
+  closesAt: __t.u64(),
+  updatedAt: __t.timestamp(),
+});
+export type FormPublic = __Infer<typeof FormPublic>;
+
+export const FormResponse = __t.object("FormResponse", {
+  id: __t.string(),
+  organizationId: __t.string(),
+  formId: __t.string(),
+  adminScope: __t.string(),
+  formOwnerMemberId: __t.string(),
+  respondentMemberId: __t.string(),
+  respondentName: __t.string(),
+  formTitle: __t.string(),
+  formVersion: __t.u32(),
+  source: __t.string(),
+  submittedByIdentity: __t.identity(),
+  answersJson: __t.string(),
+  answerBytes: __t.u32(),
+  fileItemIds: __t.string(),
+  fileBytes: __t.u64(),
+  period: __t.string(),
+  date: __t.string(),
+  reviewStatus: __t.string(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type FormResponse = __Infer<typeof FormResponse>;
+
+export const FormResponseReview = __t.object("FormResponseReview", {
+  responseId: __t.string(),
+  organizationId: __t.string(),
+  formId: __t.string(),
+  adminScope: __t.string(),
+  reviewNote: __t.string(),
+  reviewedByName: __t.string(),
+  noteBytes: __t.u32(),
+  updatedAt: __t.timestamp(),
+});
+export type FormResponseReview = __Infer<typeof FormResponseReview>;
+
 export const InventoryItem = __t.object("InventoryItem", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -733,6 +909,16 @@ export const OrgSecret = __t.object("OrgSecret", {
 });
 export type OrgSecret = __Infer<typeof OrgSecret>;
 
+export const OrgStorageUsage = __t.object("OrgStorageUsage", {
+  organizationId: __t.string(),
+  docBytes: __t.u64(),
+  docCount: __t.u32(),
+  appBytes: __t.u64(),
+  appFileCount: __t.u32(),
+  updatedAt: __t.timestamp(),
+});
+export type OrgStorageUsage = __Infer<typeof OrgStorageUsage>;
+
 export const Organization = __t.object("Organization", {
   id: __t.uuid(),
   ownerId: __t.identity(),
@@ -809,6 +995,28 @@ export const PerkClaim = __t.object("PerkClaim", {
   expiresAt: __t.option(__t.timestamp()),
 });
 export type PerkClaim = __Infer<typeof PerkClaim>;
+
+export const PinAttemptCounter = __t.object("PinAttemptCounter", {
+  key: __t.string(),
+  organizationId: __t.string(),
+  failures: __t.u32(),
+  windowStartMicros: __t.i64(),
+  lockedUntilMicros: __t.i64(),
+  notifiedAt: __t.i64(),
+  updatedAt: __t.timestamp(),
+});
+export type PinAttemptCounter = __Infer<typeof PinAttemptCounter>;
+
+export const PinAttemptResult = __t.object("PinAttemptResult", {
+  identity: __t.identity(),
+  organizationId: __t.string(),
+  requestId: __t.string(),
+  kind: __t.string(),
+  outcome: __t.string(),
+  lockedUntilMicros: __t.i64(),
+  at: __t.timestamp(),
+});
+export type PinAttemptResult = __Infer<typeof PinAttemptResult>;
 
 export const PlatformAdmin = __t.object("PlatformAdmin", {
   username: __t.string(),

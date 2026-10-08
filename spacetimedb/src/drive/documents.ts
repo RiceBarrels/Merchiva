@@ -10,7 +10,9 @@
 // document_file row, in the same transaction (./document-file.ts). A Doc or Slides
 // seed is opaque here; a Sheet seed must be a gzipped workbook (sheets.md §3.9),
 // its html is always empty, wordCount holds its cell count, and its bytes are
-// charged to the org's sheet budget (drive_usage.sheetBytes).
+// charged to the org's sheet budget (drive_usage.sheetBytes). Every new document
+// counts toward the store's one storage quota (./storage.ts) and gets its
+// document_size row.
 
 import type { DriveSchema } from './types';
 import {
@@ -20,6 +22,7 @@ import { setDocumentFile } from './document-file';
 import { DRIVE_DOC_ROLE_RANK } from './logic';
 import { isGzipBytes } from './sheet-logic';
 import { assertSheetBytesFitIn, sheetError } from './sheets';
+import { assertOrgStorageRoom, documentInitialBytes, refreshDocumentSize } from './storage';
 
 /** document_file.fileType values a new document may take (no row = a text document from before Drive). */
 const DRIVE_DOCUMENT_FILE_TYPES: readonly string[] = ['doc', 'sheet', 'slides'];
@@ -62,6 +65,9 @@ export function defineDriveDocumentReducers(spacetimedb: DriveSchema, deps: Driv
       }
 
       const plainText = deps.clampChars(args.plainText ?? '', deps.docLimits.textMaxChars);
+      const html = sheet ? '' : deps.clampChars(args.html ?? '', deps.docLimits.htmlMaxChars);
+      // A new document counts toward the store's one storage quota (editing one never is refused).
+      assertOrgStorageRoom(ctx, deps, organizationId, init && init.length > 0 ? documentInitialBytes(init.length, html, plainText) : 0n);
       const templateId = deps.clampChars(String(args.templateId ?? '').trim(), deps.docLimits.templateIdMax);
       const doc = ctx.db.document.insert({
         id,
@@ -88,13 +94,14 @@ export function defineDriveDocumentReducers(spacetimedb: DriveSchema, deps: Driv
           state: init,
           throughUpdateId: 0n,
           byteLength: init.length,
-          html: sheet ? '' : deps.clampChars(args.html ?? '', deps.docLimits.htmlMaxChars),
+          html,
           plainText,
           compactedAt: ctx.timestamp,
           compactedByMemberId: actor.memberId,
         });
         if (sheet) addDriveUsage(ctx, organizationId, { sheetBytes: BigInt(init.length) });
       }
+      refreshDocumentSize(ctx, doc);
       deps.refreshDocReaders(ctx, doc);
     }
   );

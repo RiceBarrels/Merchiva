@@ -2,14 +2,16 @@
 // a write is by (resolveDriveActor), where new content goes (resolveContainer),
 // and the storage accounting + blob GC queue every row deletion goes through.
 //
-// Runtime imports: only the pure ./logic and ./access-index (which imports only
-// ./logic), so Bun tests load this file directly; index.ts values arrive through DriveDeps.
+// Runtime imports: only the pure ./logic, ./access-index (which imports only
+// ./logic) and ./storage (only ./logic and ./document-file), so Bun tests load
+// this file directly; index.ts values arrive through DriveDeps.
 
 import type { Range } from 'spacetimedb/server';
 import type { DocRole, DocumentRow, DriveCtx, DriveItemRow, MemberLike, MemberRow, SenderErrorCtor, TypeBuilders } from './types';
 import { syncDriveAdminIndex, type AccessDocument } from './access-index';
+import { assertOrgStorageRoom } from './storage';
 import {
-  DRIVE_DEFAULT_QUOTA_BYTES, DRIVE_DOC_ROLE_RANK, DRIVE_GC_HOLD_SLACK_MICROS, DRIVE_MAX_BATCH, DRIVE_MAX_DEPTH,
+  DRIVE_DOC_ROLE_RANK, DRIVE_GC_HOLD_SLACK_MICROS, DRIVE_MAX_BATCH, DRIVE_MAX_DEPTH,
   DRIVE_OPERATOR_SESSION_TTL_MICROS, DRIVE_ROLE_RANK, DRIVE_SERVICE_SCOPE, collectSubtree, depthOf, driveAccessOf,
   driveItemRole, driveThumbKeyFor, isDriveSpace, isOrgAdminRole, minDocRole, minDriveRole, parseIdList, rootItem,
   type DriveActorLike, type DriveAdminAccess, type DriveErrorCode, type DriveItemLike, type DriveItemRole, type DriveSpace,
@@ -311,18 +313,14 @@ export function driveUsageRow(ctx: DriveCtx, organizationId: string): DriveUsage
   });
 }
 
-/** The org's quota: support's override when set, else the flat DRIVE_DEFAULT_QUOTA_BYTES. */
-export function driveQuotaBytes(ctx: DriveCtx, organizationId: string): bigint {
-  const override = ctx.db.driveUsage.organizationId.find(organizationId)?.quotaBytesOverride ?? 0n;
-  return override > 0n ? override : DRIVE_DEFAULT_QUOTA_BYTES;
-}
-
-/** Hold `bytes` for a pending upload; `quota_exceeded` when used + reserved + bytes would pass the quota. */
+/**
+ * Hold `bytes` for a pending upload; `quota_exceeded` when the org's whole
+ * stored total (Drive files, pending uploads, documents, app files —
+ * orgStorageTotal) + bytes would pass the quota.
+ */
 export function reserveDriveBytes(ctx: DriveCtx, deps: DriveDeps, organizationId: string, bytes: bigint): void {
+  assertOrgStorageRoom(ctx, deps, organizationId, bytes);
   const usage = driveUsageRow(ctx, organizationId);
-  if (usage.bytesUsed + usage.bytesReserved + bytes > driveQuotaBytes(ctx, organizationId)) {
-    throw driveError(deps, 'quota_exceeded', 'This store is out of Drive storage');
-  }
   ctx.db.driveUsage.organizationId.update({ ...usage, bytesReserved: usage.bytesReserved + bytes, updatedAt: ctx.timestamp });
 }
 

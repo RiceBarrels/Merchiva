@@ -9,11 +9,12 @@
 // actor rule (DS §4.4): the role is the minimum of the caller's and the operator's,
 // and edits are attributed to the operator. Errors: `[sheet.<code>]` plus
 // requireDoc's `[doc.*]` and resolveDriveActor's `[drive.*]`.
-// Runtime imports: only the SDK-free ./sheet-logic, ./logic and ./context.
+// Runtime imports: only the SDK-free ./sheet-logic, ./logic, ./context and ./storage.
 
 import type { DocRole, DocumentRow, DriveCtx, DriveSchema, MemberLike } from './types';
 import { addDriveUsage, docRoleOf, driveUsageRow, resolveDriveActor, type DriveDeps } from './context';
 import { DRIVE_DOC_ROLE_RANK } from './logic';
+import { refreshDocumentSize, sheetBytesOfDocument } from './storage';
 import {
   SHEET_LOG_MAX_BYTES, SHEET_LOG_MAX_ROWS, cleanSheetName, cleanSheetSessionId, isGzipBytes, sheetBytesFit, sheetLeaseDecision,
   sheetRequestLive, sheetVersionPrunePlan, type SheetErrorCode, type SheetLeaseTimes,
@@ -45,15 +46,6 @@ export function assertSheetBytesFitIn(ctx: DriveCtx, deps: Pick<DriveDeps, 'Send
   if (!sheetBytesFit(driveUsageRow(ctx, organizationId).sheetBytes, growth)) {
     throw sheetError(deps, 'quota', 'This store has no room for more spreadsheet data');
   }
-}
-
-/** Bytes one document holds in the sheet tables: snapshot + update log (live) and version states. */
-export function sheetBytesOfDocument(ctx: DriveCtx, documentId: string): { live: bigint; versions: bigint } {
-  let live = BigInt(ctx.db.documentSnapshot.documentId.find(documentId)?.byteLength ?? 0);
-  for (const row of ctx.db.documentUpdate.byDocumentId.filter(documentId)) live += BigInt(row.byteLength);
-  let versions = 0n;
-  for (const row of ctx.db.documentVersionState.byDocumentId.filter(documentId)) versions += BigInt(row.byteLength);
-  return { live, versions };
 }
 
 /** drive_usage.sheetBytes recomputed from the rows (serviceFinishDriveReconcile): the org's sheets are its 'sheet' document_file rows. */
@@ -329,6 +321,7 @@ export function defineSheetReducers(spacetimedb: DriveSchema, deps: SheetDeps) {
     addDriveUsage(ctx, a.doc.organizationId, { sheetBytes: BigInt(args.state.length) - BigInt(current?.byteLength ?? 0) - dropped });
     lease(ctx).update({ ...held, heartbeatAt: ctx.timestamp, logRows: kept.length,
       logBytes: kept.reduce((sum, row) => sum + BigInt(row.byteLength), 0n) });
+    refreshDocumentSize(ctx, a.doc, { keepVersions: true });
   });
 
   /**
@@ -359,6 +352,7 @@ export function defineSheetReducers(spacetimedb: DriveSchema, deps: SheetDeps) {
     lease(ctx).update({ ...held, lastSeq: args.seq, lastEditAt: ctx.timestamp, heartbeatAt: ctx.timestamp,
       logBytes: 0n, logRows: 0, logOtherMaxId: 0n });
     deps.touchDocument(ctx, ctx.db.document.id.find(a.doc.id) ?? a.doc, a.actorMemberId);
+    refreshDocumentSize(ctx, a.doc, { keepVersions: true });
   });
 
   /**
@@ -412,6 +406,7 @@ export function defineSheetReducers(spacetimedb: DriveSchema, deps: SheetDeps) {
     ctx.db.documentVersionState.insert({
       versionId: versionId.toString(), documentId: a.doc.id, organizationId: org, state: args.state, byteLength: args.state.length });
     addDriveUsage(ctx, org, { sheetBytes: growth });
+    refreshDocumentSize(ctx, a.doc);
   });
 
   return {

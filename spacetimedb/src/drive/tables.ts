@@ -350,3 +350,126 @@ export const documentFileTable = table(
     updatedAt: t.timestamp(),
   }
 );
+
+/**
+ * One row per file an app stored on UploadThing (chat, task evidence, inventory
+ * photos, training media, product images, bug screenshots, logo, avatar, images
+ * inside Docs / Sheets / Slides). A size ledger only: readable by the whole org,
+ * so it never carries the file's key, URL or name (an UploadThing URL is its
+ * access) — only the SHA-256 of the key, its source, size and type. Written by
+ * serviceRecordAppFile / serviceBackfillAppFiles (./storage.ts).
+ */
+export const appFileTable = table(
+  {
+    name: 'app_file',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    keyHash: t.string().primaryKey(),           // lowercase hex SHA-256 of the UploadThing file key
+    organizationId: t.string(),
+    source: t.string(),                         // APP_FILE_SOURCES (./storage.ts)
+    sizeBytes: t.u64(),
+    mimeType: t.string(),
+    createdAt: t.timestamp(),
+  }
+);
+
+/**
+ * app_file's private twin: the files of a source whose very existence is not
+ * the org's business (chat and DM attachments, voice notes — PRIVATE_APP_FILE_SOURCES,
+ * ./storage.ts). Same columns, never public: an org-readable row with its size,
+ * type and upload time would tell colleagues who sent what to whom (match
+ * createdAt against chat_conversation.updatedAt). These bytes still count in
+ * org_storage_usage.appBytes, which is the only place they show.
+ */
+export const appFilePrivateTable = table(
+  {
+    name: 'app_file_private',
+    public: false,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    keyHash: t.string().primaryKey(),
+    organizationId: t.string(),
+    source: t.string(),
+    sizeBytes: t.u64(),
+    mimeType: t.string(),
+    createdAt: t.timestamp(),
+  }
+);
+
+/**
+ * Bytes an app upload has been allowed but not yet recorded: beginAppUpload
+ * inserts one, serviceRecordAppFile consumes it as the files land, and it
+ * lapses at expiresAt (an upload that never finished). Counted in
+ * orgStorageTotal like drive_usage.bytesReserved, so uploads started together
+ * cannot all pass the same quota check. Private: the module reads it only.
+ */
+export const appUploadHoldTable = table(
+  {
+    name: 'app_upload_hold',
+    public: false,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    organizationId: t.string(),
+    bytes: t.u64(),                             // still unrecorded; shrinks as files are recorded
+    expiresAt: t.timestamp(),
+  }
+);
+
+/**
+ * One row per org: the stored bytes drive_usage does not hold. docBytes is the
+ * Σ document_size.bytes of its Docs and Slides (sheets stay in
+ * drive_usage.sheetBytes); appBytes the Σ app_file.sizeBytes. A side table, not
+ * drive_usage columns: deployed clients decode drive_usage positionally.
+ * Everything here counts toward the one quota (orgStorageTotal, ./storage.ts).
+ */
+export const orgStorageUsageTable = table(
+  {
+    name: 'org_storage_usage',
+    public: true,
+  },
+  {
+    organizationId: t.string().primaryKey(),
+    docBytes: t.u64(),                          // Σ document_size.bytes of 'doc' + 'slides' documents
+    docCount: t.u32(),                          // those documents
+    appBytes: t.u64(),                          // Σ app_file.sizeBytes
+    appFileCount: t.u32(),
+    updatedAt: t.timestamp(),
+  }
+);
+
+/**
+ * The bytes one document keeps in the module (documentStoredBytes, ./storage.ts):
+ * snapshot, its html and plain text, update log and versions. A Docs-family child
+ * table, readable by the document's readers only. Refreshed at create, compaction,
+ * versions and sheet writes; never on pushDocumentUpdate / pushSheetOps (the hot
+ * path), so it lags by at most one uncompacted log. Compaction re-measures the
+ * live part only and keeps versionBytes, so it never reads version states.
+ */
+export const documentSizeTable = table(
+  {
+    name: 'document_size',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    documentId: t.string().primaryKey(),        // document.id (lowercase uuid) — the reader rule's join column
+    organizationId: t.string(),
+    fileType: t.string(),                       // 'doc' | 'sheet' | 'slides'
+    bytes: t.u64(),                             // live + versionBytes
+    versionBytes: t.u64(),                      // Σ versions, re-measured only when versions change
+    updatedAt: t.timestamp(),
+  }
+);

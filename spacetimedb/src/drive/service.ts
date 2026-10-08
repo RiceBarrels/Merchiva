@@ -29,7 +29,7 @@ const DRIVE_GC_ERROR_MAX = 500;
 /** A minimum share of orphans in one report that means a misconfigured store, not leftovers: more than 1 in 5 of at least 20. */
 const DRIVE_ORPHAN_BRAKE_MIN_KEYS = 20;
 const DRIVE_ORPHAN_BRAKE_SHARE = 5;
-const DRIVE_UUID_LIKE_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export const DRIVE_UUID_LIKE_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** The service identity, or a platform admin (user.isAdmin). */
 function assertDriveServiceOrAdmin(ctx: DriveCtx, deps: DriveDeps): void {
@@ -39,7 +39,7 @@ function assertDriveServiceOrAdmin(ctx: DriveCtx, deps: DriveDeps): void {
 }
 
 /** Whether this database knows the organization: its row (by the plain-string id mirror) or any member row. */
-function driveOrgKnown(ctx: DriveCtx, organizationId: string): boolean {
+export function driveOrgKnown(ctx: DriveCtx, organizationId: string): boolean {
   if (organizationId === '') return false;
   return driveAnyRow(ctx.db.organization.byOrgIdText.filter(organizationId))
     || driveAnyRow(ctx.db.orgMember.byOrganizationId.filter(organizationId));
