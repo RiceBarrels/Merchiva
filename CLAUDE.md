@@ -4,7 +4,7 @@
 
 ## Quick Context
 
-Merchiva is a Next.js 16 + SpacetimeDB + Square/Clover app for small business management. No Supabase — SpacetimeDB is the sole data layer. The UI uses shadcn/ui v4 with Tailwind CSS v4. Native builds via Capacitor. Drive (files), Sheets and Slides live under `/manager/drive`; file bytes are in a private Vercel Blob store.
+Merchiva is a Next.js 16 + SpacetimeDB + Square/Clover app for small business management. No Supabase — SpacetimeDB is the sole data layer. The UI uses shadcn/ui v4 with Tailwind CSS v4. Native builds via Capacitor. Drive (files), Sheets and Slides live under `/manager/drive`; Docs, Sheets and Slides are installable editor plugins; file bytes are in a private Vercel Blob store.
 
 ## Critical Rules
 

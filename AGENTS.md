@@ -288,13 +288,15 @@ Pages are grouped with `PageTabs`. All hrefs use the `/manager/` prefix:
 
 | Mode | Home | UI |
 |:---|:---|:---|
-| admin | `/manager` | Back-office shell (sidebar / bottom bar) — the "manager" UI |
+| admin | `/manager` | Back-office shell — the "manager" UI. Desktop (≥1024px): Chrome-style browser shell with tabs. Phone: no browser UI — one page, a corner menu button, swipe toward the inline end for the sidebar, toward the start for Mr. Merchiva (`components/browser-shell/mobile-app/`) |
 | personal | `/personal` | Employee phone surface |
 | store | `/store` | Shared store tablet surface |
 
+On the phone `/manager` (below 1024px) the browser shell keeps its tab store but shows one page and never opens or switches tabs (`lib/browser-shell/single-tab.ts`). Two conventions follow from its swipes and corner button: a region that owns horizontal drags (a canvas, a swipeable strip) marks itself `data-no-sidebar-swipe` (rules in `lib/gestures/page-swipe.ts`), and a header that starts in the top inline-start corner reserves `ps-14` when `useShellInfo()?.layout === "mobile"` (`components/ui/corner-button.ts`), as `PageHeader` does.
+
 `/store` and `/personal` render bare (no MobileShell) through the manager layout for auth + providers. Neither surface has a shortcut into `/manager`: a device gets there by leaving its mode ("Leave" / "Log out" sheet → the chooser). The account menu still shows "Back to store device / personal" whenever the stored mode says this device is one.
 
-**Device apps are lite versions.** `/store` and `/personal` are built for low-literacy staff — far simpler than `/manager`. Never embed a manager page into a device surface. The one exception is the office editors: Docs, and the Sheets and Slides editors opened from Drive, render the manager editor screens in their phone layout inside the panel (`components/device/apps/docs.tsx`, `components/device/apps/drive.tsx` through `components/drive/editor-host.tsx`) — writing a document, a spreadsheet or a deck is the same job on every surface. Everything else in the Drive device app (browse, upload, preview) is a lite rewrite.
+**Device apps are lite versions.** `/store` and `/personal` are built for low-literacy staff — far simpler than `/manager`. Never embed a manager page into a device surface. The one exception is the office editors: the Docs, Sheets and Slides editors, opened from Drive, render the manager editor screens in their phone layout inside the Drive panel (`components/device/apps/drive.tsx` through `components/drive/editor-host.tsx`) — writing a document, a spreadsheet or a deck is the same job on every surface. There is no Docs device app. Everything else in the Drive device app (browse, upload, preview) is a lite rewrite.
 
 ---
 
@@ -322,10 +324,11 @@ Pages are grouped with `PageTabs`. All hrefs use the `/manager/` prefix:
 
 ### Rules
 
-- **The device versions are lite, not ports.** The `component` field in the catalog exists for link interception and kiosk pages flagged `keepManagerPage` — it is not how a feature reaches `/store` or `/personal`. Never route a device tile to a manager page. Docs and the Drive editors (Sheets, Slides) are the standing exception (see App modes above); they still go through `lite`, as a panel host around the manager screens.
+- **The device versions are lite, not ports.** The `component` field in the catalog exists for link interception and kiosk pages flagged `keepManagerPage` — it is not how a feature reaches `/store` or `/personal`. Never route a device tile to a manager page. The office editors are the standing exception (see App modes above); they reach the devices only through Drive's `lite` panel, which hosts the manager screens.
 - **No `lite` component means the app never appears on the device grids.** Shipping the manager page alone is an unfinished feature, not a milestone.
 - **Surfaces are declared, visibility is gated.** Put `surfaces: ["store", "personal"]` in the catalog entry and let `permissionKey` / `managerOnly` decide who sees the tile. Don't hide a feature by omitting a surface.
 - **If a surface genuinely doesn't fit, ask before skipping it.** There are real exceptions — `pay` is `surfaces: ["personal"]`, `punch-in` happens at store log-in instead of as a tile — but that is the user's call, not yours. Say which surface you want to skip and why, and wait for an answer.
+- **Editor plugins have no tile.** A catalog entry with `editor: <kind>` (Docs, Sheets, Slides) is installed from `/manager/apps` but has no `lite` and no tile: its files are found and opened in Drive on all three surfaces. Opening or creating a file whose plugin is missing asks to download it (`components/plugins/`, `useEditorGate` in `components/drive/actions/use-editor-gate.ts`, `LiteInstallDrawer` on the devices). Its catalog `route` is the editor page, which `MANAGER_ROUTE_APPS` gives to the plugin.
 - Install state is org-wide and cached on the settings row (`settings.deviceApps`) via the `setDeviceApps` reducer — never write it from a component.
 
 ## Auth & Permissions
@@ -336,7 +339,11 @@ Pages are grouped with `PageTabs`. All hrefs use the `/manager/` prefix:
 - `usePermissions()` hook + `<PermissionGuard section="...">` for access control.
 - Sidebar and bottom bar auto-hide pages the user can't access.
 - Every new `/manager/` page is permission-gated. No exceptions.
-- `drive` is not a page gate — `/manager/drive` is gated by `dashboard`, like Docs. `drive.view` / `drive.edit` grant
+- Drive is built in (`REQUIRED_DEVICE_APPS`); `/manager/drive` is gated by `dashboard` only. `/manager/docs` is an always-on
+  alias that redirects to Drive's documents view. The editors (`/manager/docs/edit`, `/manager/drive/sheet`,
+  `/manager/drive/slides`) also need their plugin installed (`MANAGER_ROUTE_APPS`). Legacy rule, read path only: a stored
+  `settings.deviceApps` that still holds `"drive"` stands for `sheets` + `slides` (`deviceAppsFromSettingsRow`).
+- `drive` is not a page gate. `drive.view` / `drive.edit` grant
   view / edit of **every member's** files and documents. Owner and `manager` role have it by role. The server mirrors are
   `drive_admin_index` and `document_reader_index`, refreshed by `syncMemberAccessIndexes` / `dropMemberAccessIndexes`
   after every write that adds or removes a member or changes a member's status, role or permissions
@@ -406,6 +413,7 @@ Reuse the shared composites in `components/ui` (`StatusBadge`, `EmptyState`, `St
   laptop pointed at another database never touches the production store.
 - `DRIVE_UPLOADS_PAUSED` — kill switch: `1` refuses new uploads; everything else in Drive keeps working.
 - `DRIVE_PLATFORM_ALERT_BYTES` — optional; the nightly reconcile logs an error when the whole store holds more.
+- `FORMS_PUBLIC_SECRET` — server-only, ≥32 chars; signs the render stamp of public form links (`/f/<token>`). Without it, or without `SPACETIMEDB_SERVICE_TOKEN`, `/api/forms/public/*` answers 503 `not_configured`.
 - The Drive variables above are all server-only, never `NEXT_PUBLIC_`. Drive storage counts as configured only when
   `BLOB_READ_WRITE_TOKEN` or `BLOB_STORE_ID`, `BLOB_WEBHOOK_PUBLIC_KEY`, `SPACETIMEDB_SERVICE_TOKEN` and the
   SpacetimeDB URI/module are set and `DRIVE_BLOB_DATABASE` matches; otherwise upload, commit, signed-URL and Drive
@@ -484,7 +492,7 @@ Approval for one of these is not approval for the next one.
 - **No placeholder implementations.** No mock data, no `TODO: implement`, no function that returns a hardcoded value, presented as finished work. If you can't complete it, say so.
 - **Match the surrounding code** — its comment density, naming, and idiom. New code should be unrecognizable as new.
 - **Don't reintroduce removed features.** POS integrations, website builder, design tools, customers, marketing, the hourly patrol, and the parent/sub-store ("multi-store") hierarchy were all deliberately deleted. Their leftover columns and tables stay in the schema; the features do not come back. Every organization is standalone: there is no share group, no `parentOrgId`, and nothing is shared between stores.
-- **Mr. Merchiva lives in the dock** (`components/merchiva-dock/`): a chat on the right of `/manager` that stays until the user closes it. Two ways in only — ⌘⇧M (Ctrl+Shift+M) everywhere, and on desktop the rail on the right edge. Every browser tab has its own Merchiva and conversation. Don't add a button, menu row, omnibox action, chat channel or overlay window that opens him.
+- **Mr. Merchiva lives in the dock** (`components/merchiva-dock/`): a chat on the right of `/manager` that stays until the user closes it. Three ways in only — ⌘⇧M (Ctrl+Shift+M) everywhere, on desktop the rail on the right edge, and on the phone layout a swipe toward the inline start (right-to-left in LTR) that pulls him in (`dock-reveal.ts`). On desktop every browser tab has its own Merchiva and conversation; the single-tab phone layout has one per window, on the user's latest session, like the legacy shell (`TabChats` in `dock-panel.tsx`). Don't add a button, menu row, omnibox action, chat channel or overlay window that opens him.
 
 ### When something breaks
 
