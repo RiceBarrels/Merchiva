@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Check, ArrowRight, ArrowLeft, Clock, MapPin, Store, UserPlus, Link2, SkipForward, Send, Plus, X, Mail, CreditCard, CalendarClock } from "lucide-react";
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
+import { markSetupDone } from "@/lib/setup-state";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { SCHEDULE_PROVIDERS, type ScheduleProviderId } from "@/lib/schedule-integrations";
 
@@ -638,39 +639,51 @@ export default function SetupPage() {
     setFinishing(true);
     try {
       const conn = getConnection();
-      if (conn) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const r = (conn as any).reducers;
-        const orgId = getActiveOrgId();
-        const cleanAddress = address.trim();
-        const selectedAddressPlace = addressPlace?.address.trim() === cleanAddress ? addressPlace : null;
-        if (storeName.trim()) { try { await r.updateOrg({ organizationId: orgId, name: storeName.trim() }); } catch {} }
-        try {
-          await r.updateSettings({
-            organizationId: orgId, businessName: storeName.trim() || null, businessType: businessType || null,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, paymentTaxRate: 0, paymentCurrency: "USD",
-            locationLatitude: selectedAddressPlace?.locationLatitude ?? null,
-            locationLongitude: selectedAddressPlace?.locationLongitude ?? null,
-            googlePlacesId: selectedAddressPlace?.googlePlacesId ?? null,
-          });
-        } catch {}
-        try {
-          await r.setScheduleIntegration({
-            organizationId: orgId,
-            provider: scheduleProvider,
-          });
-        } catch {}
-        for (const inv of invites.filter((r) => r.email.includes("@"))) {
-          try { await r.inviteToOrg({ organizationId: orgId, email: inv.email.trim(), role: inv.role }); } catch {}
-        }
-        if (cleanAddress) {
-          try { await r.addLocation({ organizationId: orgId, name: storeName.trim() || "Main", address: cleanAddress, phone: null, isDefault: true, sortOrder: 0 }); } catch {}
-        }
-        if (scheduleProvider === "7shifts") {
-          toast.success(t("setup.toast.complete"));
-          window.location.href = `/api/schedule/connect?provider=7shifts&orgId=${encodeURIComponent(orgId)}`;
-          return;
-        }
+      // updateSettings is what marks setup done (setupComplete in
+      // app/manager/layout.tsx). Without it, "finishing" only sends the user
+      // back here on the next visit, so a failed save stays on this page.
+      if (!conn) {
+        toast.error(t("setup.toast.saveFailed"));
+        setFinishing(false);
+        return;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r = (conn as any).reducers;
+      const orgId = getActiveOrgId();
+      const cleanAddress = address.trim();
+      const selectedAddressPlace = addressPlace?.address.trim() === cleanAddress ? addressPlace : null;
+      if (storeName.trim()) { try { await r.updateOrg({ organizationId: orgId, name: storeName.trim() }); } catch {} }
+      try {
+        await r.updateSettings({
+          organizationId: orgId, businessName: storeName.trim() || null, businessType: businessType || null,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, paymentTaxRate: 0, paymentCurrency: "USD",
+          locationLatitude: selectedAddressPlace?.locationLatitude ?? null,
+          locationLongitude: selectedAddressPlace?.locationLongitude ?? null,
+          googlePlacesId: selectedAddressPlace?.googlePlacesId ?? null,
+        });
+      } catch (err) {
+        console.error("[setup] updateSettings failed:", err);
+        toast.error(t("setup.toast.saveFailed"));
+        setFinishing(false);
+        return;
+      }
+      markSetupDone(orgId);
+      try {
+        await r.setScheduleIntegration({
+          organizationId: orgId,
+          provider: scheduleProvider,
+        });
+      } catch {}
+      for (const inv of invites.filter((r) => r.email.includes("@"))) {
+        try { await r.inviteToOrg({ organizationId: orgId, email: inv.email.trim(), role: inv.role }); } catch {}
+      }
+      if (cleanAddress) {
+        try { await r.addLocation({ organizationId: orgId, name: storeName.trim() || "Main", address: cleanAddress, phone: null, isDefault: true, sortOrder: 0 }); } catch {}
+      }
+      if (scheduleProvider === "7shifts") {
+        toast.success(t("setup.toast.complete"));
+        window.location.href = `/api/schedule/connect?provider=7shifts&orgId=${encodeURIComponent(orgId)}`;
+        return;
       }
       toast.success(t("setup.toast.complete"));
       router.replace("/manager/");

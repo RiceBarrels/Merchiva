@@ -67,7 +67,8 @@
     "notifications": "通知",
     "drive": "云盘",
     "sheets": "表格",
-    "slides": "演示文稿"
+    "slides": "演示文稿",
+    "forms": "表单"
   },
   "login": {
     "title": "登录 Merchiva",
@@ -4363,7 +4364,8 @@
     },
     "toast": {
       "complete": "设置完成！",
-      "error": "出现了一些问题，但您的工作区已就绪。"
+      "error": "出现了一些问题，但您的工作区已就绪。",
+      "saveFailed": "无法保存店铺设置。请检查网络连接后重试。"
     },
     "storeInfo": {
       "title": "介绍一下您的门店。",
@@ -4704,7 +4706,10 @@
       "settings-org": "门店设置",
       "bugs": "问题反馈",
       "notifications": "通知",
-      "drive": "云盘"
+      "drive": "云盘",
+      "sheets": "表格",
+      "slides": "演示文稿",
+      "forms": "表单"
     },
     "notAvailableHere": "此设备不支持该功能",
     "lite": {
@@ -4976,13 +4981,56 @@
         "readOnly": "你可以查看，但不能更改。",
         "memberFiles": "{name} 的文件",
         "fileCount": "{count} 个文件",
-        "fileCountOne": "1 个文件"
+        "fileCountOne": "1 个文件",
+        "newFromTemplate": "用模板新建文档",
+        "templatesTitle": "选择模板"
+      },
+      "forms": {
+        "checklistsLeft": "今天还剩的检查清单",
+        "checklistsLeftHint": "点一个检查清单开始填写。",
+        "allDone": "全部完成，做得好！",
+        "today": "今天",
+        "doneBy": "已完成 · {name} {time}",
+        "doneByYou": "你已经做过了",
+        "notDone": "还没做",
+        "report": "报告情况",
+        "other": "其他表单",
+        "toFill": "待填写",
+        "toFillHint": "门店请你填写的表单。",
+        "due": "{date} 截止",
+        "overdue": "已逾期 · 原定 {date} 截止",
+        "noDue": "没有截止日期",
+        "openToAll": "所有人都可以填",
+        "doneForNow": "这次已完成",
+        "mySubmissions": "我提交的",
+        "noSubmissions": "还没有提交过",
+        "sentOn": "{date} 提交",
+        "status": {
+          "new": "等待查看",
+          "reviewed": "已查看"
+        },
+        "unavailable": "这个表单已不可用，所以无法显示它的答案。",
+        "filesAdded": "{count} 个文件",
+        "none": "现在没有表单",
+        "noneHint": "门店分享表单后，会显示在这里。",
+        "checklistHint": "每一项都要勾选",
+        "progress": "{n}/{total}",
+        "send": "提交",
+        "confirmTitle": "提交你的答案？",
+        "confirmSend": "确定提交",
+        "confirmSub": "提交后就不能再修改。",
+        "keepEditing": "继续填写",
+        "leaveTitle": "离开这个表单？",
+        "leave": "离开",
+        "leaveSub": "你填的答案会丢失。",
+        "thanks": "谢谢！你的答案已提交。",
+        "filesOffTablet": "在这台共用平板上不能添加照片和文件。请用你自己的手机回答这个问题。"
       }
     },
     "catalogDesc": {
       "punch-in": "上下班打卡，开始和结束休息。",
       "requests": "申请请假或换班。",
-      "docs": "门店手册和文档。",
+      "docs": "门店的文档：在云盘中撰写，也能打开 .docx 文件。",
       "directory": "查看同事以及谁在上班。",
       "settings": "语言、主题和设备选项。",
       "channel": "和团队的语音频道。",
@@ -4997,7 +5045,10 @@
       "bookings": "今天和明天的预约。",
       "bugs": "反馈 App 的问题，并跟进处理进度。",
       "notifications": "你的排班、班表与申请提醒，最新的在前。",
-      "drive": "门店的文件、照片、表格和演示文稿，集中在一处。"
+      "drive": "门店保存的所有文件，集中在一处：上传的文件、照片，以及用编辑器插件制作的文档、表格和演示文稿。",
+      "sheets": "门店的电子表格：在云盘中打开 .xlsx 和 .csv 文件，或新建表格。",
+      "slides": "门店的演示文稿：在云盘中打开 .pptx 文件，或新建演示文稿。",
+      "forms": "团队在平板或自己手机上填写的检查清单、报告和问卷。"
     },
     "appStore": {
       "hint": "选择这家店使用哪些功能。安装后的插件会同时出现在后台、门店平板和员工手机上；内置插件始终开启。",
@@ -5434,7 +5485,7 @@
     },
     "title": "文档",
     "untitled": "无标题文档",
-    "homeTooltip": "文档首页",
+    "homeTooltip": "云盘",
     "home": {
       "searchPlaceholder": "搜索文档",
       "clearSearch": "清除搜索",
@@ -5600,7 +5651,7 @@
       "noAccessTitle": "你需要访问权限",
       "noAccessDescription": "请联系 {name} 或门店经理与你共享此文档。",
       "noAccessDescriptionNoOwner": "请联系门店经理与你共享此文档。",
-      "backToDocs": "返回文档",
+      "backToDocs": "返回云盘",
       "trashedBanner": "此文档位于回收站中。",
       "viewOnly": "仅查看",
       "viewOnlyBanner": "你可以查看此文档，但不能编辑。",
@@ -6237,7 +6288,9 @@
       "downloadBlocked": "浏览器阻止了下载，请重试。",
       "downloadPartial": "已保存 {saved}/{total} 个文件。其余文件请逐个保存。",
       "downloadNext": "保存下一个（剩余 {count} 个）",
-      "noticeRequired": "请先阅读关于谁能看到你文件的说明。"
+      "noticeRequired": "请先阅读关于谁能看到你文件的说明。",
+      "newFromTemplate": "从模板新建",
+      "importFile": "导入文件…"
     },
     "nav": {
       "label": "云盘分区",
@@ -6491,7 +6544,7 @@
       "openIn": "在{app}中打开",
       "count": "{count} 个文件",
       "countOne": "1 个文件",
-      "notIncluded": "不包括：在财务中输入的收据链接、文档和课程文字中的图片，以及发给 Mr. Merchiva 的附件。",
+      "notIncluded": "在财务中输入的收据链接和手动粘贴的链接不由 Merchiva 存储，因此不计入。",
       "sources": {
         "chat": "聊天",
         "tasks": "任务",
@@ -6499,7 +6552,8 @@
         "training": "培训",
         "products": "商品",
         "bugs": "问题反馈",
-        "profile": "门店与个人资料"
+        "profile": "门店与个人资料",
+        "forms": "表单"
       },
       "untitledAttachment": "附件",
       "photoN": "{name} · 照片 {n}",
@@ -6507,7 +6561,20 @@
       "profilePhoto": "你的头像",
       "empty": "此应用中还没有文件。",
       "latest": "最近添加：{date}",
-      "unavailable": "你无法在此处查看此应用中的文件。"
+      "unavailable": "你无法在此处查看此应用中的文件。",
+      "bytesSource": {
+        "doc_image": "文档中的图片",
+        "sheet_image": "表格中的图片",
+        "slides_image": "演示文稿中的图片",
+        "logo": "门店标志",
+        "avatar": "头像",
+        "other": "其他文件"
+      },
+      "storageTotal": "其他应用中存储了 {size}",
+      "notStoredHere": "包括你无法在此打开的文件，例如其他人的聊天附件。",
+      "bytesNotListed": "{source}：你无法在此打开的文件",
+      "countForms": "{count} 个表单",
+      "countFormsOne": "1 个表单"
     },
     "members": {
       "title": "成员的文件",
@@ -6527,7 +6594,15 @@
       "usedNoQuota": "已用 {used}",
       "almostFull": "存储空间即将用完",
       "full": "存储空间已满",
-      "excludesDocs": "文档、表格和演示文稿不占用存储空间。"
+      "excludesDocs": "文档、表格和演示文稿不占用存储空间。",
+      "breakdown": {
+        "title": "存储空间使用情况",
+        "files": "上传的文件",
+        "documents": "文档、演示文稿和表单",
+        "sheets": "表格",
+        "apps": "其他应用中的文件"
+      },
+      "includesEverything": "门店保存的所有内容都计入存储空间：上传的文件、文档、表格、演示文稿、表单和其他应用中的文件。"
     },
     "kind": {
       "folder": "文件夹",
@@ -7169,5 +7244,605 @@
     "errFailed": "接受邀请失败，请重试。",
     "useAnotherAccount": "用其他账号登录",
     "goToDashboard": "前往首页"
+  },
+  "pluginInstall": {
+    "missingTitle": "尚未安装“{app}”",
+    "openBody": "下载“{app}”即可打开此文件。它会在整家店开启：后台、门店平板和员工手机都能使用。",
+    "createBody": "下载“{app}”即可新建。它会在整家店开启：后台、门店平板和员工手机都能使用。",
+    "pageBody": "此页面属于“{app}”。下载后即可在这里和门店的设备上使用。",
+    "askManager": "请让店主或经理在插件页下载“{app}”。",
+    "download": "下载",
+    "downloading": "正在下载…",
+    "installed": "“{app}”已可使用",
+    "failed": "“{app}”下载失败，请重试。",
+    "openPlugins": "打开插件页",
+    "notNow": "暂不",
+    "offline": "你已离线。联网后才能下载插件。",
+    "downloadFirst": "需先下载",
+    "askOtherDevice": "这台平板登录的账号不能下载插件。请在后台或你自己的手机上，从插件页下载“{app}”。",
+    "notInstalled": "未安装"
+  },
+  "appUpload": {
+    "quotaExceeded": "门店的存储空间已满。请在云盘中删除文件以释放空间。",
+    "failed": "无法上传文件，请重试。",
+    "signInRequired": "请重新登录后再上传文件。"
+  },
+  "forms": {
+    "errors": {
+      "generic": "出了点问题，请重试。",
+      "not_connected": "未连接。请检查网络后重试。",
+      "not_published": "这家门店暂时还不能使用表单。",
+      "network": "你已离线。恢复网络后再试。",
+      "forbidden": "你没有权限执行这个操作。",
+      "not_found": "这个表单已不存在。",
+      "invalid": "这个请求中有无效的内容。",
+      "exists": "已经存在。",
+      "conflict": "在此期间有人保存了这个表单。请重新加载查看对方的修改。",
+      "operator": "正在使用这台设备的人不能执行这个操作。",
+      "not_open": "这个表单目前不接收回复。",
+      "closed": "这个表单已关闭。",
+      "not_assigned": "这个表单没有指定给你。",
+      "invalid_date": "这台设备上的日期似乎不对，请检查设备时钟。",
+      "already_submitted": "你这次已经填写过这个表单了。",
+      "response_limit": "这个表单不再接收更多回复。",
+      "too_many_forms": "这家门店的表单数量已达上限。",
+      "org_storage_full": "这家门店没有空间存放更多表单答案了。",
+      "file_not_found": "有一个附件不见了，请重新附上。",
+      "files_not_allowed": "这里不能添加文件和照片。",
+      "public_unsafe": "含有文件或照片问题的表单不能通过链接分享。",
+      "rate_limited": "目前回复太多，请稍后再试。",
+      "invalid_settings": "部分设置无效。",
+      "invalid_status": "这个状态无效。",
+      "invalid_definition": "无法读取这个表单。",
+      "definition_too_large": "这个表单太大了。",
+      "title_required": "请给表单加一个标题。",
+      "title_too_long": "标题太长了。",
+      "description_too_long": "说明太长了。",
+      "confirmation_too_long": "确认信息太长了。",
+      "no_questions": "请至少添加一个问题。",
+      "too_many_questions": "这个表单的问题太多了。",
+      "invalid_question": "有一个问题无效。",
+      "invalid_question_id": "有一个问题无效。",
+      "duplicate_question_id": "有两个问题重复了。",
+      "invalid_question_type": "有一种问题类型不受支持。",
+      "question_title_required": "每个问题都需要标题。",
+      "question_title_too_long": "有一个问题的标题太长了。",
+      "help_too_long": "有一个问题的帮助文字太长了。",
+      "options_required": "请至少添加一个选项。",
+      "too_many_options": "有一个问题的选项太多了。",
+      "invalid_option_id": "有一个选项无效。",
+      "duplicate_option_id": "有两个选项重复了。",
+      "option_label_required": "每个选项都需要文字。",
+      "option_label_too_long": "有一个选项的文字太长了。",
+      "invalid_range": "范围无效。",
+      "scale_label_too_long": "有一个量表标签太长了。",
+      "invalid_max_files": "文件数量无效。",
+      "invalid_accept": "允许的文件类型无效。",
+      "question_removed": "已有答案的问题不能删除，请改为隐藏。",
+      "question_type_changed": "已有答案的问题不能更改类型。",
+      "option_removed": "已有人选过的选项不能删除。",
+      "invalid_answers": "无法读取这些答案。",
+      "answers_too_large": "这些答案太长了。",
+      "unknown_question": "有一个答案对应的问题已不存在。请重新加载表单。",
+      "required": "请回答所有必填问题。",
+      "invalid_answer": "有一个答案无效。",
+      "text_too_long": "有一个答案太长了。",
+      "unknown_option": "你选的某个选项已不存在。请重新加载表单。",
+      "out_of_range": "有一个数字超出范围。",
+      "too_many_selections": "选了太多项。",
+      "too_few_selections": "选的项太少。",
+      "too_many_files": "这个问题的文件太多了。"
+    },
+    "disclosure": {
+      "respondentNote": "门店管理层可以看到你的答案。",
+      "managersTitle": "管理层可以看到每一份答案",
+      "managersNote": "店主、经理以及可以查看所有文件的成员，都能读取这个表单的每一份回复，包括大家附上的文件。填写的人会被告知这一点。"
+    },
+    "title": "表单",
+    "list": {
+      "subtitleBuilder": "给团队用的检查清单、报告和问卷",
+      "subtitleMember": "等你填写的表单和你提交过的内容",
+      "new": "新建表单",
+      "search": "搜索表单",
+      "fill": "填写",
+      "questions": "{n} 个问题",
+      "responses": "{n} 份回复",
+      "updated": "{date} 更新",
+      "due": "{date} 截止",
+      "closes": "{date} 关闭",
+      "notPublished": "表单功能暂不可用",
+      "notPublishedDesc": "这家门店还没有开通表单功能，请稍后再试。",
+      "filter": {
+        "active": "进行中",
+        "drafts": "草稿",
+        "closed": "已关闭",
+        "archived": "已归档",
+        "toFill": "待填写",
+        "mine": "我提交的"
+      },
+      "stats": {
+        "open": "开放中的表单",
+        "drafts": "草稿",
+        "responses": "回复",
+        "toFill": "待填写",
+        "submitted": "已提交",
+        "last90": "最近 90 天",
+        "reviewed": "已查看"
+      },
+      "empty": {
+        "search": "没有符合搜索条件的表单",
+        "active": "没有开放中的表单",
+        "activeDesc": "打开一份草稿，或者从模板新建一个表单。",
+        "drafts": "没有草稿",
+        "draftsDesc": "新表单在开放前都会放在这里。",
+        "closed": "没有已关闭的表单",
+        "closedDesc": "关闭的表单不再接收答案，会显示在这里。",
+        "archived": "没有已归档的表单",
+        "archivedDesc": "把不再使用的表单归档，让列表更简洁。",
+        "toFill": "没有需要填写的表单",
+        "toFillDesc": "经理分享给你的表单会显示在这里。",
+        "mine": "还没有提交过",
+        "mineDesc": "你最近 90 天提交的表单会显示在这里。"
+      },
+      "view": {
+        "manage": "管理",
+        "mine": "我的表单"
+      }
+    },
+    "status": {
+      "draft": "草稿",
+      "open": "开放中",
+      "closed": "已关闭",
+      "archived": "已归档"
+    },
+    "kind": {
+      "form": "表单",
+      "checklist": "检查清单",
+      "report": "报告",
+      "survey": "问卷"
+    },
+    "perMember": {
+      "unlimited": "不限次数",
+      "once": "一次",
+      "daily": "每天一次",
+      "weekly": "每周一次"
+    },
+    "reviewStatus": {
+      "new": "已提交",
+      "reviewed": "已查看"
+    },
+    "types": {
+      "section": "分节",
+      "short_text": "简答",
+      "long_text": "段落",
+      "single_choice": "单选",
+      "multi_choice": "多选",
+      "dropdown": "下拉列表",
+      "yes_no": "是 / 否",
+      "number": "数字",
+      "date": "日期",
+      "time": "时间",
+      "rating": "星级评分",
+      "scale": "量表",
+      "checklist_item": "检查项",
+      "photo": "照片",
+      "file": "文件上传"
+    },
+    "newForm": {
+      "title": "新建表单",
+      "description": "从模板或空白表单开始，之后都可以修改。",
+      "templates": "模板",
+      "create": "创建",
+      "kindHint": "检查清单会在门店平板上显示为今天的检查，报告则显示在“报告情况”下。类型之后无法更改。"
+    },
+    "edit": {
+      "notFound": "找不到表单",
+      "notFoundDesc": "它可能已被删除，或者你没有访问权限。",
+      "backToList": "返回表单",
+      "more": "更多操作",
+      "view": {
+        "build": "编辑",
+        "preview": "预览",
+        "responses": "回复",
+        "share": "分享"
+      },
+      "action": {
+        "draft": "开放填写",
+        "open": "关闭",
+        "closed": "重新开放"
+      },
+      "statusChanged": {
+        "draft": "已移回草稿",
+        "open": "表单已开放填写",
+        "closed": "表单已关闭",
+        "archived": "表单已归档"
+      },
+      "backToDraft": "移回草稿",
+      "archive": "归档",
+      "unarchive": "取消归档",
+      "delete": "删除表单",
+      "deleteTitle": "删除这个表单？",
+      "deleteDesc": "表单及其所有回复都会被永久删除。大家附上的文件仍保留在各自的“我的文件”中。",
+      "deleted": "表单已删除"
+    },
+    "builder": {
+      "details": "表单详情",
+      "formTitle": "标题",
+      "description": "说明",
+      "descriptionPlaceholder": "这个表单是做什么用的？",
+      "confirmation": "提交后显示的信息",
+      "confirmationHint": "留空则显示简单的感谢语。",
+      "confirmationPlaceholder": "谢谢！你的答案已提交。",
+      "status": {
+        "saved": "所有更改已保存",
+        "pending": "正在保存…",
+        "saving": "正在保存…",
+        "invalid": "未保存：请修改标出的字段",
+        "error": "未保存"
+      },
+      "retry": "重试",
+      "conflictTitle": "有人修改了这个表单",
+      "conflictDesc": "你最近的修改还没保存。保留你的版本会覆盖对方的修改；载入对方的版本则会丢失你未保存的修改。",
+      "keepMine": "保留我的版本",
+      "loadTheirs": "载入对方的版本",
+      "lockedNote": "这个表单已有回复。删除问题会将其归档，以便旧答案保留该问题；问题类型也不能再更改。",
+      "publicNote": "公开链接已开启，因此不能添加照片和文件问题。",
+      "brokenTitle": "无法打开这个表单",
+      "brokenDesc": "无法读取它的问题。它的回复仍然安全。",
+      "newQuestion": "未命名问题",
+      "newSection": "新分节",
+      "newOption": "选项 {n}",
+      "untitledQuestion": "未命名问题",
+      "addQuestion": "添加问题",
+      "questionTitle": "问题",
+      "sectionTitle": "分节标题",
+      "type": "类型",
+      "typeLocked": "有回复后不能更改",
+      "help": "帮助文字",
+      "helpPlaceholder": "显示在问题下方的提示（可选）",
+      "required": "必填",
+      "duplicate": "复制",
+      "remove": "删除",
+      "archive": "归档",
+      "archived": "已归档",
+      "archivedNote": "已归档：新的填写中不再显示，旧回复中仍保留。",
+      "restore": "恢复",
+      "needsFix": "需要修改",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "options": "选项",
+      "optionLabel": "选项文字",
+      "addOption": "添加选项",
+      "removeOption": "删除选项",
+      "optionLocked": "这个选项已有人选过，可以改名，但不能删除。",
+      "minSelections": "至少",
+      "maxSelections": "最多",
+      "minValue": "最小数值",
+      "maxValue": "最大数值",
+      "scaleFrom": "从",
+      "scaleTo": "到",
+      "scaleLowLabel": "最低端的标签",
+      "scaleHighLabel": "最高端的标签",
+      "maxFiles": "每个答案的文件数",
+      "accept": "允许的文件类型",
+      "acceptHint": "用逗号分隔扩展名或类型。留空则允许任何文件。",
+      "filesNote": "文件保存在提交者的“我的文件”中，并计入门店的存储空间。在门店共用平板上或通过公开链接都不能添加文件。"
+    },
+    "share": {
+      "audienceTitle": "谁可以填写",
+      "audience": {
+        "members": "所有人",
+        "assigned": "仅限指定的人",
+        "private": "仅限我自己"
+      },
+      "audienceDesc": {
+        "members": "表单开放期间，门店的每位成员都可以填写。",
+        "assigned": "只有你在下面指定的成员可以填写。",
+        "private": "其他人看不到这个表单。可以先用它试一试，再分享出去。"
+      },
+      "assignees": "指定给",
+      "assigneesOnly": "只有这些成员可以填写。添加截止日期来提醒他们。",
+      "assigneesHint": "可选：指定成员后，表单会带着截止日期出现在他们的列表中。",
+      "noMembers": "还没有可指定的在职成员。",
+      "dueDate": "截止日期",
+      "role": {
+        "owner": "店主",
+        "manager": "经理",
+        "staff": "员工"
+      },
+      "rulesTitle": "答案",
+      "perMember": "每人可以填写",
+      "responseLimit": "达到多少份回复后停止",
+      "closesOn": "关闭日期（当天结束时）",
+      "never": "永不",
+      "trackCompletion": "显示谁已完成",
+      "trackCompletionHint": "门店平板会列出今天谁已完成，但不会显示他们的答案。",
+      "notifyOwner": "有新回复时通知我",
+      "notifyOwnerHint": "每收到一份回复，表单负责人都会收到通知。",
+      "publicTitle": "任何拿到链接的人",
+      "publicDesc": "门店以外的人无需登录也可以填写。",
+      "publicOwnerOnly": "只有门店店主可以开启公开链接。",
+      "publicUrl": "公开链接",
+      "copy": "复制",
+      "publicCopied": "链接已复制",
+      "publicRotate": "生成新链接",
+      "publicRotateTitle": "生成新链接？",
+      "publicRotateDesc": "当前的链接和二维码会立即失效。拿到旧链接的人需要使用新链接。",
+      "publicRotated": "新链接已生成",
+      "publicOpenOnly": "只有在表单开放时，链接才会接收答案。",
+      "publicNote": "通过链接提交的答案在“回复”中会标为“公开”。不要询问密码或付款信息。"
+    },
+    "templates": {
+      "blank": {
+        "title": "空白表单",
+        "description": "从零开始，写你自己的问题。",
+        "untitled": "未命名表单",
+        "q": {
+          "first": "未命名问题"
+        }
+      },
+      "openingChecklist": {
+        "title": "开店检查清单",
+        "description": "开门营业前要检查的所有事项。",
+        "q": {
+          "alarmOff": "已关闭警报",
+          "lightsOn": "灯光和招牌已打开",
+          "cashFloat": "开店时收银机里的现金",
+          "fridgesOk": "冰箱和冷冻柜运作正常",
+          "floorClean": "地面和入口已清洁",
+          "shelvesStocked": "货架已补货",
+          "notes": "有什么需要报告的吗？"
+        },
+        "h": {
+          "cashFloat": "清点开店现金并输入总额。"
+        }
+      },
+      "closingChecklist": {
+        "title": "关店检查清单",
+        "description": "锁门前要做的所有事项。",
+        "q": {
+          "cashCounted": "关店时收银机里的现金",
+          "equipmentOff": "设备已关闭",
+          "trashOut": "垃圾已拿出去",
+          "doorsLocked": "门窗已锁好",
+          "alarmSet": "已设置警报",
+          "notes": "有什么需要报告的吗？"
+        },
+        "h": {
+          "cashCounted": "清点现金并输入总额。"
+        }
+      },
+      "incidentReport": {
+        "title": "事故报告",
+        "description": "报告意外、盗窃、损坏或顾客问题。",
+        "confirmation": "谢谢你的报告，经理会跟进处理。",
+        "q": {
+          "details": "发生了什么",
+          "date": "日期",
+          "time": "时间",
+          "category": "事故类型",
+          "what": "描述发生的经过",
+          "injured": "有人受伤吗？",
+          "followUp": "后续处理",
+          "actions": "目前已经做了哪些处理？",
+          "photos": "照片"
+        },
+        "o": {
+          "injury": "受伤",
+          "theft": "盗窃",
+          "damage": "损坏",
+          "customer": "顾客问题",
+          "other": "其他"
+        },
+        "h": {
+          "what": "涉及哪些人、在哪里发生、你看到了什么。"
+        }
+      },
+      "customerFeedback": {
+        "title": "顾客反馈",
+        "description": "询问顾客这次光临的体验。",
+        "confirmation": "感谢你的反馈！",
+        "q": {
+          "overall": "这次光临体验如何？",
+          "recommend": "你有多大可能向朋友推荐我们？",
+          "liked": "你喜欢哪些方面？",
+          "comments": "还有其他想告诉我们的吗？",
+          "contact": "你的电子邮件或电话（可选）"
+        },
+        "l": {
+          "recommendLow": "不太可能",
+          "recommendHigh": "非常可能"
+        },
+        "o": {
+          "service": "服务",
+          "speed": "速度",
+          "quality": "质量",
+          "price": "价格",
+          "cleanliness": "清洁"
+        },
+        "h": {
+          "contact": "如果你希望我们回复你，再填写。"
+        }
+      },
+      "equipmentCheck": {
+        "title": "温度和设备检查",
+        "description": "记录冰箱和冷冻柜的温度，并标出故障设备。",
+        "q": {
+          "fridgeTemp": "冰箱温度",
+          "freezerTemp": "冷冻柜温度",
+          "equipmentOk": "所有设备都正常运作吗？",
+          "issue": "哪些设备不能正常运作？",
+          "photo": "照片"
+        },
+        "h": {
+          "fridgeTemp": "读取冰箱温度计并输入数字。",
+          "freezerTemp": "读取冷冻柜温度计并输入数字。"
+        }
+      }
+    },
+    "runtime": {
+      "filesUnavailableHere": "在这台设备上不能添加文件和照片。",
+      "previewNoUpload": "预览中不能添加文件。",
+      "checklistRequired": "提交前请勾选这一项。",
+      "defaultConfirmation": "谢谢！你的答案已提交。",
+      "pagePrevText": "上一步",
+      "pageNextText": "下一步",
+      "completeText": "提交",
+      "progressText": "第 {0} 页，共 {1} 页",
+      "emptySurvey": "这个表单还没有问题。",
+      "completingSurvey": "谢谢！你的答案已提交。",
+      "loadingSurvey": "正在加载…",
+      "placeholder": "请选择…",
+      "ratingOptionsCaption": "请选择…",
+      "requiredError": "这个问题需要回答。",
+      "numericError": "请输入数字。",
+      "minError": "请输入 {0} 或以上。",
+      "maxError": "请输入 {0} 或以下。",
+      "numericMinMax": "请输入 {1} 到 {2} 之间的数字。",
+      "numericMin": "请输入 {1} 或以上。",
+      "numericMax": "请输入 {1} 或以下。",
+      "invalidInputError": "这个答案无效。",
+      "textMaxLength": "最多 {0} 个字符。",
+      "minSelectError": "至少选择 {0} 项。",
+      "maxSelectError": "最多选择 {0} 项。",
+      "exceedMaxSize": "每个文件最大 {0}。",
+      "fileSizeUnits": "字节, KB, MB, GB, TB",
+      "exceedMaxFiles": "最多可以添加 {0} 个文件。",
+      "uploadingFile": "还有文件在上传，请稍等再试。",
+      "loadingFile": "正在加载…",
+      "chooseFile": "选择文件…",
+      "noFileChosen": "未选择文件",
+      "filePlaceholder": "把文件拖到这里，或在下方选择。",
+      "chooseFileCaption": "选择文件",
+      "takePhotoCaption": "拍照",
+      "photoPlaceholder": "用下方的按钮拍一张照片。",
+      "fileOrPhotoPlaceholder": "把文件拖到这里、选择文件或拍照。",
+      "replaceFileCaption": "替换文件",
+      "removeFileCaption": "移除这个文件",
+      "confirmRemoveFile": "移除 {0}？",
+      "confirmRemoveAllFiles": "移除所有文件？",
+      "clearCaption": "清除",
+      "selectCaption": "选择",
+      "booleanCheckedLabel": "是",
+      "booleanUncheckedLabel": "否",
+      "savingData": "正在提交…",
+      "savingDataError": "你的答案没有提交成功。",
+      "savingDataSuccess": "已提交。",
+      "saveAgainButton": "重试",
+      "modalApplyButtonText": "应用",
+      "modalCancelButtonText": "取消",
+      "filterStringPlaceholder": "输入以搜索…",
+      "emptyMessage": "没有可显示的内容",
+      "loadingData": "正在加载…",
+      "tagboxDoneButtonCaption": "确定",
+      "more": "更多",
+      "ok": "确定",
+      "cancel": "取消"
+    },
+    "fill": {
+      "title": "填写表单",
+      "subtitle": "回答问题后提交。",
+      "backToForms": "返回表单",
+      "another": "再提交一份",
+      "filesNote": "你添加的文件和照片会保存在云盘的“我的文件”中。",
+      "required": "必填",
+      "ratingLabel": "{n} 星（满分 {max} 星）",
+      "uploading": "正在上传…",
+      "addPhoto": "拍照或选择照片",
+      "addFile": "选择文件",
+      "filesAttached": "已附上 {count} 个，最多 {max} 个",
+      "removeFiles": "移除"
+    },
+    "preview": {
+      "notice": "这是预览。答案不会保存，也不能添加文件。",
+      "widthLabel": "预览宽度",
+      "desktop": "电脑",
+      "phone": "手机",
+      "restart": "重新开始",
+      "emptyTitle": "还没有问题",
+      "emptyBody": "在“编辑”中添加问题后，就会显示在这里。",
+      "completed": "表单到此结束。如果是真实填写，现在答案就会提交。",
+      "invalidDraft": "你最近的修改需要先修正才能保存，所以此预览显示的是上次保存的版本。"
+    },
+    "responses": {
+      "total": "回复",
+      "toReview": "待查看",
+      "last": "最新回复",
+      "viewLabel": "回复视图",
+      "summary": "摘要",
+      "table": "列表",
+      "export": "导出",
+      "exportCsv": "下载 .csv",
+      "exportXlsx": "下载 .xlsx",
+      "openAsSheet": "以电子表格打开",
+      "exportFailed": "导出失败，请重试。",
+      "fileName": "表单回复",
+      "sheetName": "回复",
+      "loadFailed": "部分回复无法加载。请重新加载后再试。",
+      "emptyTitle": "还没有回复",
+      "emptyBody": "有人提交表单后，回复会立即显示在这里。",
+      "count": "回复数",
+      "average": "平均",
+      "min": "最低",
+      "max": "最高",
+      "noAnswers": "还没有答案",
+      "fileCount": "附上了 {count} 个文件",
+      "answeredOf": "{total} 人中 {answered} 人回答",
+      "archivedQuestion": "已删除的问题",
+      "file": "文件",
+      "review": "查看",
+      "notePlaceholder": "为这份回复添加备注",
+      "noteBy": "最后备注人",
+      "noteHint": "店主、经理和拥有云盘完整权限的成员可以阅读备注，填写的人看不到。",
+      "save": "保存",
+      "close": "关闭",
+      "cancel": "取消",
+      "delete": "删除回复",
+      "deleteTitle": "删除这份回复？",
+      "deleteBody": "答案和备注会被永久删除。附上的文件仍保留在填写人的“我的文件”中。"
+    },
+    "export": {
+      "submittedAt": "提交时间",
+      "respondent": "填写人",
+      "sourceHeader": "提交来源",
+      "reviewHeader": "状态",
+      "anonymous": "匿名",
+      "yes": "是",
+      "no": "否",
+      "removedOption": "已删除的选项",
+      "source": {
+        "manager": "后台",
+        "store": "门店平板",
+        "personal": "手机",
+        "public": "公开链接"
+      },
+      "review": {
+        "new": "新",
+        "reviewed": "已查看"
+      }
+    },
+    "public": {
+      "answersGoTo": "你的答案会发送给 {store}。对方可以看到你在这里填写的所有内容。",
+      "noSecrets": "请不要在表单中填写密码或银行卡信息。",
+      "honeypotLabel": "这一栏请留空",
+      "notFoundTitle": "这个链接无效",
+      "notFoundBody": "表单可能已被删除，或者它的链接已更换。请向门店索取新链接。",
+      "unavailableTitle": "暂时无法打开这个表单",
+      "unavailableBody": "请过几分钟再试。",
+      "closedTitle": "这个表单不接收回复",
+      "closedBody": "门店已关闭这个表单。如果你仍需联系他们，请直接询问门店。",
+      "sentTitle": "你的答案已提交"
+    }
+  },
+  "pinLimit": {
+    "locked": "错误的 PIN 次数过多，PIN 输入已暂停 {minutes} 分钟。请改用手机扫码登录，或请经理解锁。",
+    "noAnswer": "服务器没有响应。请检查网络后重试。",
+    "codeInUse": "这个代码在本店已被使用，请换一个。",
+    "clear": "解锁 PIN 输入",
+    "clearHint": "PIN 错误次数过多导致暂停？",
+    "cleared": "本店的 PIN 输入已解锁。",
+    "clearFailed": "无法解锁 PIN 输入。",
+    "noOperator": "请重新登录后再打卡：这台平板已不知道当前是谁在使用。",
+    "lockedNow": "错误的 PIN 太多，PIN 输入已暂停。请改用手机登录，或请经理解锁。"
   }
 }

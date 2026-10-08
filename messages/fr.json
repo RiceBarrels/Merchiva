@@ -67,7 +67,8 @@
     "notifications": "Notifications",
     "drive": "Fichiers",
     "sheets": "Feuilles de calcul",
-    "slides": "Présentations"
+    "slides": "Présentations",
+    "forms": "Formulaires"
   },
   "login": {
     "title": "Connexion à Merchiva",
@@ -4363,7 +4364,8 @@
     },
     "toast": {
       "complete": "Configuration terminée !",
-      "error": "Une erreur s'est produite, mais votre espace de travail est prêt."
+      "error": "Une erreur s'est produite, mais votre espace de travail est prêt.",
+      "saveFailed": "Impossible d'enregistrer les paramètres de la boutique. Vérifiez votre connexion et réessayez."
     },
     "storeInfo": {
       "title": "Parlez-nous de votre magasin.",
@@ -4704,7 +4706,10 @@
       "settings-org": "Réglages boutique",
       "bugs": "Signalements",
       "notifications": "Notifications",
-      "drive": "Fichiers"
+      "drive": "Fichiers",
+      "sheets": "Feuilles de calcul",
+      "slides": "Présentations",
+      "forms": "Formulaires"
     },
     "notAvailableHere": "Indisponible sur cet appareil",
     "lite": {
@@ -4976,13 +4981,56 @@
         "readOnly": "Vous pouvez consulter, mais pas modifier.",
         "memberFiles": "Fichiers de {name}",
         "fileCount": "{count} fichiers",
-        "fileCountOne": "1 fichier"
+        "fileCountOne": "1 fichier",
+        "newFromTemplate": "Document à partir d'un modèle",
+        "templatesTitle": "Choisir un modèle"
+      },
+      "forms": {
+        "checklistsLeft": "Listes de contrôle restantes aujourd'hui",
+        "checklistsLeftHint": "Touchez une liste de contrôle pour la remplir.",
+        "allDone": "Tout est fait. Beau travail !",
+        "today": "Aujourd'hui",
+        "doneBy": "Fait · {name} {time}",
+        "doneByYou": "Vous l'avez déjà fait",
+        "notDone": "Pas encore fait",
+        "report": "Signaler quelque chose",
+        "other": "Autres formulaires",
+        "toFill": "À remplir",
+        "toFillHint": "Les formulaires que votre magasin vous a demandé de remplir.",
+        "due": "À rendre le {date}",
+        "overdue": "En retard · à rendre le {date}",
+        "noDue": "Pas d'échéance",
+        "openToAll": "Ouvert à tous",
+        "doneForNow": "Fait pour le moment",
+        "mySubmissions": "Mes envois",
+        "noSubmissions": "Rien d'envoyé pour l'instant",
+        "sentOn": "Envoyé le {date}",
+        "status": {
+          "new": "En attente",
+          "reviewed": "Examiné"
+        },
+        "unavailable": "Ce formulaire n'est plus disponible, ses réponses ne peuvent donc pas être affichées.",
+        "filesAdded": "{count} fichiers",
+        "none": "Aucun formulaire pour le moment",
+        "noneHint": "Quand votre magasin partage un formulaire, il apparaît ici.",
+        "checklistHint": "Cochez chaque point",
+        "progress": "{n}/{total}",
+        "send": "Envoyer",
+        "confirmTitle": "Envoyer vos réponses ?",
+        "confirmSend": "Oui, envoyer",
+        "confirmSub": "Vous ne pourrez plus les modifier après l'envoi.",
+        "keepEditing": "Continuer",
+        "leaveTitle": "Quitter ce formulaire ?",
+        "leave": "Quitter",
+        "leaveSub": "Vos réponses seront perdues.",
+        "thanks": "Merci ! Vos réponses ont été envoyées.",
+        "filesOffTablet": "Impossible d'ajouter des photos ou des fichiers sur cette tablette partagée. Utilisez votre propre téléphone pour répondre à cette question."
       }
     },
     "catalogDesc": {
       "punch-in": "Pointez vos arrivées, départs et pauses.",
       "requests": "Demandez un congé ou un échange de créneau.",
-      "docs": "Manuels et documents du magasin.",
+      "docs": "Les documents de votre magasin : rédigez dans Fichiers et ouvrez des fichiers .docx.",
       "directory": "Voyez vos collègues et qui est en service.",
       "settings": "Langue, thème et options de l'appareil.",
       "channel": "Canaux vocaux avec votre équipe.",
@@ -4997,7 +5045,10 @@
       "bookings": "Réservations d'aujourd'hui et de demain.",
       "bugs": "Signalez un problème dans l'app et suivez son traitement.",
       "notifications": "Vos alertes de service, de planning et de demandes, les plus récentes d'abord.",
-      "drive": "Les fichiers, photos, feuilles de calcul et présentations de votre magasin, au même endroit."
+      "drive": "Tous les fichiers de votre magasin, au même endroit : fichiers téléversés, photos, et les documents, feuilles de calcul et présentations créés avec les extensions d'édition.",
+      "sheets": "Les feuilles de calcul de votre magasin : ouvrez des fichiers .xlsx et .csv, et créez-en de nouvelles dans Fichiers.",
+      "slides": "Les présentations de votre magasin : ouvrez des fichiers .pptx, et créez-en de nouvelles dans Fichiers.",
+      "forms": "Listes de contrôle, rapports et sondages que votre équipe remplit sur la tablette ou sur son téléphone."
     },
     "appStore": {
       "hint": "Choisissez les fonctions utilisées par ce magasin. Une extension installée apparaît dans le back-office, sur la tablette du magasin et sur les téléphones de l'équipe ; les extensions intégrées sont toujours actives.",
@@ -5434,7 +5485,7 @@
     },
     "title": "Docs",
     "untitled": "Document sans titre",
-    "homeTooltip": "Accueil Docs",
+    "homeTooltip": "Fichiers",
     "home": {
       "searchPlaceholder": "Rechercher des documents",
       "clearSearch": "Effacer la recherche",
@@ -5600,7 +5651,7 @@
       "noAccessTitle": "Accès requis",
       "noAccessDescription": "Demandez à {name} ou à un responsable du magasin de partager ce document avec vous.",
       "noAccessDescriptionNoOwner": "Demandez à un responsable du magasin de partager ce document avec vous.",
-      "backToDocs": "Retour à Docs",
+      "backToDocs": "Retour à Fichiers",
       "trashedBanner": "Ce document est dans la corbeille.",
       "viewOnly": "Lecture seule",
       "viewOnlyBanner": "Vous pouvez consulter ce document, mais pas le modifier.",
@@ -6237,7 +6288,9 @@
       "downloadBlocked": "Votre navigateur a bloqué le téléchargement. Réessayez.",
       "downloadPartial": "{saved} fichiers sur {total} enregistrés. Enregistrez les autres un par un.",
       "downloadNext": "Enregistrer le suivant (reste : {count})",
-      "noticeRequired": "Lisez d'abord la note sur les personnes qui peuvent voir vos fichiers."
+      "noticeRequired": "Lisez d'abord la note sur les personnes qui peuvent voir vos fichiers.",
+      "newFromTemplate": "À partir d'un modèle",
+      "importFile": "Importer un fichier…"
     },
     "nav": {
       "label": "Sections de Fichiers",
@@ -6491,7 +6544,7 @@
       "openIn": "Ouvrir dans {app}",
       "count": "{count} fichiers",
       "countOne": "1 fichier",
-      "notIncluded": "Non inclus : les liens de reçus saisis dans Finances, les images placées dans les documents et le texte des leçons, et les pièces jointes envoyées à Mr. Merchiva.",
+      "notIncluded": "Les liens de reçus saisis dans Finances et les liens collés à la main ne sont pas stockés par Merchiva : ils ne sont donc pas comptés.",
       "sources": {
         "chat": "Chat",
         "tasks": "Tâches",
@@ -6499,7 +6552,8 @@
         "training": "Formation",
         "products": "Produits",
         "bugs": "Signalements",
-        "profile": "Magasin et profil"
+        "profile": "Magasin et profil",
+        "forms": "Formulaires"
       },
       "untitledAttachment": "Pièce jointe",
       "photoN": "{name} · photo n° {n}",
@@ -6507,7 +6561,20 @@
       "profilePhoto": "Votre photo de profil",
       "empty": "Aucun fichier de cette application pour l'instant.",
       "latest": "Dernier ajout le {date}",
-      "unavailable": "Les fichiers de cette application ne vous sont pas accessibles ici."
+      "unavailable": "Les fichiers de cette application ne vous sont pas accessibles ici.",
+      "bytesSource": {
+        "doc_image": "Images dans les documents",
+        "sheet_image": "Images dans les feuilles de calcul",
+        "slides_image": "Images dans les présentations",
+        "logo": "Logo du magasin",
+        "avatar": "Photos de profil",
+        "other": "Autres fichiers"
+      },
+      "storageTotal": "{size} stockés dans d'autres applications",
+      "notStoredHere": "Inclut des fichiers que vous ne pouvez pas ouvrir ici, comme les pièces jointes de chat d'autres personnes.",
+      "bytesNotListed": "{source} : fichiers que vous ne pouvez pas ouvrir ici",
+      "countForms": "{count} formulaires",
+      "countFormsOne": "1 formulaire"
     },
     "members": {
       "title": "Fichiers des membres",
@@ -6527,7 +6594,15 @@
       "usedNoQuota": "{used} utilisés",
       "almostFull": "Le stockage est presque plein",
       "full": "Le stockage est plein",
-      "excludesDocs": "Les documents, feuilles de calcul et présentations ne sont pas comptés dans le stockage."
+      "excludesDocs": "Les documents, feuilles de calcul et présentations ne sont pas comptés dans le stockage.",
+      "breakdown": {
+        "title": "Ce qui occupe le stockage",
+        "files": "Fichiers téléversés",
+        "documents": "Documents, présentations et formulaires",
+        "sheets": "Feuilles de calcul",
+        "apps": "Fichiers dans d'autres applications"
+      },
+      "includesEverything": "Tout ce que votre magasin conserve compte dans le stockage : fichiers téléversés, documents, feuilles de calcul, présentations, formulaires et fichiers dans d'autres applications."
     },
     "kind": {
       "folder": "Dossier",
@@ -7169,5 +7244,605 @@
     "errFailed": "Impossible d'accepter l'invitation. Réessayez.",
     "useAnotherAccount": "Se connecter avec un autre compte",
     "goToDashboard": "Aller au tableau de bord"
+  },
+  "pluginInstall": {
+    "missingTitle": "L'extension {app} n'est pas installée",
+    "openBody": "Téléchargez {app} pour ouvrir ce fichier. L'extension s'active pour tout le magasin : le back-office, la tablette du magasin et les téléphones de l'équipe.",
+    "createBody": "Téléchargez {app} pour créer ce fichier. L'extension s'active pour tout le magasin : le back-office, la tablette du magasin et les téléphones de l'équipe.",
+    "pageBody": "Cette page fait partie de l'extension {app}. Téléchargez-la pour l'utiliser ici et sur les appareils de votre magasin.",
+    "askManager": "Demandez à un propriétaire ou à un responsable de télécharger {app} depuis Extensions.",
+    "download": "Télécharger",
+    "downloading": "Téléchargement…",
+    "installed": "L'extension {app} est prête",
+    "failed": "Impossible de télécharger {app}. Réessayez.",
+    "openPlugins": "Ouvrir Extensions",
+    "notNow": "Pas maintenant",
+    "offline": "Vous êtes hors ligne. Connectez-vous pour télécharger des extensions.",
+    "downloadFirst": "Télécharger d'abord",
+    "askOtherDevice": "Le compte de cette tablette ne peut pas télécharger d'extensions. Téléchargez {app} depuis Extensions dans le back-office ou sur votre propre téléphone.",
+    "notInstalled": "Non installée"
+  },
+  "appUpload": {
+    "quotaExceeded": "Le stockage de votre magasin est plein. Supprimez des fichiers dans Fichiers pour libérer de l'espace.",
+    "failed": "Impossible de téléverser le fichier. Réessayez.",
+    "signInRequired": "Reconnectez-vous pour téléverser des fichiers."
+  },
+  "forms": {
+    "errors": {
+      "generic": "Un problème est survenu. Réessayez.",
+      "not_connected": "Non connecté. Vérifiez votre connexion et réessayez.",
+      "not_published": "Formulaires n'est pas encore disponible pour ce magasin.",
+      "network": "Vous êtes hors ligne. Réessayez une fois la connexion revenue.",
+      "forbidden": "Vous n'avez pas l'autorisation de faire cela.",
+      "not_found": "Ce formulaire n'existe plus.",
+      "invalid": "Un élément de cette demande n'est pas valide.",
+      "exists": "Cela existe déjà.",
+      "conflict": "Quelqu'un d'autre a enregistré ce formulaire entre-temps. Rechargez pour voir ses modifications.",
+      "operator": "La personne qui utilise cet appareil ne peut pas faire cela.",
+      "not_open": "Ce formulaire n'accepte pas de réponses.",
+      "closed": "Ce formulaire est fermé.",
+      "not_assigned": "Ce formulaire ne vous est pas attribué.",
+      "invalid_date": "La date de cet appareil semble incorrecte. Vérifiez son horloge.",
+      "already_submitted": "Vous avez déjà répondu à ce formulaire pour cette période.",
+      "response_limit": "Ce formulaire n'accepte plus de réponses.",
+      "too_many_forms": "Ce magasin a atteint sa limite de formulaires.",
+      "org_storage_full": "Ce magasin n'a plus de place pour de nouvelles réponses.",
+      "file_not_found": "Un fichier joint est introuvable. Joignez-le à nouveau.",
+      "files_not_allowed": "Impossible d'ajouter des fichiers ou des photos ici.",
+      "public_unsafe": "Les formulaires avec des questions fichier ou photo ne peuvent pas être partagés par lien.",
+      "rate_limited": "Trop de réponses en ce moment. Réessayez plus tard.",
+      "invalid_settings": "Certains réglages ne sont pas valides.",
+      "invalid_status": "Ce statut n'est pas valide.",
+      "invalid_definition": "Ce formulaire ne peut pas être lu.",
+      "definition_too_large": "Ce formulaire est trop volumineux.",
+      "title_required": "Donnez un titre au formulaire.",
+      "title_too_long": "Le titre est trop long.",
+      "description_too_long": "La description est trop longue.",
+      "confirmation_too_long": "Le message de confirmation est trop long.",
+      "no_questions": "Ajoutez au moins une question.",
+      "too_many_questions": "Ce formulaire a trop de questions.",
+      "invalid_question": "Une question n'est pas valide.",
+      "invalid_question_id": "Une question n'est pas valide.",
+      "duplicate_question_id": "Deux questions sont identiques.",
+      "invalid_question_type": "Un type de question n'est pas pris en charge.",
+      "question_title_required": "Chaque question doit avoir un titre.",
+      "question_title_too_long": "Le titre d'une question est trop long.",
+      "help_too_long": "Le texte d'aide d'une question est trop long.",
+      "options_required": "Ajoutez au moins un choix.",
+      "too_many_options": "Une question a trop de choix.",
+      "invalid_option_id": "Un choix n'est pas valide.",
+      "duplicate_option_id": "Deux choix sont identiques.",
+      "option_label_required": "Chaque choix doit avoir un libellé.",
+      "option_label_too_long": "Le libellé d'un choix est trop long.",
+      "invalid_range": "La plage n'est pas valide.",
+      "scale_label_too_long": "Un libellé d'échelle est trop long.",
+      "invalid_max_files": "Le nombre de fichiers n'est pas valide.",
+      "invalid_accept": "Les types de fichiers autorisés ne sont pas valides.",
+      "question_removed": "Les questions qui ont des réponses ne peuvent pas être supprimées. Masquez-les plutôt.",
+      "question_type_changed": "Le type d'une question qui a des réponses ne peut pas changer.",
+      "option_removed": "Les choix qui ont des réponses ne peuvent pas être supprimés.",
+      "invalid_answers": "Ces réponses ne peuvent pas être lues.",
+      "answers_too_large": "Ces réponses sont trop longues.",
+      "unknown_question": "Une réponse concerne une question qui n'existe plus. Rechargez le formulaire.",
+      "required": "Répondez à toutes les questions obligatoires.",
+      "invalid_answer": "Une réponse n'est pas valide.",
+      "text_too_long": "Une réponse est trop longue.",
+      "unknown_option": "Un choix que vous avez fait n'existe plus. Rechargez le formulaire.",
+      "out_of_range": "Un nombre est hors limites.",
+      "too_many_selections": "Trop de choix sont sélectionnés.",
+      "too_few_selections": "Pas assez de choix sont sélectionnés.",
+      "too_many_files": "Trop de fichiers pour cette question."
+    },
+    "disclosure": {
+      "respondentNote": "La direction de votre magasin peut voir vos réponses.",
+      "managersTitle": "La direction peut voir chaque réponse",
+      "managersNote": "Le propriétaire du magasin, les responsables et les membres qui peuvent voir tous les fichiers peuvent lire chaque réponse à ce formulaire, y compris les fichiers joints. Les personnes qui répondent en sont informées."
+    },
+    "title": "Formulaires",
+    "list": {
+      "subtitleBuilder": "Listes de contrôle, rapports et sondages pour votre équipe",
+      "subtitleMember": "Les formulaires qui vous attendent et ce que vous avez envoyé",
+      "new": "Nouveau formulaire",
+      "search": "Rechercher des formulaires",
+      "fill": "Remplir",
+      "questions": "{n} questions",
+      "responses": "{n} réponses",
+      "updated": "Mis à jour le {date}",
+      "due": "À rendre le {date}",
+      "closes": "Ferme le {date}",
+      "notPublished": "Formulaires n'est pas encore disponible",
+      "notPublishedDesc": "Formulaires n'a pas encore été activé pour ce magasin. Réessayez plus tard.",
+      "filter": {
+        "active": "Actifs",
+        "drafts": "Brouillons",
+        "closed": "Fermés",
+        "archived": "Archivés",
+        "toFill": "À remplir",
+        "mine": "Mes envois"
+      },
+      "stats": {
+        "open": "Formulaires ouverts",
+        "drafts": "Brouillons",
+        "responses": "Réponses",
+        "toFill": "À remplir",
+        "submitted": "Envoyés",
+        "last90": "90 derniers jours",
+        "reviewed": "Examinés"
+      },
+      "empty": {
+        "search": "Aucun formulaire ne correspond à votre recherche",
+        "active": "Aucun formulaire ouvert",
+        "activeDesc": "Ouvrez un brouillon ou créez un formulaire à partir d'un modèle.",
+        "drafts": "Aucun brouillon",
+        "draftsDesc": "Les nouveaux formulaires restent ici jusqu'à ce que vous les ouvriez.",
+        "closed": "Aucun formulaire fermé",
+        "closedDesc": "Les formulaires que vous fermez ne reçoivent plus de réponses et apparaissent ici.",
+        "archived": "Aucun formulaire archivé",
+        "archivedDesc": "Archivez les formulaires que vous n'utilisez plus pour garder cette liste courte.",
+        "toFill": "Rien à remplir",
+        "toFillDesc": "Les formulaires que vos responsables partagent avec vous apparaîtront ici.",
+        "mine": "Aucun envoi pour l'instant",
+        "mineDesc": "Les formulaires que vous envoyez au cours des 90 derniers jours apparaissent ici."
+      },
+      "view": {
+        "manage": "Gérer",
+        "mine": "Mes formulaires"
+      }
+    },
+    "status": {
+      "draft": "Brouillon",
+      "open": "Ouvert",
+      "closed": "Fermé",
+      "archived": "Archivé"
+    },
+    "kind": {
+      "form": "Formulaire",
+      "checklist": "Liste de contrôle",
+      "report": "Rapport",
+      "survey": "Sondage"
+    },
+    "perMember": {
+      "unlimited": "Autant de fois que voulu",
+      "once": "Une fois",
+      "daily": "Une fois par jour",
+      "weekly": "Une fois par semaine"
+    },
+    "reviewStatus": {
+      "new": "Envoyé",
+      "reviewed": "Examiné"
+    },
+    "types": {
+      "section": "Section",
+      "short_text": "Réponse courte",
+      "long_text": "Paragraphe",
+      "single_choice": "Choix unique",
+      "multi_choice": "Cases à cocher",
+      "dropdown": "Liste déroulante",
+      "yes_no": "Oui / non",
+      "number": "Nombre",
+      "date": "Date",
+      "time": "Heure",
+      "rating": "Note en étoiles",
+      "scale": "Échelle",
+      "checklist_item": "Point de contrôle",
+      "photo": "Photo",
+      "file": "Envoi de fichier"
+    },
+    "newForm": {
+      "title": "Nouveau formulaire",
+      "description": "Partez d'un modèle ou d'un formulaire vierge. Vous pourrez tout modifier ensuite.",
+      "templates": "Modèles",
+      "create": "Créer",
+      "kindHint": "Les listes de contrôle s'affichent sur la tablette du magasin comme les vérifications du jour, et les rapports sous « Signaler quelque chose ». Le type ne pourra plus être modifié."
+    },
+    "edit": {
+      "notFound": "Formulaire introuvable",
+      "notFoundDesc": "Il a peut-être été supprimé, ou vous n'y avez pas accès.",
+      "backToList": "Retour aux formulaires",
+      "more": "Plus d'actions",
+      "view": {
+        "build": "Modifier",
+        "preview": "Aperçu",
+        "responses": "Réponses",
+        "share": "Partager"
+      },
+      "action": {
+        "draft": "Ouvrir aux réponses",
+        "open": "Fermer",
+        "closed": "Rouvrir"
+      },
+      "statusChanged": {
+        "draft": "Remis en brouillon",
+        "open": "Le formulaire est ouvert aux réponses",
+        "closed": "Le formulaire est fermé",
+        "archived": "Le formulaire est archivé"
+      },
+      "backToDraft": "Remettre en brouillon",
+      "archive": "Archiver",
+      "unarchive": "Désarchiver",
+      "delete": "Supprimer le formulaire",
+      "deleteTitle": "Supprimer ce formulaire ?",
+      "deleteDesc": "Le formulaire et toutes ses réponses sont supprimés définitivement. Les fichiers joints restent dans Mes fichiers de chaque personne.",
+      "deleted": "Formulaire supprimé"
+    },
+    "builder": {
+      "details": "Détails du formulaire",
+      "formTitle": "Titre",
+      "description": "Description",
+      "descriptionPlaceholder": "À quoi sert ce formulaire ?",
+      "confirmation": "Message après l'envoi",
+      "confirmationHint": "Laissez vide pour afficher un simple remerciement.",
+      "confirmationPlaceholder": "Merci ! Vos réponses ont été envoyées.",
+      "status": {
+        "saved": "Toutes les modifications sont enregistrées",
+        "pending": "Enregistrement…",
+        "saving": "Enregistrement…",
+        "invalid": "Non enregistré : corrigez les champs signalés",
+        "error": "Non enregistré"
+      },
+      "retry": "Réessayer",
+      "conflictTitle": "Quelqu'un d'autre a modifié ce formulaire",
+      "conflictDesc": "Vos dernières modifications ne sont pas encore enregistrées. Gardez votre version pour l'enregistrer par-dessus la sienne, ou chargez la sienne et perdez vos modifications non enregistrées.",
+      "keepMine": "Garder ma version",
+      "loadTheirs": "Charger la sienne",
+      "lockedNote": "Ce formulaire a des réponses. Supprimer une question l'archive pour que les anciennes réponses la gardent, et le type des questions ne peut plus changer.",
+      "publicNote": "Le lien public est activé : impossible d'ajouter des questions photo ou fichier.",
+      "brokenTitle": "Impossible d'ouvrir ce formulaire",
+      "brokenDesc": "Ses questions n'ont pas pu être lues. Ses réponses sont toujours en sécurité.",
+      "newQuestion": "Question sans titre",
+      "newSection": "Nouvelle section",
+      "newOption": "Choix {n}",
+      "untitledQuestion": "Question sans titre",
+      "addQuestion": "Ajouter une question",
+      "questionTitle": "Question",
+      "sectionTitle": "Titre de la section",
+      "type": "Type",
+      "typeLocked": "Non modifiable une fois qu'il y a des réponses",
+      "help": "Texte d'aide",
+      "helpPlaceholder": "Indication facultative affichée sous la question",
+      "required": "Obligatoire",
+      "duplicate": "Dupliquer",
+      "remove": "Supprimer",
+      "archive": "Archiver",
+      "archived": "Archivée",
+      "archivedNote": "Archivée : masquée pour les nouvelles réponses, conservée dans les anciennes.",
+      "restore": "Restaurer",
+      "needsFix": "À corriger",
+      "moveUp": "Monter",
+      "moveDown": "Descendre",
+      "options": "Choix",
+      "optionLabel": "Texte du choix",
+      "addOption": "Ajouter un choix",
+      "removeOption": "Retirer le choix",
+      "optionLocked": "Ce choix a des réponses. Renommez-le plutôt.",
+      "minSelections": "Au moins",
+      "maxSelections": "Au plus",
+      "minValue": "Nombre minimal",
+      "maxValue": "Nombre maximal",
+      "scaleFrom": "De",
+      "scaleTo": "À",
+      "scaleLowLabel": "Libellé du bas de l'échelle",
+      "scaleHighLabel": "Libellé du haut de l'échelle",
+      "maxFiles": "Fichiers par réponse",
+      "accept": "Types de fichiers autorisés",
+      "acceptHint": "Extensions ou types séparés par des virgules. Laissez vide pour autoriser tous les fichiers.",
+      "filesNote": "Les fichiers sont enregistrés dans Mes fichiers de la personne qui envoie et comptent dans le stockage de votre magasin. Impossible d'ajouter des fichiers sur une tablette partagée du magasin ou via un lien public."
+    },
+    "share": {
+      "audienceTitle": "Qui peut répondre",
+      "audience": {
+        "members": "Tout le monde",
+        "assigned": "Personnes désignées",
+        "private": "Moi seulement"
+      },
+      "audienceDesc": {
+        "members": "Chaque membre du magasin peut répondre tant que le formulaire est ouvert.",
+        "assigned": "Seuls les membres que vous désignez ci-dessous peuvent répondre.",
+        "private": "Personne d'autre ne voit ce formulaire. Servez-vous-en pour faire des essais avant de le partager."
+      },
+      "assignees": "Attribué à",
+      "assigneesOnly": "Seuls ces membres peuvent répondre. Ajoutez une échéance pour le leur rappeler.",
+      "assigneesHint": "Facultatif : désignez des membres pour ajouter le formulaire à leur liste avec une échéance.",
+      "noMembers": "Aucun membre actif à désigner pour l'instant.",
+      "dueDate": "Échéance",
+      "role": {
+        "owner": "Propriétaire",
+        "manager": "Responsable",
+        "staff": "Employé"
+      },
+      "rulesTitle": "Réponses",
+      "perMember": "Chaque personne peut répondre",
+      "responseLimit": "Arrêter après (réponses)",
+      "closesOn": "Ferme à la fin du",
+      "never": "Jamais",
+      "trackCompletion": "Montrer qui l'a fait",
+      "trackCompletionHint": "La tablette du magasin indique qui l'a terminé aujourd'hui, sans montrer leurs réponses.",
+      "notifyOwner": "Me prévenir des nouvelles réponses",
+      "notifyOwnerHint": "Le responsable du formulaire reçoit une notification pour chaque réponse.",
+      "publicTitle": "Toute personne disposant du lien",
+      "publicDesc": "Des personnes extérieures à votre magasin peuvent répondre sans se connecter.",
+      "publicOwnerOnly": "Seul le propriétaire du magasin peut activer le lien public.",
+      "publicUrl": "Lien public",
+      "copy": "Copier",
+      "publicCopied": "Lien copié",
+      "publicRotate": "Créer un nouveau lien",
+      "publicRotateTitle": "Créer un nouveau lien ?",
+      "publicRotateDesc": "Le lien et le code QR actuels cessent de fonctionner immédiatement. Les personnes qui les ont auront besoin du nouveau.",
+      "publicRotated": "Nouveau lien prêt",
+      "publicOpenOnly": "Le lien n'accepte des réponses que lorsque le formulaire est ouvert.",
+      "publicNote": "Les réponses envoyées par le lien apparaissent comme Public dans Réponses. Ne demandez ni mots de passe ni données de paiement."
+    },
+    "templates": {
+      "blank": {
+        "title": "Formulaire vierge",
+        "description": "Partez de zéro avec vos propres questions.",
+        "untitled": "Formulaire sans titre",
+        "q": {
+          "first": "Question sans titre"
+        }
+      },
+      "openingChecklist": {
+        "title": "Liste d'ouverture",
+        "description": "Tout ce qu'il faut vérifier avant d'ouvrir les portes.",
+        "q": {
+          "alarmOff": "Alarme désactivée",
+          "lightsOn": "Lumières et enseignes allumées",
+          "cashFloat": "Espèces en caisse à l'ouverture",
+          "fridgesOk": "Réfrigérateurs et congélateurs en marche",
+          "floorClean": "Sol et entrée propres",
+          "shelvesStocked": "Rayons approvisionnés",
+          "notes": "Quelque chose à signaler ?"
+        },
+        "h": {
+          "cashFloat": "Comptez le fonds de caisse et saisissez le total."
+        }
+      },
+      "closingChecklist": {
+        "title": "Liste de fermeture",
+        "description": "Tout ce qu'il faut faire avant de fermer à clé.",
+        "q": {
+          "cashCounted": "Espèces en caisse à la fermeture",
+          "equipmentOff": "Équipements éteints",
+          "trashOut": "Poubelles sorties",
+          "doorsLocked": "Portes et fenêtres fermées à clé",
+          "alarmSet": "Alarme activée",
+          "notes": "Quelque chose à signaler ?"
+        },
+        "h": {
+          "cashCounted": "Comptez les espèces et saisissez le total."
+        }
+      },
+      "incidentReport": {
+        "title": "Rapport d'incident",
+        "description": "Signalez un accident, un vol, des dégâts ou un problème avec un client.",
+        "confirmation": "Merci de l'avoir signalé. Un responsable va s'en occuper.",
+        "q": {
+          "details": "Ce qui s'est passé",
+          "date": "Date",
+          "time": "Heure",
+          "category": "Type d'incident",
+          "what": "Décrivez ce qui s'est passé",
+          "injured": "Quelqu'un a-t-il été blessé ?",
+          "followUp": "Suivi",
+          "actions": "Qu'est-ce qui a été fait jusqu'ici ?",
+          "photos": "Photos"
+        },
+        "o": {
+          "injury": "Blessure",
+          "theft": "Vol",
+          "damage": "Dégâts",
+          "customer": "Problème avec un client",
+          "other": "Autre"
+        },
+        "h": {
+          "what": "Qui était impliqué, où cela s'est passé et ce que vous avez vu."
+        }
+      },
+      "customerFeedback": {
+        "title": "Avis des clients",
+        "description": "Demandez aux clients comment s'est passée leur visite.",
+        "confirmation": "Merci pour votre avis !",
+        "q": {
+          "overall": "Comment s'est passée votre visite ?",
+          "recommend": "Quelle est la probabilité que vous nous recommandiez à un ami ?",
+          "liked": "Qu'avez-vous apprécié ?",
+          "comments": "Autre chose à nous dire ?",
+          "contact": "Votre e-mail ou téléphone (facultatif)"
+        },
+        "l": {
+          "recommendLow": "Peu probable",
+          "recommendHigh": "Très probable"
+        },
+        "o": {
+          "service": "Accueil",
+          "speed": "Rapidité",
+          "quality": "Qualité",
+          "price": "Prix",
+          "cleanliness": "Propreté"
+        },
+        "h": {
+          "contact": "Seulement si vous souhaitez que nous vous recontactions."
+        }
+      },
+      "equipmentCheck": {
+        "title": "Contrôle des températures et des équipements",
+        "description": "Relevez la température des réfrigérateurs et congélateurs et signalez les équipements en panne.",
+        "q": {
+          "fridgeTemp": "Température du réfrigérateur",
+          "freezerTemp": "Température du congélateur",
+          "equipmentOk": "Tous les équipements fonctionnent-ils ?",
+          "issue": "Qu'est-ce qui ne fonctionne pas ?",
+          "photo": "Photo"
+        },
+        "h": {
+          "fridgeTemp": "Lisez le thermomètre du réfrigérateur et saisissez la valeur.",
+          "freezerTemp": "Lisez le thermomètre du congélateur et saisissez la valeur."
+        }
+      }
+    },
+    "runtime": {
+      "filesUnavailableHere": "Impossible d'ajouter des fichiers ou des photos sur cet appareil.",
+      "previewNoUpload": "Impossible d'ajouter des fichiers dans un aperçu.",
+      "checklistRequired": "Cochez ce point avant d'envoyer.",
+      "defaultConfirmation": "Merci ! Vos réponses ont été envoyées.",
+      "pagePrevText": "Retour",
+      "pageNextText": "Suivant",
+      "completeText": "Envoyer",
+      "progressText": "Page {0} sur {1}",
+      "emptySurvey": "Ce formulaire n'a pas encore de questions.",
+      "completingSurvey": "Merci ! Vos réponses ont été envoyées.",
+      "loadingSurvey": "Chargement…",
+      "placeholder": "Choisir…",
+      "ratingOptionsCaption": "Choisir…",
+      "requiredError": "Cette question demande une réponse.",
+      "numericError": "Saisissez un nombre.",
+      "minError": "Saisissez {0} ou plus.",
+      "maxError": "Saisissez {0} ou moins.",
+      "numericMinMax": "Saisissez un nombre entre {1} et {2}.",
+      "numericMin": "Saisissez {1} ou plus.",
+      "numericMax": "Saisissez {1} ou moins.",
+      "invalidInputError": "Cette réponse n'est pas valide.",
+      "textMaxLength": "Utilisez {0} caractères au maximum.",
+      "minSelectError": "Choisissez-en au moins {0}.",
+      "maxSelectError": "Choisissez-en {0} au maximum.",
+      "exceedMaxSize": "Chaque fichier peut faire jusqu'à {0}.",
+      "fileSizeUnits": "octets, Ko, Mo, Go, To",
+      "exceedMaxFiles": "Vous pouvez ajouter jusqu'à {0} fichiers.",
+      "uploadingFile": "Un fichier est encore en cours d'envoi. Patientez un instant et réessayez.",
+      "loadingFile": "Chargement…",
+      "chooseFile": "Choisir des fichiers…",
+      "noFileChosen": "Aucun fichier choisi",
+      "filePlaceholder": "Faites glisser un fichier ici ou choisissez-en un ci-dessous.",
+      "chooseFileCaption": "Choisir un fichier",
+      "takePhotoCaption": "Prendre une photo",
+      "photoPlaceholder": "Prenez une photo avec le bouton ci-dessous.",
+      "fileOrPhotoPlaceholder": "Faites glisser un fichier ici, choisissez-en un ou prenez une photo.",
+      "replaceFileCaption": "Remplacer le fichier",
+      "removeFileCaption": "Retirer ce fichier",
+      "confirmRemoveFile": "Retirer {0} ?",
+      "confirmRemoveAllFiles": "Retirer tous les fichiers ?",
+      "clearCaption": "Effacer",
+      "selectCaption": "Choisir",
+      "booleanCheckedLabel": "Oui",
+      "booleanUncheckedLabel": "Non",
+      "savingData": "Envoi…",
+      "savingDataError": "Vos réponses n'ont pas été envoyées.",
+      "savingDataSuccess": "Envoyé.",
+      "saveAgainButton": "Réessayer",
+      "modalApplyButtonText": "Appliquer",
+      "modalCancelButtonText": "Annuler",
+      "filterStringPlaceholder": "Tapez pour rechercher…",
+      "emptyMessage": "Rien à afficher",
+      "loadingData": "Chargement…",
+      "tagboxDoneButtonCaption": "Valider",
+      "more": "Plus",
+      "ok": "Valider",
+      "cancel": "Annuler"
+    },
+    "fill": {
+      "title": "Remplir un formulaire",
+      "subtitle": "Répondez aux questions, puis envoyez.",
+      "backToForms": "Retour aux formulaires",
+      "another": "Envoyer une autre réponse",
+      "filesNote": "Les fichiers et photos que vous ajoutez sont enregistrés dans Mes fichiers, dans Fichiers.",
+      "required": "Obligatoire",
+      "ratingLabel": "{n} étoiles sur {max}",
+      "uploading": "Envoi…",
+      "addPhoto": "Prendre ou choisir une photo",
+      "addFile": "Choisir un fichier",
+      "filesAttached": "{count} sur {max} joints",
+      "removeFiles": "Retirer"
+    },
+    "preview": {
+      "notice": "Ceci est un aperçu. Les réponses ne sont pas enregistrées et vous ne pouvez pas ajouter de fichiers.",
+      "widthLabel": "Largeur de l'aperçu",
+      "desktop": "Ordinateur",
+      "phone": "Téléphone",
+      "restart": "Recommencer",
+      "emptyTitle": "Pas encore de questions",
+      "emptyBody": "Ajoutez une question dans Modifier pour la voir ici.",
+      "completed": "C'est la fin du formulaire. Une vraie réponse serait envoyée maintenant.",
+      "invalidDraft": "Vos dernières modifications doivent être corrigées avant de pouvoir être enregistrées : cet aperçu montre donc la dernière version enregistrée."
+    },
+    "responses": {
+      "total": "Réponses",
+      "toReview": "À examiner",
+      "last": "Dernière réponse",
+      "viewLabel": "Affichage des réponses",
+      "summary": "Résumé",
+      "table": "Liste",
+      "export": "Exporter",
+      "exportCsv": "Télécharger en .csv",
+      "exportXlsx": "Télécharger en .xlsx",
+      "openAsSheet": "Ouvrir en feuille de calcul",
+      "exportFailed": "L'export n'a pas fonctionné. Réessayez.",
+      "fileName": "Réponses au formulaire",
+      "sheetName": "Réponses",
+      "loadFailed": "Certaines réponses n'ont pas pu être chargées. Rechargez pour réessayer.",
+      "emptyTitle": "Pas encore de réponses",
+      "emptyBody": "Les réponses s'affichent ici dès que quelqu'un envoie le formulaire.",
+      "count": "Réponses",
+      "average": "Moyenne",
+      "min": "Minimum",
+      "max": "Maximum",
+      "noAnswers": "Pas encore de réponses",
+      "fileCount": "{count} fichiers joints",
+      "answeredOf": "{answered} sur {total} ont répondu",
+      "archivedQuestion": "Question supprimée",
+      "file": "Fichier",
+      "review": "Examiner",
+      "notePlaceholder": "Ajouter une note sur cette réponse",
+      "noteBy": "Dernière note par",
+      "noteHint": "Les propriétaires, les responsables et les membres ayant un accès complet à Fichiers peuvent lire les notes. La personne qui a répondu ne le peut pas.",
+      "save": "Enregistrer",
+      "close": "Fermer",
+      "cancel": "Annuler",
+      "delete": "Supprimer la réponse",
+      "deleteTitle": "Supprimer cette réponse ?",
+      "deleteBody": "Les réponses et la note sont supprimées définitivement. Les fichiers joints restent dans Mes fichiers de la personne qui a répondu."
+    },
+    "export": {
+      "submittedAt": "Envoyé le",
+      "respondent": "Répondant",
+      "sourceHeader": "Envoyé depuis",
+      "reviewHeader": "Statut",
+      "anonymous": "Anonyme",
+      "yes": "Oui",
+      "no": "Non",
+      "removedOption": "Choix supprimé",
+      "source": {
+        "manager": "Back-office",
+        "store": "Tablette du magasin",
+        "personal": "Téléphone",
+        "public": "Lien public"
+      },
+      "review": {
+        "new": "Nouvelle",
+        "reviewed": "Examinée"
+      }
+    },
+    "public": {
+      "answersGoTo": "Vos réponses sont envoyées à {store}, qui peut voir tout ce que vous saisissez ici.",
+      "noSecrets": "Ne saisissez jamais de mot de passe ni de données de carte bancaire dans un formulaire.",
+      "honeypotLabel": "Laissez ce champ vide",
+      "notFoundTitle": "Ce lien ne fonctionne pas",
+      "notFoundBody": "Le formulaire a peut-être été supprimé, ou son lien a changé. Demandez un nouveau lien au magasin.",
+      "unavailableTitle": "Ce formulaire ne peut pas être ouvert pour le moment",
+      "unavailableBody": "Réessayez dans quelques minutes.",
+      "closedTitle": "Ce formulaire n'accepte pas de réponses",
+      "closedBody": "Le magasin l'a fermé. Contactez-le directement si vous avez encore besoin de le joindre.",
+      "sentTitle": "Vos réponses ont été envoyées"
+    }
+  },
+  "pinLimit": {
+    "locked": "Trop de PIN erronés. La saisie du PIN est suspendue pendant {minutes} min. Connectez-vous avec votre téléphone ou demandez à un responsable de la débloquer.",
+    "noAnswer": "Le serveur ne répond pas. Vérifiez la connexion et réessayez.",
+    "codeInUse": "Ce code est déjà utilisé dans ce magasin. Choisissez-en un autre.",
+    "clear": "Débloquer la saisie du PIN",
+    "clearHint": "Saisie du PIN suspendue après trop d'erreurs ?",
+    "cleared": "La saisie du PIN est débloquée pour ce magasin.",
+    "clearFailed": "Impossible de débloquer la saisie du PIN.",
+    "noOperator": "Reconnectez-vous pour pointer : cette tablette ne sait plus qui l’utilise.",
+    "lockedNow": "Trop de codes PIN erronés. La saisie du PIN est suspendue pour le moment. Connectez-vous avec votre téléphone ou demandez à un responsable de la débloquer."
   }
 }
