@@ -1,9 +1,9 @@
 /**
  * Mr. Merchiva's three model tiers and the one OpenRouter client every AI route shares.
  *
- *   L1  openai/gpt-oss-120b           triage, look-ups, simple writes, engine-backed work
- *   L2  openai/gpt-6-luna             summaries, explanations, "why did it drop"
- *   L3  deepseek/deepseek-v4.1-flash  finance, forecasts, strategy
+ *   L1  openai/gpt-6-luna-pro         triage, look-ups, simple writes, engine-backed work
+ *   L2  deepseek/deepseek-v4.1-flash  summaries, explanations, "why did it drop"
+ *   L3  openai/gpt-6.1-sol            finance, forecasts, strategy
  *
  * `lib/ai/router.ts` picks the tier; this module only turns a tier into a model. Each tier can be
  * pointed elsewhere with MERCHIVA_AI_L1_MODEL / _L2_ / _L3_. The older OPENROUTER_MODEL,
@@ -25,9 +25,9 @@ export type AiTier = 1 | 2 | 3;
 export const AI_TIERS: readonly AiTier[] = [1, 2, 3];
 
 export const DEFAULT_TIER_MODELS: Readonly<Record<AiTier, string>> = {
-  1: "openai/gpt-oss-120b",
-  2: "openai/gpt-6-luna",
-  3: "deepseek/deepseek-v4.1-flash",
+  1: "openai/gpt-6-luna-pro",
+  2: "deepseek/deepseek-v4.1-flash",
+  3: "openai/gpt-6.1-sol",
 };
 
 export const TIER_MODEL_ENV: Readonly<Record<AiTier, string>> = {

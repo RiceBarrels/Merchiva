@@ -26,6 +26,8 @@ export const AI_MODEL_PRICING: Readonly<Record<string, ModelPricing>> = {
   "openai/gpt-oss-120b": { inputPerMillion: 0.15, outputPerMillion: 0.6 },
   "openai/gpt-6-luna": { inputPerMillion: 0.1, outputPerMillion: 0.5 },
   "deepseek/deepseek-v4.1-flash": { inputPerMillion: 0.035, outputPerMillion: 0.29 },
+  "openai/gpt-6-luna-pro": { inputPerMillion: 0.1, outputPerMillion: 0.5 },
+  "openai/gpt-6.1-sol": { inputPerMillion: 2, outputPerMillion: 10 },
 };
 
 /** The price list for `model`, or the flat fallback when it is unknown. */
