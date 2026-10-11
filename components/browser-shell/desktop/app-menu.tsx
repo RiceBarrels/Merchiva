@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAppMode } from "@/lib/app-mode";
+import { usePermissions } from "@/lib/context/permissions";
+import { canRunStoreDevice } from "@/lib/store-device-access";
 import {
   getRouteAccess,
   useAccessContext,
@@ -80,6 +82,7 @@ export function AppMenu() {
   const [themeMode, applyThemeMode] = useThemeMode();
   const [barVisible, setBarVisible] = useBookmarksBarVisible();
   const [open, setOpen] = useState(false);
+  const { role, permissions } = usePermissions();
   const newTabShortcut = useShortcutLabel("newTab");
   const reopenShortcut = useShortcutLabel("reopenClosedTab");
   const toggleBarShortcut = useShortcutLabel("toggleBookmarksBar");
@@ -88,7 +91,8 @@ export function AppMenu() {
 
   // New document makes a Doc: it needs the Docs plugin, and waits for the install state rather than guessing.
   const docsAllowed = ctx.appsReady && getRouteAccess(DOCS_EDIT_PATH, ctx) === "allowed";
-  const deviceMode = appMode === "store" || appMode === "personal" ? appMode : null;
+  // "Back to store device" only for an account that may run one (lib/store-device-access.ts).
+  const deviceMode = appMode === "personal" || (appMode === "store" && canRunStoreDevice(role, permissions)) ? appMode : null;
   const label = t("browserDesktop.toolbar.menu");
   const toastMessage = (message: string) => toast(message);
 

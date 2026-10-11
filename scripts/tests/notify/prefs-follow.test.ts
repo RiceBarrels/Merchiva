@@ -135,7 +135,7 @@ describe("wiring", () => {
   });
 
   test("the channel offers follows only when there is no store-machine operator", () => {
-    const page = read("components/channel/index.tsx");
+    const page = (read("components/channel/index.tsx") + read("components/channel/workspace.tsx"));
     expect(page).toContain("useFollowControl(organizationId ?? null, me.operatorRole == null)");
     expect(page).toContain("follow: follow.available ? follow : null");
     expect(read("components/channel/info-panels.tsx")).toContain("<FollowButton");
@@ -143,7 +143,7 @@ describe("wiring", () => {
   });
 
   test("the open conversation is read when only its notification dot says so (pins, thread replies)", () => {
-    const page = read("components/channel/index.tsx");
+    const page = (read("components/channel/index.tsx") + read("components/channel/workspace.tsx"));
     expect(page).toContain("useConversationDot(activeId)");
     expect(page).toContain("(unreadHere === 0 && !dotHere) || !attended");
   });

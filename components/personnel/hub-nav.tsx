@@ -2,13 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  CalendarClock,
-  CircleDollarSign,
-  ClipboardList,
-  GraduationCap,
-  Users,
-} from "lucide-react";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
@@ -18,21 +11,31 @@ import { isManagerRouteEnabled } from "@/lib/device-apps";
 import { usePermissions } from "@/lib/context/permissions";
 import { useNavMode } from "@/lib/nav-mode";
 import { useShellInfo } from "@/lib/browser-shell/shell-context";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
+import {
+  DirectoryIcon,
+  PayIcon,
+  ScheduleIcon,
+  TasksIcon,
+  TrainingIcon,
+  type AppIcon,
+} from "@/components/device/app-icons";
 
 interface HubTab {
   /** Route segment under /manager/personnel. */
   segment: "schedule" | "team" | "roles" | "training" | "pay";
   i18nKey: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  /** The feature's multi-colour glyph — the same one the sidebar and the device grids use. */
+  icon: AppIcon;
 }
 
 const TABS: HubTab[] = [
-  { segment: "schedule", i18nKey: "schedule", icon: CalendarClock },
-  { segment: "team", i18nKey: "team", icon: Users },
+  { segment: "schedule", i18nKey: "schedule", icon: ScheduleIcon },
+  { segment: "team", i18nKey: "team", icon: DirectoryIcon },
   // "Roles" is the Tasks app in the manager UI: roles + their task lists.
-  { segment: "roles", i18nKey: "roles", icon: ClipboardList },
-  { segment: "training", i18nKey: "training", icon: GraduationCap },
-  { segment: "pay", i18nKey: "pay", icon: CircleDollarSign },
+  { segment: "roles", i18nKey: "roles", icon: TasksIcon },
+  { segment: "training", i18nKey: "training", icon: TrainingIcon },
+  { segment: "pay", i18nKey: "pay", icon: PayIcon },
 ];
 
 function hrefFor(segment: HubTab["segment"]) {
@@ -75,55 +78,58 @@ export function PersonnelHeader() {
 
 // ─── Tab navigation ──────────────────────────────────────────────────────────
 
-export function PersonnelTabsNav() {
-  const t = useT();
-  const pathname = usePathname();
-  const { pending } = usePersonnelHub();
+function usePersonnelTabs() {
   const { installed } = useDeviceApps();
   const { can } = usePermissions();
   // Tasks (roles) / training / pay are optional org apps (see /manager/apps).
   // The Team tab additionally needs team.view (the page itself is guarded).
-  const tabs = TABS.filter(
+  return TABS.filter(
     (tab) =>
       isManagerRouteEnabled(hrefFor(tab.segment), installed) &&
       (tab.segment !== "team" || can("team", "view")),
   );
+}
 
-  const isActive = (segment: HubTab["segment"]) => {
+function useIsActive() {
+  const pathname = usePathname();
+  return (segment: HubTab["segment"]) => {
     const href = hrefFor(segment);
     return pathname === href || pathname.startsWith(href + "/");
   };
+}
+
+/** Phones: the hub's tabs as a bottom tab bar, rendered after the page by the layout. */
+export function PersonnelBottomNav() {
+  const t = useT();
+  const { pending } = usePersonnelHub();
+  const tabs = usePersonnelTabs();
+  const isActive = useIsActive();
+  return (
+    <BottomTabBar
+      label={t("personnel.title")}
+      onNavigate={() => hapticLight()}
+      tabs={tabs.map((tab) => ({
+        href: hrefFor(tab.segment),
+        label: t(`personnel.tabs.${tab.i18nKey}`),
+        icon: tab.icon,
+        active: isActive(tab.segment),
+        badge: tab.segment === "schedule" ? pending : undefined,
+      }))}
+    />
+  );
+}
+
+/** `md` and up: the segmented tab row under the header. */
+export function PersonnelTabsNav() {
+  const t = useT();
+  const { pending } = usePersonnelHub();
+  const tabs = usePersonnelTabs();
+  const isActive = useIsActive();
 
   return (
-    <div className="border-b border-border bg-background shrink-0">
-      {/* Mobile: compact underline tabs (same style as PageTabs) */}
-      <div className="flex md:hidden overflow-x-auto no-scrollbar">
-        {tabs.map((tab) => {
-          const active = isActive(tab.segment);
-          return (
-            <Link
-              key={tab.segment}
-              href={hrefFor(tab.segment)}
-              onClick={() => hapticLight()}
-              className={cn(
-                "flex-1 shrink-0 flex items-center justify-center gap-1 px-3.5 py-2 text-[12px] font-medium border-b-2 transition-colors whitespace-nowrap",
-                active
-                  ? "border-foreground text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t(`personnel.tabs.${tab.i18nKey}`)}
-              {tab.segment === "schedule" && pending > 0 && (
-                <span className="min-w-[15px] h-[15px] px-1 rounded-full bg-foreground text-background text-[9px] font-mono font-bold tabular-nums inline-flex items-center justify-center">
-                  {pending}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </div>
-      {/* Desktop: segmented tab row with icons + subtitles */}
-      <div className="hidden md:flex overflow-x-auto no-scrollbar">
+    <div className="hidden md:block border-b border-border bg-background shrink-0">
+      {/* Segmented tab row with icons + subtitles */}
+      <div className="flex overflow-x-auto no-scrollbar">
         {tabs.map((tab) => {
           const active = isActive(tab.segment);
           const Icon = tab.icon;
@@ -141,13 +147,11 @@ export function PersonnelTabsNav() {
             >
               <span
                 className={cn(
-                  "w-7 h-7 lg:w-8 lg:h-8 rounded-lg inline-flex items-center justify-center shrink-0",
-                  active
-                    ? "bg-foreground text-background"
-                    : "bg-muted text-muted-foreground",
+                  "w-7 h-7 lg:w-8 lg:h-8 rounded-lg inline-flex items-center justify-center shrink-0 transition-colors",
+                  active ? "bg-background shadow-[inset_0_0_0_.5px_rgb(0_0_0/.08)]" : "bg-muted",
                 )}
               >
-                <Icon className="h-[14px] w-[14px]" strokeWidth={1.75} />
+                <Icon className="h-[17px] w-[17px] lg:h-[18px] lg:w-[18px]" />
               </span>
               <div className="text-left min-w-0">
                 <div

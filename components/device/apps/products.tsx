@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from "react";
 import { Package, ShoppingBag, Tag } from "lucide-react";
-import { DeviceDrawer } from "@/components/device/device-drawer";
+import { LiteSubPage } from "./lite-page";
 import { useT } from "@/lib/i18n/context";
 import { useCurrency } from "@/lib/currency";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
@@ -80,15 +80,16 @@ export function ProductsLite({ organizationId, surface }: LiteAppProps) {
         </LiteSection>
       )}
 
-      <DeviceDrawer
+      <LiteSubPage
+        surface={surface}
         open={selected !== null}
-        onOpenChange={(open) => { if (!open) setSelected(null); }}
+        onClose={() => setSelected(null)}
         title={selected?.name ?? ""}
         cancelLabel={t("device.lite.products.close")}
-        maxWidth={surface === "store" ? 480 : undefined}
+        maxWidth={480}
       >
         {selected && <ProductDetail product={selected} price={format(selected.price)} />}
-      </DeviceDrawer>
+      </LiteSubPage>
     </LiteScreen>
   );
 }

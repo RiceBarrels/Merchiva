@@ -6,6 +6,7 @@
 import { createContext, useContext } from "react";
 import type { ChatModel, Person } from "@/lib/chat/model";
 import type { FollowControl } from "@/components/channel/follow";
+import type { ChatWrites } from "@/lib/spacetimedb/actions/chat";
 
 export type SidePanel =
   | { kind: "thread"; parentId: string }
@@ -30,6 +31,8 @@ export interface ChannelWorkspaceValue {
   mention: (name: string) => void;
   /** Runs a write and turns a rejection into a toast. */
   run: (write: () => Promise<unknown>) => Promise<boolean>;
+  /** The messages, replies, reactions, edits, deletes and pins this view writes: the account's own, or a store tablet's operator's. */
+  writes: ChatWrites;
   /** Asks before deleting one of your own messages. */
   confirmDelete: (conversationId: string, messageId: string) => void;
   /** The message to scroll to and flash once (search results, pins). */

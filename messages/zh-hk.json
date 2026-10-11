@@ -834,7 +834,8 @@
         "team": "團隊",
         "trainingGrading": "培訓與評分",
         "merchiva": "Mr. Merchiva",
-        "drive": "雲端硬碟（所有人的檔案）"
+        "drive": "雲端硬碟（所有人的檔案）",
+        "storeDevice": "門店裝置"
       },
       "toastInviteSent": "邀請已發送",
       "toastInviteCreateFailed": "無法創建邀請",
@@ -1756,7 +1757,10 @@
       "leaveLastBody": "你是唯一的成員。退出後，任何人都無法再打開這個頻道。",
       "soloNoteStaff": "目前只有你在這裏。所有者或經理可以添加成員。",
       "createChannelPrompt": "創建一個頻道開始吧。"
-    }
+    },
+    "emoji": "表情符號",
+    "fromStore": "門店",
+    "fromStoreHint": "喺門店裝置上傳送"
   },
   "dashboard": {
     "greeting": {
@@ -5057,7 +5061,8 @@
     },
     "pager": {
       "page": "第 {n} 頁"
-    }
+    },
+    "swipeToClose": "右/下滑關閉程式"
   },
   "storeDevice": {
     "thisDevice": "門市裝置",
@@ -5089,7 +5094,8 @@
       "requests": "申請",
       "docs": "文件",
       "directory": "通訊錄",
-      "settings": "設定"
+      "settings": "設定",
+      "punch-in": "打卡"
     },
     "noMembers": "仲未有團隊成員",
     "unnamed": "未命名",
@@ -5126,7 +5132,10 @@
     "logOutKeepSub": "保持打卡狀態 · 將裝置留畀下一位",
     "sosCooldown": "啱啱已發出 SOS，店長已收到提醒。2 分鐘後先可以再發送。",
     "sosUnregistered": "SOS 未發出：呢部平板未登記為門市裝置。請直接聯絡店長。",
-    "sosFailed": "SOS 未發出。請檢查網絡後再試，或直接聯絡店長。"
+    "sosFailed": "SOS 未發出。請檢查網絡後再試，或直接聯絡店長。",
+    "managersAlways": "經理一律可以設定門店裝置。",
+    "notAllowedTitle": "呢個帳號唔可以用作門店裝置",
+    "notAllowedDesc": "請店主幫你開啟「門店裝置」權限，或者換一種方式使用呢部裝置。"
   },
   "personalDevice": {
     "leaveBtn": "離開",
@@ -5229,7 +5238,11 @@
       "onShift": "當值中",
       "onBreak": "休息中",
       "off": "落班",
-      "since": "自"
+      "since": "自",
+      "status": "狀態",
+      "email": "電郵",
+      "noEmail": "沒有電郵",
+      "joined": "加入時間"
     },
     "settings": {
       "language": "語言",
@@ -5238,6 +5251,14 @@
       "themeLight": "淺色",
       "themeDark": "深色",
       "switchMode": "切換裝置模式"
+    },
+    "chat": {
+      "openList": "打開頻道列表",
+      "channels": "頻道",
+      "inputMode": "輸入方式",
+      "modeVoice": "對講",
+      "modeText": "鍵盤",
+      "resize": "調整頻道闊度"
     }
   },
   "deviceApps": {

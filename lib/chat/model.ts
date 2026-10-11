@@ -27,6 +27,10 @@ export interface MessageIn {
   attachmentType: string | null;
   attachmentName: string | null;
   isMerchiva: boolean;
+  /** A walkie voice note's raw transcript, when `content` is its AI summary. */
+  voiceTranscript?: string | null;
+  /** Sent by a shared store tablet for its operator (chat_message_origin). */
+  fromStore?: boolean;
 }
 export interface ExtIn {
   messageId: string;
@@ -71,6 +75,10 @@ export interface ChatEntry {
   replyToId: string | null;
   threadParentId: string;
   attachment: { url: string; type: string; name: string } | null;
+  /** The raw transcript behind an AI-summarised voice note. */
+  voiceTranscript: string | null;
+  /** Sent from a shared store tablet by its PIN / QR operator, not from the author's own device. */
+  fromStore: boolean;
   reactions: ReactionGroup[];
   thread: ThreadSummary | null;
   mentionsMe: boolean;
@@ -165,6 +173,8 @@ export function buildChatModel(input: ChatRowsIn): ChatModel {
       attachment: !deleted && m.attachmentUrl
         ? { url: m.attachmentUrl, type: m.attachmentType ?? "file", name: m.attachmentName ?? "" }
         : null,
+      voiceTranscript: deleted ? null : m.voiceTranscript || null,
+      fromStore: m.fromStore === true,
       reactions: deleted ? [] : groupReactions(reactionsByMsg.get(m.id) ?? [], meHex),
       thread: null,
       mentionsMe: !!mentions && (mentions.everyone || mentions.users.has(meHex)),

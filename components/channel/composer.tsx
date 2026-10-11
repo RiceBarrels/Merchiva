@@ -1,18 +1,19 @@
 "use client";
 
 import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { ArrowUp, AtSign, Paperclip, Users } from "lucide-react";
+import { ArrowUp, AtSign, Paperclip, Smile, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { uploadChatFile } from "@/lib/chat/upload";
 import { usePermissions } from "@/lib/context/permissions";
 import { appUploadErrorKeyOr } from "@/lib/storage/app-upload";
 import { useChannelWorkspace } from "@/components/channel/context";
+import { EmojiGrid } from "@/components/channel/message-actions";
 
 export interface ComposerHandle {
   insert: (text: string) => void;
@@ -31,6 +32,8 @@ interface ComposerProps {
   onSubmit: (text: string, attachment: Attachment | null) => Promise<boolean>;
   onFocus?: () => void;
   autoFocus?: boolean;
+  /** An emoji button that inserts at the caret (where the phone keyboard is the only other way in). */
+  emoji?: boolean;
   className?: string;
 }
 
@@ -45,7 +48,7 @@ function mentionQuery(value: string, caret: number): { start: number; query: str
 }
 
 export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Composer(
-  { placeholder, memberHexes, everyone, onSubmit, onFocus, autoFocus, className },
+  { placeholder, memberHexes, everyone, onSubmit, onFocus, autoFocus, emoji = false, className },
   ref,
 ) {
   const t = useT();
@@ -55,6 +58,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState<{ start: number; query: string } | null>(null);
   const [pick, setPick] = useState(0);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
 
@@ -182,6 +186,25 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           >
             <AtSign />
           </Button>
+          {emoji && (
+            <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+              <PopoverTrigger
+                render={<Button variant="ghost" size="icon-sm" className="text-muted-foreground" title={t("chat.emoji")} aria-label={t("chat.emoji")} />}
+              >
+                <Smile />
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-auto p-1.5" initialFocus={false}>
+                <EmojiGrid
+                  onPick={(e) => {
+                    setEmojiOpen(false);
+                    const caret = input.current?.selectionStart ?? text.length;
+                    const end = input.current?.selectionEnd ?? caret;
+                    insertAt(caret, end, e);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
           {!isMobile && <span className="ms-auto me-2 hidden text-[11px] text-muted-foreground md:inline">{t("chat.ws.sendHint")}</span>}
           <Button
             size="icon-sm"

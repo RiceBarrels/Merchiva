@@ -81,12 +81,15 @@ export function useOpenDynamicUIElementCount(): number {
 
 /**
  * The dialog's depth. The first render produces -1 (skip side effects), then the layout effect
- * commits the real depth before paint.
+ * commits the real depth before paint. A dialog that is leaving passes `shown = false`: it keeps
+ * its depth but leaves the stack, so one opened while it slides out takes its place instead of
+ * stacking on top of it.
  */
-export function useDialogDepth(): number {
+export function useDialogDepth(shown = true): number {
   const [depth, setDepth] = React.useState(-1);
   const entryRef = React.useRef<DialogStackEntry | null>(null);
   React.useLayoutEffect(() => {
+    if (!shown) return;
     // The same entry across an <Activity> hide / show keeps the dialog's place in the open order.
     entryRef.current ??= { seq: 0, depth: -1, onDepth: setDepth };
     const entry = entryRef.current;
@@ -96,6 +99,6 @@ export function useDialogDepth(): number {
       stack.unregister(entry);
       notifyCount();
     };
-  }, []);
+  }, [shown]);
   return depth;
 }

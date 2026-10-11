@@ -14,7 +14,6 @@ import {
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useT } from "@/lib/i18n/context";
 import type { ChatEntry } from "@/lib/chat/model";
-import { setChatMessagePinned, toggleChatReaction } from "@/lib/spacetimedb/actions/chat";
 import { useChannelWorkspace } from "@/components/channel/context";
 
 export const QUICK_REACTIONS = ["👍", "✅", "👀", "🙏"];
@@ -39,13 +38,13 @@ export function EmojiGrid({ onPick }: { onPick: (emoji: string) => void }) {
 
 /** Reaction picker behind a smiley button (the toolbar and the reaction bar both use it). */
 export function ReactionPicker({ entry, trigger }: { entry: ChatEntry; trigger: React.ReactElement }) {
-  const { run } = useChannelWorkspace();
+  const { run, writes } = useChannelWorkspace();
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={trigger} />
       <PopoverContent side="top" align="end" className="w-auto p-1.5">
-        <EmojiGrid onPick={(emoji) => { setOpen(false); void run(() => toggleChatReaction(entry.conversationId, entry.id, emoji)); }} />
+        <EmojiGrid onPick={(emoji) => { setOpen(false); void run(() => writes.react(entry.conversationId, entry.id, emoji)); }} />
       </PopoverContent>
     </Popover>
   );
@@ -60,10 +59,10 @@ interface ActionHandlers {
 
 function useMessageActions({ entry }: ActionHandlers) {
   const t = useT();
-  const { run, mention, nameOf, confirmDelete } = useChannelWorkspace();
+  const { run, writes, mention, nameOf, confirmDelete } = useChannelWorkspace();
   return {
-    react: (emoji: string) => void run(() => toggleChatReaction(entry.conversationId, entry.id, emoji)),
-    togglePin: () => void run(() => setChatMessagePinned(entry.conversationId, entry.id, entry.pinnedAt == null)),
+    react: (emoji: string) => void run(() => writes.react(entry.conversationId, entry.id, emoji)),
+    togglePin: () => void run(() => writes.pin(entry.conversationId, entry.id, entry.pinnedAt == null)),
     copy: () => {
       navigator.clipboard.writeText(entry.content)
         .then(() => toast.success(t("chat.ws.copied")))

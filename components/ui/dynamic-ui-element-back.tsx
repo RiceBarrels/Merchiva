@@ -2,6 +2,7 @@
 
 import { ArrowLeft } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useDialogHost } from "@/components/ui/dialog-host";
 import { CORNER_BUTTON_CLASS, CORNER_OFFSET_PX, CORNER_RESERVE_PX } from "@/components/ui/corner-button";
 import { useMountedBrowserShell } from "@/lib/browser-shell/shell-dom";
 import type { ShellLayout } from "@/lib/browser-shell/types";
@@ -21,12 +22,13 @@ import { cn } from "@/lib/utils";
  */
 
 /**
- * Whether a phone page shows the visible Back: only on the browser shell's phone layout. The
- * legacy MobileShell draws its own FloatingNavButton (no shell is marked there), and /store,
- * /personal, /choose and setup render without a shell.
+ * Whether a phone page shows the visible Back: on the browser shell's phone layout, and in a
+ * DialogHost (a device app's window on /store or /personal), neither of which has another way back.
+ * The legacy MobileShell draws its own FloatingNavButton (no shell is marked there), and the rest of
+ * /store, /personal, /choose and setup render without a shell.
  */
-export function dialogBackVisible(shell: ShellLayout | null): boolean {
-  return shell === "mobile";
+export function dialogBackVisible(shell: ShellLayout | null, inHost = false): boolean {
+  return shell === "mobile" || inHost;
 }
 
 /**
@@ -51,20 +53,22 @@ interface BackProps {
   onBack: () => void;
   /** True while the page slides out, so a second tap cannot close it twice. */
   exiting: boolean;
+  /** The page fills a host's box below the status bar (MobileDynamicUIElementPage `contained`). */
+  contained?: boolean;
 }
 
 /**
  * The Back button and title pill, ungated. The row's right inset keeps the pill clear of a
  * top-end corner button (the channel's group info).
  */
-export function DynamicUIElementBackBar({ title, onBack, exiting }: BackProps) {
+export function DynamicUIElementBackBar({ title, onBack, exiting, contained = false }: BackProps) {
   const t = useT();
   const reducedMotion = useReducedMotion() ?? false;
   const pillTransition = reducedMotion ? { duration: 0 } : { duration: 0.2, ease: [0.32, 0.72, 0, 1] as const };
   return (
     <div
       className="pointer-events-none absolute z-40 flex items-center gap-2"
-      style={{ top: dialogBackTop(getSafeAreaInsets().top), left: CORNER_OFFSET_PX, right: CORNER_RESERVE_PX + CORNER_OFFSET_PX, direction: "ltr" }}
+      style={{ top: contained ? CORNER_OFFSET_PX : dialogBackTop(getSafeAreaInsets().top), left: CORNER_OFFSET_PX, right: CORNER_RESERVE_PX + CORNER_OFFSET_PX, direction: "ltr" }}
     >
       <button
         type="button"
@@ -94,9 +98,11 @@ export function DynamicUIElementBackBar({ title, onBack, exiting }: BackProps) {
   );
 }
 
-/** The Back of a DynamicUIElement phone page, shown only on the /manager phone layout. */
+/** The Back of a DynamicUIElement phone page, shown on the /manager phone layout and in a device app. */
 export function DynamicUIElementBack(props: BackProps) {
   const shell = useMountedBrowserShell();
-  if (!dialogBackVisible(shell)) return null;
-  return <DynamicUIElementBackBar {...props} />;
+  const host = useDialogHost();
+  if (!dialogBackVisible(shell, host !== null)) return null;
+  // A host with a page root holds its pages in its own box, below the status bar.
+  return <DynamicUIElementBackBar contained={typeof host?.pageRoot === "function"} {...props} />;
 }

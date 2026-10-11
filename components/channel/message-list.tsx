@@ -19,6 +19,8 @@ const COMPACT_WINDOW_MS = 5 * 60 * 1000;
 export function isCompactFollowUp(prev: ChatEntry | undefined, cur: ChatEntry): boolean {
   if (!prev || prev.deleted || cur.deleted) return false;
   if (prev.senderHex !== cur.senderHex || prev.isMerchiva !== cur.isMerchiva) return false;
+  // What someone sent from the store's shared tablet stands apart from their own device's messages.
+  if (prev.fromStore !== cur.fromStore) return false;
   if (prev.thread || cur.pinnedAt != null) return false;
   if (dateKey(new Date(prev.createdAt)) !== dateKey(new Date(cur.createdAt))) return false;
   return cur.createdAt - prev.createdAt < COMPACT_WINDOW_MS;

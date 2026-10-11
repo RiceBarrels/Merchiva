@@ -9,7 +9,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Bug, Camera, CheckCircle2, CircleDot, RefreshCw, Send, User, Users } from "lucide-react";
-import { DeviceDrawer } from "@/components/device/device-drawer";
+import { LiteSubPage } from "./lite-page";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { BUG_SEVERITIES, BUG_STATUS_TONE, isBugOpen, type BugReport, type BugSeverity } from "@/lib/bugs";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
@@ -123,12 +123,13 @@ export function BugsLite({ surface, isManager }: LiteAppProps) {
       )}
 
       {/* ── Report form ───────────────────────────────────────────────────── */}
-      <DeviceDrawer
+      <LiteSubPage
+        surface={surface}
         open={reporting}
-        onOpenChange={(open) => { if (!open) closeReport(); }}
+        onClose={closeReport}
+        onPageClose={() => (busy ? setReporting(false) : closeReport())}
         title={t("device.lite.bugs.report")}
         cancelLabel={t("common.cancel")}
-        onCancel={closeReport}
       >
         <div className="flex flex-col gap-3 pb-1">
           <label className="flex flex-col gap-1.5">
@@ -217,15 +218,15 @@ export function BugsLite({ surface, isManager }: LiteAppProps) {
             disabled={busy || !draft.canSubmit}
           />
         </div>
-      </DeviceDrawer>
+      </LiteSubPage>
 
       {/* ── One report, read-only ─────────────────────────────────────────── */}
-      <DeviceDrawer
+      <LiteSubPage
+        surface={surface}
         open={detail !== null}
-        onOpenChange={(open) => { if (!open) setDetail(null); }}
+        onClose={() => setDetail(null)}
         title={detail?.title ?? ""}
         cancelLabel={t("common.close")}
-        onCancel={() => setDetail(null)}
       >
         {detail && (
           <div className="flex flex-col gap-3 pb-1">
@@ -262,7 +263,7 @@ export function BugsLite({ surface, isManager }: LiteAppProps) {
             </p>
           </div>
         )}
-      </DeviceDrawer>
+      </LiteSubPage>
     </LiteScreen>
   );
 }

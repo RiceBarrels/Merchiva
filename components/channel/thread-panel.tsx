@@ -8,7 +8,6 @@ import { fmt } from "@/lib/i18n/fmt";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { ChatChannel } from "@/lib/chat/model";
-import { sendThreadReply } from "@/lib/spacetimedb/actions/chat";
 import { useChannelWorkspace } from "@/components/channel/context";
 import { MessageRow } from "@/components/channel/message-row";
 import { isCompactFollowUp } from "@/components/channel/message-list";
@@ -48,7 +47,7 @@ export const ThreadPanel = forwardRef<ComposerHandle, {
   onComposerFocus: () => void;
 }>(function ThreadPanel({ channel, parentId, onComposerFocus }, ref) {
   const t = useT();
-  const { model, openPanel, run } = useChannelWorkspace();
+  const { model, openPanel, run, writes } = useChannelWorkspace();
   const parent = model.entryById.get(parentId);
   const replies = model.repliesOf(parentId);
   const close = () => openPanel(null);
@@ -82,7 +81,7 @@ export const ThreadPanel = forwardRef<ComposerHandle, {
         memberHexes={channel.memberHexes}
         everyone={false}
         onFocus={onComposerFocus}
-        onSubmit={(text, attachment) => run(() => sendThreadReply(channel.id, parentId, text, attachment))}
+        onSubmit={(text, attachment) => run(() => writes.threadReply(channel.id, parentId, text, attachment))}
       />
     </PanelShell>
   );

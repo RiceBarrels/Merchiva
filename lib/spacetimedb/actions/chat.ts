@@ -2,12 +2,16 @@
 // reactions, threads, edits, pins, topics, read state, mute / star, leaving
 // and removing members. Sending, creating, inviting and deleting stay in
 // lib/spacetimedb/actions.ts (sendMessage, createConversation,
-// addMembersToConversation, deleteMessage).
+// addMembersToConversation, deleteMessage). ChatWrites bundles what a
+// conversation view writes, for the account itself or, on a store tablet,
+// for its PIN / QR operator.
 //
 // A sibling of lib/spacetimedb/actions.ts: import from "@/lib/spacetimedb/actions/chat".
 // Failures reject with the module's message ("Not a conversation member", …).
 
 import { getConnection } from "@/lib/spacetimedb/client";
+import { deleteMessage, sendMessage } from "@/lib/spacetimedb/actions";
+import { currentOperatorGrant } from "@/lib/spacetimedb/actions/pin";
 import { storedId } from "@/lib/merchiva/action-ids";
 import { getDictionary, lookup } from "@/lib/i18n/dictionaries";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale } from "@/lib/i18n/config";
@@ -147,3 +151,69 @@ export async function createChannel(organizationId: string, name: string, member
   return best?.id ?? null;
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+export type ChatAttachment = { url: string; type: string; name: string };
+
+/**
+ * What a conversation view writes. ACCOUNT_CHAT_WRITES writes as the signed-in account;
+ * OPERATOR_CHAT_WRITES, on a store tablet, as the member its latest log-in resolved — the module
+ * attributes those to that member and marks them as sent from the store.
+ */
+export interface ChatWrites {
+  send(conversationId: string, content: string, attachment?: ChatAttachment | null, voiceTranscript?: string | null): Promise<void>;
+  threadReply(conversationId: string, parentId: string, content: string, attachment?: ChatAttachment | null): Promise<void>;
+  react(conversationId: string, messageId: string, emoji: string): Promise<void>;
+  edit(conversationId: string, messageId: string, content: string): Promise<void>;
+  remove(conversationId: string, messageId: string): Promise<void>;
+  pin(conversationId: string, messageId: string, pinned: boolean): Promise<void>;
+}
+
+export const ACCOUNT_CHAT_WRITES: ChatWrites = {
+  send: (conversationId, content, attachment, voiceTranscript) => sendMessage(conversationId, content, undefined, attachment, voiceTranscript),
+  threadReply: sendThreadReply,
+  react: toggleChatReaction,
+  edit: editChatMessage,
+  remove: deleteMessage,
+  pin: setChatMessagePinned,
+};
+
+/** The store tablet's current operator grant; without one nobody is logged in to write for. */
+function grantId(): string {
+  const grant = currentOperatorGrant();
+  if (!grant) throw new Error("NO_OPERATOR_SESSION");
+  return grant;
+}
+
+export const OPERATOR_CHAT_WRITES: ChatWrites = {
+  send: (conversationId, content, attachment, voiceTranscript) => reducers().sendOperatorMessage({
+    grantId: grantId(),
+    conversationId: id(conversationId),
+    content,
+    replyToId: undefined,
+    attachmentUrl: attachment?.url ?? undefined,
+    attachmentType: attachment?.type ?? undefined,
+    attachmentName: attachment?.name ?? undefined,
+    voiceTranscript: voiceTranscript ?? undefined,
+  }),
+  threadReply: (conversationId, parentId, content, attachment) => reducers().sendOperatorThreadReply({
+    grantId: grantId(),
+    conversationId: id(conversationId),
+    parentId: id(parentId),
+    content,
+    attachmentUrl: attachment?.url ?? undefined,
+    attachmentType: attachment?.type ?? undefined,
+    attachmentName: attachment?.name ?? undefined,
+  }),
+  react: (conversationId, messageId, emoji) => reducers().toggleOperatorChatReaction({
+    grantId: grantId(), conversationId: id(conversationId), messageId: id(messageId), emoji,
+  }),
+  edit: (conversationId, messageId, content) => reducers().editOperatorChatMessage({
+    grantId: grantId(), conversationId: id(conversationId), messageId: id(messageId), content,
+  }),
+  remove: (conversationId, messageId) => reducers().deleteOperatorMessage({
+    grantId: grantId(), conversationId: id(conversationId), messageId: id(messageId),
+  }),
+  pin: (conversationId, messageId, pinned) => reducers().setOperatorChatMessagePinned({
+    grantId: grantId(), conversationId: id(conversationId), messageId: id(messageId), pinned,
+  }),
+};

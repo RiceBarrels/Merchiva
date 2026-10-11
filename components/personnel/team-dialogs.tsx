@@ -47,6 +47,7 @@ const PERMISSION_SECTIONS: ReadonlyArray<{
   { key: "team",             i18nKey: "team",            actions: ["view", "invite", "edit"] },
   { key: "training_grading", i18nKey: "trainingGrading", actions: ["view", "edit"] },
   { key: "drive",            i18nKey: "drive",           actions: ["view", "edit"] },
+  { key: "store_device",     i18nKey: "storeDevice",     actions: ["view"] },
   { key: "merchiva",         i18nKey: "merchiva",        actions: ["view"] },
 ];
 
@@ -73,7 +74,9 @@ export function PermissionsEditor({
         const sec = (value[key] ?? {}) as { view?: boolean; edit?: boolean; invite?: boolean };
         const locked = lockedSections.includes(key);
         const lockedNote = locked ? t("personnel.team.permissionLockedOwnerOnly") : null;
-        const hint = lockedNote ?? (key === "drive" && role === "manager" ? t("drive.members.managersAlways") : null);
+        const hint = lockedNote ?? (role === "manager"
+          ? key === "drive" ? t("drive.members.managersAlways") : key === "store_device" ? t("storeDevice.managersAlways") : null
+          : null);
         const hintId = hint ? `${hintPrefix}-${key}` : undefined;
         return (
           <div key={key} className="px-2.5 py-1.5">
@@ -266,7 +269,7 @@ export function InviteMemberDialog({
               value={perms}
               onChange={setPerms}
               role={role}
-              lockedSections={isOwner ? [] : ["drive"]}
+              lockedSections={isOwner ? [] : ["drive", "store_device"]}
             />
           </div>
           <DialogActions

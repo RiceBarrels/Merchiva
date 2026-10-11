@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticSuccess } from "@/lib/haptics";
 import { MerchivaLogo } from "@/components/logo";
 import { useT } from "@/lib/i18n/context";
+import { lockAxis } from "@/lib/gestures/page-swipe";
 import { usePushToTalk } from "./use-push-to-talk";
 import { fmtMMSS } from "./time";
 import type { PttResult } from "./types";
@@ -29,7 +30,16 @@ export interface TalkBarProps {
   className?: string;
   /** Additive: lets the page pause idle timers while recording. */
   onRecordingChange?: (recording: boolean) => void;
+  /** The bar's top, in px above the bottom of the positioned box the recording scrim and
+   *  drawer cover — the bar's own 120px plus anything laid out under it. */
+  overlayBottom?: number;
+  /** Waits this long before a press of the mic starts recording, and drops the press if the
+   *  finger slides sideways first: on a bar that swipes (/personal) such a press was a swipe. */
+  holdDelayMs?: number;
 }
+
+/** The hold the /personal bar waits for: shorter than a tap-and-slide, unnoticeable before speaking. */
+export const PTT_HOLD_DELAY_MS = 180;
 
 type Hot = "delete" | "original" | null;
 
@@ -44,6 +54,8 @@ export function TalkBar({
   disabled,
   className,
   onRecordingChange,
+  overlayBottom = 120,
+  holdDelayMs = 0,
 }: TalkBarProps) {
   const t = useT();
   const ptt = usePushToTalk();
@@ -52,6 +64,8 @@ export function TalkBar({
   /** True between pointerdown and pointerup, regardless of render timing. */
   const pressed = useRef(false);
   const activePointer = useRef<number | null>(null);
+  /** A press still inside its hold delay: where it went down, and the timer that starts recording. */
+  const pending = useRef<{ x0: number; y0: number; timer: number } | null>(null);
   const LeftIcon = leftAction.icon;
   const rec = ptt.recording;
 
@@ -65,20 +79,15 @@ export function TalkBar({
     }
   }, [ptt.error, t]);
 
-  const onMicDown = async (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (disabled || sending || rec) return;
-    e.preventDefault();
-    activePointer.current = e.pointerId;
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
-    setHot(null);
+  const dropPending = () => {
+    if (!pending.current) return;
+    window.clearTimeout(pending.current.timer);
+    pending.current = null;
+  };
+  useEffect(() => () => dropPending(), []);
+
+  const begin = async () => {
     hapticMedium();
-    // A ref, not `rec`: ptt.start() awaits getUserMedia, which takes hundreds
-    // of ms and blocks on the permission prompt the first time. A pointerup in
-    // that window used to hit `finish()` while `rec` was still false, so it
-    // returned and the recorder was left running with no release pending —
-    // the scrim stayed up, the shared tablet stopped auto-logging-out, and the
-    // next tap sent the whole accidental recording to the channel.
-    pressed.current = true;
     await ptt.start();
     if (!pressed.current) {
       // Released before the mic opened — throw the recording away.
@@ -86,7 +95,41 @@ export function TalkBar({
     }
   };
 
+  const onMicDown = async (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (disabled || sending || rec) return;
+    e.preventDefault();
+    activePointer.current = e.pointerId;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    setHot(null);
+    // A ref, not `rec`: ptt.start() awaits getUserMedia, which takes hundreds
+    // of ms and blocks on the permission prompt the first time. A pointerup in
+    // that window used to hit `finish()` while `rec` was still false, so it
+    // returned and the recorder was left running with no release pending —
+    // the scrim stayed up, the shared tablet stopped auto-logging-out, and the
+    // next tap sent the whole accidental recording to the channel.
+    pressed.current = true;
+    dropPending();
+    if (holdDelayMs > 0) {
+      const timer = window.setTimeout(() => {
+        pending.current = null;
+        if (pressed.current) void begin();
+      }, holdDelayMs);
+      pending.current = { x0: e.clientX, y0: e.clientY, timer };
+      return;
+    }
+    await begin();
+  };
+
   const onMicMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const p = pending.current;
+    if (p) {
+      // Sideways before the hold registered: the bar is being swiped, not held.
+      if (lockAxis(e.clientX - p.x0, e.clientY - p.y0) === "horizontal") {
+        dropPending();
+        pressed.current = false;
+      }
+      return;
+    }
     if (!rec) return;
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const target = el?.closest<HTMLElement>("[data-ptt-hot]");
@@ -99,6 +142,11 @@ export function TalkBar({
 
   const finish = useCallback(async () => {
     pressed.current = false;
+    // Let go inside the hold delay: a tap, not a hold.
+    if (pending.current) {
+      window.clearTimeout(pending.current.timer);
+      pending.current = null;
+    }
     // `rec` can still be false here when the release beat getUserMedia;
     // onMicDown sees `pressed` cleared and discards the recording itself.
     if (!rec) return;
@@ -138,9 +186,10 @@ export function TalkBar({
       {/* Scrim over the content above the bar while recording */}
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 bottom-[120px] z-[6] bg-black/10 backdrop-blur-[2px] transition-opacity duration-200",
+          "pointer-events-none absolute inset-x-0 top-0 z-[6] bg-black/10 backdrop-blur-[2px] transition-opacity duration-200",
           rec ? "opacity-100" : "opacity-0",
         )}
+        style={{ bottom: overlayBottom }}
       />
       {/* Recording drawer. Slides down behind the bar when idle and goes
           `invisible` once the slide finishes (visibility transitions keep it
@@ -148,9 +197,10 @@ export function TalkBar({
           narrower than its positioned ancestor (tablet two-column layouts). */}
       <div
         className={cn(
-          "absolute inset-x-0 bottom-[120px] z-[7] border-t border-border bg-background px-4 pb-4 transition-[transform,visibility] duration-250 ease-[cubic-bezier(.2,.7,.2,1)]",
+          "absolute inset-x-0 z-[7] border-t border-border bg-background px-4 pb-4 transition-[transform,visibility] duration-250 ease-[cubic-bezier(.2,.7,.2,1)]",
           rec ? "translate-y-0" : "invisible translate-y-[110%]",
         )}
+        style={{ bottom: overlayBottom }}
       >
         <div className="mx-auto mb-2.5 mt-2 h-1 w-9 rounded-full bg-border" />
         <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -222,6 +272,7 @@ export function TalkBar({
           <button
             type="button"
             disabled={disabled || sending}
+            data-ptt-mic
             onPointerDown={onMicDown}
             onPointerMove={onMicMove}
             onPointerUp={finish}

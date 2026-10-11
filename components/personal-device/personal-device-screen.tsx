@@ -2,48 +2,31 @@
 
 import { useMemo, useState } from "react";
 import { useTable } from "spacetimedb/react";
-import { FileText, LogOut, MessageSquare } from "lucide-react";
+import { FileText } from "lucide-react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { useAuth } from "@/lib/auth/context";
-import { useI18n, useT } from "@/lib/i18n/context";
+import { useT } from "@/lib/i18n/context";
 import { getSafeAreaInsets } from "@/lib/safe-area";
 import { useIsMobile } from "@/lib/use-is-mobile";
-import { hapticLight } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   APP_CATALOG,
-  AppsGrid,
-  ChannelHeader,
   ClockCard,
   DEFAULT_DEVICE_APPS,
   EmbeddedPage,
   IdleLock,
-  MessageList,
-  MiniAppShell,
   MiniAppSurface,
-  PagesTrack,
-  TalkBar,
   fmtDurationHMS,
-  shortName,
   useCatalogApps,
-  useChannels,
   useDeviceBuiltins,
   useIdleTimer,
   useNow,
   useOnShift,
   type DeviceApp,
 } from "@/components/device";
-import { walkieOnScreen } from "@/components/device/device-dots";
-import {
-  useDeviceChatDots,
-  useDevicePagerDots,
-  useDeviceTileDots,
-  useOpenAppDotClearing,
-  useWalkieChatRead,
-} from "@/components/device/use-device-dots";
 import { useMe } from "./use-me";
 import { LeaveDrawer } from "./leave-drawer";
 import { PunchPanel } from "./punch-panel";
@@ -51,6 +34,7 @@ import { DirectoryPanel } from "./directory-panel";
 import { SettingsPanel } from "./settings-panel";
 import { PersonalPunchPrompt } from "./punch-prompt";
 import { usePunchAsk } from "./use-punch-ask";
+import { DeviceHome, useDeviceAppsState } from "./device-home";
 import { dateKey } from "@/lib/date-key";
 
 interface ShiftRow {
@@ -64,18 +48,19 @@ interface ShiftRow {
 const IDLE_MS = 30_000;
 const DIM_MS = 22_000;
 
+/**
+ * /personal — the employee's own phone: a lock screen that asks to punch in, then the device home
+ * (./device-home.tsx) for this phone's own identity. A store tablet after a PIN log-in shows the
+ * same home for its operator (components/store-device/logged-in-screen.tsx).
+ */
 export function PersonalDeviceScreen() {
   const t = useT();
-  const { locale } = useI18n();
   const { user } = useAuth();
   const me = useMe();
   const now = useNow();
   const safeArea = getSafeAreaInsets();
-  // Phone: swipeable Channel | Apps pages. Tablet (≥768px): 400px channel
-  // column beside a 6-column apps grid — the same shape as /store.
   const phone = useIsMobile();
 
-  const chat = useChannels({ organizationId: me.organizationId, meUserId: me.meUserId, locale });
   const shifts = useOnShift(me.organizationId);
   const myShift = me.myMemberId ? shifts.forMember(me.myMemberId) : null;
 
@@ -90,20 +75,18 @@ export function PersonalDeviceScreen() {
     );
   }, [shiftRows, me.myMemberId, me.organizationId]);
 
-  const [page, setPage] = useState(0);
-  const [openApp, setOpenApp] = useState<DeviceApp["id"] | null>(null);
-  const [openRoute, setOpenRoute] = useState<string | null>(null);
-  // The tapped tile's icon: the app grows out of it (MiniAppShell).
-  const [openOrigin, setOpenOrigin] = useState<HTMLElement | null>(null);
+  const appsState = useDeviceAppsState();
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [channelListOpen, setChannelListOpen] = useState(false);
+  const [channelName, setChannelName] = useState("");
   // The phone always boots onto the lock screen; the first swipe-to-unlock is
   // what triggers the punch-in check below.
   const [locked, setLocked] = useState(true);
   // "Punch in now?" after every unlock while off shift (no snooze).
   const punchAsk = usePunchAsk({ ready: me.ready && !!me.myMember && shifts.ready, myCode: me.myCode, onShift: !!myShift });
 
-  const lock = () => { setLeaveOpen(false); setOpenApp(null); punchAsk.dismiss(); setLocked(true); };
+  const lock = () => { setLeaveOpen(false); setChannelListOpen(false); appsState.close(); punchAsk.dismiss(); setLocked(true); };
   const { dimming, reset: resetIdle } = useIdleTimer({
     idleMs: IDLE_MS,
     dimMs: DIM_MS,
@@ -115,17 +98,8 @@ export function PersonalDeviceScreen() {
   });
   const unlock = () => { setLocked(false); resetIdle(); punchAsk.request(); };
 
-  // Notification dots: tiles, conversations and pager pages; the open tile's rows and the walkie's conversation clear.
-  const tileDots = useDeviceTileDots();
-  const chatDots = useDeviceChatDots();
-  const pagerDots = useDevicePagerDots();
-  useOpenAppDotClearing(openApp);
-  useWalkieChatRead(chat.activeChannel?.id ?? null, walkieOnScreen({ phone, page, appOpen: openApp !== null, locked, idle: dimming }));
-
-  // Switching channel returns to the messages page, like the prototype.
-  const selectChannel = (i: number) => { chat.setActiveIndex(i); setPage(0); };
-  const nextChannel = () => { chat.next(); setPage(0); };
-  const prevChannel = () => { chat.prev(); setPage(0); };
+  // This phone's own chat: the signed-in identity, never an operator's.
+  const chatIdentity = useMemo(() => ({ hex: me.meUserId, accountHex: me.meUserId, operatorRole: null }), [me.meUserId]);
 
   // Home grid: the surface's built-in apps first, then every Merchiva
   // feature the member may open (permission-filtered by the catalog and
@@ -136,13 +110,9 @@ export function PersonalDeviceScreen() {
     const seen = new Set(builtIns.map((a) => a.id));
     return [...builtIns, ...catalogApps.filter((a) => !seen.has(a.id))];
   }, [builtIns, catalogApps]);
-  // Built-in ids always win over a same-named catalog entry.
-  const isBuiltIn = !!openApp && DEFAULT_DEVICE_APPS.some((a) => a.id === openApp);
-  const openCatalogEntry = openApp && !isBuiltIn ? APP_CATALOG.find((a) => a.id === openApp) ?? null : null;
-  const CatalogComponent = openCatalogEntry?.component ?? null;
+  const { openApp } = appsState;
   const openEntry = openApp ? apps.find((a) => a.id === openApp) ?? null : null;
   const appTitle = openApp ? (openEntry?.label ?? t(`personalDevice.apps.${openApp}`)) : "";
-  const openFromGrid = (id: DeviceApp["id"], origin?: HTMLElement) => { setOpenApp(id); setOpenOrigin(origin ?? null); };
 
   if (!me.ready || !me.myMember) {
     return (
@@ -152,101 +122,34 @@ export function PersonalDeviceScreen() {
     );
   }
 
-  const channelShort = chat.activeChannel?.name.split("·")[0].trim() ?? "";
+  const channelShort = channelName.split("·")[0].trim();
   const shiftElapsed = myShift ? fmtDurationHMS(now.getTime() - myShift.since.getTime()) : "--:--:--";
 
-  const channelHeader = (
-    <ChannelHeader
-      channels={chat.channels}
-      activeIndex={chat.activeIndex}
-      onSelect={selectChannel}
-      dots={chatDots}
-      right={
-        <span className="inline-flex h-5 items-center whitespace-nowrap rounded bg-secondary px-2 text-[12px] font-medium">
-          {shortName(me.myName)}
-        </span>
-      }
-      className="shrink-0"
-    />
-  );
-
-  const messagesPage =
-    chat.ready && chat.channels.length === 0 ? (
-      <EmptyState
-        key="empty"
-        icon={MessageSquare}
-        title={t("personalDevice.noChannelsTitle")}
-        description={t("personalDevice.noChannelsDesc")}
-        className="h-full"
-      />
-    ) : !chat.ready ? (
-      <div key="loading" className="flex h-full items-center justify-center">
-        <Spinner size={20} className="text-muted-foreground" />
-      </div>
-    ) : (
-      <MessageList key="messages" messages={chat.messages} className="h-full" />
-    );
-
-  const appPanel = (
-    <MiniAppShell
-      open={openApp !== null}
-      title={appTitle}
-      app={openEntry}
-      origin={openOrigin}
-      // lock() closes the app under the lock screen: no close animation.
-      instantClose={locked}
-      onClose={() => setOpenApp(null)}
-    >
-      {openApp === "punch-in" && (
-        <PunchPanel
-          organizationId={me.organizationId}
-          myMemberId={me.myMemberId}
-          myCode={me.myCode}
-          shift={myShift}
-        />
-      )}
-      {openApp === "directory" && (
-        <DirectoryPanel members={me.orgMembers} onShift={shifts.entries} myMemberId={me.myMemberId} />
-      )}
-      {openApp === "settings" && (
-        <SettingsPanel name={me.myName} email={user?.email} orgName={me.orgName} />
-      )}
-      {openApp && CatalogComponent && (
+  const renderApp = (id: DeviceApp["id"], route: string | null) => {
+    // Built-in ids always win over a same-named catalog entry.
+    const builtIn = DEFAULT_DEVICE_APPS.some((a) => a.id === id);
+    const CatalogComponent = builtIn ? null : APP_CATALOG.find((a) => a.id === id)?.component ?? null;
+    if (id === "punch-in") {
+      return <PunchPanel organizationId={me.organizationId} myMemberId={me.myMemberId} myCode={me.myCode} shift={myShift} />;
+    }
+    if (id === "directory") return <DirectoryPanel members={me.orgMembers} onShift={shifts.entries} myMemberId={me.myMemberId} />;
+    if (id === "settings") return <SettingsPanel name={me.myName} email={user?.email} orgName={me.orgName} />;
+    if (CatalogComponent) {
+      return (
         <EmbeddedPage
-          appId={openApp}
-          route={openRoute}
+          appId={id}
+          route={route}
           member={{ id: me.myMemberId ?? "", displayName: me.myName, role: me.role ?? "staff", userIdHex: me.meUserId, punchInCode: me.myCode }}
-          onNavigate={(next, route) => { setOpenApp(next); setOpenRoute(route); }}
+          onNavigate={appsState.navigate}
           className="h-full"
         />
-      )}
-      {openApp === "requests" && !CatalogComponent && (
-        <EmptyState
-          icon={FileText}
-          title={t("personalDevice.comingSoonTitle")}
-          description={t("personalDevice.comingSoonDesc")}
-          className="h-full"
-        />
-      )}
-    </MiniAppShell>
-  );
-
-  const talkBar = (
-    <TalkBar
-      leftAction={{ icon: LogOut, label: t("personalDevice.leaveBtn"), onClick: () => { hapticLight(); setLeaveOpen(true); } }}
-      channelLabel={t("personalDevice.channelBtn")}
-      onPrevChannel={prevChannel}
-      onNextChannel={nextChannel}
-      onSend={async (r) => {
-        const status = await chat.sendVoice(r);
-        setPage(0);
-        return status;
-      }}
-      onRecordingChange={setRecording}
-      disabled={!chat.activeChannel}
-      className="shrink-0"
-    />
-  );
+      );
+    }
+    if (id === "requests") {
+      return <EmptyState icon={FileText} title={t("personalDevice.comingSoonTitle")} description={t("personalDevice.comingSoonDesc")} className="h-full" />;
+    }
+    return null;
+  };
 
   return (
     <MiniAppSurface>
@@ -261,42 +164,27 @@ export function PersonalDeviceScreen() {
           {/* ── Main (blurs while dimming / locked) ─────────────────────── */}
           <div
             className={cn(
-              "flex min-h-0 flex-1 flex-col transition-[filter,opacity,transform] duration-700",
+              "relative flex min-h-0 flex-1 flex-col transition-[filter,opacity,transform] duration-700",
               dimming && "blur-[12px] opacity-60",
               locked && "scale-[.9] blur-[8px] opacity-60",
             )}
           >
-            {phone ? (
-              <>
-                {channelHeader}
-                <div className="relative min-h-0 flex-1">
-                  <PagesTrack
-                    page={page}
-                    onPageChange={(p) => { hapticLight(); setPage(p); }}
-                    dots={pagerDots}
-                    className="h-full"
-                    pages={[
-                      messagesPage,
-                      <AppsGrid key="apps" apps={apps} onOpen={openFromGrid} columns={4} size="md" dots={tileDots} className="h-full" />,
-                    ]}
-                  />
-                  {appPanel}
-                </div>
-                {talkBar}
-              </>
-            ) : (
-              <div className="grid min-h-0 flex-1 grid-cols-[400px_1fr]">
-                <div className="relative flex min-h-0 flex-col overflow-hidden border-r border-border">
-                  {channelHeader}
-                  <div className="relative min-h-0 flex-1">{messagesPage}</div>
-                  {talkBar}
-                </div>
-                <div className="relative min-h-0 overflow-hidden">
-                  <AppsGrid apps={apps} onOpen={openFromGrid} columns={6} size="lg" dots={tileDots} className="absolute inset-0" />
-                  {appPanel}
-                </div>
-              </div>
-            )}
+            <DeviceHome
+              organizationId={me.organizationId}
+              chatIdentity={chatIdentity}
+              apps={apps}
+              appsState={appsState}
+              appTitle={appTitle}
+              renderApp={renderApp}
+              leaveLabel={t("personalDevice.leaveBtn")}
+              onLeave={() => setLeaveOpen(true)}
+              locked={locked}
+              idle={dimming}
+              onRecordingChange={setRecording}
+              onChannelName={setChannelName}
+              listOpen={channelListOpen}
+              onListOpenChange={setChannelListOpen}
+            />
             {safeArea.bottom > 0 && <div style={{ height: safeArea.bottom }} className="shrink-0 bg-background" />}
           </div>
 
@@ -304,16 +192,14 @@ export function PersonalDeviceScreen() {
 
           <PersonalPunchPrompt
             open={punchAsk.ask && !locked}
-            organizationId={me.organizationId}
-            myCode={me.myCode}
-            onDone={punchAsk.resolve}
+            onYes={() => { punchAsk.resolve(); appsState.open("punch-in"); }}
             onSkip={punchAsk.resolve}
           />
 
           <IdleLock
             active={locked}
             onUnlock={unlock}
-            channelName={chat.activeChannel?.name}
+            channelName={channelName || undefined}
             showStatusStrip
             card={
               <ClockCard

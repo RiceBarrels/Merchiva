@@ -4,11 +4,12 @@
 //   home  → find an item (low-stock first)
 //   item  → see the count, then "Received +" / "Used / wasted −" / "Count is wrong"
 //   sheet → big stepper (+ reason for waste) and one confirm button
+// On /personal the item and the sheet open as pages over home (lite-page.tsx).
 // Writes mirror the manager UI: receive / recount go through updateInventoryItem
 // (the reducer logs the inventory_transaction itself), waste goes through
 // addWasteLog (the reducer deducts stock and logs a loss transaction itself).
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTable } from "spacetimedb/react";
 import { toast } from "sonner";
 import {
@@ -31,7 +32,7 @@ import { addWasteLog, updateInventoryItem } from "@/lib/spacetimedb/actions";
 import { hapticError, hapticLight, hapticSuccess } from "@/lib/haptics";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
-import { DeviceDrawer } from "@/components/device/device-drawer";
+import { LitePage, LiteSubPage } from "./lite-page";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   LiteButton,
@@ -83,7 +84,7 @@ function today(): string {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-export function InventoryLite({ organizationId, member }: LiteAppProps) {
+export function InventoryLite({ organizationId, member, surface }: LiteAppProps) {
   const t = useT();
   const [rawItems, itemsReady] = useTable(tables.inventoryItem);
   const [query, setQuery] = useState("");
@@ -196,6 +197,7 @@ export function InventoryLite({ organizationId, member }: LiteAppProps) {
   if (!itemsReady) return <LiteLoading />;
 
   // ── Item screen ─────────────────────────────────────────────────────────────
+  let itemBody: ReactNode = null;
   if (selected) {
     const status = statusOf(selected);
     const tone = status === "out" ? "destructive" : status === "low" ? "warning" : "default";
@@ -212,10 +214,8 @@ export function InventoryLite({ organizationId, member }: LiteAppProps) {
     const drawerTitle =
       mode === "receive" ? t(K + "howManyReceived") : mode === "waste" ? t(K + "howManyUsed") : t(K + "newCount");
 
-    return (
-      <LiteScreen>
-        <LiteButton icon={ArrowLeft} label={t(K + "back")} tone="outline" onClick={() => setSelectedId(null)} />
-
+    itemBody = (
+      <>
         <div>
           <h2 className="text-[20px] font-semibold leading-tight">{selected.name}</h2>
           {selected.category && <p className="mt-0.5 text-[13px] text-muted-foreground">{selected.category}</p>}
@@ -241,10 +241,11 @@ export function InventoryLite({ organizationId, member }: LiteAppProps) {
           </div>
         </LiteSection>
 
-        <DeviceDrawer
+        <LiteSubPage
+          surface={surface}
           open={mode !== null}
-          onOpenChange={(open) => { if (!open) closeAdjust(); }}
-          onCancel={closeAdjust}
+          onClose={closeAdjust}
+          onPageClose={() => setMode(null)}
           title={drawerTitle}
         >
           <div className="space-y-4 pb-1">
@@ -283,10 +284,25 @@ export function InventoryLite({ organizationId, member }: LiteAppProps) {
               onClick={() => { void confirm(); }}
             />
           </div>
-        </DeviceDrawer>
+        </LiteSubPage>
+      </>
+    );
+  }
+
+  // The tablet swaps the list for the item; the phone pushes the item as a page over the list.
+  if (selected && surface === "store") {
+    return (
+      <LiteScreen>
+        <LiteButton icon={ArrowLeft} label={t(K + "back")} tone="outline" onClick={() => setSelectedId(null)} />
+        {itemBody}
       </LiteScreen>
     );
   }
+  const itemPage = surface === "personal" && selected && (
+    <LitePage open onClose={() => { setMode(null); setSelectedId(null); }} title={selected.name}>
+      {itemBody}
+    </LitePage>
+  );
 
   // ── Home ────────────────────────────────────────────────────────────────────
   if (items.length === 0) {
@@ -344,6 +360,7 @@ export function InventoryLite({ organizationId, member }: LiteAppProps) {
           </LiteSection>
         </>
       )}
+      {itemPage}
     </LiteScreen>
   );
 }

@@ -5,6 +5,7 @@ import { DEFAULT_LOCALE, LOCALE_BCP47, RTL_LOCALES, isLocale, type Locale } from
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { MobileDetector } from "@/components/mobile-detector";
+import { NativeBackGuard } from "@/components/native-back-guard";
 import { NativeTitleBar } from "@/components/native-title-bar";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
@@ -131,6 +132,7 @@ export default async function RootLayout({
         <div id="vaul-wrapper" data-vaul-drawer-wrapper="" className="h-full">
           <NativeTitleBar />
           <MobileDetector />
+          <NativeBackGuard />
           <ServiceWorkerRegistrar />
           {/* NativeTitleBar measures itself into --merchiva-chrome-height
               (0 when it renders nothing, e.g. on /store, /personal, /choose). */}

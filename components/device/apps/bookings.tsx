@@ -30,7 +30,7 @@ import { updateBookingStatus } from "@/lib/spacetimedb/actions";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
-import { DeviceDrawer } from "@/components/device/device-drawer";
+import { LiteSubPage } from "./lite-page";
 import { LiteButton, LiteChoice, LiteEmpty, LiteLoading, LiteRow, LiteScreen, LiteSection } from "./lite";
 import type { LiteAppProps } from "./types";
 import { dateKeyOffset } from "@/lib/date-key";
@@ -88,7 +88,7 @@ const STATUS_ICON: Record<string, { icon: LucideIcon; tone: "muted" | "primary" 
   cancelled: { icon: XCircle, tone: "destructive" },
 };
 
-export function BookingsLite({ organizationId }: LiteAppProps) {
+export function BookingsLite({ organizationId, surface }: LiteAppProps) {
   const t = useT();
   const { locale } = useI18n();
   const [day, setDay] = useState<Day>("today");
@@ -196,9 +196,10 @@ export function BookingsLite({ organizationId }: LiteAppProps) {
         )}
       </LiteSection>
 
-      <DeviceDrawer
+      <LiteSubPage
+        surface={surface}
         open={!!open}
-        onOpenChange={(o) => { if (!o) setOpenId(null); }}
+        onClose={() => setOpenId(null)}
         title={t("device.lite.bookings.details")}
         cancelLabel={t("device.lite.bookings.close")}
         maxWidth={480}
@@ -212,7 +213,7 @@ export function BookingsLite({ organizationId }: LiteAppProps) {
             onStatus={(s) => setStatus(open.id.toString(), s)}
           />
         )}
-      </DeviceDrawer>
+      </LiteSubPage>
     </LiteScreen>
   );
 }
