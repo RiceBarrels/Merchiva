@@ -77,10 +77,14 @@ export function notifyStoreName(ctx: NotifyCtx, organizationId: string): string 
   return '';
 }
 
-/** Whether `target` has a push subscription the cron could use in this organization. */
-function notifyHasPushTarget(ctx: NotifyCtx, target: NotifyIdentity, organizationId: string): boolean {
+/**
+ * Whether `target` has a push subscription the cron could use. Any organization's: a
+ * subscription is the person's browser, saved under whichever store was open when they
+ * allowed alerts, and a member's alerts from every store go to all of their browsers.
+ */
+function notifyHasPushTarget(ctx: NotifyCtx, target: NotifyIdentity): boolean {
   for (const sub of ctx.db.pushSubscription.byTargetId.filter(target)) {
-    if (sub.organizationId === organizationId && notifyPushEndpointOk(sub.endpoint)) return true;
+    if (notifyPushEndpointOk(sub.endpoint)) return true;
   }
   return false;
 }
@@ -138,7 +142,7 @@ function notifyTakeQuota(ctx: NotifyCtx, kind: NotifyQuotaKind, key: string, now
 function notifyQueueDelivery(ctx: NotifyCtx, notificationId: string, input: NotifyInput, title: string, body: string, link: string): void {
   const template: NotifyTemplate = notifyIsTemplate(input.template) ? input.template : 'custom';
   let email = input.email === true;
-  let push = notifyHasPushTarget(ctx, input.target, input.organizationId);
+  let push = notifyHasPushTarget(ctx, input.target);
   const localized = notifyIsLocalized(template);
   if (!email && !push && !localized) return;
   const now = notifyMicros(ctx.timestamp);

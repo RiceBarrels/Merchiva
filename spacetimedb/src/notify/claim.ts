@@ -163,7 +163,14 @@ function notifyClaimRow(ctx: NotifyCtx, deps: NotifyDeps, stored: NotifyDelivery
   const emailDue = row.email && run.served.email && now >= notifyEmailAt(row.template, created, pacing, now);
   let pushTargets = '';
   if (pushDue) {
-    const subs = [...ctx.db.pushSubscription.byTargetId.filter(row.targetId)].filter((s) => s.organizationId === row.organizationId);
+    // Every browser of the person, whichever store it subscribed under (notifyHasPushTarget);
+    // newest first, so a pile of stale endpoints never crowds a live one out of the cap.
+    const subs = [...ctx.db.pushSubscription.byTargetId.filter(row.targetId)]
+      .sort((a, b) => {
+        const am = notifyMicros(a.createdAt);
+        const bm = notifyMicros(b.createdAt);
+        return am === bm ? 0 : am < bm ? 1 : -1;
+      });
     pushTargets = notifyPushTargetsJson(subs);
     if (pushTargets === '') {
       // Unsubscribed since: nothing to push to.

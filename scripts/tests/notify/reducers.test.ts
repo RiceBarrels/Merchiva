@@ -251,6 +251,22 @@ describe("push subscriptions", () => {
     expect(left.sort()).toEqual([[w.staff.identity.hex, kept], [w.manager.identity.hex, endpoint]].sort());
   });
 
+  test("saving a subscription keeps only the person's 20 newest, in every store", () => {
+    const w = world();
+    const elsewhere = randomUUID();
+    w.db.addMember({ organizationId: elsewhere, identity: w.staff.identity, role: "staff" });
+    const saved: string[] = [];
+    for (let i = 0; i < 23; i++) {
+      w.db.advance(1_000_000n);
+      saved.push(`https://web.push.apple.com/${i}`);
+      expect(save(w, w.staff, saved[i], i % 2 ? w.org : elsewhere)).toBeNull();
+    }
+    subscribe(w, w.manager);
+    const mine = w.db.rows("pushSubscription").filter((r) => (r.targetId as FakeIdentity).hex === w.staff.identity.hex);
+    expect(mine.map((r) => r.endpoint).sort()).toEqual(saved.slice(3).sort());
+    expect(w.db.rows("pushSubscription")).toHaveLength(21);
+  });
+
   test("a push queued before the subscription moved goes nowhere: the claim finds no target", () => {
     const w = world();
     const endpoint = subscribe(w, w.staff);

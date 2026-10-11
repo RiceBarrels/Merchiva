@@ -70,6 +70,9 @@ describe("service worker", () => {
     expect(sw).toContain("setTimeout(() => resolve(false), HANDOFF_TIMEOUT_MS)");
     expect(sw).toContain("event.data.handled === true");
     expect(sw).toContain("handled ? undefined : self.registration.showNotification(title, options)");
+    // WebKit has no silent push: on Apple's push service every push is shown.
+    expect(sw).toContain("web\\.push\\.apple\\.com");
+    expect(sw).toContain("if (apple || !watching) return self.registration.showNotification(title, options);");
     // The page answers on the port it is given (lib/notifications/alerts.ts).
     const alerts = read("lib/notifications/alerts.ts");
     expect(alerts).toContain('"merchiva:push"');

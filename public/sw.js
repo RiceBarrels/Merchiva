@@ -11,6 +11,11 @@
 // it, is about to, or it is read). Anything else — another store's row, a row
 // from before the tab connected, a page with no notification runtime, no answer
 // within HANDOFF_TIMEOUT_MS — still becomes an OS notification.
+//
+// Except on Apple's push service (Safari, iPhone/iPad home-screen apps): WebKit
+// has no silent push, and a push that shows no notification counts against the
+// subscription until it is revoked. There every push is shown (the tag keeps a
+// row the tab already raised as an OS notification from stacking).
 
 /** How long a focused tab has to answer for a push. */
 const HANDOFF_TIMEOUT_MS = 1500;
@@ -57,6 +62,14 @@ function askTab(client, payload) {
   });
 }
 
+/** Whether this browser's pushes come from Apple's push service, which forbids a push without a notification. */
+function applePush() {
+  return self.registration.pushManager
+    .getSubscription()
+    .then((sub) => !!sub && /^https:\/\/web\.push\.apple\.com\//.test(sub.endpoint))
+    .catch(() => false);
+}
+
 function sameOriginWindows() {
   return self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) =>
     clients.filter((c) => {
@@ -94,9 +107,9 @@ self.addEventListener("push", (event) => {
   // site): ask that tab first, so a row it already alerted is not raised again
   // on top of it.
   event.waitUntil(
-    sameOriginWindows().then((clients) => {
+    Promise.all([applePush(), sameOriginWindows()]).then(([apple, clients]) => {
       const watching = clients.find((c) => c.visibilityState === "visible" && c.focused);
-      if (!watching) return self.registration.showNotification(title, options);
+      if (apple || !watching) return self.registration.showNotification(title, options);
       return askTab(watching, payload).then((handled) =>
         handled ? undefined : self.registration.showNotification(title, options),
       );
