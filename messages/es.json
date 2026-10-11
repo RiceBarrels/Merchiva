@@ -5188,7 +5188,8 @@
       "failed": "Error al escanear. Inténtalo de nuevo.",
       "punchedOut": "Salida fichada",
       "punchedIn": "Entrada fichada",
-      "loggedIn": "Sesión iniciada en el dispositivo de tienda"
+      "loggedIn": "Sesión iniciada en el dispositivo de tienda",
+      "punchOnDevice": "Sesión iniciada en el dispositivo de tienda. Toca Fichar entrada allí."
     },
     "punchPrompt": {
       "title": "¿Fichar entrada ahora?",
@@ -5224,7 +5225,7 @@
       "breakStarted": "Descanso iniciado",
       "breakEnded": "Descanso terminado",
       "scanSection": "Dispositivo de tienda",
-      "scanStoreQr": "Escanear QR de la tienda",
+      "scanStoreQr": "Escanear código QR para iniciar sesión en un dispositivo",
       "intentLogin": "Iniciar sesión",
       "intentIn": "Fichar entrada",
       "intentOut": "Fichar salida"

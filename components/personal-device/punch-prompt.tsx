@@ -16,8 +16,8 @@ export interface PersonalPunchPromptProps {
 
 /**
  * Asked when the phone is unlocked while the member is off shift. "Yes" opens
- * the Punch in app: the punch is only recorded once the store device's QR is
- * scanned there (approveDeviceLogin with the punch-in intent).
+ * the Punch in app: its Punch in scans the store device's QR, which logs the
+ * member in there, and the punch is tapped on the device.
  */
 export function PersonalPunchPrompt({ open, onYes, onSkip }: PersonalPunchPromptProps) {
   const t = useT();

@@ -5188,7 +5188,8 @@
       "failed": "掃描失敗，請再試。",
       "punchedOut": "已落班打卡",
       "punchedIn": "已返工打卡",
-      "loggedIn": "已喺門市裝置登入"
+      "loggedIn": "已喺門市裝置登入",
+      "punchOnDevice": "已喺門市裝置登入，請喺門市裝置撳返工打卡。"
     },
     "punchPrompt": {
       "title": "而家打卡返工嗎？",
@@ -5224,7 +5225,7 @@
       "breakStarted": "休息已開始",
       "breakEnded": "休息已結束",
       "scanSection": "門市裝置",
-      "scanStoreQr": "掃描門市 QR 碼",
+      "scanStoreQr": "掃描QR碼登入裝置",
       "intentLogin": "登入",
       "intentIn": "返工打卡",
       "intentOut": "落班打卡"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Inbox } from "lucide-react";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
@@ -20,6 +20,9 @@ import type { StoreMember } from "./use-org-members";
 import { LogoutDrawer } from "./logout-drawer";
 import { DeviceSettingsPanel } from "./device-settings-panel";
 
+/** After a log-in off shift: ask "Punch in now?" (a PIN log-in), or open the Punch in app (a QR log-in). */
+export type PunchAsk = "prompt" | "open";
+
 export interface LoggedInScreenProps {
   organizationId: string;
   operator: StoreMember;
@@ -29,8 +32,9 @@ export interface LoggedInScreenProps {
   shift: OnShiftEntry | null;
   /** Everyone on shift now (the directory's status). */
   onShiftEntries: OnShiftEntry[];
-  /** Ask "Punch in now?" (right after a log-in, off shift): "Yes" opens the Punch in app, as on their phone. */
-  punchAsk: boolean;
+  /** Right after a log-in, off shift: "prompt" asks "Punch in now?" ("Yes" opens the Punch in app, as on
+   *  their phone); "open" opens the Punch in app straight away. */
+  punchAsk: PunchAsk | null;
   onPunchAskDone: () => void;
   onLogout: () => void;
   /** Recording in progress — parent pauses its idle timer. */
@@ -79,6 +83,13 @@ export function LoggedInScreen({
     return [...builtIns, ...catalogApps.filter((a) => !seen.has(a.id))];
   }, [builtIns, catalogApps]);
   const { openApp } = appsState;
+
+  // A QR log-in from the phone's Punch in: the punch itself is tapped here.
+  useEffect(() => {
+    if (punchAsk !== "open") return;
+    onPunchAskDone();
+    appsState.open("punch-in");
+  }, [punchAsk, onPunchAskDone, appsState]);
   const appTitle = openApp ? (apps.find((a) => a.id === openApp)?.label ?? t(`storeDevice.apps.${openApp}`)) : "";
 
   const renderApp = (id: DeviceApp["id"], route: string | null) => {
@@ -122,7 +133,7 @@ export function LoggedInScreen({
       />
       <LogoutDrawer open={logoutOpen} onOpenChange={setLogoutOpen} operator={operator} operatorPin={operatorPin} shift={shift} onLogout={onLogout} />
       <PersonalPunchPrompt
-        open={punchAsk}
+        open={punchAsk === "prompt"}
         onYes={() => { onPunchAskDone(); appsState.open("punch-in"); }}
         onSkip={onPunchAskDone}
       />

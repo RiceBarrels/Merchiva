@@ -18,8 +18,10 @@ import { LitePage } from "@/components/device/apps/lite-page";
 import { ScanPane } from "./scan-pane";
 
 /**
- * The Punch in app. On the phone punching in and out goes through the store's QR (a scan page);
- * on a store tablet (`store`) the operator its PIN / QR log-in resolved taps in, break and out
+ * The Punch in app. On the phone, off shift it holds one button, Punch in: it scans the store
+ * device's QR, which logs the member in there and opens the device's Punch in app, where the punch
+ * itself is tapped (nothing is recorded by the scan). Punching out still goes through the store's
+ * QR. On a store tablet (`store`) the operator its PIN / QR log-in resolved taps in, break and out
  * directly (recordOperatorPunch), with no code to set and nothing to scan.
  */
 export function PunchPanel({
@@ -41,9 +43,10 @@ export function PunchPanel({
   const [busy, setBusy] = useState<PunchAction | null>(null);
   const [codeInput, setCodeInput] = useState("");
   const [savingCode, setSavingCode] = useState(false);
-  // Punching in / out on the phone always goes through the store QR: the
-  // scanner approves the store's nonce with a punch intent and the server
-  // records the punch. Only breaks are recorded directly.
+  // Punching in / out on the phone always goes through the store QR. Punch in
+  // approves the store's nonce as a log-in (the punch is tapped on the device);
+  // punch out approves it with the punch-out intent and the server records it.
+  // Only breaks are recorded directly.
   const [scanIntent, setScanIntent] = useState<DeviceLoginIntent | null>(null);
 
   const onShift = !!shift;
@@ -161,8 +164,8 @@ export function PunchPanel({
         )}
       </div>
 
-      {/* Logging in on a store device by its QR is the phone's job. */}
-      {!store && (
+      {/* Logging in on a store device by its QR is the phone's job. Off shift Punch in is the only button. */}
+      {!store && onShift && (
         <div className="border-t border-border pt-4">
           <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
             {t("personalDevice.punch.scanSection")}
@@ -188,13 +191,13 @@ export function PunchPanel({
           <ScanPane
             active
             organizationId={organizationId}
-            intent={scanIntent}
+            intent={scanIntent === "punch-in" ? "login" : scanIntent}
             onDone={() => {
               const intent = scanIntent;
               setScanIntent(null);
               toast.success(
                 intent === "login" ? t("personalDevice.scan.loggedIn")
-                : intent === "punch-in" ? t("personalDevice.scan.punchedIn")
+                : intent === "punch-in" ? t("personalDevice.scan.punchOnDevice")
                 : t("personalDevice.scan.punchedOut"),
               );
             }}
