@@ -1,9 +1,10 @@
-// Server-side Web Push fan-out helper.
+// Server-side Web Push sender.
 //
 // Signs and dispatches push messages via the `web-push` library using the
-// project's VAPID keys. Shared by the client-driven /api/push/send route and
-// by server-side background jobs (e.g. the Mr. Merchiva enqueue worker, which
-// must reach users who have already left the site).
+// project's VAPID keys. Its one caller is the notifications cron
+// (app/api/cron/notifications, lib/notifications/server/), the only push path:
+// it reads the push targets the module leased to the run, never targets a
+// client supplied.
 
 import "server-only";
 
@@ -47,6 +48,40 @@ export interface PushResult {
   unconfigured?: boolean;
 }
 
+export interface PushOptions {
+  /**
+   * Gives up on one push service after this long: the socket timeout of
+   * web-push, plus a hard stop a second later for a reply that trickles in.
+   */
+  timeoutMs?: number;
+}
+
+/** sendNotification, abandoned `timeoutMs` + 1 s after it started. */
+async function sendWithin(
+  sub: PushSubscriptionInput,
+  message: string,
+  timeoutMs: number | undefined,
+): Promise<void> {
+  const send = webpush.sendNotification(
+    { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+    message,
+    { TTL: 60 * 60 * 24, ...(timeoutMs ? { timeout: timeoutMs } : {}) },
+  );
+  if (!timeoutMs) {
+    await send;
+    return;
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("push timed out")), timeoutMs + 1000);
+  });
+  try {
+    await Promise.race([send, late]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /**
  * Sign and dispatch `payload` to every subscription. Never throws — returns a
  * tally so callers can treat push as best-effort.
@@ -54,6 +89,7 @@ export interface PushResult {
 export async function sendWebPush(
   subscriptions: PushSubscriptionInput[],
   payload: PushPayload,
+  options: PushOptions = {},
 ): Promise<PushResult> {
   if (!ensureVapid()) return { sent: 0, failed: 0, expired: [], unconfigured: true };
   if (!Array.isArray(subscriptions) || subscriptions.length === 0) {
@@ -80,11 +116,7 @@ export async function sendWebPush(
         return;
       }
       try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          message,
-          { TTL: 60 * 60 * 24 },
-        );
+        await sendWithin(sub, message, options.timeoutMs);
         sent++;
       } catch (err) {
         const e = err as { statusCode?: number };

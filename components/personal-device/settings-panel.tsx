@@ -4,8 +4,10 @@ import { useState } from "react";
 import { ChevronRight, LogOut } from "lucide-react";
 import { StoreModeIcon } from "@/components/device/app-icons";
 import { LicensesPanel } from "@/components/licenses/licenses-panel";
+import { notificationEmailMeta, useNotificationEmailSwitch } from "@/components/settings/notification-email";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Switch } from "@/components/ui/switch";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import { useAuth } from "@/lib/auth/context";
@@ -27,6 +29,7 @@ export function SettingsPanel({ name, email, orgName }: { name: string; email?: 
   const [theme, setTheme] = useThemeMode();
   const { signOut } = useAuth();
   const [licensesOpen, setLicensesOpen] = useState(false);
+  const emailSwitch = useNotificationEmailSwitch();
 
   return (
     <div>
@@ -48,6 +51,22 @@ export function SettingsPanel({ name, email, orgName }: { name: string; email?: 
           ]}
         />
       </Row>
+      {/* The account's own switch: /personal is one person's phone, never a shared screen. */}
+      <div className="border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium">{t("notify.settings.email")}</p>
+            <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{notificationEmailMeta(emailSwitch.checked, email, t)}</p>
+          </div>
+          <Switch
+            checked={emailSwitch.checked}
+            disabled={emailSwitch.disabled}
+            aria-label={t("notify.settings.email")}
+            onCheckedChange={() => { hapticLight(); emailSwitch.toggle(); }}
+          />
+        </div>
+        <p className="mt-2 text-[12px] leading-snug text-muted-foreground">{t("notify.settings.liteSummary")}</p>
+      </div>
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 border-b border-border px-4 py-3 text-start transition-colors active:bg-muted/50"

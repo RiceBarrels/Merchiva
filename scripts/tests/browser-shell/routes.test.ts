@@ -49,11 +49,21 @@ describe("resolveLegacyRedirect", () => {
     expect(resolveLegacyRedirect("/manager/staffing")).toBe("/manager/personnel/schedule");
     expect(resolveLegacyRedirect("/manager/training")).toBe("/manager/personnel/schedule");
     expect(resolveLegacyRedirect("/manager/usage")).toBe("/manager/settings");
+    // The notification inbox is gone (notifications are dots on each feature): it goes home.
+    expect(resolveLegacyRedirect("/manager/notifications")).toBe("/manager/new-tab");
+    expect(resolveLegacyRedirect("/manager/notifications?x=1")).toBe("/manager/new-tab?x=1");
     // "/manager" is the home alias, so "/~" redirects through it in two hops.
     expect(resolveLegacyRedirect("/manager")).toBe("/manager/new-tab");
     expect(resolveLegacyRedirect("/manager/?q=1")).toBe("/manager/new-tab?q=1");
     expect(resolveLegacyRedirect("/~")).toBe("/manager/new-tab");
     expect(resolveLegacyRedirect("/~/inventory")).toBe("/manager/inventory");
+  });
+
+  test("next.config.ts redirects the notification inbox home too", () => {
+    const config = readFileSync(join(ROOT, "next.config.ts"), "utf8");
+    expect(config).toMatch(/source: "\/manager\/notifications",\s+destination: "\/manager",\s+permanent: true/);
+    expect(existsSync(join(ROOT, "app", "manager", "notifications", "page.tsx"))).toBe(false);
+    expect(matchRoute("/manager/notifications")).toBeNull();
   });
 
   test("returns the same string when nothing applies", () => {

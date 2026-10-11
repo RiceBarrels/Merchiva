@@ -7,6 +7,9 @@ import { LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_ICONS } from "./app-icons";
 import { hapticLight } from "@/lib/haptics";
+import { useT } from "@/lib/i18n/context";
+import { fmt } from "@/lib/i18n/fmt";
+import { NotificationDot } from "@/components/ui/notification-dot";
 import type { DeviceApp, TileColor } from "./types";
 
 export interface AppsGridProps {
@@ -16,6 +19,8 @@ export interface AppsGridProps {
   onOpen: (id: DeviceApp["id"], origin?: HTMLElement) => void;
   columns?: 4 | 6;          // phone 4, tablet 6
   size?: "md" | "lg";       // tile size
+  /** App ids whose tile shows the notification dot (useDeviceTileDots). */
+  dots?: ReadonlySet<string>;
   className?: string;
 }
 
@@ -64,14 +69,19 @@ export function TileGlyph({ app, className }: { app: Pick<DeviceApp, "id" | "ico
 
 // `data-app-tile` / `data-app-icon` let MiniAppShell find the open app's icon
 // again when it closes; `data-app-dock` and `data-app-viewport` tell it which
-// copy is on screen.
-function Tile({ app, size, showLabel, onOpen }: { app: DeviceApp; size: "md" | "lg"; showLabel: boolean; onOpen: AppsGridProps["onOpen"] }) {
+// copy is on screen. Something new for the app puts the notification dot on the
+// icon's corner (`dots`, from ./use-device-dots.ts; opening the app clears it).
+function Tile({ app, size, showLabel, dot, onOpen }: { app: DeviceApp; size: "md" | "lg"; showLabel: boolean; dot: boolean; onOpen: AppsGridProps["onOpen"] }) {
+  const t = useT();
   const iconRef = useRef<HTMLSpanElement>(null);
   const lg = size === "lg";
+  // The dock's copy has no visible label, so the button carries the name; a dot adds its state.
+  const name = dot ? fmt(t("notify.dot.withName"), { name: app.label }) : app.label;
   return (
     <button
       type="button"
       data-app-tile={app.id}
+      aria-label={showLabel && !dot ? undefined : name}
       onClick={() => {
         hapticLight();
         onOpen(app.id, iconRef.current ?? undefined);
@@ -83,7 +93,7 @@ function Tile({ app, size, showLabel, onOpen }: { app: DeviceApp; size: "md" | "
         data-app-icon
         className={cn(
           // Tailwind v4's scale-* sets the `scale` property, not `transform`.
-          "grid place-items-center transition-[scale,filter] duration-100 group-active:scale-[0.92] group-active:brightness-[0.92]",
+          "relative grid place-items-center transition-[scale,filter] duration-100 group-active:scale-[0.92] group-active:brightness-[0.92]",
           lg ? "h-[76px] w-[76px] rounded-[17px]" : "h-[60px] w-[60px] rounded-[14px]",
           TILE_SHADOW,
           tileGradient(app),
@@ -91,13 +101,14 @@ function Tile({ app, size, showLabel, onOpen }: { app: DeviceApp; size: "md" | "
         )}
       >
         <TileGlyph app={app} className={lg ? "h-10 w-10" : "h-8 w-8"} />
+        <NotificationDot show={dot} size="md" />
       </span>
       {showLabel && <span className="w-full truncate text-center">{app.label}</span>}
     </button>
   );
 }
 
-export function AppsGrid({ apps, onOpen, columns = 4, size = "md", className }: AppsGridProps) {
+export function AppsGrid({ apps, onOpen, columns = 4, size = "md", dots, className }: AppsGridProps) {
   const dock = apps.filter((a) => a.dock);
   const lg = size === "lg";
   return (
@@ -113,7 +124,7 @@ export function AppsGrid({ apps, onOpen, columns = 4, size = "md", className }: 
       >
         <div className={cn("grid", columns === 6 ? "grid-cols-6 gap-x-4 gap-y-7" : "grid-cols-4 gap-x-3 gap-y-[22px]")}>
           {apps.map((a) => (
-            <Tile key={a.id} app={a} size={size} showLabel onOpen={onOpen} />
+            <Tile key={a.id} app={a} size={size} showLabel dot={!!dots?.has(a.id)} onOpen={onOpen} />
           ))}
         </div>
       </div>
@@ -126,7 +137,7 @@ export function AppsGrid({ apps, onOpen, columns = 4, size = "md", className }: 
           )}
         >
           {dock.map((a) => (
-            <Tile key={a.id} app={a} size={size} showLabel={false} onOpen={onOpen} />
+            <Tile key={a.id} app={a} size={size} showLabel={false} dot={!!dots?.has(a.id)} onOpen={onOpen} />
           ))}
         </div>
       )}

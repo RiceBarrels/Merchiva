@@ -28,7 +28,6 @@ const CATEGORY_BY_ID: Readonly<Record<string, PluginCategory>> = {
   settings: "essentials",
   merchiva: "essentials",
   bugs: "essentials",
-  notifications: "essentials",
   "settings-org": "essentials",
 };
 

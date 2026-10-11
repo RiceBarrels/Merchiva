@@ -6,7 +6,6 @@ import { motion, useMotionValue, useReducedMotion, useTransform, type MotionValu
 import { toast } from "sonner";
 import { TabPageOutlet } from "@/components/browser-shell/core/tab-page-outlet";
 import type { AppIcon } from "@/components/device/app-icons";
-import { useUnreadCount } from "@/components/notification-center";
 import { skipNextPageTransition } from "@/components/page-tabs";
 import { useOpenDynamicUIElementCount } from "@/components/ui/dynamic-ui-element";
 import {
@@ -121,7 +120,6 @@ export function MobileBrowserChrome({ children }: { children: ReactNode }) {
   const keyboard = useVirtualKeyboard();
   const platform = useMobilePlatform();
   const { currentOrg } = usePermissions();
-  const unreadCount = useUnreadCount();
   const openDialogs = useOpenDynamicUIElementCount();
   const dialogPageViewport = useIsMobile(DIALOG_PAGE_BREAKPOINT);
   const dialogPages = dialogPageViewport ? openDialogs : 0;
@@ -552,7 +550,6 @@ export function MobileBrowserChrome({ children }: { children: ReactNode }) {
         dialogSwipe={nav.dialogSwipe}
         orgName={currentOrg?.name ?? ""}
         orgLogoUrl={currentOrg?.logoUrl ?? null}
-        unreadCount={unreadCount}
         tabCount={tabCount}
         canBack={nav.canGoBack}
         canForward={nav.canGoForward}
@@ -619,7 +616,6 @@ export function MobileBrowserChrome({ children }: { children: ReactNode }) {
         pageUrl={presentation.url}
         pageTitle={presentation.title}
         isNewTab={presentation.isNewTab}
-        unreadCount={unreadCount}
         onNavigate={navigateActive}
       />
       <BookmarksSheet

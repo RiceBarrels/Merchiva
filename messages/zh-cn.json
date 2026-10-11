@@ -64,7 +64,6 @@
     "apps": "插件",
     "docs": "文档",
     "bugs": "问题反馈",
-    "notifications": "通知",
     "drive": "云盘",
     "sheets": "表格",
     "slides": "演示文稿",
@@ -1260,12 +1259,6 @@
     "desktopDisabled": "应用关闭时推送提醒",
     "desktopBlocked": "已被浏览器设置阻止",
     "desktopUnsupported": "此浏览器不支持",
-    "shiftReminders": "班次提醒",
-    "beforeShift": "班次开始前提醒",
-    "lowStockAlerts": "低库存警报",
-    "belowThreshold": "当商品低于阈值时",
-    "weeklySummary": "每周摘要",
-    "performanceDigest": "每周一发送表现摘要",
     "navigationMode": "导航模式",
     "sidebar": "侧边栏",
     "bottomBar": "底部栏",
@@ -1544,7 +1537,8 @@
     "teamOnTeamPage": "成员、角色与打卡码",
     "punchCodeOnTeamPage": "在团队页设置",
     "createStoreHint": "创建一家拥有独立库存与预测的新门店。",
-    "toastSettingsNotLoaded": "设置还在加载中，请稍后再试"
+    "toastSettingsNotLoaded": "设置还在加载中，请稍后再试",
+    "notificationsMeta": "邮件和提醒"
   },
   "lock": {
     "title": "设备已锁定",
@@ -2139,23 +2133,10 @@
     }
   },
   "notifications": {
-    "title": "通知",
-    "markAllRead": "全部标为已读",
-    "empty": "暂无通知",
-    "emptyDesc": "所有消息已处理完毕",
     "justNow": "刚刚",
     "minutesAgo": "{n}分钟前",
     "hoursAgo": "{n}小时前",
     "daysAgo": "{n}天前",
-    "unreadCount": "{n} 条未读",
-    "dismiss": "忽略",
-    "filterAll": "全部",
-    "filterShift": "班次",
-    "filterTimeOff": "请假",
-    "filterTeam": "团队",
-    "filterInventory": "库存",
-    "filterOrder": "订单",
-    "filterGeneral": "系统",
     "tradeOfferedToEveryone": "{name} 正在向所有人转让其班次",
     "tradeWantsToTrade": "{name} 想与你换班",
     "tradeAcceptedAwaitingManager": "{name} 已接受——等待经理批准",
@@ -3078,15 +3059,6 @@
       "inMinutes": "{n} 分钟后",
       "inHours": "{n} 小时后",
       "noShifts": "今日暂无排班"
-    },
-    "notifications": {
-      "title": "通知",
-      "new": "新",
-      "needDecision": "需要决策",
-      "markAllRead": "全部标为已读",
-      "review": "查看",
-      "dismiss": "忽略",
-      "empty": "暂无新通知"
     },
     "noAccess": "你的账号已被禁用 Mr. Merchiva，请联系管理员开启。",
     "dock": {
@@ -4705,7 +4677,6 @@
       "docs": "文档",
       "settings-org": "门店设置",
       "bugs": "问题反馈",
-      "notifications": "通知",
       "drive": "云盘",
       "sheets": "表格",
       "slides": "演示文稿",
@@ -4910,17 +4881,6 @@
         "uploadFailed": "照片添加失败。",
         "failed": "提交失败，请重试。"
       },
-      "notifications": {
-        "markAllRead": "全部标为已读",
-        "list": "通知",
-        "unreadCount": "{n} 条未读",
-        "empty": "暂无新消息",
-        "emptyHint": "排班与申请提醒会显示在这里。",
-        "details": "通知详情",
-        "close": "关闭",
-        "allRead": "已全部标为已读",
-        "markFailed": "更新失败"
-      },
       "drive": {
         "noticeShort": "你在这里保存的所有内容，门店管理层都能看到。",
         "noticeLeave": "还没准备好？点顶部的按钮关闭此应用。",
@@ -5044,7 +5004,6 @@
       "sales": "今日销售一览。",
       "bookings": "今天和明天的预约。",
       "bugs": "反馈 App 的问题，并跟进处理进度。",
-      "notifications": "你的排班、班表与申请提醒，最新的在前。",
       "drive": "门店保存的所有文件，集中在一处：上传的文件、照片，以及用编辑器插件制作的文档、表格和演示文稿。",
       "sheets": "门店的电子表格：在云盘中打开 .xlsx 和 .csv 文件，或新建表格。",
       "slides": "门店的演示文稿：在云盘中打开 .pptx 文件，或新建演示文稿。",
@@ -5095,6 +5054,9 @@
       "addedByStore": "本店已安装",
       "noneInstalled": "还没有安装可选插件。",
       "browse": "浏览插件"
+    },
+    "pager": {
+      "page": "第 {n} 页"
     }
   },
   "storeDevice": {
@@ -5109,8 +5071,6 @@
     "cancel": "取消",
     "close": "关闭",
     "emergency": "紧急",
-    "sosTitle": "紧急情况：",
-    "sosBody": "门店设备上按下了 SOS，请立即查看。",
     "sosToast": "紧急 · 正在呼叫店长和安保",
     "onWork": "在岗",
     "onWorkNow": "当前在岗",
@@ -5163,7 +5123,10 @@
     "breakEnded": "休息结束",
     "punchOutLogOut": "打卡下班并退出登录",
     "punchOutLogOutSub": "结束班次并释放设备",
-    "logOutKeepSub": "保持打卡状态 · 把设备留给下一个人"
+    "logOutKeepSub": "保持打卡状态 · 把设备留给下一个人",
+    "sosCooldown": "刚刚已发出 SOS，店长已收到提醒。2 分钟后才能再次发送。",
+    "sosUnregistered": "SOS 未发出：这台平板未登记为门店设备。请直接联系店长。",
+    "sosFailed": "SOS 未发出。请检查网络后重试，或直接联系店长。"
   },
   "personalDevice": {
     "leaveBtn": "离开",
@@ -6113,7 +6076,6 @@
     "openInNewTabNamed": "在新标签页中打开“{title}”",
     "openTabs": "已打开的标签页",
     "pageMenu": "页面菜单",
-    "pageMenuUnread": "页面菜单，{n} 条未读通知",
     "recentDocuments": "最近的文档",
     "reloadApp": "重新加载应用",
     "removeFavoriteNamed": "从收藏中移除“{title}”",
@@ -7844,5 +7806,219 @@
     "clearFailed": "无法解锁 PIN 输入。",
     "noOperator": "请重新登录后再打卡：这台平板已不知道当前是谁在使用。",
     "lockedNow": "错误的 PIN 太多，PIN 输入已暂停。请改用手机登录，或请经理解锁。"
+  },
+  "notify": {
+    "email": {
+      "subject": {
+        "chat": {
+          "message": "频道中有新消息",
+          "mention": "有人在频道中提到了你",
+          "follow": "你特别关注的人发了新消息",
+          "pin": "频道中有消息被置顶",
+          "merchiva": "Mr. Merchiva 回复了"
+        },
+        "timeOff": {
+          "requested": "新的请假申请",
+          "approved": "你的请假已获批准",
+          "denied": "你的请假未获批准",
+          "updated": "你的请假申请已更新"
+        },
+        "shift": {
+          "requested": "同事请你代班",
+          "open": "有班次需要人代班"
+        },
+        "team": {
+          "joined": "团队有新成员加入"
+        },
+        "inventory": {
+          "low": "库存不足提醒",
+          "waste": "报损后库存不足"
+        },
+        "supplier": {
+          "order": "有一张采购单需要你处理",
+          "issue": "有供应商问题需要你处理"
+        },
+        "security": {
+          "pinLocked": "一台门店设备已暂停 PIN 输入",
+          "manyWrongPins": "你的门店多次输错 PIN",
+          "pinUnlocked": "PIN 输入已解除锁定"
+        },
+        "doc": {
+          "shared": "有人与你共享了文件",
+          "comment": "文件有新评论",
+          "reply": "文件评论有新回复"
+        },
+        "form": {
+          "response": "表单有新回复"
+        },
+        "alert": {
+          "emergency": "门店紧急求助"
+        },
+        "custom": "新通知"
+      },
+      "digestSubject": "你有 {count} 条新通知",
+      "subjectWithStore": "{subject}（{store}）",
+      "storeLine": "门店：{store}",
+      "authorLine": "来自：{author}",
+      "open": "在 Merchiva 中打开",
+      "more": "Merchiva 中还有 {count} 条。",
+      "footerWhy": "你收到这封邮件，是因为你是 Merchiva 上某家门店的成员。",
+      "footerOff": "如需停止接收这类邮件，请在电脑或手机上的 Merchiva 中，前往「设置 → 通知」关闭邮件提醒。",
+      "footerEmergency": "即使已关闭邮件提醒，紧急求助仍会通过邮件发送给店主和经理。",
+      "settings": "通知设置",
+      "textOpen": "打开：{url}",
+      "textSettings": "通知设置：{url}"
+    },
+    "alert": {
+      "open": "打开",
+      "acknowledge": "知道了",
+      "more": "还有 {count} 条提醒"
+    },
+    "dot": {
+      "label": "有新动态",
+      "withName": "{name}，有新动态"
+    },
+    "event": {
+      "chat": {
+        "message": {
+          "title": "{actor}",
+          "body": "{preview}"
+        },
+        "mention": {
+          "title": "{actor} 提到了你",
+          "body": "{preview}"
+        },
+        "follow": {
+          "title": "{actor} 发了一条消息",
+          "body": "{preview}"
+        },
+        "pin": {
+          "title": "{actor} 置顶了一条消息",
+          "body": "{preview}"
+        },
+        "merchiva": {
+          "title": "Mr. Merchiva",
+          "body": "{preview}"
+        }
+      },
+      "timeOff": {
+        "requested": {
+          "title": "请假申请",
+          "body": "{actor} 申请请假：{start} – {end}"
+        },
+        "approved": {
+          "title": "请假已批准",
+          "body": "你的请假申请（{start} – {end}）已获批准"
+        },
+        "denied": {
+          "title": "请假未获批准",
+          "body": "你的请假申请（{start} – {end}）未获批准"
+        },
+        "updated": {
+          "title": "请假申请已更新",
+          "body": "你的请假申请（{start} – {end}）已更新"
+        }
+      },
+      "shift": {
+        "requested": {
+          "title": "换班请求",
+          "body": "{actor} 请你代班或换班"
+        },
+        "open": {
+          "title": "待接班次",
+          "body": "{actor} 在找人代班或换班"
+        }
+      },
+      "team": {
+        "joined": {
+          "title": "新成员",
+          "body": "{actor} 加入了团队"
+        }
+      },
+      "inventory": {
+        "low": {
+          "title": "库存不足：{item}",
+          "body": "{item} 剩余 {quantity} {unit}（最低：{min}）"
+        },
+        "waste": {
+          "title": "库存不足：{item}",
+          "body": "报损后 {item} 降至 {quantity} {unit}"
+        }
+      },
+      "supplier": {
+        "order": {
+          "title": "采购单需要你处理",
+          "body": "Mr. Merchiva 无法给 {supplier} 发送邮件。订单已存为草稿。请添加供应商邮箱，或手动发送。"
+        },
+        "issue": {
+          "title": "供应商问题：{supplier}",
+          "body": "{preview}"
+        }
+      },
+      "security": {
+        "pinLocked": {
+          "title": "一台设备已锁定 PIN 输入",
+          "body": "{actor} 今天输错了 {count} 次 PIN，该设备已暂停 PIN 输入。如果门店里没人输错，可能有人在猜同事的 PIN。"
+        },
+        "manyWrongPins": {
+          "title": "门店出现大量错误 PIN",
+          "body": "今天你的门店共输入了 {count} 次错误 PIN。如果继续这样，所有人的 PIN 输入将暂停一小时；扫码登录不受影响。"
+        },
+        "pinUnlocked": {
+          "title": "PIN 输入已解锁",
+          "body": "{actor} 已清除门店的错误 PIN 计数和锁定。"
+        }
+      },
+      "doc": {
+        "shared": {
+          "title": "{actor} 与你共享了一个文件",
+          "body": "{doc}"
+        },
+        "comment": {
+          "title": "{actor} 评论了 {doc}",
+          "body": "{preview}"
+        },
+        "reply": {
+          "title": "{actor} 在 {doc} 中回复了评论",
+          "body": "{preview}"
+        }
+      },
+      "form": {
+        "response": {
+          "title": "表单有新回复",
+          "body": "{form}"
+        }
+      },
+      "alert": {
+        "emergency": {
+          "title": "紧急情况：{device}",
+          "body": "{store} 的门店设备上按下了 SOS，请立即查看。"
+        }
+      }
+    },
+    "settings": {
+      "email": "邮件提醒",
+      "emailTo": "发送到 {email}",
+      "emailOn": "已开启，发送到你的登录邮箱",
+      "emailOff": "已关闭。应用内仍会显示提醒。",
+      "saveFailed": "无法保存更改，请重试。",
+      "shared": "这块屏幕由团队共用，因此这里无法设置邮件和提醒。请在你自己的手机或电脑上的 Merchiva 中修改。",
+      "whatTitle": "哪些通知会发邮件",
+      "whatChannels": "频道：有人 @ 你、有消息被置顶，或你特别关注的人发消息时。其他消息只在应用内显示。",
+      "whatOther": "与你相关的事：请假和排班动态、共享给你的文件及其评论、表单回复，以及新成员加入。",
+      "whatManagers": "所有者和经理还会收到库存不足、供应商和安全提醒。门店平板发出的 SOS 求助，即使关闭了邮件提醒也会发邮件给他们。",
+      "whatPacing": "多条通知会合并成一封邮件，每 10 分钟最多一封。你已在应用内打开过的内容不会再发邮件。",
+      "everyDevice": "此开关跟随你的账号，在所有设备上都一样。",
+      "liteSummary": "有人 @ 你、有消息被置顶，或你特别关注的人发消息时，我们会发邮件给你；请假、排班和共享文件的动态也会发。你已在应用内打开过的内容不会再发。"
+    },
+    "follow": {
+      "label": "特别关注",
+      "hint": "特别关注：{name} 在你所在的频道发消息时给你发邮件，频道静音也照样发。",
+      "turnOff": "取消特别关注",
+      "added": "已特别关注。{name} 在你所在的频道发消息时，你会收到邮件。",
+      "removed": "已取消对 {name} 的特别关注。",
+      "failed": "特别关注设置失败，请重试。",
+      "directoryHint": "点名字旁的铃铛即可特别关注对方：对方在你所在的频道发消息时，你会收到邮件。"
+    }
   }
 }

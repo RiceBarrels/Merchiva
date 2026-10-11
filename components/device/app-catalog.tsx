@@ -13,7 +13,7 @@ import { useMemo, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import {
   BookingsIcon, BugIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DocsIcon, DriveIcon, FormsIcon, InventoryIcon,
-  NotificationsIcon, PayIcon, ProductsIcon, SalesIcon, ScheduleIcon, SheetsIcon, SlidesIcon, StoreSettingsIcon,
+  PayIcon, ProductsIcon, SalesIcon, ScheduleIcon, SheetsIcon, SlidesIcon, StoreSettingsIcon,
   TasksIcon, TrainingIcon, type AppIcon,
 } from "./app-icons";
 import type { Permissions } from "@/lib/types";
@@ -175,11 +175,6 @@ export const APP_CATALOG: CatalogApp[] = [
   { id: "bugs", icon: BugIcon, route: "/manager/bugs", color: "rose", surfaces: ["store", "personal"],
     component: lazy(() => import("@/app/manager/bugs/page")),
     lite: lite(() => import("./apps/bugs").then((m) => m.BugsLite)) },
-  // Notifications · required for the same reason as Bug reports: a member's
-  // own alerts must not depend on a permission or on someone installing them.
-  { id: "notifications", icon: NotificationsIcon, route: "/manager/notifications", color: "amber", surfaces: ["store", "personal"],
-    component: lazy(() => import("@/app/manager/notifications/page")),
-    lite: lite(() => import("./apps/notifications").then((m) => m.NotificationsLite)) },
   // Store settings · Integrations
   { id: "settings-org", icon: StoreSettingsIcon, route: "/manager/settings", color: "slate", permissionKey: "settings", surfaces: ["store", "personal"], managerOnly: true,
     component: lazy(() => import("@/app/manager/settings/page")),

@@ -7,10 +7,13 @@ import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { MerchivaLogo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { NotificationDot } from "@/components/ui/notification-dot";
 import { useActiveTab, useTabsSnapshot } from "@/lib/browser-shell";
 import { useSingleTabShell } from "@/lib/browser-shell/single-tab";
 import { usePermissions } from "@/lib/context/permissions";
 import { useI18n } from "@/lib/i18n/context";
+import { fmt } from "@/lib/i18n/fmt";
+import { useDot } from "@/lib/notifications/dots-context";
 import { cn } from "@/lib/utils";
 import { clearDockFocusPending, closeMerchivaDock, isDockFocusPending, openMerchivaDock } from "./dock-state";
 import { isMacPlatform, merchivaShortcutLabel } from "./shortcut";
@@ -133,7 +136,8 @@ function useComposerFocus(open: boolean, current: string | null, hostRef: React.
  * The desktop dock, as it was before the browser shell: collapsed, a rail on the right edge with a
  * vertical "Mr. Merchiva" label; open, the chat with the label settled into its header. The rail
  * and the collapse button toggle it, and so does ⌘⇧M. Its width lives in the panel group around it
- * (dock-layout.tsx).
+ * (dock-layout.tsx). A reply he finished while the dock was closed puts a notification dot on the
+ * rail's open button; opening the dock reads it (dock-dots.ts).
  */
 export function MerchivaSidePanel({ open }: { open: boolean }) {
   const { t, dir } = useI18n();
@@ -141,6 +145,7 @@ export function MerchivaSidePanel({ open }: { open: boolean }) {
   const rtl = dir === "rtl";
   const openLabel = t("merchiva.dock.open");
   const closeLabel = t("merchiva.dock.close");
+  const dot = useDot({ app: "merchiva" }) && !open;
   // The label glides between the rail's centre and the header's start edge.
   const edge = (value: number) => (rtl ? { right: value } : { left: value });
 
@@ -166,7 +171,7 @@ export function MerchivaSidePanel({ open }: { open: boolean }) {
         type="button"
         inert={open}
         onClick={openMerchivaDock}
-        aria-label={openLabel}
+        aria-label={dot ? fmt(t("notify.dot.withName"), { name: openLabel }) : openLabel}
         aria-expanded={false}
         title={shortcutHint(openLabel)}
         className={cn(
@@ -175,7 +180,10 @@ export function MerchivaSidePanel({ open }: { open: boolean }) {
         )}
         style={{ width: RAIL_WIDTH }}
       >
-        <PanelRightOpen className="h-4 w-4 text-muted-foreground rtl:-scale-x-100" />
+        <span className="relative flex">
+          <PanelRightOpen className="h-4 w-4 text-muted-foreground rtl:-scale-x-100" />
+          <NotificationDot show={dot} />
+        </span>
       </button>
 
       <motion.div

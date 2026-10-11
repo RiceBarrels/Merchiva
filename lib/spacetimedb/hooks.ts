@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { tables } from "./generated";
-import type { PagePresence } from "./generated/types";
+import type { ChatFollow, NotificationDelivery, NotificationPref, PagePresence } from "./generated/types";
 
 export { useSpacetimeDB } from "spacetimedb/react";
 export { useTable } from "spacetimedb/react";
@@ -78,6 +78,7 @@ export function useSiteBookings()    { return useTable(tables.siteBooking); }
 export function useTodos() { return useTable(tables.todo); }
 
 // ── Notifications ───────────────────────────────────────────────────────────
+// Entry points never read these: they ask lib/notifications/dots-context.tsx.
 export function useNotifications() { return useTable(tables.notification); }
 
 // ── Waste Log ───────────────────────────────────────────────────────────────
@@ -162,6 +163,27 @@ export function usePunchEvents() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tbl = (tables as any).punchEvent;
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+/* eslint-enable */
+
+// ── Built-in notifications (spacetimedb/src/notify/tables.ts) ───────────────
+// Delivery state, the email switch + email locale, and person follows (特别关注).
+// All three are RLS self-scoped. Guarded like the training tables: bindings
+// without them return EMPTY_TABLE_RESULT; against a module that predates them the
+// subscription is rejected and `ready` stays false, which is how callers tell the
+// module has not been published yet (lib/spacetimedb/provider.tsx notifySubscriptions).
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/rules-of-hooks */
+export function useNotificationDeliveries(): [readonly NotificationDelivery[], boolean] {
+  const tbl = (tables as any).notificationDelivery;
+  return (tbl ? useTable(tbl) : EMPTY_TABLE_RESULT) as unknown as [readonly NotificationDelivery[], boolean];
+}
+export function useNotificationPrefs(): [readonly NotificationPref[], boolean] {
+  const tbl = (tables as any).notificationPref;
+  return (tbl ? useTable(tbl) : EMPTY_TABLE_RESULT) as unknown as [readonly NotificationPref[], boolean];
+}
+export function useChatFollows(): [readonly ChatFollow[], boolean] {
+  const tbl = (tables as any).chatFollow;
+  return (tbl ? useTable(tbl) : EMPTY_TABLE_RESULT) as unknown as [readonly ChatFollow[], boolean];
 }
 /* eslint-enable */
 

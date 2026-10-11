@@ -6,6 +6,8 @@ import { useI18n, useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
 import { useNow, fmtDurationHM, shortName, useChannels, ChannelHeader, MessageList, TalkBar, PagesTrack, type OnShiftEntry } from "@/components/device";
+import { walkieOnScreen } from "@/components/device/device-dots";
+import { useDeviceChatDots, useDevicePagerDots, useWalkieChatRead } from "@/components/device/use-device-dots";
 import type { StoreMember } from "./use-org-members";
 import { LogoutDrawer } from "./logout-drawer";
 import { AppsPane } from "./apps-pane";
@@ -27,24 +29,32 @@ export interface LoggedInScreenProps {
   /** Phone layout: swipeable Channel | Apps pages over a pinned talk bar.
    *  Tablet: 400px walkie-talkie column beside the apps grid. */
   phone: boolean;
+  /** The idle dimmer is running down to the auto log-out. */
+  idle?: boolean;
   className?: string;
 }
 
 /** Logged-in store device: the operator's walkie-talkie + the apps home. */
-export function LoggedInScreen({ organizationId, operator, operatorPin, shift, loginAt, members, forMember, onLogout, onRecordingChange, phone, className }: LoggedInScreenProps) {
+export function LoggedInScreen({ organizationId, operator, operatorPin, shift, loginAt, members, forMember, onLogout, onRecordingChange, phone, idle = false, className }: LoggedInScreenProps) {
   const t = useT();
   const { locale } = useI18n();
   const now = useNow(15_000);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [page, setPage] = useState(0);
+  const [appOpen, setAppOpen] = useState(false);
   const channels = useChannels({ organizationId, meUserId: operator.userIdHex, locale });
   const elapsed = useMemo(() => fmtDurationHM(now.getTime() - loginAt), [now, loginAt]);
+  const chatDots = useDeviceChatDots();
+  const pagerDots = useDevicePagerDots();
+  // Hearing a conversation on the walkie reads it (only when the operator is the tablet's account).
+  useWalkieChatRead(channels.activeChannel?.id ?? null, walkieOnScreen({ phone, page, appOpen, locked: false, idle }));
 
   const header = (
     <ChannelHeader
       channels={channels.channels}
       activeIndex={channels.activeIndex}
       onSelect={(i) => { channels.setActiveIndex(i); setPage(0); }}
+      dots={chatDots}
       right={
         <span className="inline-flex items-center h-5 px-2 rounded bg-secondary text-xs font-medium whitespace-nowrap">
           {shortName(operator.displayName)} · <span className="font-mono tabular-nums ml-1">{elapsed}</span>
@@ -82,10 +92,11 @@ export function LoggedInScreen({ organizationId, operator, operatorPin, shift, l
         <PagesTrack
           page={page}
           onPageChange={(p) => { hapticLight(); setPage(p); }}
+          dots={pagerDots}
           className="min-h-0 flex-1"
           pages={[
             <MessageList key="messages" messages={channels.messages} className="h-full overflow-y-auto" />,
-            <AppsPane key="apps" members={members} operator={operator} operatorPin={operatorPin} forMember={forMember} phone className="h-full" />,
+            <AppsPane key="apps" members={members} operator={operator} operatorPin={operatorPin} forMember={forMember} onPanelOpenChange={setAppOpen} phone className="h-full" />,
           ]}
         />
         {talkBar}
@@ -101,7 +112,7 @@ export function LoggedInScreen({ organizationId, operator, operatorPin, shift, l
         <MessageList messages={channels.messages} className="min-h-0 flex-1 overflow-y-auto" />
         {talkBar}
       </div>
-      <AppsPane members={members} operator={operator} operatorPin={operatorPin} forMember={forMember} className="min-h-0" />
+      <AppsPane members={members} operator={operator} operatorPin={operatorPin} forMember={forMember} onPanelOpenChange={setAppOpen} className="min-h-0" />
       {drawer}
     </div>
   );

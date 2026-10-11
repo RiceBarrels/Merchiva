@@ -9,17 +9,20 @@ import {
   MenuRow,
   StoreSwitchList,
   SwitchModeLink,
+  useOtherStoresDot,
   useWorkspaceActions,
 } from "@/components/browser-shell/shared/workspace-menu";
 import { StoreLogo } from "@/components/store-picker";
 import { Avatar } from "@/components/ui/avatar";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { NotificationDot } from "@/components/ui/notification-dot";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTabActions } from "@/lib/browser-shell";
 import { useT } from "@/lib/i18n/context";
+import { fmt } from "@/lib/i18n/fmt";
 import { cn } from "@/lib/utils";
-import { SIDEBAR_DRAWER_POPOVER_CLASS, SIDEBAR_DRAWER_SWITCHER_CLASS } from "../chrome-classes";
+import { CHROME_DOT_CLASS, SIDEBAR_DRAWER_POPOVER_CLASS, SIDEBAR_DRAWER_SWITCHER_CLASS } from "../chrome-classes";
 import { useOverlayBackHandler } from "../chrome-context";
 
 /*
@@ -32,6 +35,8 @@ import { useOverlayBackHandler } from "../chrome-context";
  * Collapsed (icon rail) it shrinks to the store tile with a tooltip; the popover is identical.
  * In the phone drawer the trigger and the popover rows are touch-sized and the popover never
  * outgrows a 320px screen; Android back closes it like any other popup (lib/browser-shell/android-back.ts).
+ * When another store has something unread, the store tile carries a notification dot and the
+ * store list shows which one.
  */
 export function SidebarWorkspaceSwitcher({ collapsed, drawer = false }: { collapsed: boolean; drawer?: boolean }) {
   const t = useT();
@@ -50,7 +55,9 @@ export function SidebarWorkspaceSwitcher({ collapsed, drawer = false }: { collap
   const org = workspace.currentOrg;
   const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email : "";
   const orgName = org?.name ?? t("nav.selectStore");
+  const dot = useOtherStoresDot(workspace.stores, org?.id ?? null);
   const label = t("browserDesktop.toolbar.profile");
+  const triggerLabel = dot ? fmt(t("notify.dot.withName"), { name: label }) : label;
   const tooltip = user?.email ? `${orgName} · ${user.email}` : orgName;
 
   const trigger = collapsed ? (
@@ -61,14 +68,17 @@ export function SidebarWorkspaceSwitcher({ collapsed, drawer = false }: { collap
             render={
               <button
                 type="button"
-                aria-label={label}
+                aria-label={triggerLabel}
                 className="flex w-full items-center justify-center rounded px-2 py-1.5 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 data-popup-open:bg-muted dark:hover:bg-background dark:data-popup-open:bg-background"
               />
             }
           />
         }
       >
-        <StoreLogo name={org?.name ?? ""} logoUrl={org?.logoUrl} className="h-6 w-6 text-[11px]" />
+        <span className="relative flex">
+          <StoreLogo name={org?.name ?? ""} logoUrl={org?.logoUrl} className="h-6 w-6 text-[11px]" />
+          <NotificationDot show={dot} className={CHROME_DOT_CLASS} />
+        </span>
       </TooltipTrigger>
       <TooltipContent side="inline-end">{tooltip}</TooltipContent>
     </Tooltip>
@@ -77,7 +87,7 @@ export function SidebarWorkspaceSwitcher({ collapsed, drawer = false }: { collap
       render={
         <button
           type="button"
-          aria-label={label}
+          aria-label={triggerLabel}
           className={cn(
             "flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-start outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 data-popup-open:bg-muted dark:hover:bg-background dark:data-popup-open:bg-background",
             drawer && SIDEBAR_DRAWER_SWITCHER_CLASS,
@@ -85,7 +95,10 @@ export function SidebarWorkspaceSwitcher({ collapsed, drawer = false }: { collap
         />
       }
     >
-      <StoreLogo name={org?.name ?? ""} logoUrl={org?.logoUrl} className="h-7 w-7 text-[12px]" />
+      <span className="relative flex shrink-0">
+        <StoreLogo name={org?.name ?? ""} logoUrl={org?.logoUrl} className="h-7 w-7 text-[12px]" />
+        <NotificationDot show={dot} className={CHROME_DOT_CLASS} />
+      </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="min-w-0 truncate text-[13px] font-medium text-foreground">{orgName}</span>

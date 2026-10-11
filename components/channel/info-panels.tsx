@@ -14,12 +14,13 @@ import { removeConversationMember, setChatMessagePinned } from "@/lib/spacetimed
 import { useChannelWorkspace } from "@/components/channel/context";
 import { PanelShell } from "@/components/channel/thread-panel";
 import { SenderAvatar } from "@/components/channel/message-row";
+import { FollowButton } from "@/components/channel/follow";
 
 const WHEN: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
 
 export function MembersPanel({ channel, onAddPeople, onEditTopic }: { channel: ChatChannel; onAddPeople: () => void; onEditTopic: () => void }) {
   const t = useT();
-  const { people, meHex, accountHex, canManage, run, nameOf, avatarOf, openPanel } = useChannelWorkspace();
+  const { people, meHex, accountHex, canManage, isMobile, run, nameOf, avatarOf, openPanel } = useChannelWorkspace();
   const members = useMemo(
     () => [...channel.memberHexes].sort((a, b) => nameOf(a).localeCompare(nameOf(b))),
     [channel.memberHexes, nameOf],
@@ -54,6 +55,12 @@ export function MembersPanel({ channel, onAddPeople, onEditTopic }: { channel: C
                   </p>
                   {person && <p className="truncate text-xs text-muted-foreground">{t(`personnel.team.role.${person.role}`)}</p>}
                 </div>
+                {/* Always shown while followed; otherwise on hover, like the remove button (always on a phone). */}
+                <FollowButton
+                  hex={hex}
+                  name={nameOf(hex)}
+                  idleClassName={isMobile ? undefined : "opacity-0 group-hover/m:opacity-100 focus-visible:opacity-100"}
+                />
                 {/* Not yourself, and not the account every write runs as (a store machine's): the module refuses both. */}
                 {canManage && hex !== meHex && hex !== accountHex && (
                   <Button

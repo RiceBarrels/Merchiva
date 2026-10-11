@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AppsGrid, EmbeddedPage, MiniAppShell, catalogApp, useCatalogApps, useDeviceBuiltins, type DeviceApp, type OnShiftEntry } from "@/components/device";
+import { useDeviceTileDots, useOpenAppDotClearing } from "@/components/device/use-device-dots";
 import type { StoreMember } from "./use-org-members";
 import { DirectoryPanel } from "./directory-panel";
 import { DeviceSettingsPanel } from "./device-settings-panel";
@@ -40,6 +41,9 @@ export function AppsPane({ operator, operatorPin, members, forMember, onPanelOpe
   const catalogApps = useCatalogApps("store", operator);
   const apps: DeviceApp[] = [...builtins, ...catalogApps];
   const openCatalog = openApp ? catalogApp(openApp) : null;
+  // Tile dots, and opening a tile reads what its dot stood for (both only when the operator is the tablet's account).
+  const tileDots = useDeviceTileDots();
+  useOpenAppDotClearing(openApp);
   const title = openApp ? (openCatalog ? t(`device.catalog.${openApp}`) : t(`storeDevice.apps.${openApp}`)) : "";
 
   const open = (id: DeviceApp["id"], origin?: HTMLElement) => {
@@ -58,7 +62,7 @@ export function AppsPane({ operator, operatorPin, members, forMember, onPanelOpe
 
   return (
     <div className={cn("relative min-h-0 overflow-hidden bg-background", className)}>
-      <AppsGrid apps={apps} onOpen={open} columns={phone ? 4 : 6} size={phone ? "md" : "lg"} className="absolute inset-0" />
+      <AppsGrid apps={apps} onOpen={open} columns={phone ? 4 : 6} size={phone ? "md" : "lg"} dots={tileDots} className="absolute inset-0" />
       <MiniAppShell
         open={openApp !== null}
         title={title}

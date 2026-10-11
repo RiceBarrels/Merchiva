@@ -34,7 +34,6 @@ export interface BottomChromeProps {
   dialogSwipe: number;
   orgName: string;
   orgLogoUrl: string | null;
-  unreadCount: number;
   tabCount: number;
   canBack: boolean;
   canForward: boolean;
@@ -115,7 +114,6 @@ export function BottomChrome({
   dialogSwipe,
   orgName,
   orgLogoUrl,
-  unreadCount,
   tabCount,
   canBack,
   canForward,
@@ -187,7 +185,6 @@ export function BottomChrome({
           dialogSwipe={dialogSwipe}
           orgName={orgName}
           orgLogoUrl={orgLogoUrl}
-          unreadCount={unreadCount}
           reloadDisabled={reloadDisabled}
           reloadTick={reloadTick}
           reducedMotion={reducedMotion}

@@ -64,7 +64,6 @@
     "apps": "Extensions",
     "docs": "Documents",
     "bugs": "Bugs",
-    "notifications": "Notifications",
     "drive": "Fichiers",
     "sheets": "Feuilles de calcul",
     "slides": "Présentations",
@@ -1260,12 +1259,6 @@
     "desktopDisabled": "Alertes push lorsque l'application est fermée",
     "desktopBlocked": "Bloqué dans les paramètres du navigateur",
     "desktopUnsupported": "Non pris en charge par ce navigateur",
-    "shiftReminders": "Rappels de quart",
-    "beforeShift": "Avant le début du quart",
-    "lowStockAlerts": "Alertes stock bas",
-    "belowThreshold": "Quand un article passe sous le seuil",
-    "weeklySummary": "Résumé hebdomadaire",
-    "performanceDigest": "Rapport de performance chaque lundi",
     "navigationMode": "Mode de navigation",
     "sidebar": "Barre latérale",
     "bottomBar": "Barre inférieure",
@@ -1544,7 +1537,8 @@
     "teamOnTeamPage": "Membres, rôles et codes de pointage",
     "punchCodeOnTeamPage": "À définir sur la page de l'équipe",
     "createStoreHint": "Crée un nouveau magasin avec son propre inventaire et ses prévisions.",
-    "toastSettingsNotLoaded": "Les paramètres sont encore en cours de chargement — réessayez dans un instant"
+    "toastSettingsNotLoaded": "Les paramètres sont encore en cours de chargement — réessayez dans un instant",
+    "notificationsMeta": "E-mail et alertes"
   },
   "lock": {
     "title": "Appareil verrouillé",
@@ -2139,23 +2133,10 @@
     }
   },
   "notifications": {
-    "title": "Notifications",
-    "markAllRead": "Tout marquer comme lu",
-    "empty": "Aucune notification",
-    "emptyDesc": "Vous êtes à jour",
     "justNow": "À l'instant",
     "minutesAgo": "il y a {n}m",
     "hoursAgo": "il y a {n}h",
     "daysAgo": "il y a {n}j",
-    "unreadCount": "{n} non lues",
-    "dismiss": "Ignorer",
-    "filterAll": "Toutes",
-    "filterShift": "Horaires",
-    "filterTimeOff": "Congés",
-    "filterTeam": "Équipe",
-    "filterInventory": "Stock",
-    "filterOrder": "Commandes",
-    "filterGeneral": "Système",
     "tradeOfferedToEveryone": "{name} propose son créneau à tout le monde",
     "tradeWantsToTrade": "{name} souhaite échanger avec vous",
     "tradeAcceptedAwaitingManager": "{name} a accepté — en attente de l'approbation du responsable",
@@ -3078,15 +3059,6 @@
       "inMinutes": "dans {n} min",
       "inHours": "dans {n} h",
       "noShifts": "Aucun service prévu aujourd'hui"
-    },
-    "notifications": {
-      "title": "Notifications",
-      "new": "nouvelles",
-      "needDecision": "nécessitent une décision",
-      "markAllRead": "Tout marquer comme lu",
-      "review": "Examiner",
-      "dismiss": "Ignorer",
-      "empty": "Aucune nouvelle notification"
     },
     "noAccess": "Mr. Merchiva est désactivé pour votre compte. Demandez à un responsable de l'activer.",
     "dock": {
@@ -4705,7 +4677,6 @@
       "docs": "Documents",
       "settings-org": "Réglages boutique",
       "bugs": "Signalements",
-      "notifications": "Notifications",
       "drive": "Fichiers",
       "sheets": "Feuilles de calcul",
       "slides": "Présentations",
@@ -4910,17 +4881,6 @@
         "uploadFailed": "Impossible d'ajouter la photo.",
         "failed": "Envoi impossible. Réessayez."
       },
-      "notifications": {
-        "markAllRead": "Tout marquer comme lu",
-        "list": "Notifications",
-        "unreadCount": "{n} non lues",
-        "empty": "Rien de nouveau",
-        "emptyHint": "Les alertes de service et de demandes apparaissent ici.",
-        "details": "Notification",
-        "close": "Fermer",
-        "allRead": "Tout marqué comme lu",
-        "markFailed": "Échec de la mise à jour"
-      },
       "drive": {
         "noticeShort": "La direction du magasin peut voir tout ce que vous enregistrez ici.",
         "noticeLeave": "Pas maintenant ? Fermez cette application avec le bouton en haut.",
@@ -5044,7 +5004,6 @@
       "sales": "Les ventes du jour en un coup d'œil.",
       "bookings": "Réservations d'aujourd'hui et de demain.",
       "bugs": "Signalez un problème dans l'app et suivez son traitement.",
-      "notifications": "Vos alertes de service, de planning et de demandes, les plus récentes d'abord.",
       "drive": "Tous les fichiers de votre magasin, au même endroit : fichiers téléversés, photos, et les documents, feuilles de calcul et présentations créés avec les extensions d'édition.",
       "sheets": "Les feuilles de calcul de votre magasin : ouvrez des fichiers .xlsx et .csv, et créez-en de nouvelles dans Fichiers.",
       "slides": "Les présentations de votre magasin : ouvrez des fichiers .pptx, et créez-en de nouvelles dans Fichiers.",
@@ -5095,6 +5054,9 @@
       "addedByStore": "Installées par votre magasin",
       "noneInstalled": "Aucune extension facultative installée pour l'instant.",
       "browse": "Parcourir les extensions"
+    },
+    "pager": {
+      "page": "Page {n}"
     }
   },
   "storeDevice": {
@@ -5109,8 +5071,6 @@
     "cancel": "Annuler",
     "close": "Fermer",
     "emergency": "Urgence",
-    "sosTitle": "Urgence à",
-    "sosBody": "SOS déclenché sur un appareil du magasin. Vérifiez immédiatement.",
     "sosToast": "Urgence · appel du responsable et de la sécurité",
     "onWork": "au travail",
     "onWorkNow": "au travail actuellement",
@@ -5163,7 +5123,10 @@
     "breakEnded": "Pause terminée",
     "punchOutLogOut": "Pointer le départ et se déconnecter",
     "punchOutLogOutSub": "Termine votre service et libère l’appareil",
-    "logOutKeepSub": "Rester pointé · libère l’appareil pour la personne suivante"
+    "logOutKeepSub": "Rester pointé · libère l’appareil pour la personne suivante",
+    "sosCooldown": "Un SOS vient d'être envoyé. Les responsables sont prévenus. Vous pourrez en envoyer un autre dans 2 minutes.",
+    "sosUnregistered": "SOS non envoyé : cette tablette n'est pas enregistrée comme appareil du magasin. Appelez un responsable.",
+    "sosFailed": "SOS non envoyé. Vérifiez la connexion et réessayez, ou appelez un responsable."
   },
   "personalDevice": {
     "leaveBtn": "Quitter",
@@ -6113,7 +6076,6 @@
     "openInNewTabNamed": "Ouvrir {title} dans un nouvel onglet",
     "openTabs": "Onglets ouverts",
     "pageMenu": "Menu de la page",
-    "pageMenuUnread": "Menu de la page, {n} notifications non lues",
     "recentDocuments": "Documents récents",
     "reloadApp": "Recharger l’application",
     "removeFavoriteNamed": "Retirer {title} des favoris",
@@ -7844,5 +7806,219 @@
     "clearFailed": "Impossible de débloquer la saisie du PIN.",
     "noOperator": "Reconnectez-vous pour pointer : cette tablette ne sait plus qui l’utilise.",
     "lockedNow": "Trop de codes PIN erronés. La saisie du PIN est suspendue pour le moment. Connectez-vous avec votre téléphone ou demandez à un responsable de la débloquer."
+  },
+  "notify": {
+    "email": {
+      "subject": {
+        "chat": {
+          "message": "Nouveau message dans un canal",
+          "mention": "Vous avez été mentionné dans un canal",
+          "follow": "Nouveau message d'une personne que vous suivez",
+          "pin": "Un message a été épinglé dans un canal",
+          "merchiva": "Mr. Merchiva a répondu"
+        },
+        "timeOff": {
+          "requested": "Nouvelle demande de congé",
+          "approved": "Votre congé a été approuvé",
+          "denied": "Votre congé a été refusé",
+          "updated": "Votre demande de congé a été mise à jour"
+        },
+        "shift": {
+          "requested": "Un collègue vous demande de couvrir un quart",
+          "open": "Un quart doit être couvert"
+        },
+        "team": {
+          "joined": "Un nouveau membre a rejoint votre équipe"
+        },
+        "inventory": {
+          "low": "Alerte de stock bas",
+          "waste": "Stock bas après une perte"
+        },
+        "supplier": {
+          "order": "Un bon de commande demande votre attention",
+          "issue": "Un problème avec un fournisseur demande votre attention"
+        },
+        "security": {
+          "pinLocked": "La saisie du code PIN a été suspendue sur un appareil de boutique",
+          "manyWrongPins": "De nombreux codes PIN erronés dans votre magasin",
+          "pinUnlocked": "La saisie du code PIN a été débloquée"
+        },
+        "doc": {
+          "shared": "Un fichier a été partagé avec vous",
+          "comment": "Nouveau commentaire sur un fichier",
+          "reply": "Nouvelle réponse sur un fichier"
+        },
+        "form": {
+          "response": "Nouvelle réponse à un formulaire"
+        },
+        "alert": {
+          "emergency": "Alerte d'urgence de votre magasin"
+        },
+        "custom": "Nouvelle notification"
+      },
+      "digestSubject": "Vous avez {count} nouvelles notifications",
+      "subjectWithStore": "{subject} · {store}",
+      "storeLine": "Magasin : {store}",
+      "authorLine": "De : {author}",
+      "open": "Ouvrir dans Merchiva",
+      "more": "Et {count} de plus dans Merchiva.",
+      "footerWhy": "Vous recevez cet e-mail car vous êtes membre d'un magasin sur Merchiva.",
+      "footerOff": "Pour ne plus recevoir ces e-mails, désactivez l'e-mail dans Paramètres → Notifications, dans Merchiva sur votre ordinateur ou votre téléphone.",
+      "footerEmergency": "Les alertes d'urgence sont envoyées par e-mail aux propriétaires et aux responsables même si l'e-mail est désactivé.",
+      "settings": "Paramètres des notifications",
+      "textOpen": "Ouvrir : {url}",
+      "textSettings": "Paramètres des notifications : {url}"
+    },
+    "alert": {
+      "open": "Ouvrir",
+      "acknowledge": "Compris",
+      "more": "{count} autres alertes"
+    },
+    "dot": {
+      "label": "Nouveautés",
+      "withName": "{name}, nouveautés"
+    },
+    "event": {
+      "chat": {
+        "message": {
+          "title": "{actor}",
+          "body": "{preview}"
+        },
+        "mention": {
+          "title": "{actor} vous a mentionné",
+          "body": "{preview}"
+        },
+        "follow": {
+          "title": "{actor} a publié un message",
+          "body": "{preview}"
+        },
+        "pin": {
+          "title": "{actor} a épinglé un message",
+          "body": "{preview}"
+        },
+        "merchiva": {
+          "title": "Mr. Merchiva",
+          "body": "{preview}"
+        }
+      },
+      "timeOff": {
+        "requested": {
+          "title": "Demande de congé",
+          "body": "{actor} a demandé un congé du {start} au {end}"
+        },
+        "approved": {
+          "title": "Congé approuvé",
+          "body": "Votre demande de congé ({start} – {end}) a été approuvée"
+        },
+        "denied": {
+          "title": "Congé refusé",
+          "body": "Votre demande de congé ({start} – {end}) a été refusée"
+        },
+        "updated": {
+          "title": "Demande de congé mise à jour",
+          "body": "Votre demande de congé ({start} – {end}) a été mise à jour"
+        }
+      },
+      "shift": {
+        "requested": {
+          "title": "Demande de quart",
+          "body": "{actor} vous demande de couvrir ou d'échanger un quart"
+        },
+        "open": {
+          "title": "Quart à pourvoir",
+          "body": "{actor} cherche quelqu'un pour couvrir ou échanger son quart"
+        }
+      },
+      "team": {
+        "joined": {
+          "title": "Nouveau membre de l'équipe",
+          "body": "{actor} a rejoint l'équipe"
+        }
+      },
+      "inventory": {
+        "low": {
+          "title": "Stock bas : {item}",
+          "body": "{item} est à {quantity} {unit} (min. : {min})"
+        },
+        "waste": {
+          "title": "Stock bas : {item}",
+          "body": "{item} est tombé à {quantity} {unit} après une mise au rebut"
+        }
+      },
+      "supplier": {
+        "order": {
+          "title": "Un bon de commande demande votre attention",
+          "body": "Mr. Merchiva n'a pas pu envoyer l'e-mail à {supplier}. La commande a été enregistrée comme brouillon. Ajoutez l'e-mail du fournisseur ou envoyez-la vous-même."
+        },
+        "issue": {
+          "title": "Problème fournisseur : {supplier}",
+          "body": "{preview}"
+        }
+      },
+      "security": {
+        "pinLocked": {
+          "title": "Saisie du code PIN bloquée sur un appareil",
+          "body": "{actor} a saisi {count} codes PIN erronés aujourd'hui : la saisie du code est suspendue sur cet appareil. Si personne au magasin ne s'est trompé, quelqu'un essaie peut-être de deviner les codes de ses collègues."
+        },
+        "manyWrongPins": {
+          "title": "Nombreux codes PIN erronés dans votre magasin",
+          "body": "{count} codes PIN erronés ont été saisis dans votre magasin aujourd'hui. Si cela continue, la saisie du code sera suspendue pour tout le monde pendant une heure ; la connexion par QR code reste possible."
+        },
+        "pinUnlocked": {
+          "title": "Saisie du code PIN débloquée",
+          "body": "{actor} a remis à zéro les erreurs de code PIN et les blocages du magasin."
+        }
+      },
+      "doc": {
+        "shared": {
+          "title": "{actor} a partagé un fichier avec vous",
+          "body": "{doc}"
+        },
+        "comment": {
+          "title": "{actor} a commenté {doc}",
+          "body": "{preview}"
+        },
+        "reply": {
+          "title": "{actor} a répondu dans {doc}",
+          "body": "{preview}"
+        }
+      },
+      "form": {
+        "response": {
+          "title": "Nouvelle réponse au formulaire",
+          "body": "{form}"
+        }
+      },
+      "alert": {
+        "emergency": {
+          "title": "Urgence à {device}",
+          "body": "SOS déclenché sur un appareil de {store}. Vérifiez immédiatement."
+        }
+      }
+    },
+    "settings": {
+      "email": "M'envoyer des e-mails",
+      "emailTo": "Envoyés à {email}",
+      "emailOn": "Activé, vers l'adresse e-mail de connexion",
+      "emailOff": "Désactivé. Les alertes restent visibles dans l'application.",
+      "saveFailed": "Impossible d'enregistrer la modification. Réessayez.",
+      "shared": "Cet écran est partagé par votre équipe : les réglages d'e-mail et d'alertes n'y sont pas disponibles. Modifiez-les dans Merchiva sur votre propre téléphone ou ordinateur.",
+      "whatTitle": "Ce que nous vous envoyons par e-mail",
+      "whatChannels": "Canaux : quand quelqu'un vous mentionne avec @, quand un message est épinglé et quand une personne que vous suivez en suivi spécial publie. Les autres messages n'apparaissent que dans l'application.",
+      "whatOther": "Ce qui vous concerne : congés et quarts, fichiers partagés avec vous et leurs commentaires, réponses aux formulaires et nouveaux membres de l'équipe.",
+      "whatManagers": "Les propriétaires et les responsables reçoivent aussi les alertes de stock bas, de fournisseurs et de sécurité. Un SOS lancé depuis une tablette du magasin leur est envoyé par e-mail même si l'e-mail est désactivé.",
+      "whatPacing": "Plusieurs notifications sont regroupées dans un seul e-mail, au plus un toutes les 10 minutes. Ce que vous avez déjà ouvert dans l'application n'est pas envoyé par e-mail.",
+      "everyDevice": "Ce réglage suit votre compte : il est le même sur tous vos appareils.",
+      "liteSummary": "Nous vous envoyons un e-mail quand quelqu'un vous mentionne avec @, qu'un message est épinglé ou qu'une personne en suivi spécial publie, ainsi que pour les congés, les services et les fichiers partagés. Ce que vous avez déjà ouvert dans l'application n'est pas envoyé."
+    },
+    "follow": {
+      "label": "Suivi spécial",
+      "hint": "Suivi spécial : recevez un e-mail quand {name} publie dans un canal dont vous faites partie, même en sourdine.",
+      "turnOff": "Désactiver le suivi spécial",
+      "added": "Suivi spécial activé. Vous recevrez un e-mail quand {name} publiera dans un canal dont vous faites partie.",
+      "removed": "Suivi spécial désactivé pour {name}.",
+      "failed": "Impossible de modifier le suivi spécial. Réessayez.",
+      "directoryHint": "Touchez la cloche à côté d'une personne pour la mettre en suivi spécial : vous recevrez un e-mail quand elle publiera dans un canal dont vous faites partie."
+    }
   }
 }

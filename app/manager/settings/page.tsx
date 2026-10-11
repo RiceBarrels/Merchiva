@@ -1754,7 +1754,7 @@ export default function SettingsPage() {
         <SRow
           icon={<Bell className="h-4 w-4 text-foreground" />}
           title={t("settings.groupNotifications")}
-          meta={t("settings.shiftReminders")}
+          meta={t("settings.notificationsMeta")}
           onClick={() => setSubPanel("notifications")}
           card
         />

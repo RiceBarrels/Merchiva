@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { NotificationDot } from "@/components/ui/notification-dot";
 import { anyDocumentEditorAllowed, getRouteAccess, openableDocuments, searchRoutes, useAccessContext, useNavSections } from "@/lib/browser-shell/access";
 import { dispositionFromKeyboard } from "@/lib/browser-shell/dispositions";
 import { presentTab, useClosedTabs, useTabActions, useTabsSnapshot } from "@/lib/browser-shell/hooks";
@@ -41,6 +42,7 @@ import type { RecentDocumentItem } from "@/lib/docs/types";
 import { LOCALE_BCP47 } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
+import { useDot } from "@/lib/notifications/dots-context";
 import { createDocument } from "@/lib/spacetimedb/actions";
 import { useDocsBackendStatus, useRecentDocuments, type DocsBackendStatus } from "@/lib/spacetimedb/hooks/useDocs";
 import { useIsMobile } from "@/lib/use-is-mobile";
@@ -495,45 +497,64 @@ function AppLauncher({ desktop, t }: { desktop: boolean; t: Translate }) {
         {t("browser.newTabPage.apps")}
       </Eyebrow>
       <ul className="grid grid-cols-4 gap-1 sm:grid-cols-5 lg:grid-cols-6">
-        {sections.map((section) => {
-          const Icon = section.icon;
-          return (
-            <li key={section.href}>
-              <Link
-                href={section.href}
-                onMouseEnter={() => setHovered(section.href)}
-                onFocus={() => setHovered(section.href)}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-transparent px-1 py-2.5 text-center outline-none transition-colors hover:border-border hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <Icon className="h-9 w-9" />
-                <span className="w-full truncate text-[12px] font-medium text-foreground">{t(section.titleKey)}</span>
-              </Link>
-            </li>
-          );
-        })}
+        {sections.map((section) => (
+          <li key={section.href}>
+            <LauncherTile section={section} t={t} onHover={() => setHovered(section.href)} />
+          </li>
+        ))}
       </ul>
       {desktop && (
         <div className="min-h-7">
           {expanded && (
             <nav aria-label={t(expanded.titleKey)} className="flex flex-wrap items-center gap-1.5 px-1">
-              {expanded.children.map((child) => {
-                const ChildIcon = child.icon;
-                return (
-                  <Link
-                    key={child.href}
-                    href={child.href}
-                    className="inline-flex h-7 items-center gap-1.5 rounded border border-border px-2 text-[12px] text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                  >
-                    <ChildIcon className="h-4 w-4" />
-                    {t(child.titleKey)}
-                  </Link>
-                );
-              })}
+              {expanded.children.map((child) => (
+                <LauncherChip key={child.href} child={child} t={t} />
+              ))}
             </nav>
           )}
         </div>
       )}
     </section>
+  );
+}
+
+/** A launcher tile. Its notification dot stands for the section and its sub-pages, like the icon rail's. */
+function LauncherTile({ section, t, onHover }: { section: NavSection; t: Translate; onHover: () => void }) {
+  const Icon = section.icon;
+  const title = t(section.titleKey);
+  const dot = useDot({ href: section.href });
+  return (
+    <Link
+      href={section.href}
+      onMouseEnter={onHover}
+      onFocus={onHover}
+      aria-label={dot ? fmt(t("notify.dot.withName"), { name: title }) : undefined}
+      className="flex flex-col items-center gap-1.5 rounded-lg border border-transparent px-1 py-2.5 text-center outline-none transition-colors hover:border-border hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      <span className="relative flex">
+        <Icon className="h-9 w-9" />
+        <NotificationDot show={dot} />
+      </span>
+      <span className="w-full truncate text-[12px] font-medium text-foreground">{title}</span>
+    </Link>
+  );
+}
+
+/** A sub-page chip under the hovered tile; its dot follows the label. */
+function LauncherChip({ child, t }: { child: NavSection["children"][number]; t: Translate }) {
+  const ChildIcon = child.icon;
+  const title = t(child.titleKey);
+  const dot = useDot({ href: child.href, level: "child" });
+  return (
+    <Link
+      href={child.href}
+      aria-label={dot ? fmt(t("notify.dot.withName"), { name: title }) : undefined}
+      className="inline-flex h-7 items-center gap-1.5 rounded border border-border px-2 text-[12px] text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      <ChildIcon className="h-4 w-4" />
+      {title}
+      <NotificationDot show={dot} inline />
+    </Link>
   );
 }
 

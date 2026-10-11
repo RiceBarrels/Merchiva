@@ -18,7 +18,6 @@ import {
   getAiReplyTarget,
   serviceCreateNotification,
 } from "@/lib/spacetimedb/service-client";
-import { sendWebPush } from "@/lib/push/send";
 import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
 import { tierLabel, tierModel, tierModelId, type AiTier } from "@/lib/ai/models";
 import { fallbackTier, routeRequest } from "@/lib/ai/router";
@@ -359,10 +358,10 @@ async function runJob(args: RunJobArgs): Promise<void> {
     });
 
     // The user may have closed the tab while this background reply ran. Ping
-    // them that it's ready: an in-app notification (the bell) plus a web push
-    // to any device they've registered, so they're reachable even off-site.
-    // Best-effort — never let notification failures fault the job.
-    await notifyReplyReady(args, jobId, fullReply);
+    // them that it's ready: an in-app notification, which the notifications
+    // cron also pushes to any device they've registered, so they're reachable
+    // even off-site. Best-effort — never let notification failures fault the job.
+    await notifyReplyReady(args, fullReply);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[runJob] generation failed:", msg);
@@ -426,7 +425,7 @@ async function findLatestPendingJobId(token: string, organizationId: string, ses
   }
 }
 
-// ── Completion notification (in-app + web push) ──────────────────────────────
+// ── Completion notification (in-app; /api/cron/notifications pushes it) ──────
 
 // Strip ```action``` blocks / bare action JSON so the notification preview shows
 // the conversational reply, not machine instructions.
@@ -441,7 +440,6 @@ function stripActionsForPreview(text: string): string {
 
 async function notifyReplyReady(
   args: RunJobArgs,
-  jobId: string,
   fullReply: string,
 ): Promise<void> {
   try {
@@ -454,8 +452,9 @@ async function notifyReplyReady(
       : replyString(args.lang, "merchiva.replyReady.body");
     // Mr. Merchiva lives in the dock beside every /manager page (one conversation
     // per browser tab), so the link just lands in /manager. It carries the session
-    // id so the client can suppress the bell entry when the user actually watched
-    // the reply stream in (see merchiva-chat-dashboard).
+    // id so the client can mark the notification read when the user actually
+    // watched the reply stream in, so it neither dots Mr. Merchiva's rail nor
+    // emails (see merchiva-chat-dashboard).
     const link = `/manager/dashboard?mvsession=${encodeURIComponent(args.sessionId)}`;
 
     const conn = await getServiceConn();
@@ -470,19 +469,9 @@ async function notifyReplyReady(
       body,
       link,
     });
-
-    if (target.pushSubs.length > 0) {
-      await sendWebPush(target.pushSubs, {
-        title,
-        body,
-        link,
-        type: "merchiva_reply",
-        id: jobId,
-      });
-    }
   } catch (err) {
-    // SPACETIMEDB_SERVICE_TOKEN may be unset in dev, or push may be
-    // unconfigured — the in-chat result still renders, so this is non-fatal.
+    // SPACETIMEDB_SERVICE_TOKEN may be unset in dev — the in-chat result
+    // still renders, so this is non-fatal.
     console.warn("[notifyReplyReady] skipped:", err instanceof Error ? err.message : err);
   }
 }

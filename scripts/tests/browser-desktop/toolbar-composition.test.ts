@@ -9,7 +9,7 @@ import { join } from "node:path";
  *   - exactly one #desktop-content, containing TabPageOutlet once, with useTabContentHost on it
  *     and no inline transform / borderRadius / overflow (DynamicUIElement owns those);
  *   - the content panel is never conditional, so toggling the sidebar cannot remount the page;
- *   - the toolbar's composition and order, with no profile button left behind;
+ *   - the toolbar's composition and order, with no profile button or notification bell left behind;
  *   - Mr. Merchiva opens from ⌘⇧M or his rail, never a toolbar button, and his dock is its own
  *     resizable column beside the page;
  *   - the bookmarks bar holds user bookmarks only.
@@ -35,7 +35,7 @@ describe("toolbar composition", () => {
   const toolbar = source("toolbar.tsx");
 
   test("the sidebar toggle is the first control, then the Chrome-style row", () => {
-    const order = ["<SidebarToggle />", "<NavButtons />", "<Omnibox />", "<NotificationsButton />", "<AppMenu />"];
+    const order = ["<SidebarToggle />", "<NavButtons />", "<Omnibox />", "<AppMenu />"];
     const positions = order.map((tag) => {
       const index = toolbar.indexOf(tag);
       expect(index, `${tag} is missing from the toolbar`).toBeGreaterThan(-1);
@@ -55,6 +55,15 @@ describe("toolbar composition", () => {
   test("the profile button is gone and its file with it", () => {
     expect(toolbar).not.toContain("ProfileMenu");
     expect(existsSync(join(DESKTOP, "profile-menu.tsx"))).toBe(false);
+  });
+
+  test("notifications have no bell: a dot marks each feature instead", () => {
+    expect(code(toolbar)).not.toContain("Notification");
+    expect(existsSync(join(DESKTOP, "notifications-button.tsx"))).toBe(false);
+    // With the sidebar hidden, its rows' dots ride on the toggle that brings it back.
+    const toggle = source("sidebar", "sidebar-toggle.tsx");
+    expect(toggle).toContain("useAnyDot(DOT_FILTERS.navRows) && hidden");
+    expect(toggle).toContain("<NotificationDot show={dot}");
   });
 
   test("nothing the profile menu offered became unreachable", () => {

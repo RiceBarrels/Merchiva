@@ -5,18 +5,19 @@ import { useTable } from "spacetimedb/react";
 import { RefreshCw, DoorOpen } from "lucide-react";
 import { toast } from "sonner";
 import { tables } from "@/lib/spacetimedb/generated";
-import { getConnection } from "@/lib/spacetimedb/client";
 import { createDeviceLoginRequest, consumeDeviceLogin } from "@/lib/spacetimedb/actions";
+import { sendStoreSos } from "@/lib/spacetimedb/actions/notifications";
 import { uuid, cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { hapticError, hapticLight, hapticSuccess } from "@/lib/haptics";
 import { QrCodeView, PinPad, fmtMMSS, useNow } from "@/components/device";
-import { isManagerRole, type StoreMember } from "./use-org-members";
+import type { StoreMember } from "./use-org-members";
 import { usePinOperator } from "./use-pin-operator";
 import { rememberOperatorGrant } from "@/lib/spacetimedb/actions/pin";
 import { pinNotice } from "@/lib/pin-attempt";
 import { fmt } from "@/lib/i18n/fmt";
 import { ExitStoreDrawer } from "./exit-store-drawer";
+import { sosErrorKey } from "./sos";
 
 const QR_TTL_SECONDS = 60;
 
@@ -87,8 +88,8 @@ function useDeviceLoginQr(organizationId: string, deviceId: string, enabled: boo
 
 export interface LoginPaneProps {
   organizationId: string;
+  /** This tablet's store_device id: QR log-ins and the SOS name it. */
   deviceId: string;
-  deviceName: string;
   members: StoreMember[];
   /** Pause QR issuing while the pane is hidden (idle lock). */
   active: boolean;
@@ -100,11 +101,12 @@ export interface LoginPaneProps {
   className?: string;
 }
 
-export function LoginPane({ organizationId, deviceId, deviceName, members, active, onLogin, compact = false, className }: LoginPaneProps) {
+export function LoginPane({ organizationId, deviceId, members, active, onLogin, compact = false, className }: LoginPaneProps) {
   const t = useT();
   const [pinMode, setPinMode] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [pinMessage, setPinMessage] = useState<string | null>(null);
+  const [sosSending, setSosSending] = useState(false);
   const resolveOperator = usePinOperator(organizationId);
   const { value, secondsLeft, refreshing, refresh, approved } = useDeviceLoginQr(organizationId, deviceId, active && !pinMode);
 
@@ -148,29 +150,25 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
     [members, onLogin, resolveOperator, t],
   );
 
+  // The module alerts every owner and manager (in-app, push and email), names this
+  // device from its registration and allows one SOS per store every 2 minutes.
   const handleSos = useCallback(() => {
+    if (sosSending) return;
     hapticLight();
-    const title = `${t("storeDevice.sosTitle")} ${deviceName || t("storeDevice.thisDevice")}`;
-    const body = t("storeDevice.sosBody");
-    const conn = getConnection();
-    const managers = members.filter((m) => isManagerRole(m.role));
-    if (conn && managers.length > 0) {
-      for (const m of managers) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (conn as any).reducers
-          .createNotification({
-            organizationId,
-            targetIdentity: m.userIdentity,
-            type: "emergency",
-            title,
-            body,
-            link: "/store",
-          })
-          .catch?.((err: unknown) => console.warn("[store-device] SOS notify failed:", err));
-      }
-    }
-    toast.error(t("storeDevice.sosToast"));
-  }, [deviceName, members, organizationId, t]);
+    setSosSending(true);
+    // sendStoreSos throws (not rejects) while disconnected.
+    Promise.resolve()
+      .then(() => sendStoreSos(deviceId, organizationId))
+      .then(() => {
+        toast.error(t("storeDevice.sosToast"));
+      })
+      .catch((err: unknown) => {
+        console.warn("[store-device] SOS failed:", err);
+        hapticError();
+        toast.error(t(sosErrorKey(err)));
+      })
+      .finally(() => setSosSending(false));
+  }, [deviceId, organizationId, sosSending, t]);
 
   return (
     <div className={cn("relative flex flex-col bg-background border-border min-h-0", compact ? "px-5 pt-5 pb-5" : "border-r px-8 pt-8 pb-6", className)}>
@@ -220,7 +218,7 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
 
       {!pinMode && (
         <div className={cn("flex items-center justify-between text-[13px] font-medium", compact ? "pt-4" : "mt-auto pt-6")}>
-          <button type="button" onClick={handleSos} className="inline-flex items-center gap-2.5 text-destructive">
+          <button type="button" onClick={handleSos} disabled={sosSending} className="inline-flex items-center gap-2.5 text-destructive disabled:opacity-60">
             <i className="not-italic h-10 w-10 rounded-full bg-destructive/10 grid place-items-center text-[10px] font-bold tracking-wider">SOS</i>
             {t("storeDevice.emergency")}
           </button>

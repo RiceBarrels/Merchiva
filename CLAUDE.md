@@ -4,7 +4,7 @@
 
 ## Quick Context
 
-Merchiva is a Next.js 16 + SpacetimeDB + Square/Clover app for small business management. No Supabase — SpacetimeDB is the sole data layer. The UI uses shadcn/ui v4 with Tailwind CSS v4. Native builds via Capacitor. Drive (files), Sheets and Slides live under `/manager/drive`; Docs, Sheets and Slides are installable editor plugins; file bytes are in a private Vercel Blob store.
+Merchiva is a Next.js 16 + SpacetimeDB + Square/Clover app for small business management. No Supabase — SpacetimeDB is the sole data layer. The UI uses shadcn/ui v4 with Tailwind CSS v4. Native builds via Capacitor. Drive (files), Sheets and Slides live under `/manager/drive`; Docs, Sheets and Slides are installable editor plugins; file bytes are in a private Vercel Blob store. Notifications are built in: a dot on the feature that received one, an in-app alert, and email/push from the `/api/cron/notifications` cron.
 
 ## Critical Rules
 
@@ -15,7 +15,7 @@ Merchiva is a Next.js 16 + SpacetimeDB + Square/Clover app for small business ma
 5. **No secrets in client code.** `WORKOS_API_KEY` is server-only.
 6. **All app links use `/manager/` prefix.** Internal navigation: `/manager/dashboard`, `/manager/inventory`, etc. Device surfaces are the exception: `/store` (shared store tablet) and `/personal` (employee phone) live at the root and are picked at `/choose` (`lib/app-mode.ts`: admin → `/manager`, personal → `/personal`, store → `/store`).
 7. **Test builds before deploying.** `bun run build` must pass clean.
-8. **Schema changes follow the Schema Migration Rules in AGENTS.md.** New columns go at the very end; never reorder columns; never use `--delete-data` without asking the user; never hand-edit `lib/spacetimedb/generated/`. Use `t.option(...)` **except** for anything that will be filtered/joined/used in an RLS rule — option columns are permanently unfilterable; use `t.string().default('')` there.
+8. **Schema changes follow the Schema Migration Rules in AGENTS.md.** New columns go at the very end, and never on a table in `scripts/tests/fixtures/client-compat-tables.json` (use a side table keyed by the row id); never reorder columns; never use `--delete-data` without asking the user; never hand-edit `lib/spacetimedb/generated/`. Use `t.option(...)` **except** for anything that will be filtered/joined/used in an RLS rule — option columns are permanently unfilterable; use `t.string().default('')` there.
 9. **New table ⇒ new RLS rule.** `public: true` means world-readable by anyone with the module id (which is in the client bundle). Add the table to a list in `spacetimedb/src/index.ts` and verify with `bun run check:rls`.
 10. **Read money via `lib/money.ts`.** Currency columns have exact `*Cents` siblings; sum in cents, convert once.
 9. **Every new feature ships on three surfaces.** `/manager` (full page) + `/store` (lite app) + `/personal` (lite app), registered in the `/manager/apps` catalog. The manager page alone is an unfinished feature. See "Every New Feature Ships on Three Surfaces" in AGENTS.md for the exact files; if a surface truly doesn't fit, ask the user before skipping it.
@@ -23,6 +23,7 @@ Merchiva is a Next.js 16 + SpacetimeDB + Square/Clover app for small business ma
 11. **Verify before claiming done.** `bun test`, `bunx tsc --noEmit`, and `bunx eslint <changed paths>` — there is no CI, so nothing runs them for you.
 12. **File bytes never go into SpacetimeDB.** Drive bytes live in the private Vercel Blob store under ASCII keys; API routes only authorize. Tell users their store's management can see what they store (`drive.disclosure.*`). See "Drive & File Storage" in AGENTS.md.
 13. **Licenses are guarded.** Never add `@univerjs-pro/*`, `@univerjs/preset-*-advanced|collaboration`, `hyperformula`, `handsontable` or npm `xlsx`; keep office deps pinned exactly; after any dependency change run `bun scripts/licenses/generate.ts` and `bun test scripts/tests/legal`.
+14. **Notifications have no UI of their own.** No inbox, bell, unread count or notifications app/tile — a dot on the receiving feature's entry point (`NotificationDot` + `lib/notifications/dots-context.tsx`). The module creates them only through `deliver()`; the cron is the only email/push path; `/store` is one shared identity. See "Notifications (Built In)" in AGENTS.md.
 
 ## Common Tasks
 

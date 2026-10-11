@@ -11,7 +11,6 @@ import {
   DriveIcon,
   FormsIcon,
   InventoryIcon,
-  NotificationsIcon,
   PayIcon,
   ProductsIcon,
   ReportsIcon,
@@ -224,13 +223,8 @@ export const ROUTES: readonly RouteDef[] = [
     prefix: "/manager/usage", titleKey: "nav.usage", icon: ReportsIcon,
     listed: false, keywords: ["ai usage", "usage"],
   },
-  // Personal, not permission-gated: a member's own alerts and their own bug
-  // reports. Both pages guard nothing beyond `dashboard` (bugs) / nothing at
-  // all (notifications), matching their device tiles.
-  {
-    prefix: "/manager/notifications", titleKey: "nav.notifications", icon: NotificationsIcon,
-    listed: false, keywords: ["notifications", "alerts", "inbox"],
-  },
+  // Personal: a member's own bug reports. The page guards nothing beyond `dashboard`, matching
+  // its device tile.
   {
     prefix: "/manager/bugs", titleKey: "nav.bugs", icon: BugIcon, permissionKey: "dashboard",
     listed: false, keywords: ["bugs", "bug report", "issue", "problem", "feedback"],
@@ -274,7 +268,8 @@ interface LegacyRedirect { readonly from: string; readonly to: string; readonly 
 
 /**
  * next.config.ts redirects(), the two page-level redirects (app/manager/personnel/page.tsx,
- * app/manager/usage/page.tsx) and the "/manager" home alias.
+ * app/manager/usage/page.tsx) and the "/manager" home alias. /manager/notifications was the
+ * notification inbox: notifications are built in now (a dot on each feature), so it goes home.
  * "prefix" keeps the remainder of the path; the query string is always kept (as Next does).
  */
 const LEGACY_REDIRECTS: readonly LegacyRedirect[] = [
@@ -287,6 +282,7 @@ const LEGACY_REDIRECTS: readonly LegacyRedirect[] = [
   { from: "/manager/training", to: "/manager/personnel", match: "exact" },
   { from: "/manager/personnel", to: "/manager/personnel/schedule", match: "exact" },
   { from: "/manager/usage", to: "/manager/settings", match: "exact" },
+  { from: "/manager/notifications", to: "/manager", match: "exact" },
 ];
 
 /** Applies legacy redirects until stable (at most 5 hops). Returns the input unchanged when none apply. */

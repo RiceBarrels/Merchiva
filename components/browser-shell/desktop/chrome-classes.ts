@@ -83,8 +83,22 @@ export const BOOKMARKS_BAR_CLASS =
 export const BOOKMARK_CHIP_CLASS =
   "flex h-6 min-w-0 max-w-[180px] shrink-0 cursor-default items-center gap-1.5 rounded px-2 text-[12px] font-medium text-foreground/80 outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 data-[active]:bg-muted data-[active]:text-foreground data-popup-open:bg-muted dark:hover:bg-background dark:data-[active]:bg-background dark:data-popup-open:bg-background group-data-[density=coarse]/frame:h-8";
 
-export const UNREAD_BADGE_CLASS =
-  "pointer-events-none absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9.5px] font-bold tabular-nums text-background";
+/*
+ * Notification dots (components/ui/notification-dot.tsx), merged over its `ring-background`. The
+ * ring matches the surface under the dot, so it reads as a cut-out of the glyph.
+ *   CHROME_DOT_CLASS      toolbar and sidebar surface (light bg-background, dark bg-card)
+ *   TAB_DOT_CLASS         a non-active tab on the strip, and the omnibox (light bg-muted, dark bg-background)
+ *   SIDEBAR_DOT_CLASS     a sidebar row: also above the row's presence avatars, which share the
+ *                         icon rail's top-end corner
+ *   SIDEBAR_DOT_ACTIVE_CLASS  the same on the inverted (active) row
+ */
+export const CHROME_DOT_CLASS = "dark:ring-card";
+
+export const TAB_DOT_CLASS = "ring-muted dark:ring-background";
+
+export const SIDEBAR_DOT_CLASS = "z-10 dark:ring-card";
+
+export const SIDEBAR_DOT_ACTIVE_CLASS = "z-10 ring-foreground";
 
 export const CAPTION_BUTTON_CLASS =
   "flex h-full w-[46px] items-center justify-center text-foreground/80 outline-none transition-colors hover:bg-foreground/10 focus-visible:bg-foreground/10";

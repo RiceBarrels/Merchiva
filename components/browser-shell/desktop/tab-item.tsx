@@ -2,9 +2,12 @@
 
 import { memo, type KeyboardEvent, type MouseEvent } from "react";
 import { Loader2, X } from "lucide-react";
+import { NotificationDot } from "@/components/ui/notification-dot";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useShortcutLabel, useTabPresentation, type BrowserTab } from "@/lib/browser-shell";
 import { useT } from "@/lib/i18n/context";
+import { fmt } from "@/lib/i18n/fmt";
+import { useDot } from "@/lib/notifications/dots-context";
 import { cn } from "@/lib/utils";
 import {
   TAB_ACTIVE_CLASS,
@@ -12,6 +15,7 @@ import {
   TAB_CLOSE_CLASS,
   TAB_CLOSE_HOVER_ONLY_CLASS,
   TAB_DIVIDER_CLASS,
+  TAB_DOT_CLASS,
   TAB_DRAGGED_CLASS,
   TAB_INACTIVE_CLASS,
   TAB_PINNED_CLASS,
@@ -74,6 +78,9 @@ function TabItemImpl({
   const address = presentation.isNewTab ? "" : displayAddress(presentation.url);
   const closeLabel = closeShortcut ? `${t("browser.actions.closeTab")} (${closeShortcut})` : t("browser.actions.closeTab");
   const pending = presentation.pending;
+  // A background tab whose page has something new carries the notification dot on its favicon
+  // (the rows visiting it would clear); the tab on screen clears them instead.
+  const dot = useDot({ url: presentation.url }) && !active && !pending && mode.icon;
 
   const onAuxClick = (event: MouseEvent<HTMLDivElement>) => {
     if (event.button !== 1) return;
@@ -92,7 +99,7 @@ function TabItemImpl({
             aria-selected={active}
             aria-controls="desktop-content"
             aria-busy={pending || undefined}
-            aria-label={mode.title ? undefined : presentation.title}
+            aria-label={dot ? fmt(t("notify.dot.withName"), { name: presentation.title }) : mode.title ? undefined : presentation.title}
             data-tab-id={tab.id}
             data-pinned={tab.pinned ? "" : undefined}
             data-dragging={dragged ? "" : undefined}
@@ -130,6 +137,7 @@ function TabItemImpl({
             ) : (
               <Icon className="size-4" />
             )}
+            <NotificationDot show={dot} className={TAB_DOT_CLASS} />
           </span>
         ) : null}
         {mode.title ? <span className={TAB_TITLE_CLASS}>{presentation.title}</span> : null}

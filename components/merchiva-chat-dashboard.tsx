@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
 import { useCurrency } from "@/lib/currency";
 import { useNotifications } from "@/lib/spacetimedb/hooks";
+import { useNotificationDots } from "@/lib/notifications/dots-context";
 import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
 import { useSales } from "@/lib/spacetimedb/hooks/useSales";
 import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
@@ -50,7 +51,7 @@ import { currentPagePayload } from "@/lib/merchiva/current-page";
 import { useServerClockOffset } from "@/lib/presence/store";
 import { captureUndoSnapshot, buildInverse, type UndoSnapshot } from "@/lib/merchiva/undo";
 import { useAiJobs } from "@/lib/spacetimedb/hooks";
-import { consumeAiJob, deleteAiJob, markNotificationRead } from "@/lib/spacetimedb/actions";
+import { consumeAiJob, deleteAiJob } from "@/lib/spacetimedb/actions";
 import { getStoredToken } from "@/lib/spacetimedb/client";
 import { useAuth } from "@/lib/auth/context";
 import type { ChatMessage, PendingAction, TaskDeleteCmd } from "@/lib/merchiva/skills/types";
@@ -2036,23 +2037,19 @@ function MerchivaChatInner({
     return () => clearTimeout(recheck);
   }, [aiJobRows, organizationId, activeSessionId, locale, t, tx, invItems, suppliers, decorateActions, pinDeletes, focusScope, serverClockOffset, jobClock]);
 
-  // Suppress the "Mr. Merchiva replied" bell entry while the user is actively
+  // Read the "Mr. Merchiva replied" notification while the user is actively
   // looking at this chat. Those notifications are fired server-side on every
   // backgrounded reply so users who LEFT get pinged; if they're here watching
-  // the reply stream in, clear the matching unread one (keyed by session id in
-  // the link) so the bell doesn't show a redundant badge.
+  // the reply stream in, mark the matching unread one read (keyed by session id
+  // in the link) so it neither dots his rail nor emails. Dots' markRead batches.
+  const { markRead: markDotsRead } = useNotificationDots();
   useEffect(() => {
     if (!active || !organizationId || !activeSessionId) return;
     if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
     const marker = `mvsession=${encodeURIComponent(activeSessionId)}`;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows: any[] = Array.isArray(rawNotifs) ? rawNotifs : [];
-    for (const n of rows) {
-      if (n && !n.read && typeof n.link === "string" && n.link.includes(marker)) {
-        markNotificationRead(n.id.toString()).catch(() => {});
-      }
-    }
-  }, [active, rawNotifs, organizationId, activeSessionId, visTick]);
+    const ids = rawNotifs.filter((n) => !n.read && !!n.link?.includes(marker)).map((n) => n.id.toString());
+    if (ids.length > 0) markDotsRead(ids);
+  }, [active, rawNotifs, organizationId, activeSessionId, visTick, markDotsRead]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || sending) return;
@@ -3339,102 +3336,6 @@ function TodayScheduleCard() {
   );
 }
 
-// ── Notifications Card ──────────────────────────────────────────────────────
-
-function NotificationsCard() {
-  const t = useT();
-  const [rawNotifs] = useNotifications();
-
-  const recent = useMemo(() => {
-    return [...rawNotifs]
-      .filter((n) => !n.read)
-      .sort((a, b) => new Date(b.createdAt.toDate()).getTime() - new Date(a.createdAt.toDate()).getTime())
-      .slice(0, 4);
-  }, [rawNotifs]);
-
-  const ICONS: Record<string, React.ReactNode> = {
-    shift_trade: <ArrowLeftRight className="h-3 w-3" />,
-    time_off: <CalendarX className="h-3 w-3" />,
-    inventory_low: <Package className="h-3 w-3" />,
-    order: <Truck className="h-3 w-3" />,
-    general: <Bell className="h-3 w-3" />,
-    team: <Users className="h-3 w-3" />,
-  };
-
-  const tones: Record<string, { bg: string; bd: string; fg: string }> = {
-    shift_trade: { bg: "#fffbeb", bd: "#fde68a", fg: "#d97706" },
-    time_off: { bg: "#fffbeb", bd: "#fde68a", fg: "#d97706" },
-    inventory_low: { bg: M_ACC_SOFT, bd: M_ACC_BD, fg: M_ACC },
-    order: { bg: "#f5f5f4", bd: "#e7e5e4", fg: "#57534e" },
-    general: { bg: "#f5f5f4", bd: "#e7e5e4", fg: "#57534e" },
-    team: { bg: "#f5f5f4", bd: "#e7e5e4", fg: "#57534e" },
-  };
-
-  const needsDecision = recent.filter((n) => n.type === "shift_trade" || n.type === "time_off").length;
-
-  return (
-    <section className="rounded-lg border border-border bg-background overflow-hidden flex flex-col">
-      <header className="px-5 py-3 border-b border-border flex items-center gap-2">
-        <div className="flex-1">
-          <div className="text-[13.5px] font-semibold">{t("merchiva.notifications.title")}</div>
-          <div className="text-[11px] text-muted-foreground">
-            <span className="font-mono">{recent.length}</span> {t("merchiva.notifications.new")}
-            {needsDecision > 0 && <> · <span className="font-mono">{needsDecision}</span> {t("merchiva.notifications.needDecision")}</>}
-          </div>
-        </div>
-        <button className="text-[11.5px] text-muted-foreground hover:text-foreground">{t("merchiva.notifications.markAllRead")}</button>
-      </header>
-
-      {recent.length > 0 ? (
-        <div className="divide-y divide-border">
-          {recent.map((n) => {
-            const tone = tones[n.type] ?? tones.general;
-            const icon = ICONS[n.type] ?? ICONS.general;
-            const ago = timeAgo(n.createdAt.toDate().toISOString());
-            return (
-              <div key={n.id.toString()} className="px-5 py-3 flex items-start gap-3">
-                <span className="h-6 w-6 rounded-lg border inline-flex items-center justify-center shrink-0"
-                  style={{ background: tone.bg, borderColor: tone.bd, color: tone.fg }}>
-                  {icon}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <div className="text-[12.5px] font-medium leading-tight truncate">{n.title}</div>
-                    <span className="ml-auto font-mono text-[10px] text-muted-foreground tabular-nums shrink-0">{ago}</span>
-                  </div>
-                  <div className="text-[11.5px] text-muted-foreground leading-snug mt-1">{n.body}</div>
-                  {(n.type === "shift_trade" || n.type === "time_off") && (
-                    <div className="flex items-center gap-1.5 mt-2">
-                      <Button size="xs">
-                        {t("merchiva.notifications.review")}
-                      </Button>
-                      <Button variant="outline" size="xs" className="text-muted-foreground">
-                        {t("merchiva.notifications.dismiss")}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="px-5 py-8 text-center text-xs text-muted-foreground">{t("merchiva.notifications.empty")}</div>
-      )}
-    </section>
-  );
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "now";
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  return `${Math.floor(hrs / 24)}d`;
-}
-
 // ── Root Desktop Dashboard ──────────────────────────────────────────────────
 
 export function DesktopMerchivaDashboard() {
@@ -3442,10 +3343,9 @@ export function DesktopMerchivaDashboard() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
       <style>{`@keyframes ddBlink { 0%,50% { opacity: 1; } 50.01%,100% { opacity: 0; } }`}</style>
       <KpiStrip />
-      <div className="flex-1 min-h-0 grid gap-4 p-4 grid-cols-2">
+      <div className="flex-1 min-h-0 grid gap-4 p-4 grid-cols-1">
         {/* <div className="flex flex-col gap-4 min-h-0 overflow-auto"> */}
           <TodayScheduleCard />
-          <NotificationsCard />
         {/* </div> */}
       </div>
     </div>
@@ -3499,7 +3399,6 @@ export function MobileMerchivaDashboard() {
       <MobileKpiRow />
       <div className="px-4 space-y-4">
         <TodayScheduleCard />
-        <NotificationsCard />
       </div>
     </div>
   );

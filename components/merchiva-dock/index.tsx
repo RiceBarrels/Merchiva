@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useMerchivaDotClearing } from "./dock-dots";
 import { useCanUseMerchiva } from "./dock-panel";
 import { toggleMerchivaDock, useHasDockSlot, useMerchivaDockOpen } from "./dock-state";
 import { MerchivaOverlayPanel } from "./overlay-panel";
@@ -28,6 +29,9 @@ export { useMerchivaBackHandler } from "./overlay-panel";
  *                       that collapses to the rail (dock-layout.tsx).
  *
  * Both are gated like the chat itself: owners, or members with `merchiva.view`.
+ *
+ * His replies notify like any feature: a dot on the desktop rail while the dock is closed
+ * (dock-panel.tsx), read once the dock is open on a visible page (dock-dots.ts).
  */
 
 export function MerchivaDock() {
@@ -39,6 +43,7 @@ export function MerchivaDock() {
 function MerchivaDockRoot() {
   const open = useMerchivaDockOpen();
   const slotted = useHasDockSlot();
+  useMerchivaDotClearing(open);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

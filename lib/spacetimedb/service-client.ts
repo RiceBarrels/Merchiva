@@ -171,20 +171,20 @@ export async function getSubscribedServiceConn(
 //
 // When a backgrounded ai_job finalizes the user may have left the site, so the
 // enqueue worker can't notify from the client. This reads the job owner's
-// identity and push subscriptions straight from the service connection's cache
-// so the worker can fire an in-app notification + web push server-side.
+// identity straight from the service connection's cache so the worker can fire
+// an in-app notification server-side; the notifications cron
+// (/api/cron/notifications) delivers its push and email.
 
 const aiNotifySubscribed = new WeakSet<object>();
 
 export interface AiReplyTarget {
   targetIdentity: Identity;
-  pushSubs: Array<{ endpoint: string; p256dh: string; auth: string }>;
 }
 
 /**
- * Resolve the owner (and their push subscriptions) of the most-recent ai_job
- * for the given session. Returns null when no matching job is found or the
- * connection isn't usable. Best-effort — never throws.
+ * Resolve the owner of the most-recent ai_job for the given session. Returns
+ * null when no matching job is found or the connection isn't usable.
+ * Best-effort — never throws.
  */
 export async function getAiReplyTarget(
   conn: ServiceConn,
@@ -193,10 +193,7 @@ export async function getAiReplyTarget(
 ): Promise<AiReplyTarget | null> {
   try {
     if (!aiNotifySubscribed.has(conn)) {
-      await subscribeAndWait(conn, [
-        "SELECT * FROM ai_job",
-        "SELECT * FROM push_subscription",
-      ]);
+      await subscribeAndWait(conn, ["SELECT * FROM ai_job"]);
       aiNotifySubscribed.add(conn);
     }
 
@@ -217,22 +214,7 @@ export async function getAiReplyTarget(
     const targetIdentity: Identity = job.userId;
     if (!targetIdentity) return null;
 
-    const hex = targetIdentity.toHexString?.() ?? String(targetIdentity);
-    const pushSubs = [...conn.db.pushSubscription.iter()]
-      .filter(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (r: any) =>
-          r.organizationId === organizationId &&
-          (r.targetId?.toHexString?.() ?? String(r.targetId)) === hex,
-      )
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((r: any) => ({
-        endpoint: r.endpoint as string,
-        p256dh: r.p256Dh as string,
-        auth: r.auth as string,
-      }));
-
-    return { targetIdentity, pushSubs };
+    return { targetIdentity };
   } catch (err) {
     console.warn("[getAiReplyTarget] failed:", err);
     return null;

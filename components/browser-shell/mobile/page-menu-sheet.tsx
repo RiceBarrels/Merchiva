@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Globe, Link2, LogOut, Plus, RefreshCw, Settings, Star, StarOff, UserPlus } from "lucide-react";
+import { Globe, Link2, LogOut, Plus, RefreshCw, Settings, Star, StarOff, UserPlus } from "lucide-react";
 import {
   AccountList,
   BackToDeviceLink,
@@ -10,10 +10,9 @@ import {
   SwitchModeLink,
   useWorkspaceActions,
 } from "@/components/browser-shell/shared/workspace-menu";
-import { NotificationCenter } from "@/components/notification-center";
 import { StoreLogo } from "@/components/store-picker";
 import { OptionRow } from "@/components/ui/option-row";
-import { canonicalizeUrl, useBookmarks, usePageActions, useShellBackHandler, type TabUrl } from "@/lib/browser-shell";
+import { useBookmarks, usePageActions, useShellBackHandler, type TabUrl } from "@/lib/browser-shell";
 import { buildShareUrl } from "@/lib/browser-shell/mobile/share";
 import { LOCALES, LOCALE_LABELS } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/context";
@@ -27,19 +26,18 @@ export interface PageMenuSheetProps {
   pageUrl: TabUrl;
   pageTitle: string;
   isNewTab: boolean;
-  unreadCount: number;
   /** Loads a URL in the active tab. */
   onNavigate(url: TabUrl): void;
 }
 
-type NestedSheet = "notifications" | "language";
+type NestedSheet = "language";
 
 /**
  * Store-logo page menu (mobile-safari spec §13): this page, store switcher and creation, accounts,
- * mode links, notifications, settings, language and reload. Full parity with the
+ * mode links, settings, language and reload. Full parity with the
  * legacy sidebar's workspace menu through the shared workspace-menu module (plan D24).
  */
-export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab, unreadCount, onNavigate }: PageMenuSheetProps) {
+export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab, onNavigate }: PageMenuSheetProps) {
   const { t, locale, setLocale } = useI18n();
   const bookmarks = useBookmarks();
   const pageActions = usePageActions();
@@ -157,19 +155,6 @@ export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab
 
       <SheetSection label={t("browserMobile.app")}>
         <SheetRow
-          icon={Bell}
-          onClick={() => setNested("notifications")}
-          trailing={
-            unreadCount > 0 ? (
-              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9.5px] font-bold tabular-nums text-background">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            ) : undefined
-          }
-        >
-          {t("notifications.title")}
-        </SheetRow>
-        <SheetRow
           icon={Settings}
           onClick={() => {
             close();
@@ -191,41 +176,6 @@ export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab
       </SheetSection>
 
       <p className="border-t border-border px-4 py-3 font-mono text-[10px] text-muted-foreground">{t("components.sidebar.version")}</p>
-
-      <ShellDrawer
-        nested
-        open={open && nested === "notifications"}
-        onOpenChange={(next) => {
-          if (!next) setNested(null);
-        }}
-        title={t("notifications.title")}
-      >
-        <NotificationCenter
-          onNavigate={(href) => {
-            const target = canonicalizeUrl(href);
-            if (!target?.tabbable) {
-              // Only http(s). A notification's `link` is attacker-controlled —
-              // createNotification is a client-callable reducer that validates
-              // only the SENDER's membership — and canonicalizeUrl returns null
-              // for any foreign scheme, so this branch used to run
-              // `javascript:…` on the app origin. The desktop twin
-              // (desktop/notifications-button.tsx) already guards it.
-              let parsed: URL;
-              try {
-                parsed = new URL(href, window.location.href);
-              } catch {
-                return;
-              }
-              if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return;
-              window.location.assign(parsed.href);
-              return;
-            }
-            setNested(null);
-            close();
-            onNavigate(target.url);
-          }}
-        />
-      </ShellDrawer>
 
       <ShellDrawer
         nested

@@ -117,6 +117,8 @@ Do not delete or gitignore these — they are committed on purpose:
 | `components/slides/`, `lib/slides/` | Presentation editor. |
 | `spacetimedb/src/drive/` | Drive module code (tables, reducers), wired into `spacetimedb/src/index.ts`. |
 | `lib/drive/server/` | Server-only Blob adapter and route handlers behind `app/api/drive/*`. |
+| `lib/notifications/`, `components/ui/notification-dot.tsx` | Built-in notifications: dots, alerts, who is looking (`viewer.ts`); `server/` is the email + push cron behind `app/api/cron/notifications`. |
+| `spacetimedb/src/notify/` | Notification module code: `deliver()`, producers, the delivery queue's claim / finish, email and follow preferences. |
 | `messages/*.json` | One per locale: `ar, en, es, fr, hi, zh-cn, zh-hk, zh-tw`. |
 | `scripts/tests/**` | The whole test suite (`bun:test`). |
 | `scripts/licenses/`, `public/legal/` | License policy + notices generator; generated notices (committed). |
@@ -174,6 +176,7 @@ several hand-rolled copies, and a new copy is a bug waiting to happen:
 
 - New columns MUST go at the **end** of the table definition, after all existing columns. Inserting between columns causes a "reorder" error that forces `--delete-data` (destroys all rows).
 - New columns should use `t.option(...)` so existing rows default to `null` — **unless the column will ever be filtered on** (see below).
+- **Frozen tables take no new column at all.** A table in `scripts/tests/fixtures/client-compat-tables.json` (`notification`, `push_subscription`, …) keeps its columns and its reducers' parameters exactly, or old clients fail to decode it. A new field goes in a side table keyed by the row id (`notification_delivery`, `document_file`); `scripts/tests/drive/client-compat-schema.test.ts` enforces it. Never edit the fixture to make that test pass.
 - Publish: `spacetime publish merchiva --server maincloud --yes`.
 - **Never** use `--delete-data` — including `--delete-data=on-conflict`, which *will* delete data on any conflict — without explicitly warning the user and getting a yes.
 - After publish, run `spacetime generate` to regenerate TypeScript types, and commit the result.
@@ -210,7 +213,9 @@ The only boundary is a `clientVisibilityFilter`. The rule lists live near the bo
 
 **Every table gets a service rule too.** `/merchivaAdmin` and the server routes read across tenants with `SPACETIMEDB_SERVICE_TOKEN`, which is an ordinary identity and is subject to RLS like any other — without that rule the admin console goes blank.
 
-Exception (approved U14): service identity reads only `drive_usage` and `drive_blob_gc`, through the rule-free `drive_service_reader` join target; every other Drive/Docs table has no service rule — service work happens inside reducers.
+Exception (approved U14, extended): the service identity reads exactly four of these tables, each through the rule-free `drive_service_reader` join target: `drive_usage`, `drive_blob_gc`, `form_public` (serves `/f/<token>`) and `notification_delivery` (the notifications cron reads one claim's rows; user-approved 2026-10-08). Every other Drive/Docs/notification table — `notification_pref` and `chat_follow` included — has no service rule; service work happens inside reducers.
+
+`notification_delivery` holds members' unsent notification text (chat and comment previews) and, while a cron run holds them, their push keys, so `/merchivaAdmin` must never read or drive it. `adminSql` refuses any query that names it (`lib/notifications/server/admin-sql.ts`, tested in `scripts/tests/notify/server-routes.test.ts`). Keep it out of `components/merchiva-admin/data/tables.ts`, never add a service-token `/sql` read path that bypasses `adminSql`, and never call `serviceClaimNotificationDeliveries` / `serviceFinishNotificationDeliveries` from anything but the cron.
 
 `drive_admin_index`, `document_reader_index` and `drive_service_reader` are rule-free join targets, listed in `RLS_UNFILTERED` under KNOWN GAP like `org_membership_index`. Do not add a rule to a join target without a staging-verified subscription test: a wrong one makes every table whose rule joins it unsubscribable ("Subscriptions require indexes on join columns"). The fix for the KNOWN GAP is tracked in the `RLS_UNFILTERED` comment.
 
@@ -331,6 +336,37 @@ On the phone `/manager` (below 1024px) the browser shell keeps its tab store but
 - **Editor plugins have no tile.** A catalog entry with `editor: <kind>` (Docs, Sheets, Slides) is installed from `/manager/apps` but has no `lite` and no tile: its files are found and opened in Drive on all three surfaces. Opening or creating a file whose plugin is missing asks to download it (`components/plugins/`, `useEditorGate` in `components/drive/actions/use-editor-gate.ts`, `LiteInstallDrawer` on the devices). Its catalog `route` is the editor page, which `MANAGER_ROUTE_APPS` gives to the plugin.
 - Install state is org-wide and cached on the settings row (`settings.deviceApps`) via the `setDeviceApps` reducer — never write it from a component.
 
+## Notifications (Built In)
+
+Notifications have no UI of their own: no inbox page, no bell, no unread count, no notifications app or tile.
+`/manager/notifications` redirects to `/manager`, and a stored `notifications` device-app id is dropped
+(`RETIRED_DEVICE_APPS`). Something new shows as a dot on the top inline-end corner of the feature that received it,
+plus an in-app alert and, by the rules below, an email and a push.
+
+- **Dots.** `NotificationDot` (`components/ui/notification-dot.tsx`) on the entry point, driven by one provider,
+  `lib/notifications/dots-context.tsx` (`useDot`, `useConversationDot`, `useAnyDot`, `useOtherOrgDot`; rules in
+  `dots.ts`, row → feature in `features.ts` and `device-tiles.ts`). Entry components never read `notification`
+  themselves. A feature that produces notifications maps its link there; it never adds a counter or a list.
+- **Producing.** `deliver()` in `spacetimedb/src/notify/deliver.ts`, through the fan-outs in `producers.ts` and
+  `chat/notify.ts`, is the only way the module creates a notification — never `ctx.db.notification.insert`. Pass a
+  template from `NOTIFY_TEMPLATES` (`notify/logic.ts`) with plain-string params; each template has
+  `notify.event.<template>.title|body` in all 8 locales (`scripts/tests/notify/templates-i18n.test.ts`).
+- **Who gets email.** A channel message emails only for a pin, a message from someone the member specially follows
+  (`chat_follow`), or an @mention; `@everyone` counts only from an owner or manager and never breaks a mute
+  (`chatDelivery` in `spacetimedb/src/chat/logic.ts`). Other channel messages are in-app only. Every other event is
+  in-app + email (low stock and waste email owners and managers only). A notification read before its email goes out
+  gets none: every mark-read reducer, `markChatRead` included, deletes the caller's delivery rows.
+- **Sending.** `/api/cron/notifications` (every minute; `lib/notifications/server/`) is the only email and push path.
+  It leases due `notification_delivery` rows with `serviceClaimNotificationDeliveries`, sends, and reports with
+  `serviceFinishNotificationDeliveries`; pacing, retries and send-time revalidation live in
+  `spacetimedb/src/notify/claim.ts`. No client and no other route sends a push.
+- **`/store` is one shared identity.** A tablet's notifications are its account's, never the PIN operator's. There —
+  and on `/manager` while a PIN operator other than the account is punched in — nothing alerts, acknowledges a push,
+  syncs identity or locale, or shows the follow or email toggle; dots render and clear only when the operator is the
+  tablet account (`lib/notifications/viewer.ts`). Entering store mode releases the browser's push subscription.
+- `notification` and `push_subscription` are frozen (see Schema Migration Rules): new per-notification state goes in
+  `notification_delivery`, keyed by the notification id.
+
 ## Auth & Permissions
 
 - WorkOS handles auth (email/password + OAuth).
@@ -398,9 +434,10 @@ Reuse the shared composites in `components/ui` (`StatusBadge`, `EmptyState`, `St
 
 - `NEXT_PUBLIC_SPACETIMEDB_*` — SpacetimeDB connection (public)
 - `WORKOS_API_KEY` / `WORKOS_CLIENT_ID` — server-only
-- `SPACETIMEDB_SERVICE_TOKEN` — server-only; required by AI/live-context and notification routes
+- `SPACETIMEDB_SERVICE_TOKEN` — server-only; required by AI/live-context routes and the notifications cron
 - `UPLOADTHING_TOKEN` — file upload
-- `RESEND_API_KEY` — transactional email
+- `RESEND_API_KEY` — transactional email. The notifications cron sends from `notifications@merchiva.com`, so that
+  sender's domain must be verified in Resend (a 401/403 holds notification email for retry, up to three days).
 - `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` — server-only
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — client-side (optional for Checkout)
 - `STRIPE_PRO_MONTHLY_PRICE_ID` / `STRIPE_PRO_YEARLY_PRICE_ID` — Stripe Price ids for the Pro plan
@@ -408,7 +445,7 @@ Reuse the shared composites in `components/ui` (`StatusBadge`, `EmptyState`, `St
 - `BLOB_STORE_ID` / `BLOB_WEBHOOK_PUBLIC_KEY` — the private Vercel Blob store behind Drive (added when the store is connected).
 - `BLOB_READ_WRITE_TOKEN` — optional; local development without OIDC.
 - `VERCEL_BLOB_CALLBACK_URL` — optional; a tunnel URL to test the upload callback locally.
-- `CRON_SECRET` — authorizes Vercel Cron calls (`/api/merchiva/scan`, `/api/cron/drive-gc`, `/api/cron/drive-reconcile`).
+- `CRON_SECRET` — authorizes Vercel Cron calls (`/api/merchiva/scan`, `/api/cron/drive-gc`, `/api/cron/drive-reconcile`, `/api/cron/notifications`).
 - `DRIVE_BLOB_DATABASE` — must equal `NEXT_PUBLIC_SPACETIMEDB_MODULE`: pairs the Blob store with one database, so a
   laptop pointed at another database never touches the production store.
 - `DRIVE_UPLOADS_PAUSED` — kill switch: `1` refuses new uploads; everything else in Drive keeps working.
@@ -419,6 +456,14 @@ Reuse the shared composites in `components/ui` (`StatusBadge`, `EmptyState`, `St
   SpacetimeDB URI/module are set and `DRIVE_BLOB_DATABASE` matches; otherwise upload, commit, signed-URL and Drive
   cron requests answer 503 `not_configured` (`/api/drive/status` reports `configured: false`) and the rest of Drive
   keeps working.
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (client) / `VAPID_PRIVATE_KEY` (server-only) / `VAPID_SUBJECT` (optional, default
+  `mailto:hello@merchiva.com`) — Web Push (`lib/push/send.ts`); the notifications cron is its only sender.
+- `WORKOS_ISSUER` — optional, server-only: the `iss` the notifications cron expects on the identity a member's session
+  captured (`notification_pref.issuer`); default `https://api.workos.com/user_management/<WORKOS_CLIENT_ID>`. On a
+  mismatch that email is dropped and the issuer seen is logged once per run.
+- `/api/cron/notifications` needs `CRON_SECRET`, `SPACETIMEDB_SERVICE_TOKEN` and the SpacetimeDB URI/module; email
+  also needs `RESEND_API_KEY` + `WORKOS_API_KEY` + `WORKOS_CLIENT_ID`, push the VAPID keys. With neither channel it
+  answers 503 `not_configured`. It never reads the Drive Blob config.
 - Square / Clover credentials stored in DB, not env vars
 
 ## Stripe Billing

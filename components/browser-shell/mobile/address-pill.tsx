@@ -28,7 +28,6 @@ export interface AddressPillProps {
   dialogSwipe: number;
   orgName: string;
   orgLogoUrl: string | null;
-  unreadCount: number;
   reloadDisabled: boolean;
   reloadTick: number;
   reducedMotion: boolean;
@@ -43,8 +42,7 @@ const SIDE_BUTTON =
   "relative z-10 flex h-[42px] w-[44px] shrink-0 items-center justify-center rounded-lg !min-h-0 !min-w-0 outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
 
 /**
- * Address row (mobile-safari spec §6.3): store logo (workspace and account menu, with the unread
- * dot), the page title (tap to search, swipe to switch tabs) and reload. While minimized it
+ * Address row (mobile-safari spec §6.3): store logo (workspace and account menu), the page title (tap to search, swipe to switch tabs) and reload. While minimized it
  * shrinks into the title strip and the whole band becomes one "expand" target.
  */
 export function AddressPill({
@@ -58,7 +56,6 @@ export function AddressPill({
   dialogSwipe,
   orgName,
   orgLogoUrl,
-  unreadCount,
   reloadDisabled,
   reloadTick,
   reducedMotion,
@@ -78,9 +75,6 @@ export function AddressPill({
   const dialogActive = !!dialogTitle;
   const pageLabel = isNewTab ? t("browserMobile.searchPlaceholder") : title;
   const sideInteractive = collapsedHalf ? "none" : "auto";
-  const menuLabel = unreadCount > 0
-    ? fmt(t("browserMobile.pageMenuUnread"), { n: unreadCount > 99 ? "99+" : unreadCount })
-    : t("browserMobile.pageMenu");
 
   return (
     <motion.div
@@ -97,16 +91,13 @@ export function AddressPill({
       <motion.button
         type="button"
         onClick={onPageMenu}
-        aria-label={menuLabel}
+        aria-label={t("browserMobile.pageMenu")}
         aria-haspopup="dialog"
         tabIndex={collapsedHalf ? -1 : undefined}
         style={{ opacity: sideOpacity, pointerEvents: sideInteractive }}
         className={SIDE_BUTTON}
       >
         <StoreLogo name={orgName} logoUrl={orgLogoUrl} className="h-[22px] w-[22px] rounded [&>span]:text-[10px]" />
-        {unreadCount > 0 && (
-          <span aria-hidden className="absolute end-[9px] top-[8px] h-2 w-2 rounded-full bg-foreground ring-2 ring-muted" />
-        )}
       </motion.button>
 
       <button

@@ -46,7 +46,7 @@ export function NotificationPanel({
 
   if (empty) {
     return (
-      <EmptyState icon={Inbox} description={t("notifications.empty")} className="py-16" />
+      <EmptyState icon={Inbox} description={t("staffing.requests.noPending")} className="py-16" />
     );
   }
 

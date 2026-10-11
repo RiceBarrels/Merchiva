@@ -3,7 +3,7 @@
 import { cn, uuid } from "@/lib/utils";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Plus, ChevronLeft, ChevronRight, X, Shield, Trash2, ArrowLeftRight, UserPlus, Users, CalendarX, Search, Check, Ban, ChevronDown, ChevronUp, User, Camera, Clock, ClipboardList, Pencil, Download, RefreshCw, Bell } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, X, Shield, Trash2, ArrowLeftRight, UserPlus, Users, CalendarX, Search, Check, Ban, ChevronDown, ChevronUp, User, Camera, Clock, ClipboardList, Pencil, Download, RefreshCw, Bell, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, type AvatarProps } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
@@ -2837,7 +2837,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           subtitle={`${currentOrg?.name ?? t("staffing.store")} · ${activeMembers.length} ${t("staffing.active")}`}
           actions={[
             { icon: <Search className="h-4 w-4" /> },
-            { icon: <Bell className="h-4 w-4" />, onClick: () => { hapticLight(); setNotifPanelOpen(true); }, badge: pendingCount },
+            { icon: <Inbox className="h-4 w-4" />, onClick: () => { hapticLight(); setNotifPanelOpen(true); }, badge: pendingCount },
             ...(canEdit ? [{ icon: <Plus className="h-4 w-4" />, onClick: () => {
               hapticLight();
               setEditingShift(null);
@@ -4693,7 +4693,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
 
       <DynamicUIElement open={notifPanelOpen} onOpenChange={setNotifPanelOpen}>
         <DynamicUIElementContent side="right">
-          <DynamicUIElementTitle mobileTitle="Notifications">Notifications</DynamicUIElementTitle>
+          <DynamicUIElementTitle mobileTitle={t("staffing.requests.title")}>{t("staffing.requests.title")}</DynamicUIElementTitle>
           <NotificationPanel
             trades={canEdit ? orgShiftTrades.filter(t => t.status === "pending" || (t.status === "accepted" && !t.managerApproved)) : myPendingTrades}
             timeOff={canEdit ? pendingTimeOff : []}

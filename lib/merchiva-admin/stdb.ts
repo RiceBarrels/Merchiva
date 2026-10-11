@@ -5,7 +5,8 @@
  *                             decoded into plain JSON-friendly objects
  *                             (camelCase keys, uuid strings, identity hex,
  *                             timestamps as unix millis, option none → null).
- *  - adminCall(reducer, args) call ANY reducer as the service identity over
+ *  - adminCall(reducer, args) call any reducer (but the notifications cron's
+ *                             claim / finish) as the service identity over
  *                             the cached service WebSocket connection. Args are
  *                             plain JSON and coerced to SDK types using the
  *                             generated reducer schema (identity hex strings,
@@ -18,6 +19,7 @@
 import "server-only";
 
 import { Identity, Timestamp, Uuid } from "spacetimedb";
+import { notifyAdminCallRefusal, notifyAdminSqlRefusal } from "@/lib/notifications/server/admin-sql";
 import { reducers as reducerSchemas } from "@/lib/spacetimedb/generated";
 import { getServiceConn } from "@/lib/spacetimedb/service-client";
 
@@ -154,11 +156,14 @@ function decodeValue(type: SatsType, raw: unknown): unknown {
 /**
  * Run a read-only SQL query (SpacetimeDB SQL dialect: `SELECT * FROM table
  * [WHERE col = 'x']`; column names are snake_case). Returns decoded rows.
+ * A query naming notification_delivery is refused (lib/notifications/server/admin-sql.ts).
  */
 export async function adminSql(query: string): Promise<AdminRow[]> {
   if (!/^\s*select\b/i.test(query) || query.includes(";")) {
     throw new Error("Only single SELECT statements are allowed");
   }
+  const refusal = notifyAdminSqlRefusal(query);
+  if (refusal) throw new Error(refusal);
   const token = process.env.SPACETIMEDB_SERVICE_TOKEN;
   const res = await fetch(`${HTTP_BASE}/v1/database/${MODULE}/sql`, {
     method: "POST",
@@ -316,9 +321,12 @@ function describeType(type: AlgType): string {
 /**
  * Call a reducer (camelCase accessor name, e.g. "updateMemberPermissions") as
  * the service identity. Resolves when the transaction commits; rejects with the
- * reducer's error message when it throws.
+ * reducer's error message when it throws. The notification delivery claim /
+ * finish reducers are refused (lib/notifications/server/admin-sql.ts).
  */
 export async function adminCall(reducer: string, args: Record<string, unknown> = {}): Promise<void> {
+  const refusal = notifyAdminCallRefusal(reducer);
+  if (refusal) throw new Error(refusal);
   const schema = (reducerSchemas as unknown as Record<string, ReducerSchema>)[reducer];
   if (!schema) throw new Error(`Unknown reducer: ${reducer}`);
   const coerced = coerceArg({ tag: "Product", value: schema.paramsType }, args) as Record<string, unknown>;

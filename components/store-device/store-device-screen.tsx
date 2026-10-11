@@ -19,6 +19,7 @@ import { LoginPane } from "./login-pane";
 import { RosterPages, StoreClockCard, useClosingTime } from "./roster-pages";
 import { LoggedInScreen } from "./logged-in-screen";
 import { PunchPrompt } from "./punch-prompt";
+import { useReleaseStorePush } from "./use-release-push";
 
 /** Delete this tablet's `device_operator_session` row. Best effort: the server
  *  also ignores a session older than 12 h. */
@@ -62,6 +63,9 @@ export function StoreDeviceScreen() {
   // longer read anyone's code from a table — so it holds this one in memory for
   // the session. Never persisted: a shared tablet must not keep a PIN on disk.
   const [operatorPin, setOperatorPin] = useState<string | null>(null);
+
+  // A shared tablet holds nobody's push subscription.
+  useReleaseStorePush(organizationId);
 
   // The legacy store-machine flag restricted the manager shell; this surface
   // manages its own operator/lock, so clear it. Register the device best-effort.
@@ -216,6 +220,7 @@ export function StoreDeviceScreen() {
                   onLogout={() => handleLogout()}
                   onRecordingChange={setRecording}
                   phone={phone}
+                  idle={dimming}
                   className="min-h-0 flex-1"
                 />
               </motion.div>
@@ -234,7 +239,6 @@ export function StoreDeviceScreen() {
                 <LoginPane
                   organizationId={organizationId}
                   deviceId={deviceId}
-                  deviceName={deviceName}
                   members={members}
                   active={!idleLocked}
                   onLogin={handleLogin}

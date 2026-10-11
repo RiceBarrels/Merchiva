@@ -55,6 +55,8 @@ const nextConfig: NextConfig = {
       { source: "/manager/staffing",      destination: "/manager/personnel", permanent: true },
       { source: "/manager/staffing/todo", destination: "/manager/personnel", permanent: true },
       { source: "/manager/training",      destination: "/manager/personnel", permanent: true },
+      // The notification inbox is gone: notifications are a dot on each feature's entry point.
+      { source: "/manager/notifications", destination: "/manager",          permanent: true },
     ];
   },
 };

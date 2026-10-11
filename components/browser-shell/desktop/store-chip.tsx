@@ -6,20 +6,24 @@ import {
   CreateStoreForm,
   MenuRow,
   StoreSwitchList,
+  useOtherStoresDot,
   useWorkspaceActions,
 } from "@/components/browser-shell/shared/workspace-menu";
 import { StoreLogo } from "@/components/store-picker";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { NotificationDot } from "@/components/ui/notification-dot";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
-import { STORE_CHIP_CLASS } from "./chrome-classes";
+import { cn } from "@/lib/utils";
+import { STORE_CHIP_CLASS, TAB_DOT_CLASS } from "./chrome-classes";
 import { useDesktopChrome, useOverlayBackHandler } from "./chrome-context";
 
 /*
  * Current-store chip at the start of the omnibox (desktop spec §4.6): logo (plus the name at
  * xl), opening the store list and the create-store form. Switching stores hard-reloads into
- * the target org's tabs (core prepareOrgSwitch + permissions.switchOrg).
+ * the target org's tabs (core prepareOrgSwitch + permissions.switchOrg). The logo carries a
+ * notification dot while another store has something unread (the list shows which).
  */
 export function StoreChip() {
   const t = useT();
@@ -30,7 +34,9 @@ export function StoreChip() {
   useOverlayBackHandler(open, () => setOpen(false));
 
   const org = workspace.currentOrg;
+  const dot = useOtherStoresDot(workspace.stores, org?.id ?? null);
   if (!org) return null;
+  const label = fmt(t("browserDesktop.omnibox.storeChip"), { name: org.name });
 
   return (
     <>
@@ -45,12 +51,15 @@ export function StoreChip() {
           render={
             <button
               type="button"
-              aria-label={fmt(t("browserDesktop.omnibox.storeChip"), { name: org.name })}
+              aria-label={dot ? fmt(t("notify.dot.withName"), { name: label }) : label}
               className={STORE_CHIP_CLASS}
             />
           }
         >
-          <StoreLogo name={org.name} logoUrl={org.logoUrl} className="h-4 w-4 rounded-sm [&_span]:text-[8px]" />
+          <span className="relative flex shrink-0">
+            <StoreLogo name={org.name} logoUrl={org.logoUrl} className="h-4 w-4 rounded-sm [&_span]:text-[8px]" />
+            <NotificationDot show={dot} className={cn("-top-1 -end-1", TAB_DOT_CLASS)} />
+          </span>
           <span className="hidden truncate xl:inline">{org.name}</span>
         </PopoverTrigger>
         <PopoverContent

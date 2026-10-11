@@ -20,9 +20,10 @@ import { usePermissions } from "@/lib/context/permissions";
 import { useStoreMachineMode } from "@/lib/store-machine-mode";
 import { useCurrentOperator } from "@/lib/store-device-lock";
 import { useChatWorkspace } from "@/lib/spacetimedb/hooks/useChatWorkspace";
+import { useConversationDot, useDocumentAttended, useMarkConversationRead } from "@/lib/notifications/dots-context";
 import { addMembersToConversation, deleteMessage, sendMessage } from "@/lib/spacetimedb/actions";
 import {
-  createChannel, leaveConversation, markChatRead, openDirectConversation, setChannelTopic,
+  createChannel, leaveConversation, openDirectConversation, setChannelTopic,
 } from "@/lib/spacetimedb/actions/chat";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -39,6 +40,7 @@ import { ThreadPanel } from "@/components/channel/thread-panel";
 import { MembersPanel, PinsPanel, SearchPanel } from "@/components/channel/info-panels";
 import { AddPeopleDialog, NewChannelDialog, NewDmDialog, TopicDialog } from "@/components/channel/dialogs";
 import { ConfirmDialog } from "@/components/channel/confirm-dialog";
+import { useFollowControl } from "@/components/channel/follow";
 
 function useIsMobile(): boolean {
   const [mobile, setMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches);
@@ -99,9 +101,14 @@ export function ChannelWorkspace() {
   // The lower of the machine account's and the operator's rights: a staff
   // operator on an owner's store machine gets a staff member's chat.
   const canManage = isManagerRole(role) && (me.operatorRole == null || isManagerRole(me.operatorRole));
+  // The module emails @everyone only from an owner or manager, never from a staff
+  // operator on the store machine (spacetimedb/src/chat/notify.ts): don't offer it there.
+  const canMentionEveryone = me.operatorRole == null || isManagerRole(me.operatorRole);
   // A direct message started here would include the shared machine's account
   // as a third member, readable by whoever uses the machine next.
   const canStartDm = me.operatorRole == null;
+  // A follow written here would be the machine account's, emailed to its owner.
+  const follow = useFollowControl(organizationId ?? null, me.operatorRole == null);
   const { model, people, ready } = useChatWorkspace(organizationId ?? null, meHex);
 
   const [activeId, setActiveId] = useState<string | null>(() =>
@@ -161,12 +168,19 @@ export function ChannelWorkspace() {
     lastComposer.current = "channel";
   }, [model]);
 
-  // Reading the open conversation marks it read (only when something is unread, and only while visible).
+  // Reading the open conversation marks it read (only when something is unread, and only while
+  // someone is at the screen: lib/notifications/attention.ts). Its notification dot counts too: a pin or a thread
+  // reply notifies without raising `unread`, and markChatRead is what reads those rows (the
+  // module's notifyReadConversation). Never for a PIN operator: the write runs as the machine's
+  // account and would clear the account's own rows, which the operator never saw.
   const unreadHere = active ? active.unread + active.mentions : 0;
+  const dotHere = useConversationDot(activeId);
+  const attended = useDocumentAttended();
+  const markConversationRead = useMarkConversationRead();
   useEffect(() => {
-    if (!activeId || unreadHere === 0 || document.visibilityState !== "visible") return;
-    markChatRead(activeId).catch((err) => console.warn("markChatRead failed:", err));
-  }, [activeId, unreadHere]);
+    if (!activeId || me.operatorRole != null || (unreadHere === 0 && !dotHere) || !attended) return;
+    markConversationRead(activeId);
+  }, [activeId, me.operatorRole, unreadHere, dotHere, attended, markConversationRead]);
 
   const value = useMemo<ChannelWorkspaceValue>(() => ({
     model, people, meHex: meHex ?? "", accountHex: me.accountHex ?? "", canManage, isMobile, nameOf, avatarOf, openChannel,
@@ -178,7 +192,8 @@ export function ChannelWorkspace() {
     run,
     confirmDelete: (conversationId, messageId) => askConfirm({ kind: "delete", conversationId, messageId }),
     focusMessageId,
-  }), [model, people, meHex, me.accountHex, canManage, isMobile, nameOf, avatarOf, openChannel, run, focusMessageId, panel, askConfirm]);
+    follow: follow.available ? follow : null,
+  }), [model, people, meHex, me.accountHex, canManage, isMobile, nameOf, avatarOf, openChannel, run, focusMessageId, panel, askConfirm, follow]);
 
   useChannelPageContext({
     conversations: model.channels.length,
@@ -228,7 +243,7 @@ export function ChannelWorkspace() {
           autoFocus={!isMobile}
           placeholder={fmt(t("chat.ws.messagePlaceholder"), { name: active.type === "group" ? `#${active.name}` : active.name })}
           memberHexes={active.memberHexes}
-          everyone={active.type === "group"}
+          everyone={active.type === "group" && canMentionEveryone}
           onFocus={() => { lastComposer.current = "channel"; }}
           onSubmit={(text, attachment) => run(() => sendMessage(active.id, text, undefined, attachment))}
         />

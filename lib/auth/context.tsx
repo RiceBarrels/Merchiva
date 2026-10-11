@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 import { apiUrl } from "@/lib/api-client";
 import { SHELL_SIGN_OUT_EVENT } from "@/lib/browser-shell/shell-dom";
 import { registerAuthTokenGetter } from "@/lib/auth/token-bridge";
+import { forgetBrowserPushEndpoint } from "@/lib/notifications/push-cleanup";
 
 export interface AuthUser {
   id: string;
@@ -328,17 +329,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  // Leaving an account (switch or sign-out) first drops its push row for this
+  // browser, while the connection still runs as that account: the next person on
+  // this browser must not get its alerts (lib/notifications/push-cleanup.ts).
   const switchAccount = useCallback((userId: string) => {
     const accts = loadAccounts();
     const target = accts.find((a) => a.id === userId);
     if (!target) return;
-    storeAuthTokens(target.accessToken, target.refreshToken, {
-      id: target.id,
-      email: target.email,
-      firstName: target.firstName,
-      lastName: target.lastName,
+    void forgetBrowserPushEndpoint().finally(() => {
+      storeAuthTokens(target.accessToken, target.refreshToken, {
+        id: target.id,
+        email: target.email,
+        firstName: target.firstName,
+        lastName: target.lastName,
+      });
+      window.location.reload();
     });
-    window.location.reload();
   }, []);
 
   // Sign-out wipes ALL browser storage for this origin — tokens, the
@@ -350,16 +356,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       window.dispatchEvent(new Event(SHELL_SIGN_OUT_EVENT));
     } catch {}
-    try {
-      localStorage.clear();
-    } catch {}
-    try {
-      sessionStorage.clear();
-    } catch {}
-    setAccessToken(null);
-    setUser(null);
-    setAccounts([]);
-    window.location.href = "/login?logout=1&next=%2Fchoose";
+    void forgetBrowserPushEndpoint().finally(() => {
+      try {
+        localStorage.clear();
+      } catch {}
+      try {
+        sessionStorage.clear();
+      } catch {}
+      setAccessToken(null);
+      setUser(null);
+      setAccounts([]);
+      window.location.href = "/login?logout=1&next=%2Fchoose";
+    });
   }, []);
 
   const value = useMemo<AuthContextValue>(

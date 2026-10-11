@@ -1021,81 +1021,6 @@ export async function sendMessage(
     attachmentName: attachment?.name ?? undefined,
     voiceTranscript: voiceTranscript ?? undefined,
   });
-  // Best-effort: also fan out web push to recipients' other devices. The
-  // sendMessage reducer already inserted notification rows server-side which
-  // the Tauri bridge picks up — this branch covers browsers that need the
-  // service-worker delivery to wake the page.
-  if (isOnline()) {
-    void fanOutChatPush(conversationId, content, attachment ? attachment.url : null);
-  }
-}
-
-// Looks up other chat members for the given conversation, their push
-// subscriptions in the local SpacetimeDB cache, and posts a single fan-out to
-// /api/push/send. Read-only against the SpacetimeDB client cache, so it relies
-// on the standard subscriptions already established by the provider.
-async function fanOutChatPush(
-  conversationId: string,
-  content: string,
-  attachmentUrl: string | null,
-): Promise<void> {
-  try {
-    const c = getConnection();
-    if (!c || !c.identity) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = (c as any).db;
-    const me = c.identity.toString();
-
-    const conv = Array.from(db.chatConversation.iter()).find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (row: any) => row.id.toString() === conversationId,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ) as any | undefined;
-    if (!conv) return;
-
-    const members = Array.from(db.chatMember.byConversationId.filter(conversationId)) as Array<{
-      userId: { toString(): string };
-    }>;
-    const recipientIds = new Set(
-      members
-        .map((m) => m.userId.toString())
-        .filter((id) => id !== me),
-    );
-    if (recipientIds.size === 0) return;
-
-    const subs = Array.from(db.pushSubscription.iter()) as Array<{
-      organizationId: string;
-      targetId: { toString(): string };
-      endpoint: string;
-      p256Dh: string;
-      auth: string;
-    }>;
-    const subscriptions = subs
-      .filter((s) => s.organizationId === conv.organizationId && recipientIds.has(s.targetId.toString()))
-      .map((s) => ({ endpoint: s.endpoint, p256dh: s.p256Dh, auth: s.auth }));
-    if (subscriptions.length === 0) return;
-
-    const senderName = (Array.from(db.orgMember.byUserId.filter(c.identity)) as Array<{
-      organizationId: string;
-      displayName: string;
-    }>).find((m) => m.organizationId === conv.organizationId)?.displayName ?? "New message";
-    const preview = content.length > 140 ? content.slice(0, 137) + "..." : content;
-    const body = attachmentUrl && !content ? "[attachment]" : preview;
-
-    await fetch("/api/push/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subscriptions,
-        title: senderName,
-        body,
-        link: "/manager/channel",
-        type: "team",
-      }),
-    });
-  } catch {
-    // best-effort
-  }
 }
 
 export async function addMembersToConversation(convId: string, userIds: string[]): Promise<void> {
@@ -1452,18 +1377,6 @@ export async function removeStoreDevice(deviceId: string): Promise<void> {
 
 // ─── Notifications ──────────────────────────────────────────────────────────
 
-export async function markNotificationRead(notificationId: string): Promise<void> {
-  return conn().reducers.markNotificationRead({ notificationId });
-}
-
-export async function markAllNotificationsRead(): Promise<void> {
-  return conn().reducers.markAllNotificationsRead({ organizationId: orgId() });
-}
-
-export async function dismissNotification(notificationId: string): Promise<void> {
-  return conn().reducers.dismissNotification({ notificationId });
-}
-
 export async function createNotification(data: {
   type: string;
   title: string;
@@ -1479,59 +1392,6 @@ export async function createNotification(data: {
     body: data.body,
     link: data.link ?? null,
   });
-  // Fire-and-forget push fan-out to the target's other devices.
-  // Reads subscriptions from the local SpacetimeDB cache for the current user.
-  // Failures shouldn't surface — the in-app notification was already persisted.
-  void fanOutPush(data);
-}
-
-// Reads push_subscription rows for the current identity in the active org and
-// posts them to the /api/push/send route. Best-effort.
-async function fanOutPush(data: {
-  type: string;
-  title: string;
-  body: string;
-  link?: string;
-}): Promise<void> {
-  try {
-    const c = conn();
-    const oid = orgId();
-    const me = c.identity.toString();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows: any[] = Array.from((c as any).db.pushSubscription.iter());
-    const subscriptions = rows
-      .filter((r) => r.organizationId === oid && r.targetId.toString() === me)
-      .map((r) => ({
-        endpoint: r.endpoint as string,
-        p256dh: r.p256Dh as string,
-        auth: r.auth as string,
-      }));
-    if (subscriptions.length === 0) return;
-
-    const res = await fetch("/api/push/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subscriptions,
-        type: data.type,
-        title: data.title,
-        body: data.body,
-        link: data.link ?? null,
-      }),
-    });
-    if (!res.ok) return;
-    const json = (await res.json()) as { expired?: string[] };
-    // Clean up any endpoints the push service reported as gone.
-    if (Array.isArray(json.expired)) {
-      await Promise.all(
-        json.expired.map((endpoint) =>
-          deletePushSubscription(endpoint).catch(() => {})
-        )
-      );
-    }
-  } catch {
-    // best-effort
-  }
 }
 
 // ─── Push Subscriptions ─────────────────────────────────────────────────────

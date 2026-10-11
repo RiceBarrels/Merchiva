@@ -64,7 +64,6 @@
     "apps": "Complementos",
     "docs": "Documentos",
     "bugs": "Errores",
-    "notifications": "Notificaciones",
     "drive": "Archivos",
     "sheets": "Hojas de cálculo",
     "slides": "Presentaciones",
@@ -1260,12 +1259,6 @@
     "desktopDisabled": "Recibe avisos cuando la app esté cerrada",
     "desktopBlocked": "Bloqueadas en los ajustes del navegador",
     "desktopUnsupported": "No compatible con este navegador",
-    "shiftReminders": "Recordatorios de turno",
-    "beforeShift": "Antes de que empiece tu turno",
-    "lowStockAlerts": "Alertas de stock bajo",
-    "belowThreshold": "Cuando los artículos bajan del umbral",
-    "weeklySummary": "Resumen semanal",
-    "performanceDigest": "Resumen de rendimiento cada lunes",
     "navigationMode": "Modo de navegación",
     "sidebar": "Barra lateral",
     "bottomBar": "Barra inferior",
@@ -1544,7 +1537,8 @@
     "teamOnTeamPage": "Miembros, roles y códigos de fichaje",
     "punchCodeOnTeamPage": "Defínelo en la página del equipo",
     "createStoreHint": "Crea una tienda nueva con su propio inventario y previsiones.",
-    "toastSettingsNotLoaded": "Los ajustes aún se están cargando: inténtalo de nuevo en un momento"
+    "toastSettingsNotLoaded": "Los ajustes aún se están cargando: inténtalo de nuevo en un momento",
+    "notificationsMeta": "Correo y avisos"
   },
   "lock": {
     "title": "Dispositivo bloqueado",
@@ -2139,23 +2133,10 @@
     }
   },
   "notifications": {
-    "title": "Notificaciones",
-    "markAllRead": "Marcar todo como leído",
-    "empty": "Sin notificaciones",
-    "emptyDesc": "Estás al día",
     "justNow": "Ahora",
     "minutesAgo": "hace {n}m",
     "hoursAgo": "hace {n}h",
     "daysAgo": "hace {n}d",
-    "unreadCount": "{n} sin leer",
-    "dismiss": "Descartar",
-    "filterAll": "Todas",
-    "filterShift": "Turnos",
-    "filterTimeOff": "Ausencias",
-    "filterTeam": "Equipo",
-    "filterInventory": "Inventario",
-    "filterOrder": "Pedidos",
-    "filterGeneral": "Sistema",
     "tradeOfferedToEveryone": "{name} está ofreciendo su turno a todos",
     "tradeWantsToTrade": "{name} quiere intercambiar contigo",
     "tradeAcceptedAwaitingManager": "{name} aceptó — en espera de aprobación del gerente",
@@ -3078,15 +3059,6 @@
       "inMinutes": "en {n} min",
       "inHours": "en {n} h",
       "noShifts": "No hay turnos programados para hoy"
-    },
-    "notifications": {
-      "title": "Notificaciones",
-      "new": "nuevas",
-      "needDecision": "requieren una decisión",
-      "markAllRead": "Marcar todo como leído",
-      "review": "Revisar",
-      "dismiss": "Descartar",
-      "empty": "No hay notificaciones nuevas"
     },
     "noAccess": "Mr. Merchiva está desactivado para tu cuenta. Pide a un gerente que lo active.",
     "dock": {
@@ -4705,7 +4677,6 @@
       "docs": "Documentos",
       "settings-org": "Ajustes de tienda",
       "bugs": "Reportar errores",
-      "notifications": "Notificaciones",
       "drive": "Archivos",
       "sheets": "Hojas de cálculo",
       "slides": "Presentaciones",
@@ -4910,17 +4881,6 @@
         "uploadFailed": "No se pudo añadir la foto.",
         "failed": "No se pudo enviar. Inténtalo de nuevo."
       },
-      "notifications": {
-        "markAllRead": "Marcar todo como leído",
-        "list": "Notificaciones",
-        "unreadCount": "{n} sin leer",
-        "empty": "Nada nuevo",
-        "emptyHint": "Aquí aparecen los avisos de turnos y solicitudes.",
-        "details": "Notificación",
-        "close": "Cerrar",
-        "allRead": "Todo marcado como leído",
-        "markFailed": "No se pudo actualizar"
-      },
       "drive": {
         "noticeShort": "La dirección de la tienda puede ver todo lo que guardes aquí.",
         "noticeLeave": "¿Todavía no? Cierra esta app con el botón de arriba.",
@@ -5044,7 +5004,6 @@
       "sales": "Las ventas de hoy de un vistazo.",
       "bookings": "Reservas de hoy y de mañana.",
       "bugs": "Informa de un problema con la app y sigue su avance.",
-      "notifications": "Tus avisos de turno, horario y solicitudes, del más reciente al más antiguo.",
       "drive": "Todos los archivos de tu tienda en un solo lugar: archivos subidos, fotos y los documentos, hojas de cálculo y presentaciones creados con complementos de edición.",
       "sheets": "Hojas de cálculo para tu tienda: abre archivos .xlsx y .csv y crea otras nuevas en Archivos.",
       "slides": "Presentaciones para tu tienda: abre archivos .pptx y crea otras nuevas en Archivos.",
@@ -5095,6 +5054,9 @@
       "addedByStore": "Instalados por tu tienda",
       "noneInstalled": "Todavía no hay complementos opcionales instalados.",
       "browse": "Explorar complementos"
+    },
+    "pager": {
+      "page": "Página {n}"
     }
   },
   "storeDevice": {
@@ -5109,8 +5071,6 @@
     "cancel": "Cancelar",
     "close": "Cerrar",
     "emergency": "Emergencia",
-    "sosTitle": "Emergencia en",
-    "sosBody": "Se pulsó SOS en un dispositivo de tienda. Comprueba la situación de inmediato.",
     "sosToast": "Emergencia · llamando al gerente y a seguridad",
     "onWork": "trabajando",
     "onWorkNow": "trabajando ahora",
@@ -5163,7 +5123,10 @@
     "breakEnded": "Descanso terminado",
     "punchOutLogOut": "Fichar salida y cerrar sesión",
     "punchOutLogOutSub": "Termina tu turno y libera el dispositivo",
-    "logOutKeepSub": "Sigue fichado · libera el dispositivo para la siguiente persona"
+    "logOutKeepSub": "Sigue fichado · libera el dispositivo para la siguiente persona",
+    "sosCooldown": "Se acaba de enviar un SOS. Los gerentes ya recibieron el aviso. Podrás enviar otro en 2 minutos.",
+    "sosUnregistered": "No se envió el SOS: esta tableta no está registrada como dispositivo de tienda. Llama a un gerente.",
+    "sosFailed": "No se envió el SOS. Revisa la conexión e inténtalo de nuevo, o llama a un gerente."
   },
   "personalDevice": {
     "leaveBtn": "Salir",
@@ -6113,7 +6076,6 @@
     "openInNewTabNamed": "Abrir {title} en una pestaña nueva",
     "openTabs": "Pestañas abiertas",
     "pageMenu": "Menú de la página",
-    "pageMenuUnread": "Menú de la página, {n} notificaciones sin leer",
     "recentDocuments": "Documentos recientes",
     "reloadApp": "Recargar la aplicación",
     "removeFavoriteNamed": "Quitar {title} de favoritos",
@@ -7844,5 +7806,219 @@
     "clearFailed": "No se pudo desbloquear la entrada de PIN.",
     "noOperator": "Vuelve a iniciar sesión para fichar: esta tableta ya no sabe quién la está usando.",
     "lockedNow": "Demasiados PIN incorrectos. La entrada de PIN está en pausa por ahora. Inicia sesión con tu teléfono o pide a un gerente que la desbloquee."
+  },
+  "notify": {
+    "email": {
+      "subject": {
+        "chat": {
+          "message": "Nuevo mensaje en un canal",
+          "mention": "Te mencionaron en un canal",
+          "follow": "Nuevo mensaje de alguien a quien sigues",
+          "pin": "Se fijó un mensaje en un canal",
+          "merchiva": "Mr. Merchiva respondió"
+        },
+        "timeOff": {
+          "requested": "Nueva solicitud de tiempo libre",
+          "approved": "Tu tiempo libre fue aprobado",
+          "denied": "Tu tiempo libre fue rechazado",
+          "updated": "Se actualizó tu solicitud de tiempo libre"
+        },
+        "shift": {
+          "requested": "Un compañero te pidió cubrir un turno",
+          "open": "Un turno necesita cobertura"
+        },
+        "team": {
+          "joined": "Un nuevo miembro se unió a tu equipo"
+        },
+        "inventory": {
+          "low": "Alerta de poco stock",
+          "waste": "Poco stock tras una merma"
+        },
+        "supplier": {
+          "order": "Una orden de compra requiere tu atención",
+          "issue": "Un problema con un proveedor requiere tu atención"
+        },
+        "security": {
+          "pinLocked": "Se pausó la entrada de PIN en un dispositivo de tienda",
+          "manyWrongPins": "Muchos PIN incorrectos en tu tienda",
+          "pinUnlocked": "Se desbloqueó la entrada de PIN"
+        },
+        "doc": {
+          "shared": "Se compartió un archivo contigo",
+          "comment": "Nuevo comentario en un archivo",
+          "reply": "Nueva respuesta en un archivo"
+        },
+        "form": {
+          "response": "Nueva respuesta a un formulario"
+        },
+        "alert": {
+          "emergency": "Alerta de emergencia de tu tienda"
+        },
+        "custom": "Nueva notificación"
+      },
+      "digestSubject": "Tienes {count} notificaciones nuevas",
+      "subjectWithStore": "{subject} · {store}",
+      "storeLine": "Tienda: {store}",
+      "authorLine": "De: {author}",
+      "open": "Abrir en Merchiva",
+      "more": "Y {count} más en Merchiva.",
+      "footerWhy": "Recibes este correo porque eres miembro de una tienda en Merchiva.",
+      "footerOff": "Para dejar de recibir estos correos, desactiva el correo en Ajustes → Notificaciones, en Merchiva en tu computadora o tu teléfono.",
+      "footerEmergency": "Las alertas de emergencia se envían por correo a propietarios y gerentes aunque el correo esté desactivado.",
+      "settings": "Ajustes de notificaciones",
+      "textOpen": "Abrir: {url}",
+      "textSettings": "Ajustes de notificaciones: {url}"
+    },
+    "alert": {
+      "open": "Abrir",
+      "acknowledge": "Entendido",
+      "more": "{count} alertas más"
+    },
+    "dot": {
+      "label": "Novedades",
+      "withName": "{name}, novedades"
+    },
+    "event": {
+      "chat": {
+        "message": {
+          "title": "{actor}",
+          "body": "{preview}"
+        },
+        "mention": {
+          "title": "{actor} te mencionó",
+          "body": "{preview}"
+        },
+        "follow": {
+          "title": "{actor} publicó un mensaje",
+          "body": "{preview}"
+        },
+        "pin": {
+          "title": "{actor} fijó un mensaje",
+          "body": "{preview}"
+        },
+        "merchiva": {
+          "title": "Mr. Merchiva",
+          "body": "{preview}"
+        }
+      },
+      "timeOff": {
+        "requested": {
+          "title": "Solicitud de tiempo libre",
+          "body": "{actor} pidió tiempo libre del {start} al {end}"
+        },
+        "approved": {
+          "title": "Tiempo libre aprobado",
+          "body": "Tu solicitud de tiempo libre ({start} – {end}) fue aprobada"
+        },
+        "denied": {
+          "title": "Tiempo libre denegado",
+          "body": "Tu solicitud de tiempo libre ({start} – {end}) fue denegada"
+        },
+        "updated": {
+          "title": "Solicitud de tiempo libre actualizada",
+          "body": "Tu solicitud de tiempo libre ({start} – {end}) se actualizó"
+        }
+      },
+      "shift": {
+        "requested": {
+          "title": "Solicitud de turno",
+          "body": "{actor} te pidió cubrir o cambiar un turno"
+        },
+        "open": {
+          "title": "Turno disponible",
+          "body": "{actor} busca a alguien que cubra o cambie su turno"
+        }
+      },
+      "team": {
+        "joined": {
+          "title": "Nuevo miembro del equipo",
+          "body": "{actor} se unió al equipo"
+        }
+      },
+      "inventory": {
+        "low": {
+          "title": "Stock bajo: {item}",
+          "body": "{item} está en {quantity} {unit} (mín.: {min})"
+        },
+        "waste": {
+          "title": "Stock bajo: {item}",
+          "body": "{item} bajó a {quantity} {unit} tras registrar mermas"
+        }
+      },
+      "supplier": {
+        "order": {
+          "title": "Una orden de compra requiere tu atención",
+          "body": "Mr. Merchiva no pudo enviar el correo a {supplier}. El pedido se guardó como borrador. Añade un correo del proveedor o envíalo manualmente."
+        },
+        "issue": {
+          "title": "Problema con el proveedor: {supplier}",
+          "body": "{preview}"
+        }
+      },
+      "security": {
+        "pinLocked": {
+          "title": "Entrada de PIN bloqueada en un dispositivo",
+          "body": "{actor} introdujo {count} PIN incorrectos hoy, así que la entrada de PIN está en pausa en ese dispositivo. Si nadie en la tienda se equivocó al escribir, alguien podría estar intentando adivinar los PIN de sus compañeros."
+        },
+        "manyWrongPins": {
+          "title": "Muchos PIN incorrectos en tu tienda",
+          "body": "Hoy se introdujeron {count} PIN incorrectos en tu tienda. Si sigue así, la entrada de PIN se pausará para todos durante una hora; el inicio de sesión con QR seguirá funcionando."
+        },
+        "pinUnlocked": {
+          "title": "Entrada de PIN desbloqueada",
+          "body": "{actor} borró los recuentos de PIN incorrectos y los bloqueos de la tienda."
+        }
+      },
+      "doc": {
+        "shared": {
+          "title": "{actor} compartió un archivo contigo",
+          "body": "{doc}"
+        },
+        "comment": {
+          "title": "{actor} comentó en {doc}",
+          "body": "{preview}"
+        },
+        "reply": {
+          "title": "{actor} respondió en {doc}",
+          "body": "{preview}"
+        }
+      },
+      "form": {
+        "response": {
+          "title": "Nueva respuesta al formulario",
+          "body": "{form}"
+        }
+      },
+      "alert": {
+        "emergency": {
+          "title": "Emergencia en {device}",
+          "body": "Se pulsó SOS en un dispositivo de {store}. Comprueba la situación de inmediato."
+        }
+      }
+    },
+    "settings": {
+      "email": "Enviarme correos",
+      "emailTo": "Se envían a {email}",
+      "emailOn": "Activado, al correo con el que inicias sesión",
+      "emailOff": "Desactivado. Los avisos siguen apareciendo en la app.",
+      "saveFailed": "No se pudo guardar el cambio. Inténtalo de nuevo.",
+      "shared": "Tu equipo comparte esta pantalla, así que aquí no se pueden cambiar el correo ni los avisos. Cámbialos en Merchiva desde tu propio teléfono o computadora.",
+      "whatTitle": "Qué te enviamos por correo",
+      "whatChannels": "Canales: cuando alguien te menciona con @, cuando se fija un mensaje y cuando publica alguien a quien sigues con seguimiento especial. Los demás mensajes solo aparecen en la app.",
+      "whatOther": "Lo que te concierne: novedades de tiempo libre y turnos, archivos compartidos contigo y sus comentarios, respuestas a formularios y nuevos miembros del equipo.",
+      "whatManagers": "Los propietarios y gerentes también reciben avisos de stock bajo, proveedores y seguridad. Un SOS desde una tableta de la tienda se les envía por correo aunque lo tengan desactivado.",
+      "whatPacing": "Varias notificaciones se agrupan en un solo correo, como máximo uno cada 10 minutos. Lo que ya abriste en la app no se envía por correo.",
+      "everyDevice": "Este ajuste va con tu cuenta, así que es el mismo en todos tus dispositivos.",
+      "liteSummary": "Te enviamos un correo cuando alguien te menciona con @, se fija un mensaje o publica alguien a quien sigues con seguimiento especial, y sobre días libres, turnos y archivos compartidos. Lo que ya abriste en la app no se envía."
+    },
+    "follow": {
+      "label": "Seguimiento especial",
+      "hint": "Seguimiento especial: recibe un correo cuando {name} publique en un canal en el que estés, aunque esté silenciado.",
+      "turnOff": "Desactivar seguimiento especial",
+      "added": "Seguimiento especial activado. Recibirás un correo cuando {name} publique en un canal en el que estés.",
+      "removed": "Seguimiento especial desactivado para {name}.",
+      "failed": "No se pudo cambiar el seguimiento especial. Inténtalo de nuevo.",
+      "directoryHint": "Toca la campana junto a alguien para darle seguimiento especial: recibirás un correo cuando publique en un canal en el que estés."
+    }
   }
 }

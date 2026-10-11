@@ -64,7 +64,6 @@
     "apps": "外掛",
     "docs": "文件",
     "bugs": "問題反饋",
-    "notifications": "通知",
     "drive": "雲端硬碟",
     "sheets": "試算表",
     "slides": "簡報",
@@ -1260,12 +1259,6 @@
     "desktopDisabled": "應用關閉時也接收推送提醒",
     "desktopBlocked": "已在瀏覽器設定中被阻止",
     "desktopUnsupported": "此瀏覽器不支援",
-    "shiftReminders": "班次提醒",
-    "beforeShift": "班次開始前提醒",
-    "lowStockAlerts": "低庫存警報",
-    "belowThreshold": "當商品低於閾值時",
-    "weeklySummary": "每週摘要",
-    "performanceDigest": "每週一發送表現摘要",
     "navigationMode": "導航模式",
     "sidebar": "側邊欄",
     "bottomBar": "底部欄",
@@ -1544,7 +1537,8 @@
     "teamOnTeamPage": "成員、角色與打卡碼",
     "punchCodeOnTeamPage": "在團隊頁設定",
     "createStoreHint": "建立一間擁有獨立庫存與預測的新門店。",
-    "toastSettingsNotLoaded": "設定仍在載入中，請稍後再試"
+    "toastSettingsNotLoaded": "設定仍在載入中，請稍後再試",
+    "notificationsMeta": "電子郵件和提醒"
   },
   "lock": {
     "title": "裝置已鎖定",
@@ -2139,23 +2133,10 @@
     }
   },
   "notifications": {
-    "title": "通知",
-    "markAllRead": "全部標為已讀",
-    "empty": "暫無通知",
-    "emptyDesc": "所有訊息已處理完畢",
     "justNow": "剛剛",
     "minutesAgo": "{n}分鐘前",
     "hoursAgo": "{n}小時前",
     "daysAgo": "{n}天前",
-    "unreadCount": "{n} 則未讀",
-    "dismiss": "忽略",
-    "filterAll": "全部",
-    "filterShift": "班次",
-    "filterTimeOff": "請假",
-    "filterTeam": "團隊",
-    "filterInventory": "庫存",
-    "filterOrder": "訂單",
-    "filterGeneral": "系統",
     "tradeOfferedToEveryone": "{name} 正在將班次釋出給所有人",
     "tradeWantsToTrade": "{name} 想與你換班",
     "tradeAcceptedAwaitingManager": "{name} 已接受——等待主管核准",
@@ -3078,15 +3059,6 @@
       "inMinutes": "{n} 分鐘後",
       "inHours": "{n} 小時後",
       "noShifts": "今日無排班"
-    },
-    "notifications": {
-      "title": "通知",
-      "new": "新",
-      "needDecision": "需要決定",
-      "markAllRead": "全部標為已讀",
-      "review": "查看",
-      "dismiss": "忽略",
-      "empty": "沒有新通知"
     },
     "noAccess": "你的帳號已被停用 Mr. Merchiva，請聯繫管理員開啟。",
     "dock": {
@@ -4705,7 +4677,6 @@
       "docs": "文件",
       "settings-org": "門市設定",
       "bugs": "問題反饋",
-      "notifications": "通知",
       "drive": "雲端硬碟",
       "sheets": "試算表",
       "slides": "簡報",
@@ -4910,17 +4881,6 @@
         "uploadFailed": "照片新增失敗。",
         "failed": "提交失敗，請重試。"
       },
-      "notifications": {
-        "markAllRead": "全部標為已讀",
-        "list": "通知",
-        "unreadCount": "{n} 則未讀",
-        "empty": "目前沒有新訊息",
-        "emptyHint": "排班與申請提醒會顯示在這裡。",
-        "details": "通知詳情",
-        "close": "關閉",
-        "allRead": "已全部標為已讀",
-        "markFailed": "更新失敗"
-      },
       "drive": {
         "noticeShort": "你在這裡儲存的所有內容，店面管理層都看得到。",
         "noticeLeave": "還沒準備好？請點頂端的按鈕關閉這個應用程式。",
@@ -5044,7 +5004,6 @@
       "sales": "今日銷售一覽。",
       "bookings": "今天和明天的預約。",
       "bugs": "反饋 App 的問題，並跟進處理進度。",
-      "notifications": "你的排班、班表與申請提醒，最新的在前。",
       "drive": "店面保存的所有檔案，全都集中在一處：上傳的檔案、相片，以及用編輯器外掛製作的文件、試算表和簡報。",
       "sheets": "店面的試算表：在雲端硬碟中開啟 .xlsx 和 .csv 檔案，或新增試算表。",
       "slides": "店面的簡報：在雲端硬碟中開啟 .pptx 檔案，或新增簡報。",
@@ -5095,6 +5054,9 @@
       "addedByStore": "本店已安裝",
       "noneInstalled": "還沒有安裝可選外掛。",
       "browse": "瀏覽外掛"
+    },
+    "pager": {
+      "page": "第 {n} 頁"
     }
   },
   "storeDevice": {
@@ -5109,8 +5071,6 @@
     "cancel": "取消",
     "close": "關閉",
     "emergency": "緊急",
-    "sosTitle": "緊急狀況：",
-    "sosBody": "門市裝置上按下了 SOS，請立即查看。",
     "sosToast": "緊急 · 正在通知店長與保全",
     "onWork": "上班中",
     "onWorkNow": "目前上班中",
@@ -5163,7 +5123,10 @@
     "breakEnded": "休息結束",
     "punchOutLogOut": "打卡下班並登出",
     "punchOutLogOutSub": "結束班次並釋放裝置",
-    "logOutKeepSub": "保持打卡狀態 · 把裝置留給下一位"
+    "logOutKeepSub": "保持打卡狀態 · 把裝置留給下一位",
+    "sosCooldown": "剛剛已發出 SOS，店長已收到提醒。2 分鐘後才能再次發送。",
+    "sosUnregistered": "SOS 未發出：這台平板未登記為門市裝置。請直接聯絡店長。",
+    "sosFailed": "SOS 未發出。請檢查網路後再試，或直接聯絡店長。"
   },
   "personalDevice": {
     "leaveBtn": "離開",
@@ -6113,7 +6076,6 @@
     "openInNewTabNamed": "在新分頁中開啟“{title}”",
     "openTabs": "已開啟的分頁",
     "pageMenu": "頁面選單",
-    "pageMenuUnread": "頁面選單，{n} 條未讀通知",
     "recentDocuments": "最近的文件",
     "reloadApp": "重新載入應用程式",
     "removeFavoriteNamed": "從收藏中移除“{title}”",
@@ -7844,5 +7806,219 @@
     "clearFailed": "無法解鎖 PIN 輸入。",
     "noOperator": "請重新登入後再打卡：這台平板已不知道目前是誰在使用。",
     "lockedNow": "錯誤的 PIN 太多，PIN 輸入已暫停。請改用手機登入，或請經理解鎖。"
+  },
+  "notify": {
+    "email": {
+      "subject": {
+        "chat": {
+          "message": "頻道中有新訊息",
+          "mention": "有人在頻道中提到你",
+          "follow": "你特別關注的人發了新訊息",
+          "pin": "頻道中有訊息被置頂",
+          "merchiva": "Mr. Merchiva 回覆了"
+        },
+        "timeOff": {
+          "requested": "新的請假申請",
+          "approved": "你的請假已獲核准",
+          "denied": "你的請假未獲核准",
+          "updated": "你的請假申請已更新"
+        },
+        "shift": {
+          "requested": "同事請你代班",
+          "open": "有班次需要人代班"
+        },
+        "team": {
+          "joined": "團隊有新成員加入"
+        },
+        "inventory": {
+          "low": "庫存不足提醒",
+          "waste": "報損後庫存不足"
+        },
+        "supplier": {
+          "order": "有一張採購單需要你處理",
+          "issue": "有供應商問題需要你處理"
+        },
+        "security": {
+          "pinLocked": "一台門市裝置已暫停 PIN 輸入",
+          "manyWrongPins": "你的門市多次輸錯 PIN",
+          "pinUnlocked": "PIN 輸入已解除鎖定"
+        },
+        "doc": {
+          "shared": "有人與你共用了檔案",
+          "comment": "檔案有新評論",
+          "reply": "檔案評論有新回覆"
+        },
+        "form": {
+          "response": "表單有新回覆"
+        },
+        "alert": {
+          "emergency": "門市緊急求助"
+        },
+        "custom": "新通知"
+      },
+      "digestSubject": "你有 {count} 則新通知",
+      "subjectWithStore": "{subject}（{store}）",
+      "storeLine": "門市：{store}",
+      "authorLine": "來自：{author}",
+      "open": "在 Merchiva 中開啟",
+      "more": "Merchiva 中還有 {count} 則。",
+      "footerWhy": "你收到這封電子郵件，是因為你是 Merchiva 上某間門市的成員。",
+      "footerOff": "如需停止接收這類電子郵件，請在電腦或手機上的 Merchiva 中，前往「設定 → 通知」關閉電子郵件提醒。",
+      "footerEmergency": "即使已關閉電子郵件提醒，緊急求助仍會以電子郵件寄給店主和經理。",
+      "settings": "通知設定",
+      "textOpen": "開啟：{url}",
+      "textSettings": "通知設定：{url}"
+    },
+    "alert": {
+      "open": "開啟",
+      "acknowledge": "知道了",
+      "more": "還有 {count} 則提醒"
+    },
+    "dot": {
+      "label": "有新動態",
+      "withName": "{name}，有新動態"
+    },
+    "event": {
+      "chat": {
+        "message": {
+          "title": "{actor}",
+          "body": "{preview}"
+        },
+        "mention": {
+          "title": "{actor} 提到了你",
+          "body": "{preview}"
+        },
+        "follow": {
+          "title": "{actor} 發了一則訊息",
+          "body": "{preview}"
+        },
+        "pin": {
+          "title": "{actor} 置頂了一則訊息",
+          "body": "{preview}"
+        },
+        "merchiva": {
+          "title": "Mr. Merchiva",
+          "body": "{preview}"
+        }
+      },
+      "timeOff": {
+        "requested": {
+          "title": "請假申請",
+          "body": "{actor} 申請請假：{start} – {end}"
+        },
+        "approved": {
+          "title": "請假已核准",
+          "body": "你的請假申請（{start} – {end}）已獲核准"
+        },
+        "denied": {
+          "title": "請假未獲核准",
+          "body": "你的請假申請（{start} – {end}）未獲核准"
+        },
+        "updated": {
+          "title": "請假申請已更新",
+          "body": "你的請假申請（{start} – {end}）已更新"
+        }
+      },
+      "shift": {
+        "requested": {
+          "title": "換班請求",
+          "body": "{actor} 請你代班或換班"
+        },
+        "open": {
+          "title": "待接班次",
+          "body": "{actor} 正在找人代班或換班"
+        }
+      },
+      "team": {
+        "joined": {
+          "title": "新成員",
+          "body": "{actor} 加入了團隊"
+        }
+      },
+      "inventory": {
+        "low": {
+          "title": "庫存不足：{item}",
+          "body": "{item} 剩餘 {quantity} {unit}（最低：{min}）"
+        },
+        "waste": {
+          "title": "庫存不足：{item}",
+          "body": "報損後 {item} 降至 {quantity} {unit}"
+        }
+      },
+      "supplier": {
+        "order": {
+          "title": "採購單需要你處理",
+          "body": "Mr. Merchiva 無法寄電子郵件給 {supplier}。訂單已存為草稿。請新增供應商電子郵件，或手動寄出。"
+        },
+        "issue": {
+          "title": "供應商問題：{supplier}",
+          "body": "{preview}"
+        }
+      },
+      "security": {
+        "pinLocked": {
+          "title": "一台裝置已鎖定 PIN 輸入",
+          "body": "{actor} 今天輸錯了 {count} 次 PIN，該裝置已暫停 PIN 輸入。如果門市沒有人輸錯，可能有人在猜同事的 PIN。"
+        },
+        "manyWrongPins": {
+          "title": "門市出現大量錯誤 PIN",
+          "body": "今天你的門市共輸入了 {count} 次錯誤 PIN。如果持續發生，所有人的 PIN 輸入將暫停一小時；QR 碼登入不受影響。"
+        },
+        "pinUnlocked": {
+          "title": "PIN 輸入已解鎖",
+          "body": "{actor} 已清除門市的錯誤 PIN 次數與鎖定。"
+        }
+      },
+      "doc": {
+        "shared": {
+          "title": "{actor} 與你共用了一個檔案",
+          "body": "{doc}"
+        },
+        "comment": {
+          "title": "{actor} 評論了 {doc}",
+          "body": "{preview}"
+        },
+        "reply": {
+          "title": "{actor} 在 {doc} 中回覆了評論",
+          "body": "{preview}"
+        }
+      },
+      "form": {
+        "response": {
+          "title": "表單有新回覆",
+          "body": "{form}"
+        }
+      },
+      "alert": {
+        "emergency": {
+          "title": "緊急狀況：{device}",
+          "body": "{store} 的門市裝置上按下了 SOS，請立即查看。"
+        }
+      }
+    },
+    "settings": {
+      "email": "電子郵件提醒",
+      "emailTo": "寄送至 {email}",
+      "emailOn": "已開啟，寄送至你的登入電子郵件",
+      "emailOff": "已關閉。應用內仍會顯示提醒。",
+      "saveFailed": "無法儲存變更，請再試一次。",
+      "shared": "這個螢幕由團隊共用，因此這裡無法設定電子郵件和提醒。請在你自己的手機或電腦上的 Merchiva 中修改。",
+      "whatTitle": "哪些通知會寄電子郵件",
+      "whatChannels": "頻道：有人 @ 你、有訊息被置頂，或你特別關注的人發訊息時。其他訊息只在應用內顯示。",
+      "whatOther": "與你相關的事：請假和排班動態、共用給你的檔案及其評論、表單回覆，以及新成員加入。",
+      "whatManagers": "擁有者和經理也會收到庫存不足、供應商和安全提醒。門市平板發出的 SOS 求助，即使關閉了電子郵件提醒也會寄給他們。",
+      "whatPacing": "多則通知會合併成一封電子郵件，每 10 分鐘最多一封。你已在應用內開啟過的內容不會再寄送。",
+      "everyDevice": "此開關跟隨你的帳號，在所有裝置上都一樣。",
+      "liteSummary": "有人 @ 你、有訊息被置頂，或你特別關注的人發訊息時，我們會寄電子郵件給你；請假、排班和共用檔案的動態也會寄。你已在應用內開啟過的內容不會再寄。"
+    },
+    "follow": {
+      "label": "特別關注",
+      "hint": "特別關注：{name} 在你所在的頻道發訊息時寄電子郵件給你，頻道靜音也照樣寄。",
+      "turnOff": "取消特別關注",
+      "added": "已特別關注。{name} 在你所在的頻道發訊息時，你會收到電子郵件。",
+      "removed": "已取消對 {name} 的特別關注。",
+      "failed": "特別關注設定失敗，請再試一次。",
+      "directoryHint": "點名字旁的鈴鐺即可特別關注對方：對方在你所在的頻道發訊息時，你會收到電子郵件。"
+    }
   }
 }

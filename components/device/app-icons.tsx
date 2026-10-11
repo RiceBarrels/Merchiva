@@ -418,20 +418,6 @@ export function BugIcon({ className }: P) {
   );
 }
 
-/** Bell on a white card: amber body, dark clapper, red unread dot. */
-export function NotificationsIcon({ className }: P) {
-  return (
-    <Svg className={className}>
-      <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="3" fill={WHITE} stroke={LIGHT} strokeWidth="1" />
-      <path d="M12 5.2a4.8 4.8 0 0 0-4.8 4.8v3.1l-1 1.9a.6.6 0 0 0 .54.88h10.52a.6.6 0 0 0 .54-.88l-1-1.9V10A4.8 4.8 0 0 0 12 5.2z" fill={AMBER} />
-      <path d="M12 5.2A4.8 4.8 0 0 0 7.2 10v3.1l-1 1.9a.6.6 0 0 0 .54.88H12z" fill={INK} opacity=".1" />
-      <rect x="11.3" y="3.4" width="1.4" height="2.2" rx=".7" fill={INK} />
-      <path d="M10.2 17.4a1.9 1.9 0 0 0 3.6 0" fill="none" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
-      <circle cx="16.8" cy="7.2" r="2.4" fill={RED} stroke={WHITE} strokeWidth="1" />
-    </Svg>
-  );
-}
-
 /** Drive: blue folder holding a white page with a green sheet bar and an orange slide bar. */
 export function DriveIcon({ className }: P) {
   return (
@@ -518,5 +504,4 @@ export const APP_ICONS: Record<string, AppIcon> = {
   channel: ChannelIcon,
   "settings-org": StoreSettingsIcon,
   bugs: BugIcon,
-  notifications: NotificationsIcon,
 };

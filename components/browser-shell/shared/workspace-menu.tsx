@@ -19,6 +19,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { NotificationDot } from "@/components/ui/notification-dot";
 import { useAuth, type AuthUser, type StoredAccount } from "@/lib/auth/context";
 import { useTabActions } from "@/lib/browser-shell";
 import { discardShellStateForSignOut } from "@/lib/browser-shell/sign-out";
@@ -26,6 +27,8 @@ import { clearCache } from "@/lib/cache";
 import { usePermissions } from "@/lib/context/permissions";
 import { hapticMedium, hapticSuccess } from "@/lib/haptics";
 import { useT } from "@/lib/i18n/context";
+import { fmt } from "@/lib/i18n/fmt";
+import { useNotificationDots, useOtherOrgDot } from "@/lib/notifications/dots-context";
 import { createOrg } from "@/lib/spacetimedb/actions";
 import type { OrgSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -158,6 +161,15 @@ export function useWorkspaceActions(opts?: { onDone?: () => void }): WorkspaceAc
 const ROW_CLASS =
   "flex w-full items-center gap-2 py-1.5 text-start text-[13px] transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none";
 
+/**
+ * Whether another store in `stores` has something unread: the store switchers' triggers carry
+ * one notification dot for it, the rows inside show which store (StoreSwitchList).
+ */
+export function useOtherStoresDot(stores: readonly OrgSummary[], currentOrgId: string | null): boolean {
+  const { otherOrgIds } = useNotificationDots().state;
+  return otherOrgIds.size > 0 && stores.some((org) => org.id !== currentOrgId && otherOrgIds.has(org.id));
+}
+
 export function StoreSwitchList({
   stores,
   currentOrgId,
@@ -169,23 +181,32 @@ export function StoreSwitchList({
 }): React.JSX.Element {
   return (
     <div className="py-1">
-      {stores.map((org) => {
-        const isCurrent = org.id === currentOrgId;
-        return (
-          <button
-            key={org.id}
-            type="button"
-            onClick={() => onSelect(org.id)}
-            aria-current={isCurrent ? "true" : undefined}
-            className={cn(ROW_CLASS, "px-3")}
-          >
-            <StoreLogo name={org.name} logoUrl={org.logoUrl} className="h-6 w-6 text-[10px]" />
-            <span className="min-w-0 flex-1 truncate font-medium">{org.name}</span>
-            {isCurrent && <Check className="h-3.5 w-3.5 shrink-0 text-foreground" aria-hidden />}
-          </button>
-        );
-      })}
+      {stores.map((org) => (
+        <StoreSwitchRow key={org.id} org={org} current={org.id === currentOrgId} onSelect={onSelect} />
+      ))}
     </div>
+  );
+}
+
+/** One store; another store with something unread carries a notification dot on its logo. */
+function StoreSwitchRow({ org, current, onSelect }: { org: OrgSummary; current: boolean; onSelect(orgId: string): void }) {
+  const t = useT();
+  const dot = useOtherOrgDot(org.id) && !current;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(org.id)}
+      aria-current={current ? "true" : undefined}
+      aria-label={dot ? fmt(t("notify.dot.withName"), { name: org.name }) : undefined}
+      className={cn(ROW_CLASS, "px-3")}
+    >
+      <span className="relative flex shrink-0">
+        <StoreLogo name={org.name} logoUrl={org.logoUrl} className="h-6 w-6 text-[10px]" />
+        <NotificationDot show={dot} className="ring-popover" />
+      </span>
+      <span className="min-w-0 flex-1 truncate font-medium">{org.name}</span>
+      {current && <Check className="h-3.5 w-3.5 shrink-0 text-foreground" aria-hidden />}
+    </button>
   );
 }
 

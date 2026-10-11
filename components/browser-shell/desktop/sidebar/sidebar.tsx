@@ -7,14 +7,18 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { AppIcon } from "@/components/device/app-icons";
 import { MerchivaLogo } from "@/components/logo";
 import { NavPresence } from "@/components/presence/nav-presence";
+import { NotificationDot } from "@/components/ui/notification-dot";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useActiveTab, useNavSections, useTabPresentation, type NavSection, type TabUrl } from "@/lib/browser-shell";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { fmt } from "@/lib/i18n/fmt";
+import { useDot } from "@/lib/notifications/dots-context";
 import { navPresenceId } from "@/lib/presence/anchor";
 import { cn } from "@/lib/utils";
 import {
   SIDEBAR_CLASS,
+  SIDEBAR_DOT_ACTIVE_CLASS,
+  SIDEBAR_DOT_CLASS,
   SIDEBAR_DRAWER_HEADER_CLASS,
   SIDEBAR_DRAWER_ICON_BUTTON_CLASS,
   SIDEBAR_DRAWER_ROW_CLASS,
@@ -40,8 +44,7 @@ import { SidebarWorkspaceSwitcher } from "./workspace-switcher";
 
 /*
  * Desktop sidebar (≥1024px), also the /manager phone drawer (variant "drawer",
- * components/browser-shell/mobile-app): touch-sized rows, no collapse control, and the drawer's
- * own rows (Notifications) above the pinned ones.
+ * components/browser-shell/mobile-app): touch-sized rows and no collapse control.
  * It replicates the legacy sidebar (components/sidebar.tsx SidebarContent): logo header,
  * combined store + account switcher, nav rows with expandable sub-pages, Settings pinned at
  * the bottom, the collapse control and the version line.
@@ -52,6 +55,11 @@ import { SidebarWorkspaceSwitcher } from "./workspace-switcher";
  *
  * `collapsed` (icon rail) and the panel width are owned by the chrome's ResizablePanelGroup;
  * hiding the sidebar entirely is the toolbar toggle (sidebar-state.ts).
+ *
+ * Notification dots (lib/notifications/dots-context.tsx) follow the presence badges' rule: a
+ * section row's dot sits on its 18px icon's top-end corner (NavPresence holds the row's corner)
+ * and stands for its sub-pages too while they are off screen — the icon rail always, an expanded
+ * sidebar while the section is closed; a sub-page row's dot follows its label.
  */
 
 /** Suppresses Windows middle-button autoscroll; core's interceptor opens the tab. */
@@ -64,11 +72,9 @@ export interface BrowserSidebarProps {
   /** The collapse control at the foot; the phone drawer has no icon rail and passes none. */
   onToggleCollapse?(): void;
   variant?: "panel" | "drawer";
-  /** The drawer's own rows, above the pinned ones. */
-  extraRows?: ReactNode;
 }
 
-export function BrowserSidebar({ collapsed, onToggleCollapse, variant = "panel", extraRows }: BrowserSidebarProps) {
+export function BrowserSidebar({ collapsed, onToggleCollapse, variant = "panel" }: BrowserSidebarProps) {
   const { t, dir } = useI18n();
   const drawer = variant === "drawer";
   const sections = useNavSections();
@@ -132,7 +138,6 @@ export function BrowserSidebar({ collapsed, onToggleCollapse, variant = "panel",
       </nav>
 
       <div className={cn("shrink-0 space-y-0.5 border-t border-border py-2", SIDEBAR_PAD_CLASS)}>
-        {extraRows}
         {pinned.map((section) => (
           <SidebarRow
             key={section.href}
@@ -231,29 +236,45 @@ function SidebarSection({
           >
             <div className="my-0.5 ms-[18px] space-y-0.5 border-s border-border ps-2.5">
               {section.children.map((child) => (
-                <Link
+                <SidebarSubRow
                   key={child.href}
                   href={child.href}
-                  prefetch={false}
-                  onMouseDown={onRowMouseDown}
-                  aria-current={isRowActive(child.href, activeUrl) ? "page" : undefined}
-                  data-presence-id={navPresenceId(child.href)}
-                  className={cn(
-                    "relative",
-                    SIDEBAR_SUB_ROW_CLASS,
-                    isRowActive(child.href, activeUrl) ? SIDEBAR_ROW_ACTIVE_CLASS : SIDEBAR_ROW_IDLE_CLASS,
-                    drawer && SIDEBAR_DRAWER_SUB_ROW_CLASS,
-                  )}
-                >
-                  {t(child.titleKey)}
-                  <NavPresence href={child.href} level="child" />
-                </Link>
+                  title={t(child.titleKey)}
+                  active={isRowActive(child.href, activeUrl)}
+                  drawer={drawer}
+                />
               ))}
             </div>
           </motion.div>
         ) : null}
       </AnimatePresence>
     </div>
+  );
+}
+
+/** A sub-page row: text only, its notification dot after the label. */
+function SidebarSubRow({ href, title, active, drawer }: { href: TabUrl; title: string; active: boolean; drawer: boolean }) {
+  const t = useT();
+  const dot = useDot({ href, level: "child" });
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      onMouseDown={onRowMouseDown}
+      aria-current={active ? "page" : undefined}
+      aria-label={dot ? fmt(t("notify.dot.withName"), { name: title }) : undefined}
+      data-presence-id={navPresenceId(href)}
+      className={cn(
+        "relative",
+        SIDEBAR_SUB_ROW_CLASS,
+        active ? SIDEBAR_ROW_ACTIVE_CLASS : SIDEBAR_ROW_IDLE_CLASS,
+        drawer && SIDEBAR_DRAWER_SUB_ROW_CLASS,
+      )}
+    >
+      {title}
+      <NotificationDot show={dot} inline className={cn("ms-1.5", active ? SIDEBAR_DOT_ACTIVE_CLASS : SIDEBAR_DOT_CLASS)} />
+      <NavPresence href={href} level="child" />
+    </Link>
   );
 }
 
@@ -273,13 +294,19 @@ function SidebarRow({
   active: boolean;
   collapsed: boolean;
   drawer: boolean;
-  /** Its sub-page rows are on screen (they show their own presence badges). */
+  /** Its sub-page rows are on screen (they show their own presence badges and dots). */
   childrenVisible?: boolean;
   className?: string;
 }) {
+  const t = useT();
+  const dot = useDot({ href, childrenVisible });
+  const name = dot ? fmt(t("notify.dot.withName"), { name: title }) : title;
   const content: ReactNode = (
     <>
-      <Icon className="h-[18px] w-[18px] shrink-0" />
+      <span className="relative flex shrink-0">
+        <Icon className="h-[18px] w-[18px]" />
+        <NotificationDot show={dot} className={active ? SIDEBAR_DOT_ACTIVE_CLASS : SIDEBAR_DOT_CLASS} />
+      </span>
       {collapsed ? null : <span className="min-w-0 flex-1 truncate">{title}</span>}
       <NavPresence href={href} level="section" childrenVisible={childrenVisible} collapsed={collapsed} />
     </>
@@ -300,6 +327,7 @@ function SidebarRow({
         prefetch={false}
         onMouseDown={onRowMouseDown}
         aria-current={active ? "page" : undefined}
+        aria-label={dot ? name : undefined}
         data-presence-id={navPresenceId(href)}
         className={rowClass}
       >
@@ -317,7 +345,7 @@ function SidebarRow({
             prefetch={false}
             onMouseDown={onRowMouseDown}
             aria-current={active ? "page" : undefined}
-            aria-label={title}
+            aria-label={name}
             data-presence-id={navPresenceId(href)}
             className={rowClass}
           />

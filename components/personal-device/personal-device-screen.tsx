@@ -36,6 +36,14 @@ import {
   useOnShift,
   type DeviceApp,
 } from "@/components/device";
+import { walkieOnScreen } from "@/components/device/device-dots";
+import {
+  useDeviceChatDots,
+  useDevicePagerDots,
+  useDeviceTileDots,
+  useOpenAppDotClearing,
+  useWalkieChatRead,
+} from "@/components/device/use-device-dots";
 import { useMe } from "./use-me";
 import { LeaveDrawer } from "./leave-drawer";
 import { PunchPanel } from "./punch-panel";
@@ -107,6 +115,13 @@ export function PersonalDeviceScreen() {
   });
   const unlock = () => { setLocked(false); resetIdle(); punchAsk.request(); };
 
+  // Notification dots: tiles, conversations and pager pages; the open tile's rows and the walkie's conversation clear.
+  const tileDots = useDeviceTileDots();
+  const chatDots = useDeviceChatDots();
+  const pagerDots = useDevicePagerDots();
+  useOpenAppDotClearing(openApp);
+  useWalkieChatRead(chat.activeChannel?.id ?? null, walkieOnScreen({ phone, page, appOpen: openApp !== null, locked, idle: dimming }));
+
   // Switching channel returns to the messages page, like the prototype.
   const selectChannel = (i: number) => { chat.setActiveIndex(i); setPage(0); };
   const nextChannel = () => { chat.next(); setPage(0); };
@@ -145,6 +160,7 @@ export function PersonalDeviceScreen() {
       channels={chat.channels}
       activeIndex={chat.activeIndex}
       onSelect={selectChannel}
+      dots={chatDots}
       right={
         <span className="inline-flex h-5 items-center whitespace-nowrap rounded bg-secondary px-2 text-[12px] font-medium">
           {shortName(me.myName)}
@@ -257,10 +273,11 @@ export function PersonalDeviceScreen() {
                   <PagesTrack
                     page={page}
                     onPageChange={(p) => { hapticLight(); setPage(p); }}
+                    dots={pagerDots}
                     className="h-full"
                     pages={[
                       messagesPage,
-                      <AppsGrid key="apps" apps={apps} onOpen={openFromGrid} columns={4} size="md" className="h-full" />,
+                      <AppsGrid key="apps" apps={apps} onOpen={openFromGrid} columns={4} size="md" dots={tileDots} className="h-full" />,
                     ]}
                   />
                   {appPanel}
@@ -275,7 +292,7 @@ export function PersonalDeviceScreen() {
                   {talkBar}
                 </div>
                 <div className="relative min-h-0 overflow-hidden">
-                  <AppsGrid apps={apps} onOpen={openFromGrid} columns={6} size="lg" className="absolute inset-0" />
+                  <AppsGrid apps={apps} onOpen={openFromGrid} columns={6} size="lg" dots={tileDots} className="absolute inset-0" />
                   {appPanel}
                 </div>
               </div>

@@ -153,9 +153,9 @@ Mobile: `html.mobile-device { font-size: 16px }` and all inputs are forced to �
 | `rounded-md` | 0.4px (effectively square) | `xs`/`sm` buttons via `rounded-[min(var(--radius-md),10px)]`, tab triggers |
 | `rounded-sm` | clamps to 0 | — |
 | `rounded` (Tailwind default 4px) | 4px | Badge, sidebar nav items, brand panel cards, `rounded-[0.3rem]` on pickers |
-| `rounded-full` | pill | Switch, bottom-bar active pill, badge counters, avatar dots |
+| `rounded-full` | pill | Switch, bottom-bar active pill, badge counters, avatar dots, notification dots |
 
-Practical rule: use `rounded-lg` on controls and cards, `rounded` on small chips and nav rows, `rounded-full` only on pills/counters.
+Practical rule: use `rounded-lg` on controls and cards, `rounded` on small chips and nav rows, `rounded-full` only on pills, counters and dots.
 
 ### Spacing
 
@@ -271,12 +271,25 @@ Built from the primitives above so pages stop hand-rolling the same blocks. Use 
 | `Callout` | `callout.tsx` | `bg-amber-100 border-amber-300` banners | `tone`, `icon`, `title`, `action` |
 | `Avatar` + `initials()` | `avatar.tsx` | 8 local initials helpers and colour ramps | `name`, `src`, `size: xs…xl`, `shape: circle \| square` |
 | `Field` | `field.tsx` | raw `<label>` + `<input>` pairs, builder inspector rows | `label`, `htmlFor`, `hint`, `error`, `required`, `layout: stacked \| inline` |
+| `NotificationDot` | `notification-dot.tsx` | unread count pills, bells, per-row unread dots | `show`, `size: sm \| md`, `inline`, `label`, `className` |
 
 Rules of thumb:
 
 - Status hue is only ever one of the five tones. Orange, yellow, blue, rose, violet map onto them; do not add new ones.
 - Loading: `Loader2 h-4 w-4 animate-spin` or the branded `Spinner` from `components/ui/loaders/geometric.tsx` inside buttons. Both are accepted; nothing else is.
 - Skeletons come from `components/ui/skeleton-loaders.tsx`, not ad-hoc `animate-pulse` divs.
+
+### Notification dot
+
+There is no inbox, bell or unread count. When something arrives for a feature, its entry point gets a dot:
+`NotificationDot` (`components/ui/notification-dot.tsx`), whether to show it from `lib/notifications/dots-context.tsx`.
+
+- `size-2` (`sm`) on shell rows, tabs and icons; `size-3` (`md`) on device tiles. `pointer-events-none rounded-full bg-destructive ring-2 ring-background`, no number, no motion.
+- Pinned to the top inline-end corner (`absolute -top-0.5 -end-0.5`, top-left in RTL) of the entry's icon, which gets `relative`; `inline` (`inline-block shrink-0 align-middle`) puts it after a sub-row's text instead.
+- The ring matches whatever is behind the dot: `ring-foreground` on an inverted row (`bg-foreground`), `ring-popover` in a menu, the browser-chrome tones from `components/browser-shell/desktop/chrome-classes.ts` on the shell.
+- `aria-hidden`; the entry's accessible name carries the state (`notify.dot.withName`), or `label` adds `sr-only` text (`notify.dot.label`).
+- A hidden entry rolls up to what is visible: a collapsed section's icon, the sidebar toggle while the sidebar is hidden, the phone menu button, the device pager's page indicator.
+- It is the only red on a nav row. Do not use it for anything that is not a new notification.
 
 ---
 
@@ -290,7 +303,7 @@ Three resizable panels in a `h-[100dvh]` row:
 |:---|:---|:---|:---|:---|
 | Sidebar (`shell-left`) | 220px | 140px | 360px | 64px (collapses when dragged ≤70px) |
 | Content | flex | | | |
-| Right panel (`shell-right`, chat/notifications) | 420px | 220px | 680px | 44px |
+| Right panel (`shell-right`, Mr. Merchiva / chat) | 420px | 220px | 680px | 44px |
 
 Sidebar structure, top to bottom:
 
@@ -300,8 +313,8 @@ Sidebar structure, top to bottom:
    - Active: `bg-foreground text-background`
    - Inactive: `text-muted-foreground hover:text-foreground hover:bg-muted`
    - Sections with sub-pages expand inline; chevron `h-[14px] w-[14px] transition-transform duration-200`.
-   - Unread counter: `h-4 min-w-[16px] px-1 rounded-full bg-foreground text-background text-[9.5px] font-bold`.
-4. Bottom links `px-2 py-3 border-t`: notifications (Bell), Settings, collapse toggle (`PanelLeftOpen` / `PanelLeftClose`). Tooltips on hover when collapsed.
+   - New activity: the notification dot on the row's 18px icon corner (§5b "Notification dot"), never a count.
+4. Bottom links `px-2 py-3 border-t`: Settings, collapse toggle (`PanelLeftOpen` / `PanelLeftClose`). Tooltips on hover when collapsed.
 
 Width transition: `all 220ms cubic-bezier(0.4, 0, 0.2, 1)`.
 

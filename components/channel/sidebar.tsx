@@ -4,9 +4,11 @@ import { useState } from "react";
 import { BellOff, ChevronDown, Hash, Info, Plus, Search, SquarePen, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
+import { useAnyDot, useConversationDot } from "@/lib/notifications/dots-context";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NotificationDot } from "@/components/ui/notification-dot";
 import { badgeCount, sidebarSections, type ChatChannel } from "@/lib/chat/model";
 import { useChannelWorkspace } from "@/components/channel/context";
 
@@ -18,9 +20,16 @@ interface SidebarProps {
   onSearchAll: () => void;
 }
 
+/**
+ * One conversation. Its notification dot (a pin, a thread reply, a mention — rows
+ * that may not raise `unread`) sits on the leading glyph, so the Channel nav row's
+ * dot can be traced to the conversation behind it.
+ */
 function ChannelLink({ channel, active }: { channel: ChatChannel; active: boolean }) {
+  const t = useT();
   const { openChannel, nameOf, avatarOf } = useChannelWorkspace();
-  const bold = channel.unread > 0 && !channel.muted;
+  const dot = useConversationDot(channel.id);
+  const bold = (channel.unread > 0 && !channel.muted) || dot;
   return (
     <button
       type="button"
@@ -32,13 +41,16 @@ function ChannelLink({ channel, active }: { channel: ChatChannel; active: boolea
         channel.muted && !active && "text-muted-foreground",
       )}
     >
-      {channel.type === "group" ? (
-        <Hash className={cn("h-4 w-4 shrink-0", active ? "text-background/80" : "text-muted-foreground")} />
-      ) : channel.peerHex ? (
-        <Avatar name={nameOf(channel.peerHex)} src={avatarOf(channel.peerHex)} size="xs" shape="square" />
-      ) : (
-        <span className="h-5 w-5 shrink-0" />
-      )}
+      <span className="relative inline-flex shrink-0">
+        {channel.type === "group" ? (
+          <Hash className={cn("h-4 w-4 shrink-0", active ? "text-background/80" : "text-muted-foreground")} />
+        ) : channel.peerHex ? (
+          <Avatar name={nameOf(channel.peerHex)} src={avatarOf(channel.peerHex)} size="xs" shape="square" />
+        ) : (
+          <span className="h-5 w-5 shrink-0" />
+        )}
+        <NotificationDot show={dot} label={t("notify.dot.label")} className={active ? "ring-foreground" : undefined} />
+      </span>
       <span className={cn("min-w-0 flex-1 truncate", bold && "font-semibold text-foreground", bold && active && "text-background")}>
         {channel.name}
       </span>
@@ -62,13 +74,18 @@ function Section({ label, channels, activeId, onAdd, addLabel }: {
   onAdd?: () => void;
   addLabel?: string;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(true);
+  // A collapsed section hides its rows' dots: the header carries them.
+  const ids = new Set(channels.map((c) => c.id));
+  const anyDot = useAnyDot((e) => e.feature.kind === "chat" && !!e.feature.conversationId && ids.has(e.feature.conversationId));
   return (
     <section className="mt-3">
       <div className="group/sec flex items-center gap-1 px-1">
         <button type="button" onClick={() => setOpen((o) => !o)} className="flex min-w-0 flex-1 items-center gap-1 rounded-md px-1 py-1 text-start text-xs font-semibold text-muted-foreground hover:bg-muted">
           <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 transition-transform", !open && "-rotate-90 rtl:rotate-90")} />
           <span className="truncate">{label}</span>
+          <NotificationDot show={!open && anyDot} inline label={t("notify.dot.label")} />
         </button>
         {onAdd && (
           <Button variant="ghost" size="icon-xs" onClick={onAdd} aria-label={addLabel} title={addLabel} className="text-muted-foreground">

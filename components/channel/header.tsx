@@ -12,6 +12,7 @@ import {
 import type { ChatChannel } from "@/lib/chat/model";
 import { setChatMuted, setChatStarred } from "@/lib/spacetimedb/actions/chat";
 import { useChannelWorkspace, type SidePanel } from "@/components/channel/context";
+import { FollowButton } from "@/components/channel/follow";
 
 interface HeaderProps {
   channel: ChatChannel;
@@ -53,6 +54,7 @@ export function ChannelHeader({ channel, panel, onBack, onEditTopic, onAddPeople
         >
           <Star className={cn(channel.starred && "fill-current text-foreground")} />
         </Button>
+        {!isGroup && channel.peerHex && <FollowButton hex={channel.peerHex} name={channel.name} size="icon-xs" />}
         {isGroup && !isMobile && (
           <button
             type="button"

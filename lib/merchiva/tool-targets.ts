@@ -27,7 +27,6 @@ const PRODUCTS = page("/manager/products");
 const PRICING = page("/manager/pricing");
 const SALES = page("/manager/sales");
 const FINANCES = page("/manager/finances");
-const NOTIFICATIONS = page("/manager/notifications");
 
 /** Read tools (lib/merchiva/tools.ts) → the page that shows the same data. */
 const TOOL_TARGETS: Record<string, AiTarget> = {
@@ -47,7 +46,10 @@ const TOOL_TARGETS: Record<string, AiTarget> = {
   viewFinance: FINANCES,
 };
 
-/** Write actions, by ActionDefinition.category (lib/merchiva/action-registry.ts). */
+/**
+ * Write actions, by ActionDefinition.category (lib/merchiva/action-registry.ts). `notifications`
+ * (createNotification) has no page: notifications are built in, with no inbox to point at.
+ */
 const CATEGORY_TARGETS: Record<string, AiTarget> = {
   scheduling: SCHEDULE,
   staffing: TEAM,
@@ -57,7 +59,6 @@ const CATEGORY_TARGETS: Record<string, AiTarget> = {
   suppliers: SUPPLIERS,
   products: PRODUCTS,
   pricing: PRICING,
-  notifications: NOTIFICATIONS,
 };
 
 /** The page a read tool works on; `null` for MCP tools and anything unknown. */

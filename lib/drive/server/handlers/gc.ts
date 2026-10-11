@@ -48,6 +48,7 @@
 // 503; a wrong secret → 401. Unlike the older cron at /api/merchiva/scan, these
 // fail closed.
 
+import { sameSecret } from "@/lib/cron-auth";
 import { parseDriveBlobKey } from "@/lib/drive/rules";
 import { bearerToken, driveHttpError, errorResponse, reducerFailure } from "@/lib/drive/server/http";
 import { dedupeRowsBy, sqlNumber, sqlString, type SqlRow } from "@/lib/drive/server/sql-rows";
@@ -120,15 +121,6 @@ interface GcRun {
   acks: string[];
   failures: Map<string, FailGroup>;
   overBudget(): boolean;
-}
-
-/** Compares every byte of the expected secret whatever the input, so the time taken says nothing about a prefix. */
-function sameSecret(given: string, expected: string): boolean {
-  const a = new TextEncoder().encode(given);
-  const b = new TextEncoder().encode(expected);
-  let diff = a.length ^ b.length;
-  for (let i = 0; i < b.length; i++) diff |= (a[i] ?? 0) ^ b[i];
-  return diff === 0;
 }
 
 /** Only Vercel Cron (or an operator holding CRON_SECRET) may run the Drive crons. */

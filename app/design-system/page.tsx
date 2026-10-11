@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   AlertTriangle,
-  Bell,
   ChevronsUpDown,
   DollarSign,
   Inbox,
@@ -38,6 +37,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Field } from "@/components/ui/field";
 import { IconTile } from "@/components/ui/icon-tile";
+import { NotificationDot } from "@/components/ui/notification-dot";
 import { Num, NumCell } from "@/components/ui/num";
 import { OptionRow } from "@/components/ui/option-row";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -649,7 +649,7 @@ export default function DesignSystemPage() {
 
             <H3>EmptyState</H3>
             <div className="grid gap-3 md:grid-cols-2">
-              <Card><EmptyState icon={Inbox} title="No notifications" description="Mentions, approvals and supplier replies show up here." /></Card>
+              <Card><EmptyState icon={Inbox} title="No requests" description="Time off and shift trades waiting for you show up here." /></Card>
               <Card><EmptyState icon={Package} description="No products yet. Import from Square or add one." action={<Button variant="outline" size="sm">Add product</Button>} /></Card>
             </div>
 
@@ -738,7 +738,7 @@ export default function DesignSystemPage() {
                 <div className="space-y-0.5 px-2 py-3">
                   {[
                     { icon: LayoutDashboard, label: "Dashboard" },
-                    { icon: Package, label: "Inventory", active: true, count: 3 },
+                    { icon: Package, label: "Inventory", active: true, dot: true },
                     { icon: ShoppingBag, label: "Products" },
                     { icon: TrendingUp, label: "Sales" },
                     { icon: Users, label: "Personnel" },
@@ -751,16 +751,12 @@ export default function DesignSystemPage() {
                         it.active ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                       )}
                     >
-                      <NavIcon icon={it.icon} className="h-[15px] w-[15px] shrink-0" />
+                      <span className="relative flex shrink-0"><NavIcon icon={it.icon} className="h-[15px] w-[15px]" /><NotificationDot show={!!it.dot} className={it.active ? "ring-foreground" : undefined} /></span>
                       <span className="flex-1 truncate">{it.label}</span>
-                      {it.count && (
-                        <span className={cn("flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9.5px] font-bold", it.active ? "bg-background text-foreground" : "bg-foreground text-background")}>{it.count}</span>
-                      )}
                     </div>
                   ))}
                 </div>
                 <div className="space-y-0.5 border-t border-border px-2 py-3">
-                  <div className="flex items-center gap-2.5 rounded px-2.5 py-1.5 font-medium text-muted-foreground"><Bell className="h-[15px] w-[15px]" />Notifications</div>
                   <div className="flex items-center gap-2.5 rounded px-2.5 py-1.5 font-medium text-muted-foreground"><Settings className="h-[15px] w-[15px]" />Settings</div>
                 </div>
               </div>
@@ -789,7 +785,7 @@ export default function DesignSystemPage() {
                 <Hint>
                   Page header: <Code>hidden lg:flex h-14 border-b px-6</Code>, breadcrumbs <Code>hidden xl:flex text-xs</Code>, title <Code>text-[15px] font-semibold</Code>, subtitle <Code>text-[11.5px] text-muted-foreground</Code>.
                   Page tabs: <Code>px-3.5 py-2 text-[12px] font-medium border-b-2</Code>, active <Code>border-foreground</Code>.
-                  Sidebar item: <Code>rounded text-[13px] font-medium px-2.5 py-1.5 gap-2.5</Code>, active <Code>bg-foreground text-background</Code>, icon <Code>h-[15px] w-[15px]</Code>.
+                  Sidebar item: <Code>rounded text-[13px] font-medium px-2.5 py-1.5 gap-2.5</Code>, active <Code>bg-foreground text-background</Code>, icon <Code>h-[15px] w-[15px]</Code>; something new is a <Code>NotificationDot</Code> on the icon&apos;s top-end corner (<Code>ring-foreground</Code> on the active row), never a count.
                 </Hint>
               </div>
             </div>
@@ -798,7 +794,7 @@ export default function DesignSystemPage() {
             <div className="flex w-[390px] max-w-full rounded-lg border border-border bg-background/95 pb-2 backdrop-blur-md">
               {[
                 { icon: LayoutDashboard, label: "Dashboard", active: true },
-                { icon: Package, label: "Inventory", count: 3 },
+                { icon: Package, label: "Inventory" },
                 { icon: TrendingUp, label: "Sales" },
                 { icon: MessageSquare, label: "Channel" },
                 { icon: MoreHorizontal, label: "More" },
@@ -807,7 +803,6 @@ export default function DesignSystemPage() {
                   {it.active && <span className="absolute top-0 h-[2px] w-7 rounded-full bg-foreground" />}
                   <div className={cn("relative flex h-8 w-14 items-center justify-center rounded-full", it.active && "bg-foreground/8")}>
                     <NavIcon icon={it.icon} className="h-[19px] w-[19px]" />
-                    {it.count && <span className="absolute -top-0.5 right-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-foreground px-1 text-[9.5px] leading-none font-bold text-background">{it.count}</span>}
                   </div>
                   <span className={cn("text-[10.5px] leading-none tracking-tight", it.active ? "font-semibold" : "font-medium")}>{it.label}</span>
                 </div>

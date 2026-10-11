@@ -3,7 +3,7 @@ import { Resend } from "resend";
 const FROM = "Merchiva <onboarding@merchiva.com>";
 
 // Escape user-supplied text before interpolating into email HTML.
-function esc(s: string): string {
+export function esc(s: string): string {
   return s.replace(/[<>&"']/g, (c) =>
     ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c] ?? c),
   );
@@ -13,14 +13,14 @@ function esc(s: string): string {
 // tokens: mail clients do not parse oklch): black 1px borders on a pale ground,
 // indigo primary, a 1rem radius, DM Sans, Space Mono for amounts. Inline styles
 // and a table frame, because mail clients drop <style>.
-const INK = "#000000"; // --foreground
-const MUTED = "#333333"; // --muted-foreground
-const FAINT = "#737373"; // --input
-const BORDER = "#000000"; // --border
+export const INK = "#000000"; // --foreground
+export const MUTED = "#333333"; // --muted-foreground
+export const FAINT = "#737373"; // --input
+export const BORDER = "#000000"; // --border
 const GROUND = "#f7f9f3"; // --background
-const PRIMARY = "#4f46e5"; // --primary
+export const PRIMARY = "#4f46e5"; // --primary
 const RADIUS = "16px"; // --radius
-const RADIUS_INNER = "14px"; // --radius-md
+export const RADIUS_INNER = "14px"; // --radius-md
 const FONT = "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const MONO = "'Space Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 // The PWA icon on the production site: mail clients need an absolute https URL
@@ -29,7 +29,7 @@ const LOGO_URL = "https://www.merchiva.com/icon-192.png";
 const BRAND_LINE = "Merchiva — AI-powered business management";
 
 /** Card-framed email: brand row, body, footer under the card. Every argument is already-escaped HTML. */
-function emailLayout({ brand, body, footer, dir = "ltr" }: { brand: string; body: string; footer: string; dir?: "ltr" | "rtl" }): string {
+export function emailLayout({ brand, body, footer, dir = "ltr" }: { brand: string; body: string; footer: string; dir?: "ltr" | "rtl" }): string {
   return `
     <div dir="${dir}" style="margin:0;padding:32px 16px;background:${GROUND};font-family:${FONT};color:${INK};">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid ${BORDER};border-radius:${RADIUS};border-collapse:separate;">
@@ -48,7 +48,7 @@ function emailLayout({ brand, body, footer, dir = "ltr" }: { brand: string; body
   `;
 }
 
-function emailHeading(text: string): string {
+export function emailHeading(text: string): string {
   return `<h1 style="margin:0 0 8px;font-size:18px;font-weight:600;line-height:1.3;letter-spacing:-0.01em;color:${INK};">${text}</h1>`;
 }
 
@@ -57,11 +57,11 @@ function emailText(html: string): string {
 }
 
 /** Secondary line; `box` sets its margin (and any separator) as inline CSS. */
-function emailNote(html: string, box = "margin:20px 0 0;"): string {
+export function emailNote(html: string, box = "margin:20px 0 0;"): string {
   return `<p style="${box}font-size:13px;line-height:1.5;color:${MUTED};">${html}</p>`;
 }
 
-function emailButton(href: string, label: string): string {
+export function emailButton(href: string, label: string): string {
   return `<a href="${href}" style="display:inline-block;background:${PRIMARY};color:#ffffff;padding:10px 20px;border-radius:${RADIUS};text-decoration:none;font-size:14px;font-weight:500;line-height:20px;">${label}</a>`;
 }
 

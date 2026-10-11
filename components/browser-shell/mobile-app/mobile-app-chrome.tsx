@@ -17,7 +17,6 @@ import { useMerchivaBackHandler } from "@/components/merchiva-dock";
 import { useCanUseMerchiva } from "@/components/merchiva-dock/dock-panel";
 import { useMerchivaRevealing } from "@/components/merchiva-dock/dock-reveal";
 import { useHasDockSlot, useMerchivaDockOpen } from "@/components/merchiva-dock/dock-state";
-import { useUnreadCount } from "@/components/notification-center";
 import { useOpenDynamicUIElementCount } from "@/components/ui/dialog-depth";
 import {
   useActiveTab,
@@ -76,7 +75,6 @@ export function MobileAppChrome({ children }: { children: ReactNode }) {
   const keyboard = useVirtualKeyboard();
   const platform = useMobilePlatform();
   const openDialogs = useOpenDynamicUIElementCount();
-  const unread = useUnreadCount();
   const merchivaAllowed = useCanUseMerchiva();
   const dockOpen = useMerchivaDockOpen();
   const slotted = useHasDockSlot();
@@ -161,7 +159,7 @@ export function MobileAppChrome({ children }: { children: ReactNode }) {
     else active.blur();
   }, [open, sidebarEl, scrimEl]);
 
-  // Any navigation closes the drawer: a row, a notification, Settings in the switcher.
+  // Any navigation closes the drawer: a row, Settings in the switcher.
   const [seenUrl, setSeenUrl] = useState(pageUrl);
   if (seenUrl !== pageUrl) {
     setSeenUrl(pageUrl);
@@ -241,7 +239,7 @@ export function MobileAppChrome({ children }: { children: ReactNode }) {
         className="absolute inset-y-0 start-0 z-0 flex outline-none"
         style={{ bottom, width, opacity: progress, scale: sidebarGrow, originX: dir === "rtl" ? 1 : 0, visibility: sidebarVisibility }}
       >
-        <SidebarDrawer open={open} onClose={close} />
+        <SidebarDrawer />
       </motion.div>
 
       <motion.div
@@ -256,7 +254,7 @@ export function MobileAppChrome({ children }: { children: ReactNode }) {
           style={{ "--shell-scroll-pad": "0px" } as CSSProperties}
         >
           <TabPageOutlet>{children}</TabPageOutlet>
-          {showMenu ? <MenuButton ref={menuRef} expanded={open} unread={unread} onOpen={openDrawer} /> : null}
+          {showMenu ? <MenuButton ref={menuRef} expanded={open} onOpen={openDrawer} /> : null}
         </div>
 
         <motion.button

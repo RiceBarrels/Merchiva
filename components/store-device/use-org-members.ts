@@ -10,8 +10,6 @@ import type { Permissions } from "@/lib/types";
 export interface StoreMember {
   id: string;
   userIdHex: string;
-  /** Raw SpacetimeDB Identity — needed when calling reducers that take one. */
-  userIdentity: unknown;
   organizationId: string;
   displayName: string;
   role: string;
@@ -51,7 +49,6 @@ export function useOrgMembers(organizationId: string | null): { members: StoreMe
       .map((r) => ({
         id: r.id.toString(),
         userIdHex: typeof r.userId.toHexString === "function" ? r.userId.toHexString() : r.userId.toString(),
-        userIdentity: r.userId,
         organizationId: r.organizationId,
         displayName: r.displayName?.trim() || "",
         role: r.role ?? "staff",
@@ -61,10 +58,6 @@ export function useOrgMembers(organizationId: string | null): { members: StoreMe
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
   }, [rows, organizationId]);
   return { members, ready };
-}
-
-export function isManagerRole(role: string): boolean {
-  return role === "owner" || role === "manager";
 }
 
 // There is deliberately no `findMemberByPin` here any more. Punch-in codes live

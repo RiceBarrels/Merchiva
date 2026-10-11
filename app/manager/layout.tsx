@@ -9,8 +9,7 @@ import { PresenceLayer } from "@/components/presence/presence-layer";
 import { SheetSessionKeeper } from "@/lib/sheets/use-sheet-session-keeper";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { ShakeBugReport } from "@/components/shake-bug-report";
-import { PushNotificationPrompt } from "@/components/push-notification-prompt";
-import { TauriNotificationBridge } from "@/components/tauri-notification-bridge";
+import { NotificationRuntime } from "@/lib/notifications/runtime";
 import { DevicePermissionPrompt } from "@/components/device-permission-prompt";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { useSpacetimeStatus, SpacetimeProvider } from "@/lib/spacetimedb/provider";
@@ -589,28 +588,26 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
         onPickOrg={setPickedOrgId}
       >
         <DevicePermissionPrompt>
-          {needsName ? (
-            <NamePrompt memberId={effectiveAuth.memberId} onComplete={() => window.location.reload()} />
-          ) : isSetupPath ? (
-            <>
-              {children}
-              {/* Device surfaces get no shell, but once notifications are
-                  granted they should still register for push. */}
-              <PushNotificationPrompt />
-              {/* Parked spreadsheet sessions follow reconnects (devices edit sheets too). */}
-              <SheetSessionKeeper />
-            </>
-          ) : (
-            <>
-              <ManagerShell>{children}</ManagerShell>
-              <ShellContextMenu />
-              <SheetSessionKeeper />
-              <PresenceLayer />
-              <MerchivaDock />
-              <PushNotificationPrompt />
-              <TauriNotificationBridge />
-            </>
-          )}
+          {/* Notification dots, alerts and push for every surface; what runs where: lib/notifications/runtime.tsx. */}
+          <NotificationRuntime>
+            {needsName ? (
+              <NamePrompt memberId={effectiveAuth.memberId} onComplete={() => window.location.reload()} />
+            ) : isSetupPath ? (
+              <>
+                {children}
+                {/* Device surfaces get no shell. Parked spreadsheet sessions follow reconnects (devices edit sheets too). */}
+                <SheetSessionKeeper />
+              </>
+            ) : (
+              <>
+                <ManagerShell>{children}</ManagerShell>
+                <ShellContextMenu />
+                <SheetSessionKeeper />
+                <PresenceLayer />
+                <MerchivaDock />
+              </>
+            )}
+          </NotificationRuntime>
         </DevicePermissionPrompt>
       </PermissionsProvider>
     );

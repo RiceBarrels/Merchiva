@@ -64,7 +64,6 @@
     "apps": "Plugins",
     "docs": "Docs",
     "bugs": "Bugs",
-    "notifications": "Notifications",
     "drive": "Drive",
     "sheets": "Sheets",
     "slides": "Slides",
@@ -1260,12 +1259,6 @@
     "desktopDisabled": "Push alerts when the app is closed",
     "desktopBlocked": "Blocked in browser settings",
     "desktopUnsupported": "Not supported in this browser",
-    "shiftReminders": "Shift reminders",
-    "beforeShift": "Before your shift starts",
-    "lowStockAlerts": "Low stock alerts",
-    "belowThreshold": "When items fall below threshold",
-    "weeklySummary": "Weekly summary",
-    "performanceDigest": "Performance digest every Monday",
     "navigationMode": "Navigation mode",
     "sidebar": "Sidebar",
     "bottomBar": "Bottom bar",
@@ -1544,7 +1537,8 @@
     "teamOnTeamPage": "Members, roles and punch-in codes",
     "punchCodeOnTeamPage": "Set it on the team page",
     "createStoreHint": "Creates a new store with its own inventory and forecasts.",
-    "toastSettingsNotLoaded": "Settings are still loading — try again in a moment"
+    "toastSettingsNotLoaded": "Settings are still loading — try again in a moment",
+    "notificationsMeta": "Email and alerts"
   },
   "lock": {
     "title": "Device Locked",
@@ -2139,23 +2133,10 @@
     }
   },
   "notifications": {
-    "title": "Notifications",
-    "markAllRead": "Mark all read",
-    "empty": "No notifications",
-    "emptyDesc": "You're all caught up",
     "justNow": "Just now",
     "minutesAgo": "{n}m ago",
     "hoursAgo": "{n}h ago",
     "daysAgo": "{n}d ago",
-    "unreadCount": "{n} unread",
-    "dismiss": "Dismiss",
-    "filterAll": "All",
-    "filterShift": "Shifts",
-    "filterTimeOff": "Time off",
-    "filterTeam": "Team",
-    "filterInventory": "Inventory",
-    "filterOrder": "Orders",
-    "filterGeneral": "System",
     "tradeOfferedToEveryone": "{name} is offering their shift to everyone",
     "tradeWantsToTrade": "{name} wants to trade with you",
     "tradeAcceptedAwaitingManager": "{name} accepted — awaiting manager approval",
@@ -3078,15 +3059,6 @@
       "inMinutes": "in {n}m",
       "inHours": "in {n}h",
       "noShifts": "No shifts scheduled today"
-    },
-    "notifications": {
-      "title": "Notifications",
-      "new": "new",
-      "needDecision": "need a decision",
-      "markAllRead": "Mark all read",
-      "review": "Review",
-      "dismiss": "Dismiss",
-      "empty": "No new notifications"
     },
     "noAccess": "Mr. Merchiva is disabled for your account. Ask a manager to enable it.",
     "dock": {
@@ -4705,7 +4677,6 @@
       "docs": "Docs",
       "settings-org": "Store settings",
       "bugs": "Bug reports",
-      "notifications": "Notifications",
       "drive": "Drive",
       "sheets": "Sheets",
       "slides": "Slides",
@@ -4910,17 +4881,6 @@
         "uploadFailed": "Could not add the photo.",
         "failed": "Could not send. Try again."
       },
-      "notifications": {
-        "markAllRead": "Mark all read",
-        "list": "Notifications",
-        "unreadCount": "{n} unread",
-        "empty": "Nothing new",
-        "emptyHint": "Shift and request alerts show up here.",
-        "details": "Notification",
-        "close": "Close",
-        "allRead": "All marked read",
-        "markFailed": "Couldn't update"
-      },
       "drive": {
         "noticeShort": "Store management can see everything you save here.",
         "noticeLeave": "Not ready? Close this app with the button at the top.",
@@ -5044,7 +5004,6 @@
       "sales": "Today's sales at a glance.",
       "bookings": "Today's and tomorrow's reservations.",
       "bugs": "Report a problem with the app and follow what happens to it.",
-      "notifications": "Your shift, schedule and request alerts, newest first.",
       "drive": "Every file your store keeps, in one place: uploads, photos, and the documents, spreadsheets and presentations made with editor plugins.",
       "sheets": "Spreadsheets for your store: open .xlsx and .csv files and make new ones in Drive.",
       "slides": "Presentations for your store: open .pptx files and make new decks in Drive.",
@@ -5095,6 +5054,9 @@
       "addedByStore": "Installed by your store",
       "noneInstalled": "No optional plugins installed yet.",
       "browse": "Browse plugins"
+    },
+    "pager": {
+      "page": "Page {n}"
     }
   },
   "storeDevice": {
@@ -5109,8 +5071,6 @@
     "cancel": "Cancel",
     "close": "Close",
     "emergency": "Emergency",
-    "sosTitle": "Emergency at",
-    "sosBody": "SOS pressed on a store device. Please check in immediately.",
     "sosToast": "Emergency · calling store manager & security",
     "onWork": "on work",
     "onWorkNow": "on work now",
@@ -5163,7 +5123,10 @@
     "breakEnded": "Break ended",
     "punchOutLogOut": "Punch out & log out",
     "punchOutLogOutSub": "End your shift and free the device",
-    "logOutKeepSub": "Stay punched in · free the device for the next person"
+    "logOutKeepSub": "Stay punched in · free the device for the next person",
+    "sosCooldown": "An SOS was just sent. Managers have been alerted. You can send another in 2 minutes.",
+    "sosUnregistered": "SOS not sent: this tablet isn't registered as a store device. Call a manager.",
+    "sosFailed": "SOS not sent. Check the connection and try again, or call a manager."
   },
   "personalDevice": {
     "leaveBtn": "Leave",
@@ -6113,7 +6076,6 @@
     "openInNewTabNamed": "Open {title} in a new tab",
     "openTabs": "Open tabs",
     "pageMenu": "Page menu",
-    "pageMenuUnread": "Page menu, {n} unread notifications",
     "recentDocuments": "Recent documents",
     "reloadApp": "Reload app",
     "removeFavoriteNamed": "Remove {title} from favorites",
@@ -7844,5 +7806,219 @@
     "clearFailed": "Couldn't unlock PIN entry.",
     "noOperator": "Log in again to punch: this tablet no longer knows who is using it.",
     "lockedNow": "Too many wrong PINs. PIN entry is paused for now. Log in with your phone instead, or ask a manager to unlock it."
+  },
+  "notify": {
+    "email": {
+      "subject": {
+        "chat": {
+          "message": "New message in a channel",
+          "mention": "You were mentioned in a channel",
+          "follow": "New message from someone you follow",
+          "pin": "A message was pinned in a channel",
+          "merchiva": "Mr. Merchiva replied"
+        },
+        "timeOff": {
+          "requested": "New time off request",
+          "approved": "Your time off was approved",
+          "denied": "Your time off was denied",
+          "updated": "Your time off request was updated"
+        },
+        "shift": {
+          "requested": "A teammate asked you to cover a shift",
+          "open": "A shift needs cover"
+        },
+        "team": {
+          "joined": "A new member joined your team"
+        },
+        "inventory": {
+          "low": "Low stock alert",
+          "waste": "Stock is low after waste"
+        },
+        "supplier": {
+          "order": "A purchase order needs your attention",
+          "issue": "A supplier issue needs your attention"
+        },
+        "security": {
+          "pinLocked": "PIN entry was paused on a store device",
+          "manyWrongPins": "Many wrong PINs at your store",
+          "pinUnlocked": "PIN entry was unlocked"
+        },
+        "doc": {
+          "shared": "A file was shared with you",
+          "comment": "New comment on a file",
+          "reply": "New reply on a file"
+        },
+        "form": {
+          "response": "New form response"
+        },
+        "alert": {
+          "emergency": "Emergency alert from your store"
+        },
+        "custom": "New notification"
+      },
+      "digestSubject": "You have {count} new notifications",
+      "subjectWithStore": "{subject} · {store}",
+      "storeLine": "Store: {store}",
+      "authorLine": "From: {author}",
+      "open": "Open in Merchiva",
+      "more": "And {count} more in Merchiva.",
+      "footerWhy": "You're receiving this email because you're a member of a store on Merchiva.",
+      "footerOff": "To stop these emails, turn off email in Settings → Notifications, in Merchiva on your computer or phone.",
+      "footerEmergency": "Emergency alerts are emailed to owners and managers even when email is turned off.",
+      "settings": "Notification settings",
+      "textOpen": "Open: {url}",
+      "textSettings": "Notification settings: {url}"
+    },
+    "alert": {
+      "open": "Open",
+      "acknowledge": "Got it",
+      "more": "{count} more alerts"
+    },
+    "dot": {
+      "label": "New activity",
+      "withName": "{name}, new activity"
+    },
+    "event": {
+      "chat": {
+        "message": {
+          "title": "{actor}",
+          "body": "{preview}"
+        },
+        "mention": {
+          "title": "{actor} mentioned you",
+          "body": "{preview}"
+        },
+        "follow": {
+          "title": "{actor} posted a message",
+          "body": "{preview}"
+        },
+        "pin": {
+          "title": "{actor} pinned a message",
+          "body": "{preview}"
+        },
+        "merchiva": {
+          "title": "Mr. Merchiva",
+          "body": "{preview}"
+        }
+      },
+      "timeOff": {
+        "requested": {
+          "title": "Time off request",
+          "body": "{actor} requested time off {start} – {end}"
+        },
+        "approved": {
+          "title": "Time off approved",
+          "body": "Your time off request ({start} – {end}) has been approved"
+        },
+        "denied": {
+          "title": "Time off denied",
+          "body": "Your time off request ({start} – {end}) has been denied"
+        },
+        "updated": {
+          "title": "Time off request updated",
+          "body": "Your time off request ({start} – {end}) has been updated"
+        }
+      },
+      "shift": {
+        "requested": {
+          "title": "Shift request",
+          "body": "{actor} asked you to cover or trade a shift"
+        },
+        "open": {
+          "title": "Open shift",
+          "body": "{actor} is looking for someone to cover or trade their shift"
+        }
+      },
+      "team": {
+        "joined": {
+          "title": "New team member",
+          "body": "{actor} has joined the team"
+        }
+      },
+      "inventory": {
+        "low": {
+          "title": "Low stock: {item}",
+          "body": "{item} is at {quantity} {unit} (min: {min})"
+        },
+        "waste": {
+          "title": "Low stock: {item}",
+          "body": "{item} dropped to {quantity} {unit} after waste disposal"
+        }
+      },
+      "supplier": {
+        "order": {
+          "title": "Purchase order needs your attention",
+          "body": "Mr. Merchiva couldn't email {supplier}. The order was saved as a draft. Add a supplier email or send it manually."
+        },
+        "issue": {
+          "title": "Supplier issue: {supplier}",
+          "body": "{preview}"
+        }
+      },
+      "security": {
+        "pinLocked": {
+          "title": "PIN entry locked on a device",
+          "body": "{actor} entered {count} wrong PINs today, so PIN entry there is paused. If nobody at the store was mistyping, someone may be guessing colleagues’ PINs."
+        },
+        "manyWrongPins": {
+          "title": "Many wrong PINs at your store",
+          "body": "{count} wrong PINs were entered at your store today. If this keeps up, PIN entry pauses for everyone for an hour; QR log-in keeps working."
+        },
+        "pinUnlocked": {
+          "title": "PIN entry unlocked",
+          "body": "{actor} cleared the store's wrong-PIN counts and locks."
+        }
+      },
+      "doc": {
+        "shared": {
+          "title": "{actor} shared a file with you",
+          "body": "{doc}"
+        },
+        "comment": {
+          "title": "{actor} commented on {doc}",
+          "body": "{preview}"
+        },
+        "reply": {
+          "title": "{actor} replied on {doc}",
+          "body": "{preview}"
+        }
+      },
+      "form": {
+        "response": {
+          "title": "New form response",
+          "body": "{form}"
+        }
+      },
+      "alert": {
+        "emergency": {
+          "title": "Emergency at {device}",
+          "body": "SOS pressed on a store device at {store}. Please check in immediately."
+        }
+      }
+    },
+    "settings": {
+      "email": "Email me",
+      "emailTo": "Sent to {email}",
+      "emailOn": "On, to the email you sign in with",
+      "emailOff": "Off. Alerts still show in the app.",
+      "saveFailed": "Couldn't save the change. Try again.",
+      "shared": "This screen is shared by your team, so email and alert settings aren't available here. Change them in Merchiva on your own phone or computer.",
+      "whatTitle": "What we email you",
+      "whatChannels": "Channels: when someone @mentions you, when a message is pinned, and when someone you specially follow posts. Other messages only show in the app.",
+      "whatOther": "Things that need you: time off and shift updates, files shared with you and comments on them, form responses and new team members.",
+      "whatManagers": "Owners and managers also get low stock, supplier and security alerts. An SOS from a store tablet is emailed to them even when email is off.",
+      "whatPacing": "Several notifications are grouped into one email, at most one every 10 minutes. Anything you've already opened in the app isn't emailed.",
+      "everyDevice": "This switch follows your account, so it's the same on every device.",
+      "liteSummary": "We email you when someone @mentions you, a message is pinned or someone you specially follow posts, and about things like time off, shifts and shared files. Anything you've already opened in the app isn't emailed."
+    },
+    "follow": {
+      "label": "Special follow",
+      "hint": "Special follow: get an email when {name} posts in a channel you're in, even a muted one.",
+      "turnOff": "Turn off special follow",
+      "added": "Special follow on. You'll get an email when {name} posts in a channel you're in.",
+      "removed": "Special follow off for {name}.",
+      "failed": "Couldn't change special follow. Try again.",
+      "directoryHint": "Tap the bell next to someone to specially follow them: you get an email when they post in a channel you're in."
+    }
   }
 }

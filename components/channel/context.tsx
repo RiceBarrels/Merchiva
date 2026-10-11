@@ -5,6 +5,7 @@
 
 import { createContext, useContext } from "react";
 import type { ChatModel, Person } from "@/lib/chat/model";
+import type { FollowControl } from "@/components/channel/follow";
 
 export type SidePanel =
   | { kind: "thread"; parentId: string }
@@ -33,6 +34,8 @@ export interface ChannelWorkspaceValue {
   confirmDelete: (conversationId: string, messageId: string) => void;
   /** The message to scroll to and flash once (search results, pins). */
   focusMessageId: string | null;
+  /** Special follow (特别关注); null for a store machine's PIN operator, whose follows would be the machine's. */
+  follow: FollowControl | null;
 }
 
 const ChannelWorkspaceContext = createContext<ChannelWorkspaceValue | null>(null);

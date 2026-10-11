@@ -2,10 +2,15 @@
 
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NotificationDot } from "@/components/ui/notification-dot";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useShortcutLabel, type ShellCommand } from "@/lib/browser-shell";
 import { useT } from "@/lib/i18n/context";
-import { TOOLBAR_BUTTON_CLASS } from "../chrome-classes";
+import { fmt } from "@/lib/i18n/fmt";
+import { DOT_FILTERS } from "@/lib/notifications/dots";
+import { useAnyDot } from "@/lib/notifications/dots-context";
+import { cn } from "@/lib/utils";
+import { CHROME_DOT_CLASS, TOOLBAR_BUTTON_CLASS } from "../chrome-classes";
 import {
   SIDEBAR_ELEMENT_ID,
   SIDEBAR_TOGGLE_ID,
@@ -30,6 +35,9 @@ import {
  * Alt+S is clear of the core table, the docs keymap, the Mr. Merchiva dock (Mod+Shift+M) and the
  * browser/OS combos, and Alt bindings never fire while typing (plan D21). When the command is
  * unbound `useShortcutLabel` returns null and the tooltip shows the label alone.
+ *
+ * While the sidebar is hidden its rows' notification dots are off screen, so the toggle carries
+ * one dot for all of them (a rail or an open sidebar shows its own).
  */
 export const TOGGLE_SIDEBAR_COMMAND: ShellCommand = "toggleSidebar";
 
@@ -57,6 +65,7 @@ export function SidebarToggle() {
   // the sidebar is hidden — the one state where the two do the same thing.
   const tooltip = hidden && shortcut ? `${label} (${shortcut})` : label;
   const Icon = railed ? PanelLeftOpen : PanelLeftClose;
+  const dot = useAnyDot(DOT_FILTERS.navRows) && hidden;
 
   return (
     <Tooltip>
@@ -66,15 +75,16 @@ export function SidebarToggle() {
             id={SIDEBAR_TOGGLE_ID}
             variant="ghost"
             size="icon-sm"
-            aria-label={label}
+            aria-label={dot ? fmt(t("notify.dot.withName"), { name: label }) : label}
             aria-expanded={!railed}
             aria-controls={hidden ? undefined : SIDEBAR_ELEMENT_ID}
-            className={TOOLBAR_BUTTON_CLASS}
+            className={cn("relative", TOOLBAR_BUTTON_CLASS)}
             onClick={() => (hidden ? setSidebarHidden(false) : toggleSidebarCollapsed())}
           />
         }
       >
         <Icon className="h-4 w-4 rtl:-scale-x-100" />
+        <NotificationDot show={dot} className={cn("top-1 end-1", CHROME_DOT_CLASS)} />
       </TooltipTrigger>
       <TooltipContent side="bottom">{tooltip}</TooltipContent>
     </Tooltip>

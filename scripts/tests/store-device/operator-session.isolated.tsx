@@ -3,6 +3,8 @@
 // `device_operator_session`, which lets Drive act for that person for up to 12 h. This checks
 // when StoreDeviceScreen deletes it through `clearDeviceOperator()`: on every way the operator
 // goes away, on the idle lock while nobody is logged in, and never while someone still is.
+// It also checks that the screen drops this browser's push subscription (a shared tablet holds
+// nobody's) once the connection is up.
 //
 // StoreDeviceScreen renders through Ink's reconciler (this suite has no DOM). MiniAppSurface is
 // mocked to render nothing, so no host element is ever created, while every hook and effect of
@@ -37,6 +39,14 @@ function setMembers(list: Member[], ready = true) {
 }
 
 let clearCalls = 0;
+let releaseCalls = 0;
+/** Stands in for the SpacetimeDB connection state (`useSpacetimeDB().isActive`). */
+let connectionActive = true;
+const connectionListeners = new Set<() => void>();
+function setConnectionActive(active: boolean) {
+  connectionActive = active;
+  for (const l of connectionListeners) l();
+}
 let fireIdle: (() => void) | null = null;
 let surfaceChildren: React.ReactNode = null;
 
@@ -49,6 +59,24 @@ mock.module("@/lib/spacetimedb/actions", () => ({
     return Promise.resolve();
   },
   registerStoreDevice: () => Promise.resolve(),
+}));
+mock.module("spacetimedb/react", () => ({
+  useSpacetimeDB: () => {
+    const isActive = React.useSyncExternalStore(
+      (l: () => void) => {
+        connectionListeners.add(l);
+        return () => connectionListeners.delete(l);
+      },
+      () => connectionActive,
+    );
+    return { isActive };
+  },
+}));
+mock.module("@/lib/notifications/push-cleanup", () => ({
+  releaseBrowserPush: () => {
+    releaseCalls += 1;
+    return Promise.resolve();
+  },
 }));
 mock.module("@/lib/context/permissions", () => ({
   usePermissions: () => ({ organizationId: "org-1", currentOrg: { name: "Test store" } }),
@@ -97,7 +125,6 @@ mock.module("@/components/device", () => ({
   },
 }));
 mock.module("@/components/store-device/use-org-members", () => ({
-  isManagerRole: () => false,
   useOrgMembers: () => {
     const list = React.useSyncExternalStore(
       (l: () => void) => {
@@ -176,6 +203,8 @@ afterEach(() => {
 
 beforeEach(() => {
   clearCalls = 0;
+  releaseCalls = 0;
+  connectionActive = true;
   fireIdle = null;
   surfaceChildren = null;
   setMembers([ALICE], true);
@@ -294,5 +323,24 @@ describe("StoreDeviceScreen clears the tablet's operator session", () => {
     idle();
     await settle();
     expect(clearCalls).toBe(2);
+  });
+});
+
+describe("StoreDeviceScreen releases this browser's push subscription", () => {
+  test("once on mount with a live connection, logged out or in", async () => {
+    await mount();
+    expect(releaseCalls).toBe(1);
+    setOperator(aliceOperator);
+    await settle();
+    expect(releaseCalls).toBe(1);
+  });
+
+  test("not before the connection is up, then once it is", async () => {
+    connectionActive = false;
+    await mount();
+    expect(releaseCalls).toBe(0);
+    setConnectionActive(true);
+    await settle();
+    expect(releaseCalls).toBe(1);
   });
 });

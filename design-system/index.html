@@ -196,8 +196,9 @@
   .sidebar .it:hover { color: var(--foreground); background: var(--muted); }
   .sidebar .it.on { background: var(--foreground); color: var(--background); }
   .sidebar .it svg { width: 15px; height: 15px; flex: none; }
-  .sidebar .it .cnt { margin-left: auto; height: 16px; min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 9.5px; font-weight: 700; display: grid; place-items: center; }
-  .sidebar .it.on .cnt { background: var(--background); color: var(--foreground); }
+  .dotwrap { position: relative; display: inline-flex; flex: none; }
+  .dotwrap > .dot { position: absolute; top: -2px; inset-inline-end: -2px; width: 8px; height: 8px; border-radius: 999px; background: var(--destructive); box-shadow: 0 0 0 2px var(--background); pointer-events: none; }
+  .sidebar .it.on .dotwrap > .dot { box-shadow: 0 0 0 2px var(--foreground); }
   .sidebar .foot { border-top: 1px solid var(--border); padding: 11px 8px; display: grid; gap: 2px; }
 
   .phead { height: 54px; border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; gap: 12px; padding: 0 23px; }
@@ -220,7 +221,6 @@
   .bbar .ic { height: 30px; width: 54px; border-radius: 999px; display: grid; place-items: center; position: relative; }
   .bbar a.on .ic { background: color-mix(in srgb, var(--foreground) 8%, transparent); }
   .bbar .ic svg { width: 19px; height: 19px; }
-  .bbar .ic .cnt { position: absolute; top: -2px; right: 8px; height: 16px; min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 9.5px; font-weight: 700; display: grid; place-items: center; line-height: 1; }
   .bbar span { font-size: 10.5px; line-height: 1; letter-spacing: -0.01em; font-weight: 500; }
   .bbar a.on span { font-weight: 600; }
 
@@ -388,7 +388,7 @@
     <div style="border-radius:6.4px">rounded-xl · 6.4px</div>
     <div style="border-radius:999px;width:56px">full</div>
   </div>
-  <p class="hint" style="margin-top:10px"><code>rounded-lg</code> on controls, cards, dialogs. <code>rounded</code> on badges and sidebar rows. <code>rounded-full</code> only for switches, counters and the bottom-bar pill.</p>
+  <p class="hint" style="margin-top:10px"><code>rounded-lg</code> on controls, cards, dialogs. <code>rounded</code> on badges and sidebar rows. <code>rounded-full</code> only for switches, counters, notification dots and the bottom-bar pill.</p>
   <h3>Spacing scale at 0.24rem</h3>
   <div class="scroll"><table class="spec">
     <thead><tr><th>Utility</th><th>gap-1</th><th>gap-1.5</th><th>gap-2</th><th>gap-2.5</th><th>gap-3</th><th>gap-4</th><th>px-6</th><th>h-7</th><th>h-8</th><th>h-14</th></tr></thead>
@@ -557,14 +557,13 @@
       <div class="logo"><span class="tile"><svg width="16" height="16" viewBox="0 0 100 100"><path d="M14 14 L40 14 L50 42 L60 14 L86 14 L86 86 L14 86 Z" fill="var(--background)"/></svg></span><b>Corner Coffee</b><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></div>
       <div class="nav">
         <a class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
-        <a class="it on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>Inventory<span class="cnt">3</span></a>
+        <a class="it on" aria-label="Inventory, new activity"><span class="dotwrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg><i class="dot" aria-hidden="true"></i></span>Inventory</a>
         <a class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0"/></svg>Products</a>
         <a class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.5 8.5-5-5L2 17M16 7h6v6"/></svg>Sales</a>
         <a class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Personnel</a>
         <a class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>POS</a>
       </div>
       <div class="foot">
-        <a class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>Notifications</a>
         <a class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1"/></svg>Settings</a>
       </div>
     </div>
@@ -575,14 +574,14 @@
         <div class="r"><button class="btn outline sm">Export</button><button class="btn default sm">Log waste</button></div>
       </div>
       <div class="ptabs"><a class="on">Inventory</a><a>Suppliers</a><a>Waste Log</a><a>Counts</a></div>
-      <div class="hint">Page header: <code>hidden lg:flex h-14 border-b px-6</code>, breadcrumbs <code>hidden xl:flex text-xs</code>, title <code>text-[15px] font-semibold</code>, subtitle <code>text-[11.5px] text-muted-foreground</code>. Page tabs: <code>px-3.5 py-2 text-[12px] font-medium border-b-2</code>, active <code>border-foreground</code>. Sidebar item: <code>rounded text-[13px] font-medium px-2.5 py-1.5 gap-2.5</code>, active <code>bg-foreground text-background</code>, icon <code>h-[15px] w-[15px]</code>.</div>
+      <div class="hint">Page header: <code>hidden lg:flex h-14 border-b px-6</code>, breadcrumbs <code>hidden xl:flex text-xs</code>, title <code>text-[15px] font-semibold</code>, subtitle <code>text-[11.5px] text-muted-foreground</code>. Page tabs: <code>px-3.5 py-2 text-[12px] font-medium border-b-2</code>, active <code>border-foreground</code>. Sidebar item: <code>rounded text-[13px] font-medium px-2.5 py-1.5 gap-2.5</code>, active <code>bg-foreground text-background</code>, icon <code>h-[15px] w-[15px]</code>. New activity: <code>NotificationDot</code>, a <code>size-2 bg-destructive ring-2 ring-background</code> dot on the icon's top inline-end corner (<code>ring-foreground</code> on the active row), never a count.</div>
     </div>
   </div>
 
   <h3>Mobile bottom bar</h3>
   <div class="bbar" aria-label="Bottom bar specimen">
     <a class="on"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span><span>Dashboard</span></a>
-    <a><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg><span class="cnt">3</span></span><span>Inventory</span></a>
+    <a aria-label="Inventory, new activity"><span class="ic"><span class="dotwrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg><i class="dot" aria-hidden="true"></i></span></span><span>Inventory</span></a>
     <a><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.5 8.5-5-5L2 17M16 7h6v6"/></svg></span><span>Sales</span></a>
     <a><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span><span>Channel</span></a>
     <a><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span><span>More</span></a>

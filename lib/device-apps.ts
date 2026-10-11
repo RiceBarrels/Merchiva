@@ -15,7 +15,6 @@ export const REQUIRED_DEVICE_APPS = [
   "inventory",
   "settings",
   "bugs",
-  "notifications",
   // Every file lives in Drive; Docs, Sheets and Slides are editor plugins
   // that open its files (EDITOR_PLUGINS).
   "drive",
@@ -26,6 +25,15 @@ export const REQUIRED_DEVICE_APPS = [
 ] as const;
 
 const REQUIRED = new Set<string>(REQUIRED_DEVICE_APPS);
+
+/**
+ * Ids of apps that no longer exist. A stored list can still hold one: "notifications" was an
+ * installable app before it became a required one, and notifications are now built in (a dot on
+ * each feature's entry, no inbox, no tile). Never installed, never written back.
+ */
+export const RETIRED_DEVICE_APPS: readonly string[] = ["notifications"];
+
+const RETIRED = new Set<string>(RETIRED_DEVICE_APPS);
 
 export function isRequiredDeviceApp(id: string): boolean {
   return REQUIRED.has(id);
@@ -67,9 +75,9 @@ function storedIds(raw: unknown): string[] {
   return out;
 }
 
-/** Parses the stored JSON (string[] of ids), dropping required ids. Unknown shapes → empty. */
+/** Parses the stored JSON (string[] of ids), dropping required and retired ids. Unknown shapes → empty. */
 export function parseDeviceApps(raw: unknown): string[] {
-  return storedIds(raw).filter((id) => !REQUIRED.has(id));
+  return storedIds(raw).filter((id) => !REQUIRED.has(id) && !RETIRED.has(id));
 }
 
 /**
@@ -79,7 +87,7 @@ export function parseDeviceApps(raw: unknown): string[] {
  * "drive" also stands for both editors. Only clients from before the split wrote "drive": every write now goes
  * through parseDeviceApps (lib/spacetimedb/actions.ts setDeviceApps), which drops it as a required id. The first
  * write after the split therefore stores "sheets" and "slides" explicitly and drops "drive", and from then on
- * uninstalling either editor sticks.
+ * uninstalling either editor sticks. A retired id ("notifications") is dropped on both paths (RETIRED_DEVICE_APPS).
  */
 export function deviceAppsFromSettingsRow(row: unknown): string[] {
   if (!isObject(row) || !Object.prototype.hasOwnProperty.call(row, "deviceApps")) return [];

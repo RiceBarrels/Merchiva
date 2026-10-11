@@ -127,27 +127,40 @@ export function viewersFromTabs(
   return urls.map((url) => ({ key: SELF_VIEWER_KEY, self: true, ...me, url }));
 }
 
+/** The nav rows a URL sits on: its section row and, when listed, its sub-page row. */
+export interface NavPlacement {
+  readonly sectionHref: string;
+  readonly childHref: string | null;
+}
+
 /**
- * Places viewers on the nav: the section row that owns their URL (as the sidebar highlights it,
- * after legacy redirects) and the sub-page row with the same nav key. Pages outside the nav
- * (unlisted routes with no parent) get no row.
+ * Where a URL sits on the nav: the section row that owns it (as the sidebar highlights it, after
+ * legacy redirects) and the sub-page row with the same nav key. Null for a page outside the nav
+ * (an unlisted route with no parent). Presence avatars and notification dots both use it.
  */
+export function placeUrl(url: string, sections: readonly NavSection[]): NavPlacement | null {
+  const resolved = resolveLegacyRedirect(url);
+  const sectionHref = activeSectionHref(sections, resolved);
+  if (sectionHref === null) return null;
+  const key = navKeyOf(resolved);
+  const child = sections.find((s) => s.href === sectionHref)?.children.find((c) => navKeyOf(c.href) === key);
+  return { sectionHref, childHref: child?.href ?? null };
+}
+
+/** Places viewers on the nav (placeUrl). Pages outside the nav get no row. */
 export function placeViewers(inputs: readonly ViewerInput[], sections: readonly NavSection[]): NavViewer[] {
   const out: NavViewer[] = [];
   for (const input of inputs) {
-    const url = resolveLegacyRedirect(input.url);
-    const sectionHref = activeSectionHref(sections, url);
-    if (sectionHref === null) continue;
-    const key = navKeyOf(url);
-    const child = sections.find((s) => s.href === sectionHref)?.children.find((c) => navKeyOf(c.href) === key);
+    const placement = placeUrl(input.url, sections);
+    if (placement === null) continue;
     out.push({
       key: input.key,
       self: input.self,
       name: input.name,
       avatarUrl: input.avatarUrl,
       memberId: input.memberId,
-      sectionHref,
-      childHref: child?.href ?? null,
+      sectionHref: placement.sectionHref,
+      childHref: placement.childHref,
     });
   }
   return out;

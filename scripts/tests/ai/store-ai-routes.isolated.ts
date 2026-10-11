@@ -141,13 +141,11 @@ mock.module("@/lib/spacetimedb/server-rpc", () => ({
 
 mock.module("@/lib/spacetimedb/service-client", () => ({
   getServiceConn: async () => ({}),
-  getAiReplyTarget: async () => ({ targetIdentity: "me", pushSubs: [] }),
+  getAiReplyTarget: async () => ({ targetIdentity: "me" }),
   serviceCreateNotification: async (_conn: unknown, n: { title: string; body: string }) => {
     calls.notifications.push({ title: n.title, body: n.body });
   },
 }));
-
-mock.module("@/lib/push/send", () => ({ sendWebPush: async () => {} }));
 
 const nextServer = await import("next/server");
 mock.module("next/server", () => ({

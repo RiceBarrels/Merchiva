@@ -219,6 +219,23 @@ function chatSideSubscriptions(): string[] {
   ];
 }
 
+/**
+ * Built-in notifications (spacetimedb/src/notify/tables.ts): delivery state, the
+ * email switch and person follows. RLS scopes all three to the caller's own rows,
+ * so no WHERE. On their own and NEVER in BOOTSTRAP_SUBSCRIPTIONS, for the same
+ * reason as bug reports: that batch has no error handler, and a module that
+ * predates these tables would fail it whole — user, organization and org_member
+ * with it, and the app would never leave the splash. Here such a module loses
+ * only the email switch and follows; dots and alerts run from `notification`.
+ */
+function notifySubscriptions(): string[] {
+  return [
+    "SELECT * FROM notification_delivery",
+    "SELECT * FROM notification_pref",
+    "SELECT * FROM chat_follow",
+  ];
+}
+
 interface SpacetimeProviderProps {
   children: ReactNode;
 }
@@ -408,6 +425,14 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
             .subscribe(["SELECT * FROM pin_attempt_result"]);
         } catch (err) {
           console.warn("[SpacetimeDB] PIN attempt subscription failed:", err);
+        }
+        try {
+          conn
+            .subscriptionBuilder()
+            .onError(() => console.warn("[SpacetimeDB] notification subscription failed — is the module published?"))
+            .subscribe(notifySubscriptions());
+        } catch (err) {
+          console.warn("[SpacetimeDB] Notification subscription failed:", err);
         }
         const bootOrgId = activeOrgId();
         if (bootOrgId) {
