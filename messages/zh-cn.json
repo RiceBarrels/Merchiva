@@ -5188,7 +5188,8 @@
       "failed": "扫描失败，请重试。",
       "punchedOut": "已打卡下班",
       "punchedIn": "已打卡上班",
-      "loggedIn": "已在门店设备上登录"
+      "loggedIn": "已在门店设备上登录",
+      "punchOnDevice": "已在门店设备上登录，请在门店设备上点击打卡上班。"
     },
     "punchPrompt": {
       "title": "现在打卡上班吗？",
@@ -5224,7 +5225,7 @@
       "breakStarted": "休息已开始",
       "breakEnded": "休息已结束",
       "scanSection": "门店设备",
-      "scanStoreQr": "扫描门店 QR 码",
+      "scanStoreQr": "扫描QR码登录设备",
       "intentLogin": "登录",
       "intentIn": "打卡上班",
       "intentOut": "打卡下班"

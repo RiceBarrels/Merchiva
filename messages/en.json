@@ -5188,7 +5188,8 @@
       "failed": "Scan failed. Try again.",
       "punchedOut": "Punched out",
       "punchedIn": "Punched in",
-      "loggedIn": "Logged in on store device"
+      "loggedIn": "Logged in on store device",
+      "punchOnDevice": "Logged in on the store device. Tap Punch in there."
     },
     "punchPrompt": {
       "title": "Punch in now?",
@@ -5224,7 +5225,7 @@
       "breakStarted": "Break started",
       "breakEnded": "Break ended",
       "scanSection": "Store device",
-      "scanStoreQr": "Scan store QR",
+      "scanStoreQr": "Scan QR code to log in to a device",
       "intentLogin": "Log in",
       "intentIn": "Punch in",
       "intentOut": "Punch out"

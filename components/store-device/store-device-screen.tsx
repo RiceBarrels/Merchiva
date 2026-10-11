@@ -17,7 +17,7 @@ import { useNow, fmtStatusClock, useIdleTimer, useOnShift, IdleLock, MiniAppSurf
 import { useOrgMembers, type StoreMember } from "./use-org-members";
 import { LoginPane } from "./login-pane";
 import { RosterPages, StoreClockCard, useClosingTime } from "./roster-pages";
-import { LoggedInScreen } from "./logged-in-screen";
+import { LoggedInScreen, type PunchAsk } from "./logged-in-screen";
 import { useReleaseStorePush } from "./use-release-push";
 import { StoreNotAllowed } from "./not-allowed";
 import { canRunStoreDevice } from "@/lib/store-device-access";
@@ -56,10 +56,11 @@ export function StoreDeviceScreen() {
   const operator = useCurrentOperator();
   const [idleLocked, setIdleLocked] = useState(false);
   const [recording, setRecording] = useState(false);
-  // After a log-in, ask "Punch in now?" once the roster is known and the
-  // operator isn't already on shift — as their own phone asks on unlock.
-  const [punchCheckPending, setPunchCheckPending] = useState(false);
-  const [punchPromptMember, setPunchPromptMember] = useState<StoreMember | null>(null);
+  // After a log-in, once the roster is known and the operator isn't already on
+  // shift: a PIN log-in asks "Punch in now?" (as their own phone asks on unlock);
+  // a QR log-in opens the Punch in app, since the phone scanned from its Punch in.
+  const [punchCheckPending, setPunchCheckPending] = useState<PunchAsk | null>(null);
+  const [punchAsk, setPunchAsk] = useState<PunchAsk | null>(null);
   // The PIN the operator typed to log in. Punching goes through `recordPunch`,
   // which takes the code and validates it server-side, and the device can no
   // longer read anyone's code from a table — so it holds this one in memory for
@@ -118,9 +119,9 @@ export function StoreDeviceScreen() {
 
   useEffect(() => {
     if (!punchCheckPending || !operatorMember || !onShift.ready) return;
-    setPunchCheckPending(false);
-    // Punches go by the log-in's grant (recordOperatorPunch), so a QR log-in is asked too.
-    if (!operatorShift) setPunchPromptMember(operatorMember);
+    setPunchCheckPending(null);
+    // Punches go by the log-in's grant (recordOperatorPunch), so a QR operator punches here too.
+    if (!operatorShift) setPunchAsk(punchCheckPending);
   }, [punchCheckPending, operatorMember, onShift.ready, operatorShift]);
 
   const handleLogin = useCallback(
@@ -128,7 +129,7 @@ export function StoreDeviceScreen() {
       setCurrentOperator({ memberId: member.id, name: member.displayName });
       setOperatorPin(pin);
       setIdleLocked(false);
-      setPunchCheckPending(true);
+      setPunchCheckPending(pin === null ? "open" : "prompt");
       hapticSuccess();
       toast.success(`${t("storeDevice.loggedIn")} · ${member.displayName}`);
     },
@@ -139,8 +140,8 @@ export function StoreDeviceScreen() {
     (reason?: "idle") => {
       setCurrentOperator(null);
       setOperatorPin(null);
-      setPunchCheckPending(false);
-      setPunchPromptMember(null);
+      setPunchCheckPending(null);
+      setPunchAsk(null);
       toast(reason === "idle" ? t("storeDevice.loggedOutIdle") : t("storeDevice.loggedOut"));
     },
     [t],
@@ -221,8 +222,8 @@ export function StoreDeviceScreen() {
                   operatorPin={operatorPin}
                   shift={operatorShift}
                   onShiftEntries={onShift.entries}
-                  punchAsk={punchPromptMember !== null}
-                  onPunchAskDone={() => setPunchPromptMember(null)}
+                  punchAsk={punchAsk}
+                  onPunchAskDone={() => setPunchAsk(null)}
                   onLogout={() => handleLogout()}
                   onRecordingChange={setRecording}
                   idle={dimming}

@@ -1,90 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTable } from "spacetimedb/react";
+import { useCallback, useState } from "react";
 import { RefreshCw, DoorOpen } from "lucide-react";
 import { toast } from "sonner";
-import { tables } from "@/lib/spacetimedb/generated";
-import { createDeviceLoginRequest, consumeDeviceLogin } from "@/lib/spacetimedb/actions";
 import { sendStoreSos } from "@/lib/spacetimedb/actions/notifications";
-import { uuid, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { hapticError, hapticLight, hapticSuccess } from "@/lib/haptics";
-import { QrCodeView, PinPad, fmtMMSS, useNow } from "@/components/device";
+import { QrCodeView, PinPad, fmtMMSS } from "@/components/device";
 import type { StoreMember } from "./use-org-members";
 import { usePinOperator } from "./use-pin-operator";
-import { rememberOperatorGrant } from "@/lib/spacetimedb/actions/pin";
+import { useQrLogin } from "./use-qr-login";
 import { pinNotice } from "@/lib/pin-attempt";
 import { fmt } from "@/lib/i18n/fmt";
 import { ExitStoreDrawer } from "./exit-store-drawer";
 import { sosErrorKey } from "./sos";
-
-const QR_TTL_SECONDS = 60;
-
-interface DeviceLoginRow {
-  id: { toString(): string };
-  organizationId: string;
-  deviceId: string;
-  nonce: string;
-  status: string;
-  memberId?: string | null;
-}
-
-/**
- * Issues a fresh device-login nonce every QR_TTL_SECONDS and watches the
- * device_login_request table for its approval. The QR payload is
- * `merchiva://device-login?org=<orgId>&nonce=<nonce>`.
- */
-function useDeviceLoginQr(organizationId: string, deviceId: string, enabled: boolean) {
-  const [nonce, setNonce] = useState<string>(() => uuid());
-  const [issuedAt, setIssuedAt] = useState(() => Date.now());
-  const [refreshing, setRefreshing] = useState(false);
-  const now = useNow(1000);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const loginTable = (tables as any).deviceLoginRequest;
-  const [rows] = useTable(loginTable ?? tables.orgMember);
-  const hasTable = !!loginTable;
-
-  const secondsLeft = Math.max(0, QR_TTL_SECONDS - Math.floor((now.getTime() - issuedAt) / 1000));
-
-  const issue = useCallback(() => {
-    setNonce(uuid());
-    setIssuedAt(Date.now());
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 400);
-  }, []);
-
-  // Publish every nonce to the server so a phone can approve it. The reducer
-  // may not be published yet — PIN log-in keeps working regardless.
-  useEffect(() => {
-    if (!enabled || !deviceId) return;
-    createDeviceLoginRequest(deviceId, nonce).catch((err) => {
-      console.warn("[store-device] createDeviceLoginRequest failed:", err);
-    });
-  }, [enabled, deviceId, nonce]);
-
-  // Re-issue once the TTL elapses.
-  const issuedAtRef = useRef(issuedAt);
-  useEffect(() => { issuedAtRef.current = issuedAt; }, [issuedAt]);
-  useEffect(() => {
-    if (!enabled) return;
-    const id = setInterval(() => {
-      if (Date.now() - issuedAtRef.current >= QR_TTL_SECONDS * 1000) issue();
-    }, 1000);
-    return () => clearInterval(id);
-  }, [enabled, issue]);
-
-  const approved = useMemo(() => {
-    if (!hasTable || !enabled) return null;
-    const row = (rows as unknown as DeviceLoginRow[]).find(
-      (r) => r.nonce === nonce && r.organizationId === organizationId && r.status === "approved" && !!r.memberId,
-    );
-    return row ? { requestId: row.id.toString(), memberId: row.memberId as string } : null;
-  }, [rows, hasTable, enabled, nonce, organizationId]);
-
-  const value = `merchiva://device-login?org=${encodeURIComponent(organizationId)}&nonce=${encodeURIComponent(nonce)}`;
-  return { value, secondsLeft, refreshing, refresh: issue, approved };
-}
 
 export interface LoginPaneProps {
   organizationId: string;
@@ -94,7 +24,8 @@ export interface LoginPaneProps {
   /** Pause QR issuing while the pane is hidden (idle lock). */
   active: boolean;
   /** `pin` is the code they typed, or null after a QR log-in — the device keeps
-   *  it in memory so the operator can punch, and never persists it. */
+   *  it in memory so the operator can punch, and never persists it. A QR log-in
+   *  off shift opens the Punch in app: the phone scanned from its Punch in. */
   onLogin: (member: StoreMember, pin: string | null) => void;
   /** Phone: smaller QR, tighter padding, medium PIN keys. */
   compact?: boolean;
@@ -108,25 +39,9 @@ export function LoginPane({ organizationId, deviceId, members, active, onLogin, 
   const [pinMessage, setPinMessage] = useState<string | null>(null);
   const [sosSending, setSosSending] = useState(false);
   const resolveOperator = usePinOperator(organizationId);
-  const { value, secondsLeft, refreshing, refresh, approved } = useDeviceLoginQr(organizationId, deviceId, active && !pinMode);
-
-  // QR approved from a phone → show the check, consume the request, log in.
-  const approvedMember = useMemo(
-    () => (approved ? members.find((m) => m.id === approved.memberId) ?? null : null),
-    [approved, members],
-  );
-  const scanOk = approvedMember?.displayName ?? null;
-  const handledRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!approved || !approvedMember || handledRef.current === approved.requestId) return;
-    handledRef.current = approved.requestId;
-    // The request id is this log-in's grant: punches name it (recordOperatorPunch).
-    rememberOperatorGrant(approved.requestId);
-    consumeDeviceLogin(approved.requestId).catch(console.error);
-    hapticSuccess();
-    const id = setTimeout(() => onLogin(approvedMember, null), 900);
-    return () => clearTimeout(id);
-  }, [approved, approvedMember, onLogin]);
+  const { value, secondsLeft, refreshing, refresh, scanOk } = useQrLogin({
+    organizationId, deviceId, members, shown: active, issuing: active && !pinMode, onLogin,
+  });
 
   // The tablet cannot match a PIN itself — `member_punch_code` is RLS'd to the
   // signed-in account — so the database answers who it belongs to.

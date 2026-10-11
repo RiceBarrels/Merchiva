@@ -5188,7 +5188,8 @@
       "failed": "Échec du scan. Réessayez.",
       "punchedOut": "Sortie pointée",
       "punchedIn": "Entrée pointée",
-      "loggedIn": "Connecté sur l'appareil du magasin"
+      "loggedIn": "Connecté sur l'appareil du magasin",
+      "punchOnDevice": "Connecté sur l'appareil du magasin. Touchez Pointer l'entrée sur l'appareil."
     },
     "punchPrompt": {
       "title": "Pointer maintenant ?",
@@ -5224,7 +5225,7 @@
       "breakStarted": "Pause commencée",
       "breakEnded": "Pause terminée",
       "scanSection": "Appareil du magasin",
-      "scanStoreQr": "Scanner le QR du magasin",
+      "scanStoreQr": "Scanner le code QR pour se connecter à un appareil",
       "intentLogin": "Se connecter",
       "intentIn": "Pointer l'entrée",
       "intentOut": "Pointer la sortie"
