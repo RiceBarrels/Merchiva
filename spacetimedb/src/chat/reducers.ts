@@ -3,10 +3,12 @@
 // helpers sendMessage and deleteMessage in ../index.ts share with them.
 // index.ts wires them: `export const { … } = defineChatReducers(spacetimedb, deps)`.
 //
-// Every reducer proves ctx.sender is in the conversation first: chat RLS is
-// membership-scoped, and these rows are only as private as that check.
+// Every reducer proves its author is in the conversation first: chat RLS is
+// membership-scoped, and these rows are only as private as that check. The
+// author is ctx.sender, or on a store tablet the operator its log-in names
+// (the *Operator* reducers, through deps.operatorIdentity).
 // Group membership is managed by owners and managers only (they create,
-// invite and remove); anyone may leave a group on their own.
+// invite and remove, and only they leave on their own).
 //
 // Runtime imports: the pure ./logic and ../notify/logic, ./notify (channel
 // notifications) and ../notify/deliver; the SDK values arrive through ChatDeps.
@@ -35,6 +37,12 @@ export interface ChatDeps {
   SenderError: typeof SenderErrorCtor;
   Identity: typeof IdentityCtor;
   findById: <Row>(tbl: { id: { find(key: Uuid): Row | undefined } }, id: string) => Row | undefined;
+  /**
+   * The identity of the member a store tablet's log-in (`grantId`) made its operator, after
+   * checking that ctx.sender may run a store device: the chat writes a tablet makes for its
+   * operator are theirs (../device/pin-reducers.ts operatorOfGrant). Throws otherwise.
+   */
+  operatorIdentity(ctx: ChatCtx, organizationId: string, grantId: string): IdentityValue;
 }
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
@@ -89,6 +97,18 @@ function threadReplies(ctx: ChatCtx, parentId: string): MessageExtRow[] {
   return [...ctx.db.chatMessageExt.byThreadParentId.filter(parentId)];
 }
 
+/** Remembers that `message` was written by a store tablet for its operator (chat_message_origin). */
+export function writeChatMessageOrigin(ctx: ChatCtx, message: MessageRow, origin: string): void {
+  ctx.db.chatMessageOrigin.insert({
+    messageId: message.id.toString(), conversationId: message.conversationId, origin, createdAt: ctx.timestamp,
+  });
+}
+
+function dropOrigin(ctx: ChatCtx, messageId: string): void {
+  const row = ctx.db.chatMessageOrigin.messageId.find(messageId);
+  if (row) ctx.db.chatMessageOrigin.delete(row);
+}
+
 function dropReactions(ctx: ChatCtx, messageId: string): void {
   for (const r of [...ctx.db.chatReaction.byMessageId.filter(messageId)]) ctx.db.chatReaction.delete(r);
 }
@@ -119,6 +139,7 @@ export function deleteChatMessageCascade(ctx: ChatCtx, message: MessageRow): voi
   const id = message.id.toString();
   const ext = extOf(ctx, id);
   dropReactions(ctx, id);
+  dropOrigin(ctx, id);
   if (threadReplies(ctx, id).length > 0) {
     ctx.db.chatMessage.id.update({
       ...message, content: '', attachmentUrl: undefined, attachmentType: undefined, attachmentName: undefined,
@@ -135,6 +156,7 @@ export function deleteChatMessageCascade(ctx: ChatCtx, message: MessageRow): voi
   if (parentExt?.deletedAt != null && threadReplies(ctx, parentId).length === 0) {
     const parent = messageInConversation(ctx, message.conversationId, parentId);
     ctx.db.chatMessageExt.delete(parentExt);
+    dropOrigin(ctx, parentId);
     if (parent) ctx.db.chatMessage.delete(parent);
   }
 }
@@ -180,11 +202,18 @@ export function rekeyChatIdentity(ctx: ChatCtx, from: IdentityValue, to: Identit
 export function defineChatReducers(spacetimedb: ChatSchema, deps: ChatDeps) {
   const { t, SenderError, Identity, findById } = deps;
 
-  const requireMember = (ctx: ChatCtx, conversationId: string): ConversationRow => {
-    if (!isChatMember(ctx, conversationId, ctx.sender)) throw new SenderError('Not a conversation member');
+  const requireMember = (ctx: ChatCtx, conversationId: string, who: IdentityValue = ctx.sender): ConversationRow => {
+    if (!isChatMember(ctx, conversationId, who)) throw new SenderError('Not a conversation member');
     const conv = findById(ctx.db.chatConversation, conversationId);
     if (!conv) throw new SenderError('Conversation not found');
     return conv;
+  };
+
+  /** The identity a store tablet's chat write in `conversationId` is made under: its operator's (deps.operatorIdentity). */
+  const operatorIn = (ctx: ChatCtx, conversationId: string, grantId: string): IdentityValue => {
+    const conv = findById(ctx.db.chatConversation, conversationId);
+    if (!conv) throw new SenderError('Conversation not found');
+    return deps.operatorIdentity(ctx, conv.organizationId, grantId);
   };
 
   const requireChannelManager = (ctx: ChatCtx, conv: ConversationRow): void => {
@@ -198,55 +227,105 @@ export function defineChatReducers(spacetimedb: ChatSchema, deps: ChatDeps) {
     return msg;
   };
 
-  /** Adds ctx.sender's reaction, or removes it when it is already there. */
-  const toggleChatReaction = spacetimedb.reducer(
-    { conversationId: t.string(), messageId: t.string(), emoji: t.string() },
-    (ctx, { conversationId, messageId, emoji }) => {
-      requireMember(ctx, conversationId);
-      if (!isValidReactionEmoji(emoji)) throw new SenderError('Invalid reaction');
-      const msg = requireMessage(ctx, conversationId, messageId);
-      if (extOf(ctx, messageId)?.deletedAt != null) throw new SenderError('Message was deleted');
-      const id = msg.id.toString();
-      const rows = [...ctx.db.chatReaction.byMessageId.filter(id)];
-      const mine = rows.find((r) => r.emoji === emoji && r.userId.isEqual(ctx.sender));
-      if (mine) {
-        ctx.db.chatReaction.delete(mine);
-        return;
-      }
-      const kinds = new Set(rows.map((r) => r.emoji));
-      if (!kinds.has(emoji) && kinds.size >= CHAT_REACTIONS_PER_MESSAGE) throw new SenderError('Too many reactions');
-      ctx.db.chatReaction.insert({
-        id: ctx.newUuidV4(), conversationId, messageId: id, userId: ctx.sender, emoji, createdAt: ctx.timestamp,
-      });
-    }
-  );
+  type ReactArgs = { conversationId: string; messageId: string; emoji: string };
+  type EditArgs = { conversationId: string; messageId: string; content: string };
+  type ReplyArgs = {
+    conversationId: string; parentId: string; content: string;
+    attachmentUrl?: string; attachmentType?: string; attachmentName?: string;
+  };
+  type PinArgs = { conversationId: string; messageId: string; pinned: boolean };
 
-  /** Replaces the text of one of ctx.sender's own messages. */
-  const editChatMessage = spacetimedb.reducer(
-    { conversationId: t.string(), messageId: t.string(), content: t.string() },
-    (ctx, { conversationId, messageId, content }) => {
-      requireMember(ctx, conversationId);
-      const msg = requireMessage(ctx, conversationId, messageId);
-      if (!msg.senderId.isEqual(ctx.sender) || msg.isMerchiva === true) {
-        throw new SenderError('Can only edit your own messages');
-      }
-      const ext = extOf(ctx, messageId);
-      if (ext?.deletedAt != null) throw new SenderError('Message was deleted');
-      const text = content.trim();
-      if (!text && !msg.attachmentUrl) throw new SenderError('Message is empty');
-      if (text.length > CHAT_EDIT_MAX_LENGTH) throw new SenderError('Message is too long');
-      if (text === msg.content) return;
-      ctx.db.chatMessage.id.update({ ...msg, content: text });
-      putExt(ctx, { ...(ext ?? blankExt(messageId, conversationId)), editedAt: ctx.timestamp });
+  /** Adds `who`'s reaction, or removes it when it is already there. */
+  const reactAs = (ctx: ChatCtx, who: IdentityValue, { conversationId, messageId, emoji }: ReactArgs): void => {
+    requireMember(ctx, conversationId, who);
+    if (!isValidReactionEmoji(emoji)) throw new SenderError('Invalid reaction');
+    const msg = requireMessage(ctx, conversationId, messageId);
+    if (extOf(ctx, messageId)?.deletedAt != null) throw new SenderError('Message was deleted');
+    const id = msg.id.toString();
+    const rows = [...ctx.db.chatReaction.byMessageId.filter(id)];
+    const mine = rows.find((r) => r.emoji === emoji && r.userId.isEqual(who));
+    if (mine) {
+      ctx.db.chatReaction.delete(mine);
+      return;
     }
-  );
+    const kinds = new Set(rows.map((r) => r.emoji));
+    if (!kinds.has(emoji) && kinds.size >= CHAT_REACTIONS_PER_MESSAGE) throw new SenderError('Too many reactions');
+    ctx.db.chatReaction.insert({
+      id: ctx.newUuidV4(), conversationId, messageId: id, userId: who, emoji, createdAt: ctx.timestamp,
+    });
+  };
+
+  /** Replaces the text of one of `who`'s own messages. */
+  const editAs = (ctx: ChatCtx, who: IdentityValue, { conversationId, messageId, content }: EditArgs): void => {
+    requireMember(ctx, conversationId, who);
+    const msg = requireMessage(ctx, conversationId, messageId);
+    if (!msg.senderId.isEqual(who) || msg.isMerchiva === true) {
+      throw new SenderError('Can only edit your own messages');
+    }
+    const ext = extOf(ctx, messageId);
+    if (ext?.deletedAt != null) throw new SenderError('Message was deleted');
+    const text = content.trim();
+    if (!text && !msg.attachmentUrl) throw new SenderError('Message is empty');
+    if (text.length > CHAT_EDIT_MAX_LENGTH) throw new SenderError('Message is too long');
+    if (text === msg.content) return;
+    ctx.db.chatMessage.id.update({ ...msg, content: text });
+    putExt(ctx, { ...(ext ?? blankExt(messageId, conversationId)), editedAt: ctx.timestamp });
+  };
 
   /**
-   * Replies in a message's thread. Threads are one level deep: replying to a
+   * `who` replies in a message's thread. Threads are one level deep: replying to a
    * reply lands in the same thread. Notifies the thread's participants (the
    * parent's author and everyone who replied), anyone named with `@Name` and
    * anyone following the sender.
    */
+  const replyAs = (ctx: ChatCtx, who: IdentityValue, args: ReplyArgs, origin = ''): void => {
+    const { conversationId, parentId, content, attachmentUrl, attachmentType, attachmentName } = args;
+    const conv = requireMember(ctx, conversationId, who);
+    if (!content.trim() && !attachmentUrl) throw new SenderError('Message is empty');
+    let root = requireMessage(ctx, conversationId, parentId);
+    const rootParent = extOf(ctx, root.id.toString())?.threadParentId ?? '';
+    if (rootParent) root = requireMessage(ctx, conversationId, rootParent);
+    const rootId = root.id.toString();
+
+    const message = ctx.db.chatMessage.insert({
+      id: ctx.newUuidV4(), conversationId, senderId: who, content, createdAt: ctx.timestamp,
+      replyToId: undefined, attachmentUrl, attachmentType, attachmentName,
+      isMerchiva: undefined, voiceTranscript: undefined,
+    });
+    putExt(ctx, { ...blankExt(message.id.toString(), conversationId), threadParentId: rootId });
+    if (origin) writeChatMessageOrigin(ctx, message, origin);
+
+    const participants: IdentityValue[] = [root.senderId];
+    for (const reply of threadReplies(ctx, rootId)) {
+      const m = messageInConversation(ctx, conversationId, reply.messageId);
+      if (m) participants.push(m.senderId);
+    }
+    notifyChatMessage(ctx, conv, message, participants);
+  };
+
+  /**
+   * `who` pins or unpins a message. Any member may, as in most team chats. The
+   * first pin of a message tells the conversation (notifyChatPin), once ever.
+   */
+  const pinAs = (ctx: ChatCtx, who: IdentityValue, { conversationId, messageId, pinned }: PinArgs): void => {
+    const conv = requireMember(ctx, conversationId, who);
+    const msg = requireMessage(ctx, conversationId, messageId);
+    const ext = extOf(ctx, messageId) ?? blankExt(messageId, conversationId);
+    if (ext.deletedAt != null) throw new SenderError('Message was deleted');
+    putExt(ctx, pinned
+      ? { ...ext, pinnedBy: who.toHexString(), pinnedAt: ctx.timestamp }
+      : { ...ext, pinnedBy: '', pinnedAt: undefined });
+    if (pinned && ext.pinnedBy === '') notifyChatPin(ctx, conv, msg, who);
+  };
+
+  const toggleChatReaction = spacetimedb.reducer(
+    { conversationId: t.string(), messageId: t.string(), emoji: t.string() },
+    (ctx, args) => reactAs(ctx, ctx.sender, args),
+  );
+  const editChatMessage = spacetimedb.reducer(
+    { conversationId: t.string(), messageId: t.string(), content: t.string() },
+    (ctx, args) => editAs(ctx, ctx.sender, args),
+  );
   const sendThreadReply = spacetimedb.reducer(
     {
       conversationId: t.string(),
@@ -256,46 +335,38 @@ export function defineChatReducers(spacetimedb: ChatSchema, deps: ChatDeps) {
       attachmentType: t.option(t.string()),
       attachmentName: t.option(t.string()),
     },
-    (ctx, { conversationId, parentId, content, attachmentUrl, attachmentType, attachmentName }) => {
-      const conv = requireMember(ctx, conversationId);
-      if (!content.trim() && !attachmentUrl) throw new SenderError('Message is empty');
-      let root = requireMessage(ctx, conversationId, parentId);
-      const rootParent = extOf(ctx, root.id.toString())?.threadParentId ?? '';
-      if (rootParent) root = requireMessage(ctx, conversationId, rootParent);
-      const rootId = root.id.toString();
-
-      const message = ctx.db.chatMessage.insert({
-        id: ctx.newUuidV4(), conversationId, senderId: ctx.sender, content, createdAt: ctx.timestamp,
-        replyToId: undefined, attachmentUrl, attachmentType, attachmentName,
-        isMerchiva: undefined, voiceTranscript: undefined,
-      });
-      putExt(ctx, { ...blankExt(message.id.toString(), conversationId), threadParentId: rootId });
-
-      const participants: IdentityValue[] = [root.senderId];
-      for (const reply of threadReplies(ctx, rootId)) {
-        const m = messageInConversation(ctx, conversationId, reply.messageId);
-        if (m) participants.push(m.senderId);
-      }
-      notifyChatMessage(ctx, conv, message, participants);
-    }
+    (ctx, args) => replyAs(ctx, ctx.sender, args),
   );
-
-  /**
-   * Pins or unpins a message. Any member may, as in most team chats. The
-   * first pin of a message tells the conversation (notifyChatPin), once ever.
-   */
   const setChatMessagePinned = spacetimedb.reducer(
     { conversationId: t.string(), messageId: t.string(), pinned: t.bool() },
-    (ctx, { conversationId, messageId, pinned }) => {
-      const conv = requireMember(ctx, conversationId);
-      const msg = requireMessage(ctx, conversationId, messageId);
-      const ext = extOf(ctx, messageId) ?? blankExt(messageId, conversationId);
-      if (ext.deletedAt != null) throw new SenderError('Message was deleted');
-      putExt(ctx, pinned
-        ? { ...ext, pinnedBy: ctx.sender.toHexString(), pinnedAt: ctx.timestamp }
-        : { ...ext, pinnedBy: '', pinnedAt: undefined });
-      if (pinned && ext.pinnedBy === '') notifyChatPin(ctx, conv, msg);
-    }
+    (ctx, args) => pinAs(ctx, ctx.sender, args),
+  );
+
+  // The same four from a store tablet, for the member its log-in `grantId` made its operator: the
+  // reaction, edit, reply or pin is theirs (deps.operatorIdentity checks the tablet and the grant).
+  const toggleOperatorChatReaction = spacetimedb.reducer(
+    { grantId: t.string(), conversationId: t.string(), messageId: t.string(), emoji: t.string() },
+    (ctx, { grantId, ...args }) => reactAs(ctx, operatorIn(ctx, args.conversationId, grantId), args),
+  );
+  const editOperatorChatMessage = spacetimedb.reducer(
+    { grantId: t.string(), conversationId: t.string(), messageId: t.string(), content: t.string() },
+    (ctx, { grantId, ...args }) => editAs(ctx, operatorIn(ctx, args.conversationId, grantId), args),
+  );
+  const sendOperatorThreadReply = spacetimedb.reducer(
+    {
+      grantId: t.string(),
+      conversationId: t.string(),
+      parentId: t.string(),
+      content: t.string(),
+      attachmentUrl: t.option(t.string()),
+      attachmentType: t.option(t.string()),
+      attachmentName: t.option(t.string()),
+    },
+    (ctx, { grantId, ...args }) => replyAs(ctx, operatorIn(ctx, args.conversationId, grantId), args, 'store'),
+  );
+  const setOperatorChatMessagePinned = spacetimedb.reducer(
+    { grantId: t.string(), conversationId: t.string(), messageId: t.string(), pinned: t.bool() },
+    (ctx, { grantId, ...args }) => pinAs(ctx, operatorIn(ctx, args.conversationId, grantId), args),
   );
 
   /** Sets a group channel's topic ('' clears it). Owners and managers only. */
@@ -364,12 +435,17 @@ export function defineChatReducers(spacetimedb: ChatSchema, deps: ChatDeps) {
     }
   );
 
-  /** ctx.sender leaves a group channel. Rejoining takes an owner's or manager's invitation. */
+  /**
+   * An owner or manager leaves a group channel. Staff never leave on their own: an owner or
+   * manager takes them out (removeConversationMember). Rejoining takes an owner's or manager's
+   * invitation.
+   */
   const leaveConversation = spacetimedb.reducer(
     { conversationId: t.string() },
     (ctx, { conversationId }) => {
       const conv = requireMember(ctx, conversationId);
       if (conv.type !== 'group') throw new SenderError('You cannot leave a direct message');
+      requireChannelManager(ctx, conv);
       dropMembership(ctx, deps, conversationId, ctx.sender);
     }
   );
@@ -391,5 +467,6 @@ export function defineChatReducers(spacetimedb: ChatSchema, deps: ChatDeps) {
   return {
     toggleChatReaction, editChatMessage, sendThreadReply, setChatMessagePinned, setChannelTopic,
     markChatRead, setChatMuted, setChatStarred, leaveConversation, removeConversationMember,
+    toggleOperatorChatReaction, editOperatorChatMessage, sendOperatorThreadReply, setOperatorChatMessagePinned,
   };
 }

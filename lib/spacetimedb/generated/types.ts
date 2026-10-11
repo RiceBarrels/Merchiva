@@ -213,6 +213,14 @@ export const ChatMessageExt = __t.object("ChatMessageExt", {
 });
 export type ChatMessageExt = __Infer<typeof ChatMessageExt>;
 
+export const ChatMessageOrigin = __t.object("ChatMessageOrigin", {
+  messageId: __t.string(),
+  conversationId: __t.string(),
+  origin: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type ChatMessageOrigin = __Infer<typeof ChatMessageOrigin>;
+
 export const ChatNoticeUnread = __t.object("ChatNoticeUnread", {
   notificationId: __t.string(),
   readerKey: __t.string(),

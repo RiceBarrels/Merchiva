@@ -1,5 +1,6 @@
 // Channel side tables: reactions, threads / edits / pins / tombstones, channel
-// topics, and each member's read / mute / star state.
+// topics, each member's read / mute / star state, and which messages a store
+// tablet sent for its operator.
 //
 // Side tables rather than new chat_message / chat_conversation columns: the
 // SDK decodes rows positionally, so a trailing column on a table older clients
@@ -97,5 +98,28 @@ export const chatMemberStateTable = table(
     lastReadAt: t.timestamp(),
     muted: t.bool(),
     starred: t.bool(),
+  }
+);
+
+/**
+ * Where a message was written, when that was not the author's own device: 'store' for one a
+ * shared store tablet sent for its PIN / QR operator (sendOperatorMessage, sendOperatorThreadReply).
+ * The client badges it and never runs it together with the author's own messages. A message
+ * without a row came from its author's own device.
+ */
+export const chatMessageOriginTable = table(
+  {
+    name: 'chat_message_origin',
+    public: true,
+    indexes: [
+      // RLS join column.
+      { accessor: 'byConversationId', algorithm: 'btree', columns: ['conversationId'] },
+    ],
+  },
+  {
+    messageId: t.string().primaryKey(),
+    conversationId: t.string(),
+    origin: t.string(),                      // 'store'
+    createdAt: t.timestamp(),
   }
 );

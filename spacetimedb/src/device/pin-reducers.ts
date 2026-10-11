@@ -18,6 +18,7 @@
 import type { DriveCtx, DriveSchema, MemberLike, MemberRow, TypeBuilders, SenderErrorCtor } from '../drive/types';
 import { DRIVE_OPERATOR_SESSION_TTL_MICROS } from '../drive/logic';
 import { PIN_PATTERN } from './pin-limit';
+import { requireStoreDevice } from './store-access';
 import {
   PIN_ALERT_LINK, clearPinBuckets, pinLockedUntilFor, recordPinMiss, writePinAttemptResult, type PinCaller, type PinNotify,
 } from './pin-guard';
@@ -127,6 +128,25 @@ export function writeOperatorGrant(ctx: DriveCtx, organizationId: string, grantI
   else ctx.db.deviceOperatorGrant.insert(row);
 }
 
+/**
+ * The member one log-in on ctx.sender's tablet made its operator, named by that log-in's grant id:
+ * the grant must be the caller's, in `organizationId`, at most DRIVE_OPERATOR_SESSION_TTL_MICROS
+ * old, and its member still active. Throws NO_OPERATOR_SESSION otherwise. recordOperatorPunch and
+ * the chat reducers that speak for the operator (../chat/reducers.ts, sendOperatorMessage) use it.
+ */
+export function operatorOfGrant(
+  ctx: DriveCtx, SenderError: typeof SenderErrorCtor, organizationId: string, grantId: string,
+): MemberRow {
+  const grant = ctx.db.deviceOperatorGrant.key.find(operatorGrantKey(ctx, grantId));
+  if (grant == null || grant.organizationId !== organizationId || !grantFresh(ctx, grant.resolvedAt.microsSinceUnixEpoch)) {
+    throw new SenderError('NO_OPERATOR_SESSION');
+  }
+  const member = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+    .find(m => m.id.toString() === grant.memberId && m.status === 'active');
+  if (!member) throw new SenderError('NO_OPERATOR_SESSION');
+  return member;
+}
+
 type SetCodeOutcome = 'ok' | 'in_use' | 'locked';
 
 /**
@@ -166,7 +186,10 @@ export function definePinReducers(spacetimedb: DriveSchema, deps: PinDeps) {
   const resolveDeviceOperatorAttempt = spacetimedb.reducer(
     { organizationId: t.string(), code: t.string(), requestId: t.string() },
     (ctx, { organizationId, code, requestId }) => {
-      const caller = pinCallerOf(deps.findActiveMember(ctx, organizationId));
+      const account = deps.findActiveMember(ctx, organizationId);
+      // Only a store tablet logs people in by PIN (./store-access.ts).
+      requireStoreDevice(account, SenderError);
+      const caller = pinCallerOf(account);
       const id = requestIdOf(requestId);
       const locked = pinLockedUntilFor(ctx, organizationId, caller);
       if (locked > 0n) return writePinAttemptResult(ctx, organizationId, id, 'operator', 'locked', locked);
@@ -211,15 +234,8 @@ export function definePinReducers(spacetimedb: DriveSchema, deps: PinDeps) {
   const recordOperatorPunch = spacetimedb.reducer(
     { organizationId: t.string(), action: t.string(), grantId: t.string() },
     (ctx, { organizationId, action, grantId }) => {
-      deps.findActiveMember(ctx, organizationId);
-      const grant = ctx.db.deviceOperatorGrant.key.find(operatorGrantKey(ctx, grantId));
-      if (grant == null || grant.organizationId !== organizationId || !grantFresh(ctx, grant.resolvedAt.microsSinceUnixEpoch)) {
-        throw new SenderError('NO_OPERATOR_SESSION');
-      }
-      const member = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
-        .find(m => m.id.toString() === grant.memberId && m.status === 'active');
-      if (!member) throw new SenderError('NO_OPERATOR_SESSION');
-      deps.applyPunch(ctx, organizationId, member, action);
+      requireStoreDevice(deps.findActiveMember(ctx, organizationId), SenderError);
+      deps.applyPunch(ctx, organizationId, operatorOfGrant(ctx, SenderError, organizationId, grantId), action);
     }
   );
 
