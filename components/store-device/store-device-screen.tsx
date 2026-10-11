@@ -18,8 +18,9 @@ import { useOrgMembers, type StoreMember } from "./use-org-members";
 import { LoginPane } from "./login-pane";
 import { RosterPages, StoreClockCard, useClosingTime } from "./roster-pages";
 import { LoggedInScreen } from "./logged-in-screen";
-import { PunchPrompt } from "./punch-prompt";
 import { useReleaseStorePush } from "./use-release-push";
+import { StoreNotAllowed } from "./not-allowed";
+import { canRunStoreDevice } from "@/lib/store-device-access";
 
 /** Delete this tablet's `device_operator_session` row. Best effort: the server
  *  also ignores a session older than 12 h. */
@@ -40,7 +41,9 @@ function forgetOperatorSession() {
  */
 export function StoreDeviceScreen() {
   const t = useT();
-  const { organizationId, currentOrg } = usePermissions();
+  const { organizationId, currentOrg, role, permissions } = usePermissions();
+  // Only an account allowed to run a store device works one (the module refuses the rest).
+  const allowed = canRunStoreDevice(role, permissions);
   const now = useNow(1000);
   const phone = useIsMobile();
   const [deviceName] = useDeviceName();
@@ -51,11 +54,10 @@ export function StoreDeviceScreen() {
   const closingTime = useClosingTime(orgId);
   const [autolock] = useAutolockSeconds();
   const operator = useCurrentOperator();
-  const [loginAt, setLoginAt] = useState(() => Date.now());
   const [idleLocked, setIdleLocked] = useState(false);
   const [recording, setRecording] = useState(false);
   // After a log-in, ask "Punch in now?" once the roster is known and the
-  // operator isn't already on shift. Skipped for members without a PIN.
+  // operator isn't already on shift — as their own phone asks on unlock.
   const [punchCheckPending, setPunchCheckPending] = useState(false);
   const [punchPromptMember, setPunchPromptMember] = useState<StoreMember | null>(null);
   // The PIN the operator typed to log in. Punching goes through `recordPunch`,
@@ -73,7 +75,7 @@ export function StoreDeviceScreen() {
     if (getStoreMachineMode()) setStoreMachineMode(false);
     const id = getOrCreateDeviceId();
     setDeviceId(id);
-    if (id && organizationId) {
+    if (id && organizationId && allowed) {
       registerStoreDevice(id, deviceName || "Store device").catch((err) => console.warn("[store-device] register failed:", err));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,15 +119,14 @@ export function StoreDeviceScreen() {
   useEffect(() => {
     if (!punchCheckPending || !operatorMember || !onShift.ready) return;
     setPunchCheckPending(false);
-    // Only a PIN log-in can punch; a QR log-in never carries one.
-    if (!operatorShift && operatorPin) setPunchPromptMember(operatorMember);
-  }, [punchCheckPending, operatorMember, onShift.ready, operatorShift, operatorPin]);
+    // Punches go by the log-in's grant (recordOperatorPunch), so a QR log-in is asked too.
+    if (!operatorShift) setPunchPromptMember(operatorMember);
+  }, [punchCheckPending, operatorMember, onShift.ready, operatorShift]);
 
   const handleLogin = useCallback(
     (member: StoreMember, pin: string | null) => {
       setCurrentOperator({ memberId: member.id, name: member.displayName });
       setOperatorPin(pin);
-      setLoginAt(Date.now());
       setIdleLocked(false);
       setPunchCheckPending(true);
       hapticSuccess();
@@ -173,6 +174,8 @@ export function StoreDeviceScreen() {
     );
   }
 
+  if (!allowed) return <StoreNotAllowed />;
+
   const orgName = currentOrg.name;
 
   return (
@@ -195,7 +198,10 @@ export function StoreDeviceScreen() {
         <div className="h-10 shrink-0 flex items-center justify-between px-6 border-b border-border text-[13px] font-semibold">
           <span className="font-mono tabular-nums">{fmtStatusClock(now)}</span>
           <span className="text-muted-foreground font-medium">Merchiva · {orgName}</span>
-          <span className="font-mono text-[11px] font-medium text-muted-foreground truncate max-w-[30%]">{deviceName || t("storeDevice.thisDevice")}</span>
+          {/* Who is logged in, beside the device's name: the home below is theirs. */}
+          <span className="font-mono text-[11px] font-medium text-muted-foreground truncate max-w-[30%]">
+            {operatorMember ? `${operatorMember.displayName} · ` : ""}{deviceName || t("storeDevice.thisDevice")}
+          </span>
         </div>
 
         <div className="relative flex-1 min-h-0">
@@ -214,12 +220,11 @@ export function StoreDeviceScreen() {
                   operator={operatorMember}
                   operatorPin={operatorPin}
                   shift={operatorShift}
-                  loginAt={loginAt}
-                  members={members}
-                  forMember={onShift.forMember}
+                  onShiftEntries={onShift.entries}
+                  punchAsk={punchPromptMember !== null}
+                  onPunchAskDone={() => setPunchPromptMember(null)}
                   onLogout={() => handleLogout()}
                   onRecordingChange={setRecording}
-                  phone={phone}
                   idle={dimming}
                   className="min-h-0 flex-1"
                 />
@@ -251,7 +256,6 @@ export function StoreDeviceScreen() {
           </AnimatePresence>
         </div>
 
-        <PunchPrompt member={punchPromptMember} code={operatorPin} onDone={() => setPunchPromptMember(null)} />
 
         <IdleLock
           active={idleLocked}

@@ -16,8 +16,10 @@ import { schema, t, table, SenderError, Range } from 'spacetimedb/server';
 import { Identity, Timestamp, Uuid } from 'spacetimedb';
 import { pagePresenceTable } from './presence/tables';
 import { definePagePresenceReducers } from './presence/reducers';
-import { chatChannelInfoTable, chatMemberStateTable, chatMessageExtTable, chatReactionTable } from './chat/tables';
-import { defineChatReducers, deleteChatMessageCascade } from './chat/reducers';
+import {
+  chatChannelInfoTable, chatMemberStateTable, chatMessageExtTable, chatMessageOriginTable, chatReactionTable,
+} from './chat/tables';
+import { defineChatReducers, deleteChatMessageCascade, writeChatMessageOrigin, type ChatCtx } from './chat/reducers';
 import { notifyChatMessage, notifyMerchivaMessage } from './chat/notify';
 import { isChannelManagerRole } from './chat/logic';
 import {
@@ -40,9 +42,10 @@ import { deviceLoginRequesterTable } from './device/tables';
 import { deviceOperatorGrantTable, pinAttemptCounterTable, pinAttemptResultTable } from './device/pin-tables';
 import { pinLockedUntilFor, recordPinMiss } from './device/pin-guard';
 import { PIN_PATTERN } from './device/pin-limit';
+import { requireStoreDevice, withoutStoreDevicePower } from './device/store-access';
 import {
-  activeMemberByPunchCode, definePinReducers, pinCallerOf, pinLimitExempt, setPunchCodeCounted, storePunchCode,
-  writeOperatorGrant, type PinDeps,
+  activeMemberByPunchCode, definePinReducers, operatorOfGrant, pinCallerOf, pinLimitExempt, setPunchCodeCounted,
+  storePunchCode, writeOperatorGrant, type PinDeps,
 } from './device/pin-reducers';
 import {
   formTable, formMetaTable, formResponseTable, formAssignmentTable, formCompletionTable, formPublicTable,
@@ -2569,6 +2572,7 @@ const spacetimedb = schema({
   chatMessageExt: chatMessageExtTable,
   chatChannelInfo: chatChannelInfoTable,
   chatMemberState: chatMemberStateTable,
+  chatMessageOrigin: chatMessageOriginTable,
   // Forms (./forms/tables.ts).
   form: formTable,
   formMeta: formMetaTable,
@@ -2932,6 +2936,11 @@ rlsRules.rls_chat_message_ext_mine = spacetimedb.clientVisibilityFilter.sql(
   `JOIN chat_membership_index ci ON e.conversationId = ci.conversationId ` +
   `WHERE ci.userId = :sender`
 );
+rlsRules.rls_chat_message_origin_mine = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT o.* FROM chat_message_origin o ` +
+  `JOIN chat_membership_index ci ON o.conversationId = ci.conversationId ` +
+  `WHERE ci.userId = :sender`
+);
 rlsRules.rls_chat_channel_info_mine = spacetimedb.clientVisibilityFilter.sql(
   `SELECT c.* FROM chat_channel_info c ` +
   `JOIN chat_membership_index ci ON c.conversationId = ci.conversationId ` +
@@ -3219,6 +3228,7 @@ const OWNER_FULL_PERMISSIONS = {
   training_grading: { view: true, edit: true },
   merchiva: { view: true },
   drive: { view: true, edit: true },
+  store_device: { view: true },
 } as const;
 
 /**
@@ -3437,9 +3447,12 @@ export const inviteToOrg = spacetimedb.reducer(
       ctx.timestamp.microsSinceUnixEpoch + BigInt(7 * 24 * 60 * 60 * 1_000_000) // 7 days
     );
 
-    // Only owners grant the Drive "everyone's files" power (updateMemberPermissions
-    // is owner-only too): a manager's invitation arrives with drive switched off.
-    const storedPermissions = member.role === 'owner' || isServiceCaller(ctx) ? permissions : withoutDrivePower(permissions);
+    // Only owners grant the Drive "everyone's files" power and the store device
+    // (updateMemberPermissions is owner-only too): a manager's invitation arrives
+    // with both switched off.
+    const storedPermissions = member.role === 'owner' || isServiceCaller(ctx)
+      ? permissions
+      : withoutStoreDevicePower(withoutDrivePower(permissions));
 
     ctx.db.orgInvitation.insert({
       id: ctx.newUuidV4(),
@@ -3668,6 +3681,7 @@ export const resolveDeviceOperator = spacetimedb.reducer(
   { organizationId: t.string(), code: t.string() },
   (ctx, { organizationId, code }) => {
     const caller = findActiveMember(ctx, organizationId);
+    requireStoreDevice(caller, SenderError);
     if (pinLockedUntilFor(ctx, organizationId, pinCallerOf(caller)) > 0n) throw new SenderError('PIN_LOCKED');
     if (!PIN_PATTERN.test(code)) throw new SenderError('PIN_NOT_RECOGNIZED');   // tests no code: not counted
 
@@ -3856,6 +3870,8 @@ export const recordPunch = spacetimedb.reducer(
   },
   (ctx, { organizationId, code, action }) => {
     const caller = findActiveMember(ctx, organizationId);
+    // Punching anyone by PIN is a store tablet's job.
+    requireStoreDevice(caller, SenderError);
 
     // A PIN oracle unless limited (./device/pin-guard.ts): refused while locked,
     // and a wrong code is counted and RETURNS — a throw would roll the count
@@ -4050,7 +4066,7 @@ export const registerDevice = spacetimedb.reducer(
     name: t.string(),
   },
   (ctx, { organizationId, deviceId, name }) => {
-    findActiveMember(ctx, organizationId);
+    requireStoreDevice(findActiveMember(ctx, organizationId), SenderError);
     const existing = [...ctx.db.storeDevice.byOrganizationId.filter(organizationId)]
       .find(d => d.deviceId === deviceId);
     if (existing) {
@@ -4084,7 +4100,7 @@ export const updateStoreDevice = spacetimedb.reducer(
     enabled: t.option(t.bool()),
   },
   (ctx, { organizationId, deviceId, name, enabled }) => {
-    findActiveMember(ctx, organizationId);
+    requireStoreDevice(findActiveMember(ctx, organizationId), SenderError);
     const device = [...ctx.db.storeDevice.byOrganizationId.filter(organizationId)]
       .find(d => d.deviceId === deviceId);
     if (!device) throw new SenderError('Device not found');
@@ -4127,7 +4143,8 @@ export const createDeviceLoginRequest = spacetimedb.reducer(
     nonce: t.string(),
   },
   (ctx, { organizationId, deviceId, nonce }) => {
-    findActiveMember(ctx, organizationId);
+    // Only a store tablet shows a log-in QR.
+    requireStoreDevice(findActiveMember(ctx, organizationId), SenderError);
     if (!nonce || nonce.length < 8) throw new SenderError('Invalid nonce');
 
     // A request may only replace the caller's own: re-issuing a tablet's
@@ -4225,7 +4242,7 @@ export const consumeDeviceLogin = spacetimedb.reducer(
     // `id` already arrives as a uuid here, so this is a direct PK lookup.
     const row = ctx.db.deviceLoginRequest.id.find(id);
     if (!row) throw new SenderError('Request not found');
-    findActiveMember(ctx, row.organizationId);
+    requireStoreDevice(findActiveMember(ctx, row.organizationId), SenderError);
     // Request ids are readable in device_login_requester (a rule-free join
     // target), so only the requester — or the service identity, the admin
     // console's revoke — may consume one; otherwise any colleague could cancel
@@ -5378,6 +5395,71 @@ export const createConversation = spacetimedb.reducer(
   }
 );
 
+interface SendMessageArgs {
+  conversationId: string;
+  content: string;
+  replyToId?: Uuid;
+  attachmentUrl?: string;
+  attachmentType?: string;
+  attachmentName?: string;
+  voiceTranscript?: string;
+}
+
+/**
+ * `who` posts in a conversation they are in: ctx.sender, or the operator a store tablet sends for
+ * (`origin` 'store', remembered in chat_message_origin).
+ */
+function sendMessageAs(ctx: ChatCtx, who: ChatCtx['sender'], args: SendMessageArgs, origin = ''): void {
+  const { conversationId, content, replyToId, attachmentUrl, attachmentType, attachmentName, voiceTranscript } = args;
+  // Verify sender is in the conversation
+  const isMember = [...ctx.db.chatMember.byUserId.filter(who)]
+    .some(m => m.conversationId === conversationId);
+  if (!isMember) unauthorized('Not a conversation member');
+
+  const message = ctx.db.chatMessage.insert({
+    id: ctx.newUuidV4(),
+    conversationId,
+    senderId: who,
+    content,
+    createdAt: ctx.timestamp,
+    replyToId,
+    attachmentUrl,
+    attachmentType,
+    attachmentName,
+    isMerchiva: undefined,
+    voiceTranscript,
+  });
+  if (origin) writeChatMessageOrigin(ctx, message, origin);
+
+  // Bump conversation updatedAt
+  const conv = findById(ctx.db.chatConversation, conversationId);
+  if (conv) {
+    ctx.db.chatConversation.delete(conv);
+    ctx.db.chatConversation.insert({ ...conv, updatedAt: ctx.timestamp });
+  }
+
+  // Notify the other members of the conversation; who is told, and who by
+  // email, is chatDelivery (./chat/notify.ts, ./chat/logic.ts).
+  if (conv) notifyChatMessage(ctx, conv, message);
+}
+
+/**
+ * The member a store tablet's log-in (`grantId`) made its operator, as the identity its chat
+ * writes are theirs under: ctx.sender must be allowed to run a store device and hold that fresh
+ * grant (./device/pin-reducers.ts operatorOfGrant).
+ */
+function chatOperatorIdentity(ctx: ChatCtx, organizationId: string, grantId: string): ChatCtx['sender'] {
+  requireStoreDevice(findActiveMember(ctx, organizationId), SenderError);
+  return operatorOfGrant(ctx, SenderError, organizationId, grantId).userId;
+}
+
+/** The store tablet's operator a conversation's write is theirs under (chatOperatorIdentity, scoped by the conversation's org). */
+function operatorInConversation(ctx: ChatCtx, conversationId: string, grantId: string): ChatCtx['sender'] {
+  const conv = findById(ctx.db.chatConversation, conversationId);
+  if (!conv) throw new SenderError('Conversation not found');
+  return chatOperatorIdentity(ctx, conv.organizationId, grantId);
+}
+
 export const sendMessage = spacetimedb.reducer(
   {
     conversationId: t.string(),
@@ -5388,37 +5470,22 @@ export const sendMessage = spacetimedb.reducer(
     attachmentName: t.option(t.string()),
     voiceTranscript: t.option(t.string()),
   },
-  (ctx, { conversationId, content, replyToId, attachmentUrl, attachmentType, attachmentName, voiceTranscript }) => {
-    // Verify sender is in the conversation
-    const isMember = [...ctx.db.chatMember.byUserId.filter(ctx.sender)]
-      .some(m => m.conversationId === conversationId);
-    if (!isMember) unauthorized('Not a conversation member');
+  (ctx, args) => sendMessageAs(ctx, ctx.sender, args)
+);
 
-    const message = ctx.db.chatMessage.insert({
-      id: ctx.newUuidV4(),
-      conversationId,
-      senderId: ctx.sender,
-      content,
-      createdAt: ctx.timestamp,
-      replyToId,
-      attachmentUrl,
-      attachmentType,
-      attachmentName,
-      isMerchiva: undefined,
-      voiceTranscript,
-    });
-
-    // Bump conversation updatedAt
-    const conv = findById(ctx.db.chatConversation, conversationId);
-    if (conv) {
-      ctx.db.chatConversation.delete(conv);
-      ctx.db.chatConversation.insert({ ...conv, updatedAt: ctx.timestamp });
-    }
-
-    // Notify the other members of the conversation; who is told, and who by
-    // email, is chatDelivery (./chat/notify.ts, ./chat/logic.ts).
-    if (conv) notifyChatMessage(ctx, conv, message);
-  }
+/** sendMessage from a store tablet for the member its log-in `grantId` made its operator: the message is theirs. */
+export const sendOperatorMessage = spacetimedb.reducer(
+  {
+    grantId: t.string(),
+    conversationId: t.string(),
+    content: t.string(),
+    replyToId: t.option(t.uuid()),
+    attachmentUrl: t.option(t.string()),
+    attachmentType: t.option(t.string()),
+    attachmentName: t.option(t.string()),
+    voiceTranscript: t.option(t.string()),
+  },
+  (ctx, { grantId, ...args }) => sendMessageAs(ctx, operatorInConversation(ctx, args.conversationId, grantId), args, 'store')
 );
 
 // Toggle whether Mr. Merchiva participates in a conversation. Any member of the
@@ -6153,27 +6220,37 @@ export const addMembersToConversation = spacetimedb.reducer(
   }
 );
 
+/** `who` deletes one of their own messages (ctx.sender, or a store tablet's operator). */
+function deleteMessageAs(ctx: ChatCtx, who: ChatCtx['sender'], conversationId: string, messageId: string): void {
+  // Verify caller is a member of the conversation
+  const callerMembership = [...ctx.db.chatMember.byUserId.filter(who)]
+    .some(m => m.conversationId === conversationId);
+  if (!callerMembership) unauthorized('Not a conversation member');
+
+  const message = [...ctx.db.chatMessage.byConversationId.filter(conversationId)]
+    .find(m => m.id.toString() === messageId);
+  if (!message) throw new SenderError('Message not found');
+
+  // Only the sender can delete their own message
+  if (message.senderId.toString() !== who.toString()) {
+    unauthorized('Can only delete your own messages');
+  }
+
+  // Also drops its reactions and side row; a thread parent with replies
+  // stays as a tombstone (./chat/reducers.ts).
+  deleteChatMessageCascade(ctx, message);
+}
+
 export const deleteMessage = spacetimedb.reducer(
   { conversationId: t.string(), messageId: t.string() },
-  (ctx, { conversationId, messageId }) => {
-    // Verify caller is a member of the conversation
-    const callerMembership = [...ctx.db.chatMember.byUserId.filter(ctx.sender)]
-      .some(m => m.conversationId === conversationId);
-    if (!callerMembership) unauthorized('Not a conversation member');
+  (ctx, { conversationId, messageId }) => deleteMessageAs(ctx, ctx.sender, conversationId, messageId)
+);
 
-    const message = [...ctx.db.chatMessage.byConversationId.filter(conversationId)]
-      .find(m => m.id.toString() === messageId);
-    if (!message) throw new SenderError('Message not found');
-
-    // Only the sender can delete their own message
-    if (message.senderId.toString() !== ctx.sender.toString()) {
-      unauthorized('Can only delete your own messages');
-    }
-
-    // Also drops its reactions and side row; a thread parent with replies
-    // stays as a tombstone (./chat/reducers.ts).
-    deleteChatMessageCascade(ctx, message);
-  }
+/** deleteMessage from a store tablet for its operator (`grantId`): only their own messages. */
+export const deleteOperatorMessage = spacetimedb.reducer(
+  { grantId: t.string(), conversationId: t.string(), messageId: t.string() },
+  (ctx, { grantId, conversationId, messageId }) =>
+    deleteMessageAs(ctx, operatorInConversation(ctx, conversationId, grantId), conversationId, messageId)
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -7312,6 +7389,7 @@ const SERVICE_FULL_PERMISSIONS = JSON.stringify({
   chat: { view: true, edit: true },
   website: { view: true, edit: true },
   drive: { view: true, edit: true },
+  store_device: { view: true },
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -9839,7 +9917,8 @@ export const { upsertPagePresence, removePagePresence } = definePagePresenceRedu
 export const {
   toggleChatReaction, editChatMessage, sendThreadReply, setChatMessagePinned, setChannelTopic,
   markChatRead, setChatMuted, setChatStarred, leaveConversation, removeConversationMember,
-} = defineChatReducers(spacetimedb, { t, SenderError, Identity, findById });
+  toggleOperatorChatReaction, editOperatorChatMessage, sendOperatorThreadReply, setOperatorChatMessagePinned,
+} = defineChatReducers(spacetimedb, { t, SenderError, Identity, findById, operatorIdentity: chatOperatorIdentity });
 
 // NOTIFICATION REDUCERS (./notify/reducers.ts): read state, push subscriptions, email / locale
 // preference, follows, the store SOS, and the notifications cron's claim / finish.

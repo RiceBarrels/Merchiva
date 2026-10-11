@@ -2,7 +2,7 @@
 
 import { PermissionGuard } from "@/components/permission-guard";
 import { PersonnelHubProvider } from "@/components/personnel/hub-context";
-import { PersonnelHeader, PersonnelTabsNav } from "@/components/personnel/hub-nav";
+import { PersonnelBottomNav, PersonnelHeader, PersonnelTabsNav } from "@/components/personnel/hub-nav";
 
 export default function PersonnelLayout({
   children,
@@ -18,6 +18,7 @@ export default function PersonnelLayout({
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             {children}
           </div>
+          <PersonnelBottomNav />
         </div>
       </PersonnelHubProvider>
     </PermissionGuard>

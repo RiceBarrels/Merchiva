@@ -13,6 +13,8 @@ export interface MemberRow {
   role: string;
   status: string;
   displayName: string;
+  email: string;
+  joinedAt: { toDate(): Date };
 }
 
 export function identityHex(id: { toHexString?: () => string; toString(): string }): string {

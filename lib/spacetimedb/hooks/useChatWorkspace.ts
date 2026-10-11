@@ -44,6 +44,7 @@ export function useChatWorkspace(organizationId: string | null, meHex: string | 
   const [extRows] = useTable(tables.chatMessageExt);
   const [infoRows] = useTable(tables.chatChannelInfo);
   const [stateRows] = useTable(tables.chatMemberState);
+  const [originRows] = useTable(tables.chatMessageOrigin);
   const [orgMemberRows, orgReady] = useTable(tables.orgMember);
   const [userRows] = useTable(tables.user);
 
@@ -58,6 +59,12 @@ export function useChatWorkspace(organizationId: string | null, meHex: string | 
     }
     return map;
   }, [orgMemberRows, userRows, organizationId]);
+
+  // Messages a store tablet sent for its operator (chat_message_origin).
+  const fromStore = useMemo(
+    () => new Set((originRows as any[]).filter((o) => o.origin === "store").map((o) => String(o.messageId))),
+    [originRows],
+  );
 
   const model = useMemo(() => buildChatModel({
     meHex: meHex ?? "",
@@ -81,6 +88,8 @@ export function useChatWorkspace(organizationId: string | null, meHex: string | 
       attachmentType: r.attachmentType ?? null,
       attachmentName: r.attachmentName ?? null,
       isMerchiva: r.isMerchiva === true,
+      voiceTranscript: r.voiceTranscript ?? null,
+      fromStore: fromStore.has(r.id.toString()),
     })),
     exts: (extRows as any[]).map((e) => ({
       messageId: e.messageId,
@@ -98,7 +107,7 @@ export function useChatWorkspace(organizationId: string | null, meHex: string | 
     states: (stateRows as any[])
       .map((s) => ({ conversationId: s.conversationId, lastReadAt: ms(s.lastReadAt), muted: !!s.muted, starred: !!s.starred })),
     people,
-  }), [convRows, memberRows, messageRows, extRows, reactionRows, infoRows, stateRows, people, meHex, organizationId]);
+  }), [convRows, memberRows, messageRows, extRows, reactionRows, infoRows, stateRows, fromStore, people, meHex, organizationId]);
 
   return { model, people, ready: convReady && membersReady && messagesReady && orgReady };
 }

@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { searchChat, type ChatChannel, type ChatEntry } from "@/lib/chat/model";
-import { removeConversationMember, setChatMessagePinned } from "@/lib/spacetimedb/actions/chat";
+import { removeConversationMember } from "@/lib/spacetimedb/actions/chat";
 import { useChannelWorkspace } from "@/components/channel/context";
 import { PanelShell } from "@/components/channel/thread-panel";
 import { SenderAvatar } from "@/components/channel/message-row";
@@ -113,7 +113,7 @@ function EntryCard({ entry, channel, children, onOpen }: { entry: ChatEntry; cha
 
 export function PinsPanel({ channel }: { channel: ChatChannel }) {
   const t = useT();
-  const { model, run, openPanel, openChannel } = useChannelWorkspace();
+  const { model, run, writes, openPanel, openChannel } = useChannelWorkspace();
   const pins = model.pinsOf(channel.id);
   const open = (e: ChatEntry) => (e.threadParentId
     ? openPanel({ kind: "thread", parentId: e.threadParentId })
@@ -129,7 +129,7 @@ export function PinsPanel({ channel }: { channel: ChatChannel }) {
               variant="ghost"
               size="icon-xs"
               className="absolute end-2 top-2 text-muted-foreground opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100"
-              onClick={() => void run(() => setChatMessagePinned(channel.id, e.id, false))}
+              onClick={() => void run(() => writes.pin(channel.id, e.id, false))}
               aria-label={t("chat.ws.unpin")}
               title={t("chat.ws.unpin")}
             >

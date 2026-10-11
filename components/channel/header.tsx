@@ -18,13 +18,15 @@ interface HeaderProps {
   channel: ChatChannel;
   panel: SidePanel | null;
   onBack?: () => void;
+  /** Leads the header in place of Back (the walkie's channel-list button). */
+  leading?: React.ReactNode;
   onEditTopic: () => void;
   onAddPeople: () => void;
   /** Undefined where leaving would act for someone else (a store machine's PIN operator). */
   onLeave?: () => void;
 }
 
-export function ChannelHeader({ channel, panel, onBack, onEditTopic, onAddPeople, onLeave }: HeaderProps) {
+export function ChannelHeader({ channel, panel, onBack, leading, onEditTopic, onAddPeople, onLeave }: HeaderProps) {
   const t = useT();
   const { model, run, openPanel, canManage, nameOf, avatarOf, isMobile } = useChannelWorkspace();
   const pinCount = model.pinsOf(channel.id).length;
@@ -38,6 +40,7 @@ export function ChannelHeader({ channel, panel, onBack, onEditTopic, onAddPeople
           <ArrowLeft className="rtl:rotate-180" />
         </Button>
       )}
+      {leading}
       <div className="flex min-w-0 flex-1 items-center gap-2">
         {isGroup
           ? <Hash className="h-4 w-4 shrink-0 text-muted-foreground" />

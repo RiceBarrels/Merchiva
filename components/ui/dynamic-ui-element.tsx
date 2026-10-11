@@ -2,12 +2,16 @@
 
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
-import { ArrowLeft, XIcon } from "lucide-react"
-import { motion, AnimatePresence } from "motion/react"
-import { getSafeAreaInsets } from "@/lib/safe-area";
+import { XIcon } from "lucide-react"
 import { displayedDialogPage, lastShownDialogClose } from "@/lib/browser-shell/shell-dom";
 import { useDialogDepth, useOpenDynamicUIElementCount } from "@/components/ui/dialog-depth";
-import { DynamicUIElementBack, dialogSafeTop } from "@/components/ui/dynamic-ui-element-back";
+import { useDialogBgPush } from "@/components/ui/dialog-bg-push";
+import { useDialogHost } from "@/components/ui/dialog-host";
+import {
+  MobileDynamicUIElementPage,
+  MobileDynamicUIElementTitleContext,
+  useDynamicUIElementSwipeProgress,
+} from "@/components/ui/dynamic-ui-element-page";
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -21,6 +25,9 @@ function DynamicUIElement({
   onOpenChange,
   ...props
 }: DialogPrimitive.Root.Props) {
+  // In a host that covers part of the screen (dialog-host.ts `pageRoot`) the page stays inside the
+  // host's box: the rest of the screen keeps working, and a tap there does not close the page.
+  const contained = typeof useDialogHost()?.pageRoot === "function"
   const [ready, setReady] = React.useState(false)
   const [pendingOpen, setPendingOpen] = React.useState(false)
 
@@ -67,6 +74,7 @@ function DynamicUIElement({
       data-slot="dialog"
       open={safeOpen}
       onOpenChange={onOpenChange}
+      {...(contained ? { modal: false, disablePointerDismissal: true } : {})}
       {...props}
     />
   )
@@ -101,25 +109,10 @@ function DynamicUIElementOverlay({
   )
 }
 
-// Track stacked mobile dialogs for iOS-like depth effect
-const MobileDynamicUIElementDepthContext = React.createContext(0);
 // Open dialogs and their depths (open order, not effect order): components/ui/dialog-depth.ts
 export { useOpenDynamicUIElementCount }
-// Global swipe progress for the topmost dialog (0 = fully open, 1 = fully swiped away)
-let globalDynamicUIElementSwipeProgress = 0;
-const dynamicUIElementSwipeListeners = new Set<(p: number) => void>();
-export function useDynamicUIElementSwipeProgress() {
-  const [p, setP] = React.useState(0);
-  React.useEffect(() => {
-    dynamicUIElementSwipeListeners.add(setP);
-    return () => { dynamicUIElementSwipeListeners.delete(setP); };
-  }, []);
-  return p;
-}
-function setGlobalSwipeProgress(p: number) {
-  globalDynamicUIElementSwipeProgress = p;
-  dynamicUIElementSwipeListeners.forEach((fn) => fn(p));
-}
+// The phone page's swipe progress, for chromes that follow the finger
+export { useDynamicUIElementSwipeProgress }
 // Title registry — immune to Strict Mode double-mount
 const dynamicUIElementTitleRegistry = new Map<string, string>(); // instanceId → title
 let dynamicUIElementTitleIdSeq = 0;
@@ -247,277 +240,6 @@ function unregisterTitle(id: string) {
   dynamicUIElementTitleRegistry.delete(id);
   notifyTitles();
 }
-// Pass title to mobile header bar
-const MobileDynamicUIElementTitleContext = React.createContext<{
-  title: string;
-  setTitle: (t: string) => void;
-  exiting: boolean;
-}>({ title: "", setTitle: () => {}, exiting: false });
-
-/**
- * Resolve the DOM element that should be pushed left when a dialog opens.
- *
- * - depth 0 dialogs push the app shell (id="mobile-content" on the mobile
- *   layout, id="desktop-content" on the desktop layout; only one exists at a
- *   time because the two shells are mutually-exclusive in the sidebar code).
- * - depth > 0 dialogs push the dialog right below them (id="mobile-dialog-N").
- *
- * Returns null until React has committed an id to look up, so the caller
- * skips work cleanly on the first render.
- */
-function findBgTarget(depth: number): HTMLElement | null {
-  if (depth < 0) return null;
-  if (typeof document === "undefined") return null;
-  if (depth > 0) return displayedDialogPage(depth - 1);
-  return (
-    document.getElementById("mobile-content") ??
-    document.getElementById("desktop-content")
-  );
-}
-
-const DIALOG_BG_TRANSITION =
-  "transform 500ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 500ms cubic-bezier(0.32, 0.72, 0, 1)";
-
-/**
- * Shared push-the-bg-left side effect.
- *
- * Used by every dialog mode (mobile full-screen sheet, desktop right-side
- * panel, desktop centered modal). The effect is split into:
- *
- * 1. Style updates — useLayoutEffect that re-applies inline transform every
- *    time bg geometry changes. Critically, it does NOT clear the styles when
- *    the dep array changes — that was the previous bug (cleanup ran on every
- *    re-render, briefly snapping the bg back to identity before re-applying
- *    the same transform, which the eye reads as "no animation").
- *
- * 2. Unmount cleanup — a separate useEffect with [] deps that animates the
- *    bg back to identity, then clears all inline styles once the slide-back
- *    finishes. This runs ONLY when the dialog page unmounts, so opening more
- *    or changing state never resets the bg in-flight.
- */
-function useDialogBgPush({
-  depth,
-  shift,
-  scale,
-  radius,
-  active,
-  transition,
-}: {
-  depth: number;
-  shift: number;
-  scale: number;
-  radius: number;
-  active: boolean;
-  // Override the default ease (for example "none" while the user is dragging
-  // so the bg tracks the finger instead of lerping behind it). Defaults to the
-  // 500ms cubic-bezier used for open / close.
-  transition?: string;
-}) {
-  const targetRef = React.useRef<HTMLElement | null>(null);
-  React.useLayoutEffect(() => {
-    const target = findBgTarget(depth);
-    // The depth changed (the stack re-ranks when another dialog opens): the old layer is let go.
-    if (targetRef.current && targetRef.current !== target) releaseBgTarget(targetRef.current);
-    targetRef.current = target;
-  }, [depth]);
-
-  const tr = transition ?? DIALOG_BG_TRANSITION;
-  React.useLayoutEffect(() => {
-    const el = targetRef.current;
-    if (!el) return;
-    el.style.transition = tr;
-    el.style.transform = `translateX(${shift}px) scale(${scale})`;
-    el.style.borderRadius = `${radius}px`;
-    el.style.overflow = active ? "hidden" : "";
-  }, [shift, scale, radius, active, depth, tr]);
-
-  React.useEffect(() => {
-    return () => {
-      if (targetRef.current) releaseBgTarget(targetRef.current);
-    };
-  }, []);
-}
-
-/** Animates a pushed layer back to identity, then clears the inline styles once it has slid back. */
-function releaseBgTarget(el: HTMLElement) {
-  el.style.transition = DIALOG_BG_TRANSITION;
-  el.style.transform = "";
-  el.style.borderRadius = "";
-  window.setTimeout(() => {
-    el.style.overflow = "";
-    el.style.transition = "";
-  }, 520);
-}
-
-function MobileDynamicUIElementPage({
-  children,
-  className,
-  noPadding = false,
-  ...props
-}: DialogPrimitive.Popup.Props & { noPadding?: boolean }) {
-  const [mobileTitle, setMobileTitle] = React.useState("");
-  const ref = React.useRef<HTMLDivElement>(null);
-  const depth = useDialogDepth();
-  const [offsetX, setOffsetX] = React.useState(0);
-  const [dragging, setDragging] = React.useState(false);
-  const [entered, setEntered] = React.useState(false);
-  const enteredRef = React.useRef(false);
-  const [exiting, setExiting] = React.useState(false);
-  const outerRef = React.useRef<HTMLDivElement>(null);
-  const startX = React.useRef(0);
-  const startY = React.useRef(0);
-  const axis = React.useRef<"h" | "v" | null>(null);
-  const closeRef = React.useRef<HTMLButtonElement>(null);
-  // Back: slide out, then close. The hidden [data-dialog-back] runs it (closeTopDialog, popstate,
-  // Android back), and so does the visible Back on the /manager phone layout.
-  const goBack = React.useCallback(() => {
-    setExiting(true);
-    setTimeout(() => closeRef.current?.click(), 500);
-  }, []);
-
-  React.useEffect(() => {
-    return () => {
-      setGlobalSwipeProgress(0);
-    };
-  }, []);
-
-  // Swipe to close
-  React.useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    function onStart(e: TouchEvent) {
-      if (!enteredRef.current) {
-        enteredRef.current = true;
-        setEntered(true);
-      }
-      startX.current = e.touches[0].clientX;
-      startY.current = e.touches[0].clientY;
-      axis.current = null;
-    }
-    function onMove(e: TouchEvent) {
-      const dx = e.touches[0].clientX - startX.current;
-      const dy = e.touches[0].clientY - startY.current;
-      if (axis.current === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-        axis.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
-      }
-      if (axis.current !== "h" || dx < 0) return;
-      e.preventDefault();
-      setDragging(true);
-      setOffsetX(dx);
-      const sw = window.innerWidth || 400;
-      setGlobalSwipeProgress(Math.min(1, dx / sw));
-    }
-    function onEnd(e: TouchEvent) {
-      if (axis.current !== "h") { axis.current = null; return; }
-      const dx = e.changedTouches[0].clientX - startX.current;
-      if (dx > 80) {
-        setDragging(false);
-        setExiting(true);
-        setGlobalSwipeProgress(1);
-        setTimeout(() => {
-          closeRef.current?.click();
-          // Reset after dialog is fully closed
-          setTimeout(() => setGlobalSwipeProgress(0), 50);
-        }, 250);
-      } else {
-        setDragging(false);
-        setOffsetX(0);
-        setGlobalSwipeProgress(0);
-      }
-      axis.current = null;
-    }
-
-    el.addEventListener("touchstart", onStart, { passive: true });
-    el.addEventListener("touchmove", onMove, { passive: false });
-    el.addEventListener("touchend", onEnd, { passive: true });
-    return () => {
-      el.removeEventListener("touchstart", onStart);
-      el.removeEventListener("touchmove", onMove);
-      el.removeEventListener("touchend", onEnd);
-    };
-  }, []);
-
-  // Progress: 0 = fully open, 1 = fully swiped away
-  const screenW = typeof window !== "undefined" ? window.innerWidth : 400;
-  const progress = dragging ? Math.min(1, offsetX / screenW) : 0;
-
-  const fgTransform = exiting
-    ? "translateX(100%)"
-    : dragging
-    ? `translateX(${offsetX}px)`
-    : entered
-    ? "translateX(0)"
-    : "translateX(100%)";
-
-  const bgActive = !exiting;
-  const bgScale = bgActive ? 0.94 + 0.06 * progress : 1;
-  const bgShift = bgActive ? -screenW * 0.3 * (1 - progress) : 0;
-  const bgRadius = bgActive ? Math.round(12 * (1 - progress)) : 0;
-
-  const transition = dragging ? "none" : DIALOG_BG_TRANSITION;
-
-  // Push the layer underneath us — handled by the shared hook so the cleanup
-  // semantics stay correct (no per-dep-change snap-back; unmount animates
-  // smoothly to identity). Previously this was inlined here with a cleanup
-  // that reset transform on every dep change, which made the bg occasionally
-  // skip its slide-left because the reset raced the apply.
-  useDialogBgPush({
-    depth,
-    shift: bgShift,
-    scale: bgScale,
-    radius: bgRadius,
-    active: bgActive,
-    transition,
-  });
-
-  return (
-    <MobileDynamicUIElementDepthContext.Provider value={depth + 1}>
-      <MobileDynamicUIElementTitleContext.Provider value={{ title: mobileTitle, setTitle: setMobileTitle, exiting }}>
-      {/* Foreground dialog page */}
-      <div
-        ref={outerRef}
-        id={`mobile-dialog-${depth}`}
-        className="fixed inset-0"
-        style={{
-          transform: fgTransform,
-          transition: entered ? transition : "none",
-          animation: (!entered && !exiting && !dragging) ? "slideInRight 500ms cubic-bezier(0.32, 0.72, 0, 1) both" : undefined,
-          willChange: "transform",
-          zIndex: 50 + depth,
-        }}
-        onAnimationEnd={(e) => {
-          if (e.animationName === "slideInRight") {
-            enteredRef.current = true;
-            setEntered(true);
-          }
-        }}
-      >
-      <DialogPrimitive.Popup
-        data-slot="dialog-content"
-        initialFocus={false}
-        className="absolute inset-0 flex flex-col bg-background text-sm text-foreground outline-none w-full max-w-none p-0!"
-        style={{
-          borderRadius: (entered && !dragging && !exiting) ? "0" : "48px 0 0 48px",
-          boxShadow: "-8px 0 30px rgba(0, 0, 0, 0.15)",
-        }}
-      >
-        <div ref={ref} className="flex flex-col h-full">
-          <DialogPrimitive.Close ref={closeRef} className="hidden" />
-          <button data-dialog-back onClick={goBack} className="hidden" />
-          <DynamicUIElementBack title={mobileTitle} onBack={goBack} exiting={exiting} />
-          {/* The safe top is padding, not a spacer child, so an h-full child fits below it. */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ paddingInline: noPadding ? 0 : 16, paddingTop: `calc(64px + ${dialogSafeTop(getSafeAreaInsets().top)})`, paddingBottom: `calc(${noPadding ? 0 : 16}px + var(--shell-dialog-bottom, 0px))` }}>
-            {children}
-          </div>
-        </div>
-      </DialogPrimitive.Popup>
-      </div>
-      </MobileDynamicUIElementTitleContext.Provider>
-    </MobileDynamicUIElementDepthContext.Provider>
-  );
-}
-
 function DynamicUIElementContent({
   className,
   children,
@@ -546,10 +268,13 @@ function DynamicUIElementContent({
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  if (isMobile) {
+  // A host covering part of the screen takes the phone page at any width, inside its own box.
+  const host = useDialogHost();
+  const pageRoot = host?.pageRoot;
+  if (isMobile || pageRoot) {
     return (
-      <DynamicUIElementPortal>
-        <MobileDynamicUIElementPage className={className} noPadding={noPadding} {...props}>
+      <DynamicUIElementPortal container={pageRoot ? pageRoot() : undefined}>
+        <MobileDynamicUIElementPage noPadding={noPadding} contained={!!pageRoot} {...props}>
           {children}
         </MobileDynamicUIElementPage>
       </DynamicUIElementPortal>
@@ -598,7 +323,6 @@ function DesktopSidePanelPage({
     shift: -60,
     scale: 0.985,
     radius: 12,
-    active: true,
   });
   return (
     <DynamicUIElementPortal>
@@ -650,7 +374,6 @@ function DesktopCenteredModalPage({
     shift: -16,
     scale: 0.99,
     radius: 8,
-    active: true,
   });
   return (
     <DynamicUIElementPortal>
@@ -686,10 +409,12 @@ function DesktopCenteredModalPage({
 }
 
 function DynamicUIElementHeader({ className, ...props }: React.ComponentProps<"div">) {
+  // A phone page shows its title in the Back's pill instead: below 640px, and in a host's page root at any width.
+  const contained = typeof useDialogHost()?.pageRoot === "function"
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 max-[639px]:hidden", className)}
+      className={cn("flex flex-col gap-2 max-[639px]:hidden", contained && "hidden", className)}
       {...props}
     />
   )

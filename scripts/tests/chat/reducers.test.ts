@@ -77,6 +77,7 @@ function world() {
     chatMessageExt: new FakeTable("messageId", { byConversationId: "conversationId", byThreadParentId: "threadParentId" }),
     chatChannelInfo: new FakeTable("conversationId", {}),
     chatMemberState: new FakeTable("id", { byConversationId: "conversationId", byUserId: "userId" }),
+    chatMessageOrigin: new FakeTable("messageId", { byConversationId: "conversationId" }),
     orgMember: new FakeTable("id", { byUserId: "userId", byOrganizationId: "organizationId" }),
     notification: new FakeTable("id", { byTargetId: "targetId" }, frozenColumns("notification")),
     // What deliver() reads and writes beside the notification row (spacetimedb/src/notify/).
@@ -95,16 +96,28 @@ function world() {
     deviceOperatorSession: new FakeTable("identity", { byOrganizationId: "organizationId" }),
   };
   const ins = (t: FakeTable, r: Row) => (t.insert as (r: Row) => Row)(r);
+  // A store tablet's log-ins: `${tablet hex}:${grantId}` → its operator (index.ts's chatOperatorIdentity
+  // checks the tablet and the grant for real; ../store-device/operator-chat.test.ts runs it).
+  const grants = new Map<string, FakeIdentity>();
   const deps = {
     t: new Proxy({}, { get: () => () => ({}) }),
     SenderError: FakeSenderError,
     Identity: FakeIdentity,
     findById: (tbl: { id: { find(k: unknown): unknown } }, id: string) => tbl.id.find(id) ?? undefined,
+    operatorIdentity: (ctx: ChatCtx, _organizationId: string, grantId: string) => {
+      const operator = grants.get(`${(ctx.sender as unknown as FakeIdentity).hex}:${grantId}`);
+      if (!operator) throw new FakeSenderError("NO_OPERATOR_SESSION");
+      return operator;
+    },
   } as unknown as ChatDeps;
   const R = defineChatReducers({ reducer: (_p: unknown, fn: Handler) => fn } as unknown as ChatSchema, deps) as unknown as Record<string, Handler>;
   return {
     db,
     R,
+    /** `tablet`'s log-in `grantId` made `operator` its operator. */
+    grant(tablet: FakeIdentity, grantId: string, operator: FakeIdentity) {
+      grants.set(`${tablet.hex}:${grantId}`, operator);
+    },
     person(name: string, role = "staff") {
       const identity = new FakeIdentity();
       ins(db.orgMember, { id: fakeId(), organizationId: ORG, userId: identity, role, displayName: name, status: "active" });
@@ -239,18 +252,21 @@ describe("read state, star", () => {
 });
 
 describe("membership is managed by owners and managers", () => {
-  test("staff cannot remove or set a topic; a manager can; anyone may leave a group", () => {
+  test("staff cannot remove, set a topic or leave; an owner or manager takes them out, and may leave", () => {
     const w = world();
     const boss = w.person("Boss", "manager");
+    const owner = w.person("Olive", "owner");
     const ann = w.person("Ann");
     const bob = w.person("Bob");
-    const conv = w.conversation("group", [boss, ann, bob]);
+    const conv = w.conversation("group", [boss, owner, ann, bob]);
     expect(() => w.R.removeConversationMember(w.ctx(ann), { conversationId: conv, userId: bob.hex })).toThrow("Only an owner or manager");
     expect(() => w.R.setChannelTopic(w.ctx(ann), { conversationId: conv, topic: "x" })).toThrow("Only an owner or manager");
+    expect(() => w.R.leaveConversation(w.ctx(ann), { conversationId: conv })).toThrow("Only an owner or manager");
     w.R.setChannelTopic(w.ctx(boss), { conversationId: conv, topic: "Morning shift" });
     expect(w.db.chatChannelInfo.rows.get(conv)?.topic).toBe("Morning shift");
     w.R.removeConversationMember(w.ctx(boss), { conversationId: conv, userId: bob.hex });
-    w.R.leaveConversation(w.ctx(ann), { conversationId: conv });
+    w.R.removeConversationMember(w.ctx(boss), { conversationId: conv, userId: ann.hex });
+    w.R.leaveConversation(w.ctx(owner), { conversationId: conv });
     const left = rowsOf(w.db.chatMember).map((m) => (m.userId as FakeIdentity).hex);
     expect(left).toEqual([boss.hex]);
     expect(rowsOf(w.db.chatMembershipIndex)).toHaveLength(1);
@@ -436,7 +452,8 @@ describe("channel notifications", () => {
   test("removed from or leaving a channel: that member's notifications of it are read and owe nothing; other channels keep theirs", () => {
     const w = world();
     const boss = w.person("Boss", "manager");
-    const ann = w.person("Ann");
+    // Leaving is an owner's or manager's to do; staff are taken out.
+    const ann = w.person("Ann", "manager");
     const bob = w.person("Bob");
     const ops = w.conversation("group", [boss, ann, bob]);
     const floor = w.conversation("group", [boss, ann, bob]);
@@ -517,5 +534,64 @@ describe("rekeyChatIdentity + follows", () => {
     // Rekeying onto someone already followed by / following that identity keeps one row and no self-follow.
     rekeyChatIdentity(w.ctx(bob), bob, cat);
     expect(rowsOf(w.db.chatFollow).some((f) => (f.userId as FakeIdentity).hex === f.targetHex)).toBe(false);
+  });
+});
+
+describe("a store tablet writes for its operator", () => {
+  test("a thread reply is the operator's, marked as from the store; their reactions, edits and pins too", () => {
+    const w = world();
+    const boss = w.person("Boss", "manager");
+    const ann = w.person("Ann");
+    const tablet = w.person("Front tablet");
+    const conv = w.conversation("group", [boss, ann, tablet]);
+    const root = w.message(conv, boss, "Who closes tonight?");
+    w.grant(tablet, "g1", ann);
+
+    w.R.sendOperatorThreadReply(w.ctx(tablet), { grantId: "g1", conversationId: conv, parentId: root, content: "Me", attachmentUrl: undefined, attachmentType: undefined, attachmentName: undefined });
+    const reply = rowsOf(w.db.chatMessage).find((m) => m.content === "Me")!;
+    expect((reply.senderId as FakeIdentity).hex).toBe(ann.hex);
+    expect(w.db.chatMessageOrigin.rows.get(String(reply.id))).toMatchObject({ conversationId: conv, origin: "store" });
+    // Told as Ann's reply: the parent's author hears it, Ann does not.
+    const told = rowsOf(w.db.notification).map((n) => (n.targetId as FakeIdentity).hex);
+    expect(told).toContain(boss.hex);
+    expect(told).not.toContain(ann.hex);
+
+    w.R.toggleOperatorChatReaction(w.ctx(tablet), { grantId: "g1", conversationId: conv, messageId: root, emoji: "👍" });
+    expect((rowsOf(w.db.chatReaction)[0].userId as FakeIdentity).hex).toBe(ann.hex);
+    w.R.editOperatorChatMessage(w.ctx(tablet), { grantId: "g1", conversationId: conv, messageId: String(reply.id), content: "Me, until 10" });
+    expect(w.db.chatMessage.rows.get(String(reply.id))?.content).toBe("Me, until 10");
+    // Ann's tablet may not edit the boss's message, any more than Ann may.
+    expect(() => w.R.editOperatorChatMessage(w.ctx(tablet), { grantId: "g1", conversationId: conv, messageId: root, content: "x" }))
+      .toThrow("Can only edit your own messages");
+    w.R.setOperatorChatMessagePinned(w.ctx(tablet), { grantId: "g1", conversationId: conv, messageId: root, pinned: true });
+    expect(w.db.chatMessageExt.rows.get(root)?.pinnedBy).toBe(ann.hex);
+  });
+
+  test("no grant, or an operator outside the conversation, writes nothing", () => {
+    const w = world();
+    const ann = w.person("Ann");
+    const out = w.person("Outsider");
+    const tablet = w.person("Front tablet");
+    const conv = w.conversation("group", [ann, tablet]);
+    const msg = w.message(conv, ann);
+    expect(() => w.R.toggleOperatorChatReaction(w.ctx(tablet), { grantId: "none", conversationId: conv, messageId: msg, emoji: "👍" }))
+      .toThrow("NO_OPERATOR_SESSION");
+    w.grant(tablet, "g2", out);
+    expect(() => w.R.toggleOperatorChatReaction(w.ctx(tablet), { grantId: "g2", conversationId: conv, messageId: msg, emoji: "👍" }))
+      .toThrow("Not a conversation member");
+    expect(rowsOf(w.db.chatReaction)).toHaveLength(0);
+  });
+
+  test("deleting a message takes its store mark along", () => {
+    const w = world();
+    const ann = w.person("Ann");
+    const tablet = w.person("Front tablet");
+    const conv = w.conversation("group", [ann, tablet]);
+    const root = w.message(conv, ann, "root");
+    w.grant(tablet, "g1", ann);
+    w.R.sendOperatorThreadReply(w.ctx(tablet), { grantId: "g1", conversationId: conv, parentId: root, content: "reply", attachmentUrl: undefined, attachmentType: undefined, attachmentName: undefined });
+    const reply = rowsOf(w.db.chatMessage).find((m) => m.content === "reply")!;
+    deleteChatMessageCascade(w.ctx(ann), reply as never);
+    expect(rowsOf(w.db.chatMessageOrigin)).toHaveLength(0);
   });
 });

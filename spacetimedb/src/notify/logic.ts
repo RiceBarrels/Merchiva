@@ -243,6 +243,8 @@ export const NOTIFY_IDENTITY_HEX_RE = /^(?:0x)?[0-9a-fA-F]{64}$/;
 export const NOTIFY_ENDPOINT_MAX = 1000;
 export const NOTIFY_PUSH_KEY_MAX = 256;
 export const NOTIFY_PUSH_TARGETS_MAX = 10;
+/** A person keeps at most this many subscriptions: saving one drops their oldest beyond it. */
+export const NOTIFY_PUSH_SUBS_KEPT = 20;
 
 /** A Web Push endpoint the cron may call: https, ≤ 1000 chars, no whitespace or controls. */
 export function notifyPushEndpointOk(endpoint: unknown): endpoint is string {

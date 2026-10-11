@@ -834,7 +834,8 @@
         "team": "Team",
         "trainingGrading": "Training & grading",
         "merchiva": "Mr. Merchiva",
-        "drive": "Drive (everyone's files)"
+        "drive": "Drive (everyone's files)",
+        "storeDevice": "Store device"
       },
       "toastInviteSent": "Invitation sent",
       "toastInviteCreateFailed": "Could not create invitation",
@@ -1756,7 +1757,10 @@
       "leaveLastBody": "You're the only member. Once you leave, nobody can open this channel again.",
       "soloNoteStaff": "Only you are here so far. An owner or manager can add people.",
       "createChannelPrompt": "Create a channel to get started."
-    }
+    },
+    "emoji": "Emoji",
+    "fromStore": "Store",
+    "fromStoreHint": "Sent from the store device"
   },
   "dashboard": {
     "greeting": {
@@ -5057,7 +5061,8 @@
     },
     "pager": {
       "page": "Page {n}"
-    }
+    },
+    "swipeToClose": "Swipe right or down to close"
   },
   "storeDevice": {
     "thisDevice": "Store device",
@@ -5089,7 +5094,8 @@
       "requests": "Requests",
       "docs": "Docs",
       "directory": "Directory",
-      "settings": "Settings"
+      "settings": "Settings",
+      "punch-in": "Punch In"
     },
     "noMembers": "No team members yet",
     "unnamed": "Unnamed",
@@ -5126,7 +5132,10 @@
     "logOutKeepSub": "Stay punched in · free the device for the next person",
     "sosCooldown": "An SOS was just sent. Managers have been alerted. You can send another in 2 minutes.",
     "sosUnregistered": "SOS not sent: this tablet isn't registered as a store device. Call a manager.",
-    "sosFailed": "SOS not sent. Check the connection and try again, or call a manager."
+    "sosFailed": "SOS not sent. Check the connection and try again, or call a manager.",
+    "managersAlways": "Managers can always set up a store device.",
+    "notAllowedTitle": "This account can't run a store device",
+    "notAllowedDesc": "Ask an owner to turn on the store device permission for you, or use this device another way."
   },
   "personalDevice": {
     "leaveBtn": "Leave",
@@ -5229,7 +5238,11 @@
       "onShift": "On shift",
       "onBreak": "On break",
       "off": "Off",
-      "since": "since"
+      "since": "since",
+      "status": "Status",
+      "email": "Email",
+      "noEmail": "No email",
+      "joined": "Joined"
     },
     "settings": {
       "language": "Language",
@@ -5238,6 +5251,14 @@
       "themeLight": "Light",
       "themeDark": "Dark",
       "switchMode": "Switch device mode"
+    },
+    "chat": {
+      "openList": "Open channel list",
+      "channels": "Channels",
+      "inputMode": "Input mode",
+      "modeVoice": "Walkie-talkie",
+      "modeText": "Keyboard",
+      "resize": "Resize channel"
     }
   },
   "deviceApps": {

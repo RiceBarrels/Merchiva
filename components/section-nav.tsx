@@ -3,7 +3,8 @@
 // The section navigation shown at the top of every manager page that has
 // sub-pages. Replaces the old text-only PageTabs: each tab carries the same
 // multi-colour icon the sidebar and the device grids use, plus a one-line
-// description, so a section reads the same everywhere in Merchiva.
+// description, so a section reads the same everywhere in Merchiva. On phones
+// the tabs move to a bottom tab bar (SectionBottomNav).
 //
 // Tabs come from lib/manager-sections.ts — the sidebar's expanded sub-nav
 // renders from that same list, so the two can't drift apart.
@@ -18,37 +19,35 @@ import { isManagerRouteEnabled } from "@/lib/device-apps";
 import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
 import { usePermissions } from "@/lib/context/permissions";
 import { useT } from "@/lib/i18n/context";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 
-export function SectionNav({ section }: { section: string }) {
-  const t = useT();
-  const pathname = usePathname();
+function useSectionTabs(section: string) {
   const { installed } = useDeviceApps();
   const { can } = usePermissions();
-
-  const def = sectionById(section);
-  const tabs = (def?.tabs ?? []).filter(
+  return (sectionById(section)?.tabs ?? []).filter(
     (tab) =>
       isManagerRouteEnabled(tab.href, installed) &&
       (!tab.permissionKey || can(tab.permissionKey, "view")),
   );
+}
+
+function onNavigate() {
+  hapticLight();
+  skipNextPageTransition();
+}
+
+/** The section's tab row at the top of the page — `md` and up; phones get {@link SectionBottomNav}. */
+export function SectionNav({ section }: { section: string }) {
+  const t = useT();
+  const pathname = usePathname();
+  const tabs = useSectionTabs(section);
 
   if (tabs.length < 2) return null;
 
-  const onNavigate = () => {
-    hapticLight();
-    skipNextPageTransition();
-  };
-
   return (
-    <div className="border-b border-border bg-background shrink-0">
-      {/* Mobile: compact underline tabs. */}
-      <div className="flex md:hidden overflow-x-auto no-scrollbar">
-        {tabs.map((tab) => (
-          <MobileTab key={tab.href} tab={tab} active={isTabActive(tab, pathname)} label={t(tab.labelKey)} onNavigate={onNavigate} />
-        ))}
-      </div>
-      {/* Desktop: segmented cards with icon + description. */}
-      <div className="hidden md:flex overflow-x-auto no-scrollbar">
+    <div className="hidden md:block border-b border-border bg-background shrink-0">
+      {/* Segmented cards with icon + description. */}
+      <div className="flex overflow-x-auto no-scrollbar">
         {tabs.map((tab) => (
           <DesktopTab
             key={tab.href}
@@ -64,25 +63,26 @@ export function SectionNav({ section }: { section: string }) {
   );
 }
 
-function MobileTab({ tab, active, label, onNavigate }: {
-  tab: SectionTab;
-  active: boolean;
-  label: string;
-  onNavigate: () => void;
-}) {
-  const Icon = tab.icon;
+/**
+ * The same tabs as a bottom tab bar below `md`. Rendered by the section's route
+ * layouts after the page, so it sits at the end of the scroll root.
+ */
+export function SectionBottomNav({ section }: { section: string }) {
+  const t = useT();
+  const pathname = usePathname();
+  const tabs = useSectionTabs(section);
   return (
-    <Link
-      href={tab.href}
-      onClick={onNavigate}
-      className={cn(
-        "flex-1 shrink-0 flex items-center justify-center gap-1.5 px-3.5 py-2 text-[12px] font-medium border-b-2 transition-colors whitespace-nowrap",
-        active ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
-      )}
-    >
-      <Icon className="h-[15px] w-[15px] shrink-0" />
-      {label}
-    </Link>
+    <BottomTabBar
+      // A section is named after its first tab (Inventory → Inventory, Suppliers, Waste).
+      label={t(sectionById(section)?.tabs[0]?.labelKey ?? "")}
+      onNavigate={onNavigate}
+      tabs={tabs.map((tab) => ({
+        href: tab.href,
+        label: t(tab.labelKey),
+        icon: tab.icon,
+        active: isTabActive(tab, pathname),
+      }))}
+    />
   );
 }
 

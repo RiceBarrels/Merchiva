@@ -11,6 +11,20 @@ import { FakeIdentity, FakeTimestamp, FakeUuid, SERVICE_IDENTITY, loadModule, ty
 import { MODULE, acquire, createSheetWorld, errorOf, lease, newSheet, operatorSession, sheetClient } from "../helpers/sheet-server-harness";
 
 const S = 1_000_000n;
+
+/**
+ * The sheet world with orgA.staff as the store tablet's account: a staff account an owner allowed
+ * to run a store device (spacetimedb/src/device/store-access.ts), as every tablet's account must be.
+ */
+function createStoreWorld(): ReturnType<typeof createSheetWorld> {
+  const world = createSheetWorld();
+  allowStoreDevice(world.db, world.orgA.staff);
+  return world;
+}
+
+function allowStoreDevice(db: FakeDb, member: FakeMember): void {
+  db.patch("orgMember", member.memberId, { permissions: JSON.stringify({ store_device: { view: true } }) });
+}
 const { pruneEphemeral } = loadModule(["pruneEphemeral"]);
 
 /** A request row as createDeviceLoginRequest writes it; `requester: null` = one from before device_login_requester. */
@@ -37,7 +51,7 @@ function requesterHex(db: FakeDb, request: Row): string | null {
 
 describe("QR log-in writes the tablet's operator session (U7)", () => {
   test("the full handshake: request → phone approves → tablet consumes → it may act for the operator", () => {
-    const { db, orgA } = createSheetWorld();
+    const { db, orgA } = createStoreWorld();
     db.run(MODULE.createDeviceLoginRequest, orgA.staff, { organizationId: orgA.organizationId, deviceId: "tablet-1", nonce: "nonce-abcdef" });
     const request = db.rows("deviceLoginRequest")[0];
     expect(request).toMatchObject({ status: "pending", organizationId: orgA.organizationId });
@@ -62,7 +76,7 @@ describe("QR log-in writes the tablet's operator session (U7)", () => {
   });
 
   test("no session unless approved, unexpired, requested by the consumer and for an active member", () => {
-    const { db, orgA } = createSheetWorld();
+    const { db, orgA } = createStoreWorld();
     const cases: Array<[string, Record<string, unknown>, FakeMember | null]> = [
       ["a request from before device_login_requester", { memberId: orgA.colleague.memberId }, null],
       ["still pending", { status: "pending" }, orgA.staff],
@@ -80,7 +94,7 @@ describe("QR log-in writes the tablet's operator session (U7)", () => {
   });
 
   test("only the requester (or the service identity) consumes a request; one from before the requester table is anyone's", () => {
-    const { db, orgA } = createSheetWorld();
+    const { db, orgA } = createStoreWorld();
     // device_login_requester is readable by anyone (a rule-free join target), so a colleague may know the id.
     const id = qr(db, orgA.staff, { memberId: orgA.colleague.memberId });
     expect(errorOf(() => db.run(MODULE.consumeDeviceLogin, orgA.owner, { id }))).toBe("Request not found");
@@ -100,7 +114,7 @@ describe("QR log-in writes the tablet's operator session (U7)", () => {
   // Review (compat r1): after the publish no tablet can read a request that has no requester row (the rule joins
   // device_login_requester), so approving one reported a success the tablet never saw, and a rescan said "used".
   test("a pending QR from before device_login_requester is refused as expired, for every intent", () => {
-    const { db, orgA } = createSheetWorld();
+    const { db, orgA } = createStoreWorld();
     const pending = { status: "pending", intent: undefined };
     for (const intent of ["login", "punch-in", "punch-out"]) {
       const legacy = qr(db, orgA.staff, { ...pending, nonce: `nonce-legacy-${intent}` }, null);
@@ -115,8 +129,24 @@ describe("QR log-in writes the tablet's operator session (U7)", () => {
     expect(db.find("deviceLoginRequest", fresh)).toMatchObject({ status: "approved", memberId: orgA.colleague.memberId });
   });
 
+  test("only an account allowed to run a store device asks for or consumes a QR log-in", () => {
+    const { db, orgA } = createStoreWorld();
+    const request = { organizationId: orgA.organizationId, deviceId: "tablet-1", nonce: "nonce-abcdef" };
+    expect(errorOf(() => db.run(MODULE.createDeviceLoginRequest, orgA.colleague, request))).toContain("[store_device]");
+    expect(db.rows("deviceLoginRequest")).toHaveLength(0);
+    const id = qr(db, orgA.colleague, { memberId: orgA.manager.memberId });
+    expect(errorOf(() => db.run(MODULE.consumeDeviceLogin, orgA.colleague, { id }))).toContain("[store_device]");
+    expect(db.find("deviceOperatorSession", orgA.colleague.identity)).toBeNull();
+    // A manager may, by role.
+    db.run(MODULE.createDeviceLoginRequest, orgA.manager, request);
+    expect(db.rows("deviceLoginRequest").some((r) => r.nonce === "nonce-abcdef")).toBe(true);
+  });
+
   test("a colleague cannot re-issue a tablet's QR to take the session its approval writes", () => {
-    const { db, orgA, orgB } = createSheetWorld();
+    const { db, orgA, orgB } = createStoreWorld();
+    // The colleague and the other store run tablets of their own.
+    allowStoreDevice(db, orgA.colleague);
+    allowStoreDevice(db, orgB.staff);
     const request = { organizationId: orgA.organizationId, deviceId: "tablet-1", nonce: "nonce-abcdef" };
     db.run(MODULE.createDeviceLoginRequest, orgA.staff, request);
     // A colleague who learned the tablet's deviceId + nonce (rows were org-readable before the requester rule) replays them.
@@ -139,7 +169,7 @@ describe("QR log-in writes the tablet's operator session (U7)", () => {
   });
 
   test("the tablet may re-issue its own nonce; a nonce held by two rows is never approved", () => {
-    const { db, orgA } = createSheetWorld();
+    const { db, orgA } = createStoreWorld();
     const request = { organizationId: orgA.organizationId, deviceId: "tablet-1", nonce: "nonce-abcdef" };
     db.run(MODULE.createDeviceLoginRequest, orgA.staff, request);
     db.run(MODULE.createDeviceLoginRequest, orgA.staff, request);   // the QR pane re-enabled with the same nonce
@@ -154,7 +184,8 @@ describe("QR log-in writes the tablet's operator session (U7)", () => {
   });
 
   test("a requester row lives exactly as long as its request (stale prune, re-issue, pruneEphemeral)", () => {
-    const { db, orgA } = createSheetWorld();
+    const { db, orgA } = createStoreWorld();
+    allowStoreDevice(db, orgA.colleague);   // the second tablet's account
     const request = { organizationId: orgA.organizationId, deviceId: "tablet-1", nonce: "nonce-abcdef" };
     db.run(MODULE.createDeviceLoginRequest, orgA.staff, request);
     db.run(MODULE.createDeviceLoginRequest, orgA.colleague, { ...request, deviceId: "tablet-2", nonce: "nonce-other-1" });
@@ -177,7 +208,7 @@ describe("QR log-in writes the tablet's operator session (U7)", () => {
   });
 
   test("a later QR log-in replaces the tablet's operator", () => {
-    const { db, orgA } = createSheetWorld();
+    const { db, orgA } = createStoreWorld();
     operatorSession(db, orgA.staff, orgA.manager, db.nowMicros - 5n * S);
     db.run(MODULE.consumeDeviceLogin, orgA.staff, { id: qr(db, orgA.staff, { memberId: orgA.colleague.memberId }) });
     const row = db.find("deviceOperatorSession", orgA.staff.identity);

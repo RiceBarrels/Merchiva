@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- user attachments on arbitrary hosts */
 
-import { Fragment, useMemo } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { CheckCircle2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
@@ -125,6 +125,21 @@ function Quote({ id }: { id: string }) {
   );
 }
 
+/** An AI-summarised walkie voice note: the summary is the message, the words said are a tap away. */
+function VoiceOriginal({ transcript }: { transcript: string }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-1">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+        <span className="rounded bg-muted px-1 text-[10px] font-semibold leading-4">AI</span>
+        {open ? t("device.hideOriginal") : t("device.showOriginal")}
+      </button>
+      {open && <p className="mt-1 whitespace-pre-wrap border-s-2 border-border ps-2.5 text-[13px] text-muted-foreground">{transcript}</p>}
+    </div>
+  );
+}
+
 export function MessageBody({ entry }: { entry: ChatEntry }) {
   const t = useT();
   if (entry.deleted) {
@@ -138,6 +153,7 @@ export function MessageBody({ entry }: { entry: ChatEntry }) {
         <>
           <RichText text={entry.content} />
           {entry.editedAt != null && <span className="ms-1 text-[11px] text-muted-foreground">{t("chat.ws.edited")}</span>}
+          {entry.voiceTranscript && <VoiceOriginal transcript={entry.voiceTranscript} />}
         </>
       )}
       {entry.attachment && <Attachment attachment={entry.attachment} />}

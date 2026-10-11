@@ -18,7 +18,7 @@ import {
   type NotifyIdentity, type NotifySchema,
 } from './deliver';
 import {
-  NOTIFY_EMERGENCY_TEMPLATE, NOTIFY_IDENTITY_HEX_RE, NOTIFY_PUSH_KEY_MAX, notifyClamp,
+  NOTIFY_EMERGENCY_TEMPLATE, NOTIFY_IDENTITY_HEX_RE, NOTIFY_PUSH_KEY_MAX, NOTIFY_PUSH_SUBS_KEPT, notifyClamp,
   notifyFollowId, notifyIdentityClaims, notifyNormalizeLocale, notifyParseIdList, notifyPushEndpointOk,
 } from './logic';
 
@@ -140,7 +140,9 @@ export function defineNotifyReducers(spacetimedb: NotifySchema, deps: NotifyDeps
    * Upserts the caller's subscription for one endpoint in one organization.
    * A browser's endpoint belongs to the last account that subscribed in it:
    * another identity's row for the same endpoint would push that person's
-   * alerts to whoever uses the browser now, so it goes.
+   * alerts to whoever uses the browser now, so it goes. A browser that
+   * re-subscribes gets a new endpoint and never says the old one is dead, so
+   * the caller keeps only their NOTIFY_PUSH_SUBS_KEPT newest rows.
    */
   const savePushSubscription = spacetimedb.reducer(
     {
@@ -170,6 +172,15 @@ export function defineNotifyReducers(spacetimedb: NotifySchema, deps: NotifyDeps
         userAgent: userAgent == null ? undefined : notifyClamp(userAgent, NOTIFY_USER_AGENT_MAX),
         createdAt: ctx.timestamp,
       });
+      const mine = [...ctx.db.pushSubscription.byTargetId.filter(ctx.sender)];
+      if (mine.length > NOTIFY_PUSH_SUBS_KEPT) {
+        mine.sort((a, b) => {
+          const am = notifyMicros(a.createdAt);
+          const bm = notifyMicros(b.createdAt);
+          return am === bm ? 0 : am < bm ? 1 : -1;
+        });
+        for (const stale of mine.slice(NOTIFY_PUSH_SUBS_KEPT)) ctx.db.pushSubscription.delete(stale);
+      }
     }
   );
 

@@ -7,10 +7,13 @@
 // answers go to the respondent's My files through lib/forms/uploads.ts; on a
 // staff-account store tablet they are off (decision C6b) and say why. Each
 // question renders through the shared components/forms/renderer/lite-question.
+// On /personal it fills a page (components/device/apps/lite-page.tsx) and takes the page's Back:
+// one question back, or "leave without sending?" once something is answered.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, CheckCircle2, Send, X } from "lucide-react";
 import { DeviceDrawer } from "@/components/device/device-drawer";
+import { useDynamicUIElementPageBack, useDynamicUIElementPageClose } from "@/components/ui/dynamic-ui-element-page";
 import { LiteQuestion } from "@/components/forms/renderer/lite-question";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n/context";
@@ -22,6 +25,7 @@ import { formsErrorKey, submitFormResponse } from "@/lib/spacetimedb/actions/for
 import { useFormUploadDevice } from "@/lib/spacetimedb/hooks/useForms";
 import { newDocumentId } from "@/lib/docs/ids";
 import type { OrgRole } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { LiteButton, LiteScreen, LiteSection } from "./lite";
 import type { LiteMember } from "./types";
 
@@ -93,6 +97,10 @@ export function FormFill({ form, definition: def, surface, organizationId, membe
   const [leaving, setLeaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  // In a page the page's Back leads (and its title shows): leaving slides the page out.
+  const closePage = useDynamicUIElementPageClose();
+  const inPage = closePage !== null;
+  const exit = closePage ?? onClose;
 
   const setAnswer = (id: string, value: AnswerValue | undefined) => {
     setError(null);
@@ -175,13 +183,22 @@ export function FormFill({ form, definition: def, surface, organizationId, membe
     else if (Object.keys(answers).length > 0) setLeaving(true);
     else onClose();
   };
+  /** The page's Back: true when the form took it (a step back, the leave question, a send in flight). */
+  const pageBack = (): boolean => {
+    if (sent) return false;
+    if (sending) return true;
+    if (!oneScreen && step > 0) { setStep(step - 1); return true; }
+    if (Object.keys(answers).length > 0) { setLeaving(true); return true; }
+    return false;
+  };
+  useDynamicUIElementPageBack(inPage ? pageBack : null);
 
   if (sent) {
     return (
-      <LiteScreen className="items-center justify-center text-center">
+      <LiteScreen className={cn("items-center justify-center text-center", inPage && "flex-1 p-0")}>
         <CheckCircle2 className="h-14 w-14 text-emerald-600" />
         <p className="text-[18px] font-semibold">{def.settings.confirmation || t("device.lite.forms.thanks")}</p>
-        <LiteButton icon={Check} label={t("common.done")} onClick={onClose} />
+        <LiteButton icon={Check} label={t("common.done")} onClick={exit} />
       </LiteScreen>
     );
   }
@@ -210,18 +227,25 @@ export function FormFill({ form, definition: def, surface, organizationId, membe
   };
 
   return (
-    <LiteScreen>
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={back} aria-label={t("common.back")} className="grid h-11 w-11 flex-none place-items-center rounded-lg border border-border active:bg-muted">
-          <ArrowLeft className="h-5 w-5 rtl:rotate-180" />
-        </button>
-        <h2 className="min-w-0 flex-1 truncate text-[17px] font-semibold">{def.title || form.title}</h2>
-        {!oneScreen && steps.length > 0 && (
-          <span className="flex-none font-mono text-[15px] tabular-nums text-muted-foreground">
-            {fmt(t("device.lite.forms.progress"), { n: step + 1, total: steps.length })}
-          </span>
-        )}
-      </div>
+    <LiteScreen className={inPage ? "flex-1 p-0" : undefined}>
+      {/* In a page its corner Back and title pill take this row's place; the progress stays. */}
+      {(!inPage || (!oneScreen && steps.length > 0)) && (
+        <div className="flex items-center gap-2">
+          {!inPage && (
+            <>
+              <button type="button" onClick={back} aria-label={t("common.back")} className="grid h-11 w-11 flex-none place-items-center rounded-lg border border-border active:bg-muted">
+                <ArrowLeft className="h-5 w-5 rtl:rotate-180" />
+              </button>
+              <h2 className="min-w-0 flex-1 truncate text-[17px] font-semibold">{def.title || form.title}</h2>
+            </>
+          )}
+          {!oneScreen && steps.length > 0 && (
+            <span className={cn("flex-none font-mono text-[15px] tabular-nums text-muted-foreground", inPage && "ms-auto")}>
+              {fmt(t("device.lite.forms.progress"), { n: step + 1, total: steps.length })}
+            </span>
+          )}
+        </div>
+      )}
       {!oneScreen && steps.length > 0 && (
         <div className="h-1.5 overflow-hidden rounded-full bg-muted">
           <div className="h-full bg-primary transition-[width] duration-200" style={{ width: `${((step + 1) / steps.length) * 100}%` }} />
@@ -261,7 +285,7 @@ export function FormFill({ form, definition: def, surface, organizationId, membe
         onOpenChange={setLeaving}
         title={t("device.lite.forms.leaveTitle")}
         cancelLabel={t("device.lite.forms.keepEditing")}
-        options={[{ id: "leave", icon: X, tone: "warn", label: t("device.lite.forms.leave"), sub: t("device.lite.forms.leaveSub"), onSelect: () => { setLeaving(false); onClose(); } }]}
+        options={[{ id: "leave", icon: X, tone: "warn", label: t("device.lite.forms.leave"), sub: t("device.lite.forms.leaveSub"), onSelect: () => { setLeaving(false); exit(); } }]}
       />
     </LiteScreen>
   );

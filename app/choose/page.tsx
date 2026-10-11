@@ -25,6 +25,7 @@ import { getAppMode, setAppMode, APP_MODE_HOME, type AppMode } from "@/lib/app-m
 import { setStoreMachineMode, setDeviceName, getDeviceName, getOrCreateDeviceId } from "@/lib/store-machine-mode";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { evaluateSubscription } from "@/lib/billing/subscription";
+import { canRunStoreDevice } from "@/lib/store-device-access";
 
 interface MemberRow {
   id: { toString(): string };
@@ -83,7 +84,7 @@ function ChooseModeInner() {
   // Also stay put when Stripe sends the user back here after checkout.
   const forceShow = sp.get("switch") === "1" || sp.has("status");
   const { user, signOut } = useAuth();
-  const { role, organizationId, organizations, currentOrg, pickOrg } = usePermissions();
+  const { role, permissions, organizationId, organizations, currentOrg, pickOrg } = usePermissions();
   const showStores = organizations.length > 1;
   const stdb = useSpacetimeDB();
   const identityString = stdb?.identity?.toString() ?? null;
@@ -119,6 +120,9 @@ function ChooseModeInner() {
     [punchCodeRows, identityString, organizationId],
   );
   const canAdmin = role === "owner" || role === "manager";
+  // A shared store device: owners, managers and members an owner allowed (the module enforces it
+  // too). Nobody else is offered the mode at all.
+  const canStore = canRunStoreDevice(role, permissions);
 
   // The paywall lives here, not behind the mode cards: if the selected store's
   // subscription is out of access the chooser embeds the subscribe
@@ -137,7 +141,11 @@ function ChooseModeInner() {
 
   // Lazy initialisers are safe here: the manager layout only renders this page
   // client-side once auth has loaded, so there's no SSR hydration to mismatch.
-  const [mode, setMode] = useState<AppMode | null>(() => getAppMode() ?? (canAdmin ? "admin" : "personal"));
+  const [mode, setMode] = useState<AppMode | null>(() => {
+    const stored = getAppMode();
+    if (stored && (stored !== "store" || canStore)) return stored;
+    return canAdmin ? "admin" : "personal";
+  });
   const [deviceNameInput, setDeviceNameInput] = useState(() => getDeviceName());
   const [pinInput, setPinInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -149,17 +157,18 @@ function ChooseModeInner() {
   useEffect(() => {
     if (forceShow) return;
     const existing = getAppMode();
-    if (!existing) return;
+    // A store device whose account may no longer run one stays here to pick another mode.
+    if (!existing || (existing === "store" && !canStore)) return;
     let storedOrg: string | null = null;
     try { storedOrg = localStorage.getItem("active_org_id"); } catch {}
     if (organizations.length <= 1 || storedOrg) router.replace(APP_MODE_HOME[existing]);
-  }, [forceShow, organizations.length, router]);
+  }, [forceShow, organizations.length, router, canStore]);
 
   const storeReady =
     mode !== "store" || (deviceNameInput.trim().length > 0 && (hasPin || /^\d{4}$/.test(pinInput)));
 
   const handleContinue = async () => {
-    if (!mode || busy || !storeReady) return;
+    if (!mode || busy || !storeReady || (mode === "store" && !canStore)) return;
     setBusy(true);
     setError("");
     try {
@@ -251,16 +260,18 @@ function ChooseModeInner() {
               selected={mode === "personal"}
               onSelect={() => { hapticLight(); setMode("personal"); }}
             />
-            <ModeCard
-              icon={StoreModeIcon}
-              title={t("chooseMode.storeTitle")}
-              description={t("chooseMode.storeDesc")}
-              selected={mode === "store"}
-              onSelect={() => { hapticLight(); setMode("store"); }}
-            />
+            {canStore && (
+              <ModeCard
+                icon={StoreModeIcon}
+                title={t("chooseMode.storeTitle")}
+                description={t("chooseMode.storeDesc")}
+                selected={mode === "store"}
+                onSelect={() => { hapticLight(); setMode("store"); }}
+              />
+            )}
           </div>
 
-          {mode === "store" && (
+          {mode === "store" && canStore && (
             <div className="mt-4 space-y-3 rounded-[0.3rem] border border-stone-200 dark:border-stone-700 p-4">
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">

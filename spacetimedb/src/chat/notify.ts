@@ -55,7 +55,8 @@ function chatStaffOperator(ctx: ChatCtx, organizationId: string, sender: ChatAct
 }
 
 /**
- * Notifications of `message`, just sent by ctx.sender in `conv`. `recipients`
+ * Notifications of `message`, just sent by its sender in `conv` (ctx.sender, or the operator a
+ * store tablet sent it for). `recipients`
  * defaults to every member of the conversation; a thread reply passes its
  * participants, joined by anyone named with `@Name` and anyone following the
  * sender (still only members of the conversation). Only active members of the
@@ -64,7 +65,7 @@ function chatStaffOperator(ctx: ChatCtx, organizationId: string, sender: ChatAct
  */
 export function notifyChatMessage(ctx: ChatCtx, conv: ChatConversationRow, message: ChatMessageRow, recipients?: ChatIdentity[]): void {
   const conversationId = message.conversationId;
-  const senderHex = ctx.sender.toHexString();
+  const senderHex = message.senderId.toHexString();
   const members = [...ctx.db.chatMember.byConversationId.filter(conversationId)];
   const active = chatActiveMembers(ctx, conv.organizationId);
   const sender = active.get(senderHex);
@@ -85,7 +86,7 @@ export function notifyChatMessage(ctx: ChatCtx, conv: ChatConversationRow, messa
     const hex = m.userId.toHexString();
     if (hex === senderHex || done.has(hex) || !active.has(hex)) continue;
     const named = mentions.users.has(hex);
-    const follows = notifyFollows(ctx, conv.organizationId, m.userId, ctx.sender);
+    const follows = notifyFollows(ctx, conv.organizationId, m.userId, message.senderId);
     if (wanted && !wanted.has(hex) && !named && !follows) continue;
     const state = ctx.db.chatMemberState.id.find(chatMemberStateId(conversationId, hex));
     const how = chatDelivery({ muted: state?.muted === true, named, everyone, follows });
@@ -115,20 +116,20 @@ export function notifyMerchivaMessage(ctx: ChatCtx, conv: ChatConversationRow, m
 }
 
 /**
- * The first pin of `message` by ctx.sender (chat_pin_notice remembers it, so
- * unpinning and pinning again tells nobody twice): every active member of
+ * The first pin of `message` by `by` (ctx.sender, or a store tablet's operator; chat_pin_notice
+ * remembers it, so unpinning and pinning again tells nobody twice): every active member of
  * the conversation but the pinner and those who muted it, by email too.
  */
-export function notifyChatPin(ctx: ChatCtx, conv: ChatConversationRow, message: ChatMessageRow): void {
+export function notifyChatPin(ctx: ChatCtx, conv: ChatConversationRow, message: ChatMessageRow, by: ChatIdentity = ctx.sender): void {
   const messageId = message.id.toString();
   if (ctx.db.chatPinNotice.messageId.find(messageId) != null) return;
   ctx.db.chatPinNotice.insert({ messageId, createdAt: ctx.timestamp });
   const conversationId = message.conversationId;
   const active = chatActiveMembers(ctx, conv.organizationId);
-  const actor = active.get(ctx.sender.toHexString())?.name || notifyStoreName(ctx, conv.organizationId);
+  const actor = active.get(by.toHexString())?.name || notifyStoreName(ctx, conv.organizationId);
   const preview = notifyPreview(message.content, !!message.attachmentUrl);
   const params = { actor, preview, conversation: chatConversationLabel(conv) };
-  const done = new Set<string>([ctx.sender.toHexString()]);
+  const done = new Set<string>([by.toHexString()]);
   for (const m of [...ctx.db.chatMember.byConversationId.filter(conversationId)]) {
     const hex = m.userId.toHexString();
     if (done.has(hex) || !active.has(hex)) continue;

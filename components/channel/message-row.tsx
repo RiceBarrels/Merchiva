@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pin, SmilePlus } from "lucide-react";
+import { Pin, SmilePlus, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { fmt as fill } from "@/lib/i18n/fmt";
 import { useDateFormat } from "@/lib/i18n/use-date-format";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import type { ChatEntry } from "@/lib/chat/model";
-import { editChatMessage, toggleChatReaction } from "@/lib/spacetimedb/actions/chat";
 import { useChannelWorkspace } from "@/components/channel/context";
 import { MessageBody } from "@/components/channel/message-body";
 import { ActionSheet, HoverToolbar, ReactionPicker } from "@/components/channel/message-actions";
@@ -36,7 +36,7 @@ export function SenderAvatar({ entry, size = "lg" }: { entry: Pick<ChatEntry, "s
 
 function ReactionBar({ entry }: { entry: ChatEntry }) {
   const t = useT();
-  const { run, nameOf } = useChannelWorkspace();
+  const { run, writes, nameOf } = useChannelWorkspace();
   if (entry.reactions.length === 0) return null;
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -44,7 +44,7 @@ function ReactionBar({ entry }: { entry: ChatEntry }) {
         <button
           key={r.emoji}
           type="button"
-          onClick={() => void run(() => toggleChatReaction(entry.conversationId, entry.id, r.emoji))}
+          onClick={() => void run(() => writes.react(entry.conversationId, entry.id, r.emoji))}
           title={fill(t("chat.ws.reactedBy"), { names: r.userHexes.map((h) => nameOf(h)).join(", "), emoji: r.emoji })}
           aria-pressed={r.mine}
           className={cn(
@@ -88,7 +88,7 @@ function ThreadSummaryLink({ entry, onOpen }: { entry: ChatEntry; onOpen: () => 
 
 function InlineEditor({ entry, onDone }: { entry: ChatEntry; onDone: () => void }) {
   const t = useT();
-  const { run } = useChannelWorkspace();
+  const { run, writes } = useChannelWorkspace();
   const [text, setText] = useState(entry.content);
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -99,7 +99,7 @@ function InlineEditor({ entry, onDone }: { entry: ChatEntry; onDone: () => void 
   }, []);
   const save = async () => {
     if (text.trim() === entry.content.trim()) return onDone();
-    if (await run(() => editChatMessage(entry.conversationId, entry.id, text))) onDone();
+    if (await run(() => writes.edit(entry.conversationId, entry.id, text))) onDone();
   };
   return (
     <div className="mt-0.5 rounded-lg border border-border bg-background focus-within:border-ring">
@@ -186,6 +186,12 @@ export function MessageRow({ entry, compact, inThread = false }: MessageRowProps
             <span className="truncate text-sm font-semibold text-foreground">{nameOf(entry.senderHex, entry.isMerchiva)}</span>
             {!entry.isMerchiva && role && role !== "staff" && (
               <span className="text-[10px] uppercase tracking-[0.6px] text-muted-foreground">{t(`personnel.team.role.${role}`)}</span>
+            )}
+            {entry.fromStore && (
+              // Sent from the store's shared tablet (after a PIN / QR log-in), not the author's own device.
+              <StatusBadge tone="neutral" size="xs" className="shrink-0 gap-1" title={t("chat.fromStoreHint")}>
+                <Store className="h-3 w-3" />{t("chat.fromStore")}
+              </StatusBadge>
             )}
             <time className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground" title={fmt(entry.createdAt, FULL)}>
               {fmt(entry.createdAt, TIME)}

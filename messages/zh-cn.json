@@ -834,7 +834,8 @@
         "team": "团队",
         "trainingGrading": "培训与评分",
         "merchiva": "Mr. Merchiva",
-        "drive": "云盘（所有人的文件）"
+        "drive": "云盘（所有人的文件）",
+        "storeDevice": "门店设备"
       },
       "toastInviteSent": "邀请已发送",
       "toastInviteCreateFailed": "无法创建邀请",
@@ -1756,7 +1757,10 @@
       "leaveLastBody": "你是唯一的成员。退出后，任何人都无法再打开这个频道。",
       "soloNoteStaff": "目前只有你在这里。所有者或经理可以添加成员。",
       "createChannelPrompt": "创建一个频道开始吧。"
-    }
+    },
+    "emoji": "表情",
+    "fromStore": "门店",
+    "fromStoreHint": "在门店设备上发送"
   },
   "dashboard": {
     "greeting": {
@@ -5057,7 +5061,8 @@
     },
     "pager": {
       "page": "第 {n} 页"
-    }
+    },
+    "swipeToClose": "右/下滑关闭程序"
   },
   "storeDevice": {
     "thisDevice": "门店设备",
@@ -5089,7 +5094,8 @@
       "requests": "申请",
       "docs": "文档",
       "directory": "通讯录",
-      "settings": "设置"
+      "settings": "设置",
+      "punch-in": "打卡"
     },
     "noMembers": "还没有团队成员",
     "unnamed": "未命名",
@@ -5126,7 +5132,10 @@
     "logOutKeepSub": "保持打卡状态 · 把设备留给下一个人",
     "sosCooldown": "刚刚已发出 SOS，店长已收到提醒。2 分钟后才能再次发送。",
     "sosUnregistered": "SOS 未发出：这台平板未登记为门店设备。请直接联系店长。",
-    "sosFailed": "SOS 未发出。请检查网络后重试，或直接联系店长。"
+    "sosFailed": "SOS 未发出。请检查网络后重试，或直接联系店长。",
+    "managersAlways": "经理始终可以设置门店设备。",
+    "notAllowedTitle": "这个账号不能用作门店设备",
+    "notAllowedDesc": "请让店主为你开启「门店设备」权限，或者换一种方式使用这台设备。"
   },
   "personalDevice": {
     "leaveBtn": "离开",
@@ -5229,7 +5238,11 @@
       "onShift": "上班中",
       "onBreak": "休息中",
       "off": "下班",
-      "since": "自"
+      "since": "自",
+      "status": "状态",
+      "email": "邮箱",
+      "noEmail": "没有邮箱",
+      "joined": "加入时间"
     },
     "settings": {
       "language": "语言",
@@ -5238,6 +5251,14 @@
       "themeLight": "浅色",
       "themeDark": "深色",
       "switchMode": "切换设备模式"
+    },
+    "chat": {
+      "openList": "打开频道列表",
+      "channels": "频道",
+      "inputMode": "输入方式",
+      "modeVoice": "对讲",
+      "modeText": "键盘",
+      "resize": "调整频道宽度"
     }
   },
   "deviceApps": {

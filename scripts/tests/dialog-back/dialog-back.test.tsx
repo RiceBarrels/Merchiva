@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dynamic-ui-element-back";
 
 const ROOT = join(import.meta.dir, "..", "..", "..");
-const PAGE_SRC = readFileSync(join(ROOT, "components/ui/dynamic-ui-element.tsx"), "utf8");
+const PAGE_SRC = readFileSync(join(ROOT, "components/ui/dynamic-ui-element-page.tsx"), "utf8");
 
 function bar(title: string, exiting = false): string {
   return renderToStaticMarkup(h(DynamicUIElementBackBar, { title, onBack: () => {}, exiting }));
@@ -33,6 +33,10 @@ describe("dialogBackVisible", () => {
     // Desktop never renders the phone page; no shell is marked under MobileShell, /store or /personal.
     expect(dialogBackVisible("desktop")).toBe(false);
     expect(dialogBackVisible(null)).toBe(false);
+  });
+
+  test("a page opened inside a device app (a DialogHost) shows it too", () => {
+    expect(dialogBackVisible(null, true)).toBe(true);
   });
 });
 
@@ -100,9 +104,11 @@ describe("the phone page keeps the [data-dialog-back] contract", () => {
   });
 
   test("Back slides the page out, then clicks its hidden Close", () => {
-    const handler = /const goBack = React\.useCallback\(\(\) => \{([\s\S]*?)\}, \[\]\);/.exec(PAGE_SRC)?.[1] ?? "";
-    expect(handler).toContain("setExiting(true);");
-    expect(handler).toContain("closeRef.current?.click()");
+    const back = /const goBack = React\.useCallback\(\(\) => \{([\s\S]*?)\}, \[leave\]\);/.exec(PAGE_SRC)?.[1] ?? "";
+    expect(back).toContain("leave();");
+    const leave = /const leave = React\.useCallback\(\(velocity = 0\) => \{([\s\S]*?)\}, \[slide\]\);/.exec(PAGE_SRC)?.[1] ?? "";
+    expect(leave).toContain("setExiting(true);");
+    expect(leave).toContain(".then(() => closeRef.current?.click())");
     expect(PAGE_SRC).toContain('<DialogPrimitive.Close ref={closeRef} className="hidden" />');
   });
 

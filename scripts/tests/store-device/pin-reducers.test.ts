@@ -30,13 +30,19 @@ const FREE = PIN_FREE_FAILURES - 1;
 /** A distinct 4-digit code no member of the world uses (9000–9999). */
 const wrong = (i: number) => `9${String(i).padStart(3, "0")}`;
 
+/** A staff account an owner allowed to run a store device (device/store-access.ts). */
+const STORE_DEVICE = JSON.stringify({ store_device: { view: true } });
+
 interface World {
   db: FakeDb;
   org: string;
   owner: FakeMember;
   manager: FakeMember;
+  /** Also signed in on a second tablet in some tests, so it may run one too. */
   staff: FakeMember;
   tablet: FakeMember;
+  /** A staff account nobody allowed to run a store device. */
+  plain: FakeMember;
 }
 
 function world(): World {
@@ -44,7 +50,8 @@ function world(): World {
   const org = crypto.randomUUID();
   const add = (role: string, displayName: string, permissions = "{}") =>
     db.addMember({ organizationId: org, role, displayName, permissions });
-  const w = { db, org, owner: add("owner", "Olive"), manager: add("manager", "Max"), staff: add("staff", "Sam"), tablet: add("staff", "Front tablet") };
+  const w = { db, org, owner: add("owner", "Olive"), manager: add("manager", "Max"), staff: add("staff", "Sam", STORE_DEVICE), tablet: add("staff", "Front tablet", STORE_DEVICE),
+    plain: add("staff", "Pat") };
   const code = (m: FakeMember, c: string) => db.insert("memberPunchCode", {
     memberId: m.memberId, organizationId: org, userId: m.identity, code: c, updatedAt: new FakeTimestamp(db.nowMicros),
   });
@@ -134,7 +141,7 @@ describe("resolveDeviceOperatorAttempt", () => {
 
   test("the store-wide cap pauses PIN entry for every identity", () => {
     const w = world();
-    const guessers = Array.from({ length: 13 }, (_, i) => w.db.addMember({ organizationId: w.org, displayName: `g${i}` }));
+    const guessers = Array.from({ length: 13 }, (_, i) => w.db.addMember({ organizationId: w.org, displayName: `g${i}`, permissions: STORE_DEVICE }));
     let n = 0;
     for (const g of guessers) for (let i = 0; i < FREE && n < PIN_ORG_LOCK_FAILURES; i++, n++) guess(w, g, `80${String(n).padStart(2, "0")}`);
     guess(w, w.staff, "3333");
@@ -325,6 +332,29 @@ describe("setting a punch code", () => {
     for (let i = 0; i < FREE; i++) attempt(w.db, M.setPunchInCode, w.tablet, { ...self, code: "2222" });
     expect(attempt(w.db, M.setPunchInCode, w.tablet, { ...self, code: "8888" })).toBe("PIN_LOCKED");
     expect(attempt(w.db, M.setPunchInCode, w.tablet, { ...self, code: undefined })).toBeNull();
+  });
+});
+
+describe("only an account allowed to run a store device logs people in and punches for them", () => {
+  test("staff without the store device permission are refused; owners, managers and permitted staff are not", () => {
+    const w = world();
+    const denied = "[store_device]";
+    expect(attempt(w.db, R.resolveDeviceOperatorAttempt, w.plain, { organizationId: w.org, code: "3333", requestId: "p" })).toContain(denied);
+    expect(session(w, w.plain)).toBeNull();
+    expect(attempt(w.db, R.recordOperatorPunch, w.plain, { organizationId: w.org, action: "in", grantId: "p" })).toContain(denied);
+    expect(attempt(w.db, M.resolveDeviceOperator, w.plain, { organizationId: w.org, code: "3333" })).toContain(denied);
+    expect(attempt(w.db, M.recordPunch, w.plain, { organizationId: w.org, code: "3333", action: "in" })).toContain(denied);
+    for (const who of [w.owner, w.manager, w.tablet]) {
+      expect(attempt(w.db, R.resolveDeviceOperatorAttempt, who, { organizationId: w.org, code: "3333", requestId: "ok" })).toBeNull();
+      expect(session(w, who)).toMatchObject({ memberId: w.staff.memberId });
+    }
+  });
+
+  test("a grant written before the account lost the permission punches nobody", () => {
+    const w = world();
+    w.db.run(R.resolveDeviceOperatorAttempt, w.tablet, { organizationId: w.org, code: "3333", requestId: "g" });
+    w.db.patch("orgMember", w.tablet.memberId, { permissions: "{}" });
+    expect(attempt(w.db, R.recordOperatorPunch, w.tablet, { organizationId: w.org, action: "in", grantId: "g" })).toContain("[store_device]");
   });
 });
 

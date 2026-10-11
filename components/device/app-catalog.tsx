@@ -282,11 +282,9 @@ export function useDeviceBuiltins(surface: "store" | "personal"): DeviceApp[] {
   const ns = surface === "store" ? "storeDevice" : "personalDevice";
   return useMemo(
     () =>
-      DEFAULT_DEVICE_APPS.filter((a) => {
-        if (surface === "store" && a.id === "punch-in") return false;
-        return isDeviceAppInstalled(a.id, installed);
-      }).map((a) => ({ ...a, label: t(`${ns}.apps.${a.id}`) })),
-    [surface, installed, t, ns],
+      // The store has Punch in too: its operator punches with a tap, no QR (components/personal-device/punch-panel.tsx).
+      DEFAULT_DEVICE_APPS.filter((a) => isDeviceAppInstalled(a.id, installed)).map((a) => ({ ...a, label: t(`${ns}.apps.${a.id}`) })),
+    [installed, t, ns],
   );
 }
 

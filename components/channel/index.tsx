@@ -8,39 +8,29 @@
 //
 // Group channels are invite-only: owners and managers create them and add
 // people (the module enforces it — spacetimedb/src/chat/reducers.ts).
+//
+// The state and the conversation itself live in ./workspace.tsx, which the
+// /personal walkie shares.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MessageSquare } from "lucide-react";
-import { toast } from "sonner";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { useT } from "@/lib/i18n/context";
-import { fmt } from "@/lib/i18n/fmt";
-import { usePermissions } from "@/lib/context/permissions";
 import { useStoreMachineMode } from "@/lib/store-machine-mode";
 import { useCurrentOperator } from "@/lib/store-device-lock";
-import { useChatWorkspace } from "@/lib/spacetimedb/hooks/useChatWorkspace";
-import { useConversationDot, useDocumentAttended, useMarkConversationRead } from "@/lib/notifications/dots-context";
-import { addMembersToConversation, deleteMessage, sendMessage } from "@/lib/spacetimedb/actions";
-import {
-  createChannel, leaveConversation, openDirectConversation, setChannelTopic,
-} from "@/lib/spacetimedb/actions/chat";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import {
   DynamicUIElement, DynamicUIElementContent, DynamicUIElementTitle,
 } from "@/components/ui/dynamic-ui-element";
 import { useChannelPageContext } from "@/app/manager/channel/use-channel-page-context";
-import { ChannelWorkspaceProvider, type ChannelWorkspaceValue, type SidePanel } from "@/components/channel/context";
+import { ChannelWorkspaceProvider } from "@/components/channel/context";
 import { ChannelSidebar } from "@/components/channel/sidebar";
-import { ChannelHeader } from "@/components/channel/header";
-import { MessageList } from "@/components/channel/message-list";
-import { Composer, type ComposerHandle } from "@/components/channel/composer";
-import { ThreadPanel } from "@/components/channel/thread-panel";
-import { MembersPanel, PinsPanel, SearchPanel } from "@/components/channel/info-panels";
-import { AddPeopleDialog, NewChannelDialog, NewDmDialog, TopicDialog } from "@/components/channel/dialogs";
-import { ConfirmDialog } from "@/components/channel/confirm-dialog";
-import { useFollowControl } from "@/components/channel/follow";
+import { SearchPanel } from "@/components/channel/info-panels";
+import {
+  ChannelConversation, ChannelOverlays, useChannelController, type WorkspaceIdentity,
+} from "@/components/channel/workspace";
 
 function useIsMobile(): boolean {
   const [mobile, setMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches);
@@ -53,22 +43,13 @@ function useIsMobile(): boolean {
   return mobile;
 }
 
-interface Me {
-  /** Whose chat this is. */
-  hex: string | null;
-  /** The connection's own identity (the store machine's account). */
-  accountHex: string | null;
-  /** A store-machine PIN operator who is not the machine's own account. */
-  operatorRole: string | null;
-}
-
 /**
  * Whose chat this is: the signed-in identity, or on a shared store machine
  * the punched-in operator's (their org_member.userId), so each person sees
  * their own conversations. Every write still runs as the machine's account:
  * the operator only narrows what the page shows and offers.
  */
-function useMe(): Me {
+function useMe(): WorkspaceIdentity {
   const stdb = useSpacetimeDB();
   const [storeMachine] = useStoreMachineMode();
   const operator = useCurrentOperator();
@@ -87,113 +68,14 @@ function useMe(): Me {
   }, [storeMachine, operatorMemberId, memberRows, identity]);
 }
 
-type Confirm =
-  | { kind: "delete"; conversationId: string; messageId: string }
-  | { kind: "leave"; conversationId: string; name: string; last: boolean };
-
 export function ChannelWorkspace() {
   const t = useT();
-  const { organizationId, role } = usePermissions();
   const me = useMe();
-  const meHex = me.hex;
   const isMobile = useIsMobile();
-  const isManagerRole = (r: string | null) => r === "owner" || r === "manager";
-  // The lower of the machine account's and the operator's rights: a staff
-  // operator on an owner's store machine gets a staff member's chat.
-  const canManage = isManagerRole(role) && (me.operatorRole == null || isManagerRole(me.operatorRole));
-  // The module emails @everyone only from an owner or manager, never from a staff
-  // operator on the store machine (spacetimedb/src/chat/notify.ts): don't offer it there.
-  const canMentionEveryone = me.operatorRole == null || isManagerRole(me.operatorRole);
-  // A direct message started here would include the shared machine's account
-  // as a third member, readable by whoever uses the machine next.
-  const canStartDm = me.operatorRole == null;
-  // A follow written here would be the machine account's, emailed to its owner.
-  const follow = useFollowControl(organizationId ?? null, me.operatorRole == null);
-  const { model, people, ready } = useChatWorkspace(organizationId ?? null, meHex);
-
-  const [activeId, setActiveId] = useState<string | null>(() =>
+  const [initialActiveId] = useState<string | null>(() =>
     typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("c"));
-  const [panel, setPanel] = useState<SidePanel | null>(null);
-  const [focusMessageId, setFocusMessageId] = useState<string | null>(null);
-  const [newSince, setNewSince] = useState<number | null>(null);
-  // The payload outlives `confirmOpen`, so the dialog's text holds still while it fades out.
-  const [confirm, setConfirm] = useState<Confirm | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const askConfirm = useCallback((c: Confirm) => { setConfirm(c); setConfirmOpen(true); }, []);
-  const [dialog, setDialog] = useState<{ kind: "dm" | "channel" | "add" | "topic"; key: number } | null>(null);
-
-  const channelComposer = useRef<ComposerHandle>(null);
-  const threadComposer = useRef<ComposerHandle>(null);
-  const lastComposer = useRef<"channel" | "thread">("channel");
-
-  const active = activeId ? model.channelById.get(activeId) ?? null : null;
-  // The store machine changes operator: never leave someone else's conversation open.
-  // Keyed on the operator, not on meHex: meHex also changes while the page
-  // loads (no identity yet, then store-machine mode and the operator are read),
-  // and resetting then would drop a `?c=` deep link. Only a punched-in operator
-  // ending or changing resets.
-  const operatorKey = me.operatorRole == null ? null : meHex;
-  const [lastOperator, setLastOperator] = useState(operatorKey);
-  if (lastOperator !== operatorKey) {
-    setLastOperator(operatorKey);
-    if (lastOperator !== null) {
-      setActiveId(null);
-      setPanel(null);
-      setConfirmOpen(false);
-      setDialog(null);
-    }
-  }
-
-  const nameOf = useCallback((hex: string, isMerchiva?: boolean) =>
-    (isMerchiva ? t("chat.mrMerchiva") : people.get(hex)?.name) || t("chat.unknown"), [people, t]);
-  const avatarOf = useCallback((hex: string) => people.get(hex)?.avatarUrl ?? null, [people]);
-
-  const run = useCallback(async (write: () => Promise<unknown>) => {
-    try {
-      await write();
-      return true;
-    } catch (err) {
-      console.error("Channel action failed:", err);
-      toast.error(err instanceof Error && err.message ? err.message : t("chat.ws.actionFailed"));
-      return false;
-    }
-  }, [t]);
-
-  const openChannel = useCallback((id: string, focus?: string) => {
-    const target = model.channelById.get(id);
-    setNewSince(target && target.unread > 0 ? target.readUpTo : null);
-    setActiveId(id);
-    setPanel((p) => (p?.kind === "search" && p.scope === "all" && focus ? p : null));
-    setFocusMessageId(focus ?? null);
-    lastComposer.current = "channel";
-  }, [model]);
-
-  // Reading the open conversation marks it read (only when something is unread, and only while
-  // someone is at the screen: lib/notifications/attention.ts). Its notification dot counts too: a pin or a thread
-  // reply notifies without raising `unread`, and markChatRead is what reads those rows (the
-  // module's notifyReadConversation). Never for a PIN operator: the write runs as the machine's
-  // account and would clear the account's own rows, which the operator never saw.
-  const unreadHere = active ? active.unread + active.mentions : 0;
-  const dotHere = useConversationDot(activeId);
-  const attended = useDocumentAttended();
-  const markConversationRead = useMarkConversationRead();
-  useEffect(() => {
-    if (!activeId || me.operatorRole != null || (unreadHere === 0 && !dotHere) || !attended) return;
-    markConversationRead(activeId);
-  }, [activeId, me.operatorRole, unreadHere, dotHere, attended, markConversationRead]);
-
-  const value = useMemo<ChannelWorkspaceValue>(() => ({
-    model, people, meHex: meHex ?? "", accountHex: me.accountHex ?? "", canManage, isMobile, nameOf, avatarOf, openChannel,
-    openPanel: (p) => { setPanel(p); if (p?.kind === "thread") lastComposer.current = "thread"; },
-    mention: (name) => {
-      const target = lastComposer.current === "thread" && panel?.kind === "thread" ? threadComposer.current : channelComposer.current;
-      target?.insert(`@${name} `);
-    },
-    run,
-    confirmDelete: (conversationId, messageId) => askConfirm({ kind: "delete", conversationId, messageId }),
-    focusMessageId,
-    follow: follow.available ? follow : null,
-  }), [model, people, meHex, me.accountHex, canManage, isMobile, nameOf, avatarOf, openChannel, run, focusMessageId, panel, askConfirm, follow]);
+  const ctl = useChannelController({ me, isMobile, initialActiveId });
+  const { active, panel, setPanel, model, value, canStartDm, startPrompt, openDialog, closeConversation } = ctl;
 
   useChannelPageContext({
     conversations: model.channels.length,
@@ -201,14 +83,7 @@ export function ChannelWorkspace() {
     openName: active?.name ?? null,
   });
 
-  const openDialog = (kind: "dm" | "channel" | "add" | "topic") => setDialog({ kind, key: Date.now() });
-  // What the empty states suggest: only what this viewer can actually start.
-  const startPrompt = canStartDm
-    ? (canManage ? t("chat.startDMPrompt") : t("chat.ws.inviteOnlyNote"))
-    : (canManage ? t("chat.ws.createChannelPrompt") : t("chat.ws.inviteOnlyNote"));
-  const closeDialog = (open: boolean) => { if (!open) setDialog(null); };
-
-  if (!ready || !organizationId) {
+  if (!ctl.ready || !ctl.organizationId) {
     return (
       <div className="flex h-full items-center justify-center">
         <Spinner size={32} className="text-muted-foreground" />
@@ -216,48 +91,7 @@ export function ChannelWorkspace() {
     );
   }
 
-  const conversation = active && (
-    <div className="relative flex min-h-0 min-w-0 flex-1">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <ChannelHeader
-          channel={active}
-          panel={panel}
-          onBack={isMobile ? () => { setActiveId(null); setPanel(null); } : undefined}
-          onEditTopic={() => openDialog("topic")}
-          onAddPeople={() => openDialog("add")}
-          // Writes run as the machine's account: "leave" would remove the machine, not the operator.
-          onLeave={me.operatorRole == null
-            ? () => askConfirm({ kind: "leave", conversationId: active.id, name: active.name, last: active.memberHexes.length <= 1 })
-            : undefined}
-        />
-        <MessageList
-          channel={active}
-          entries={model.messagesOf(active.id)}
-          newSince={newSince}
-          onAddPeople={canManage && active.type === "group" ? () => openDialog("add") : undefined}
-          onEditTopic={canManage && active.type === "group" ? () => openDialog("topic") : undefined}
-        />
-        <Composer
-          ref={channelComposer}
-          key={active.id}
-          autoFocus={!isMobile}
-          placeholder={fmt(t("chat.ws.messagePlaceholder"), { name: active.type === "group" ? `#${active.name}` : active.name })}
-          memberHexes={active.memberHexes}
-          everyone={active.type === "group" && canMentionEveryone}
-          onFocus={() => { lastComposer.current = "channel"; }}
-          onSubmit={(text, attachment) => run(() => sendMessage(active.id, text, undefined, attachment))}
-        />
-      </div>
-      {panel?.kind === "thread" && (
-        <ThreadPanel ref={threadComposer} channel={active} parentId={panel.parentId} onComposerFocus={() => { lastComposer.current = "thread"; }} />
-      )}
-      {panel?.kind === "members" && <MembersPanel channel={active} onAddPeople={() => openDialog("add")} onEditTopic={() => openDialog("topic")} />}
-      {panel?.kind === "pins" && <PinsPanel channel={active} />}
-      {panel?.kind === "search" && (
-        <SearchPanel channel={active} query={panel.query} scope={panel.scope} onChange={(query, scope) => setPanel({ kind: "search", query, scope })} />
-      )}
-    </div>
-  );
+  const conversation = active && <ChannelConversation ctl={ctl} onBack={isMobile ? closeConversation : undefined} />;
   const searchWithoutChannel = !active && panel?.kind === "search" && (
     <div className="relative flex min-h-0 flex-1">
       <SearchPanel channel={null} query={panel.query} scope="all" onChange={(query) => setPanel({ kind: "search", query, scope: "all" })} />
@@ -285,7 +119,7 @@ export function ChannelWorkspace() {
       {isMobile && (
         <DynamicUIElement
           open={!!active || panel?.kind === "search"}
-          onOpenChange={(open) => { if (!open) { setActiveId(null); setPanel(null); } }}
+          onOpenChange={(open) => { if (!open) closeConversation(); }}
         >
           <DynamicUIElementContent showCloseButton={false} noPadding>
             <DynamicUIElementTitle mobileTitle={active?.name ?? t("chat.ws.search")} className="hidden">
@@ -296,64 +130,7 @@ export function ChannelWorkspace() {
         </DynamicUIElement>
       )}
 
-      {dialog?.kind === "dm" && (
-        <NewDmDialog key={dialog.key} open onOpenChange={closeDialog} onPick={(peer) => {
-          if (!meHex) return;
-          void run(async () => {
-            const id = await openDirectConversation(organizationId, meHex, peer);
-            setDialog(null);
-            if (id) openChannel(id);
-          });
-        }} />
-      )}
-      {dialog?.kind === "channel" && (
-        <NewChannelDialog key={dialog.key} open onOpenChange={closeDialog} onCreate={async (name, members) => {
-          let id: string | null = null;
-          // The creator is always in: on a store machine that is the operator, beside the machine account.
-          const ok = await run(async () => { id = await createChannel(organizationId, name, meHex ? [meHex, ...members] : members); });
-          if (ok && id) openChannel(id);
-          return ok;
-        }} />
-      )}
-      {dialog?.kind === "add" && active && (
-        <AddPeopleDialog key={dialog.key} open onOpenChange={closeDialog} existing={active.memberHexes}
-          onAdd={(members) => run(() => addMembersToConversation(active.id, members))} />
-      )}
-      {dialog?.kind === "topic" && active && (
-        <TopicDialog key={dialog.key} open onOpenChange={closeDialog} initial={active.topic}
-          onSave={(topic) => run(() => setChannelTopic(active.id, topic))} />
-      )}
-
-      <ConfirmDialog
-        open={confirmOpen && confirm?.kind === "delete"}
-        onOpenChange={(o) => { if (!o) setConfirmOpen(false); }}
-        title={t("chat.ws.deleteConfirmTitle")}
-        description={t("chat.ws.deleteConfirmBody")}
-        action={t("chat.delete")}
-        onConfirm={() => {
-          if (confirm?.kind !== "delete") return;
-          const { conversationId, messageId } = confirm;
-          setConfirmOpen(false);
-          void run(() => deleteMessage(conversationId, messageId));
-        }}
-      />
-      <ConfirmDialog
-        open={confirmOpen && confirm?.kind === "leave"}
-        onOpenChange={(o) => { if (!o) setConfirmOpen(false); }}
-        title={fmt(t("chat.ws.leaveConfirmTitle"), { name: confirm?.kind === "leave" ? confirm.name : "" })}
-        description={confirm?.kind === "leave" && confirm.last ? t("chat.ws.leaveLastBody") : t("chat.ws.leaveConfirmBody")}
-        action={t("chat.ws.leaveChannel")}
-        onConfirm={() => {
-          if (confirm?.kind !== "leave") return;
-          const { conversationId } = confirm;
-          setConfirmOpen(false);
-          void run(async () => {
-            await leaveConversation(conversationId);
-            setActiveId(null);
-            setPanel(null);
-          });
-        }}
-      />
+      <ChannelOverlays ctl={ctl} />
     </ChannelWorkspaceProvider>
   );
 }

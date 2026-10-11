@@ -49,15 +49,40 @@ async function attempt(reducer: string, args: Record<string, unknown>, requestId
 
 /**
  * The grant id of this tablet's current operator (device_operator_grant): the
- * request id of the PIN attempt or QR log-in that resolved them. In memory
- * only, per tablet — every tablet of a store shares one identity, so the
- * identity-wide session row cannot say whom THIS tablet punches.
+ * request id of the PIN attempt or QR log-in that resolved them. Per tablet —
+ * every tablet of a store shares one identity, so the identity-wide session row
+ * cannot say whom THIS tablet punches or chats for. Kept on this device beside
+ * the operator itself (lib/store-device-lock.ts), so a reload goes on punching
+ * and chatting for them, and dropped with them on log-out. It names nothing for
+ * any other identity (the server keys it by the tablet's).
  */
+const GRANT_KEY = "merchiva_operator_grant";
 let operatorGrant: string | null = null;
+let grantLoaded = false;
+
+/** The grant id of this tablet's current operator, or null with nobody logged in (the store chat sends with it). */
+export function currentOperatorGrant(): string | null {
+  if (!grantLoaded) {
+    grantLoaded = true;
+    try {
+      operatorGrant = typeof window === "undefined" ? null : window.localStorage.getItem(GRANT_KEY);
+    } catch {
+      operatorGrant = null;
+    }
+  }
+  return operatorGrant;
+}
 
 /** This tablet's operator is now whoever log-in `grantId` resolved (null: nobody). */
 export function rememberOperatorGrant(grantId: string | null): void {
   operatorGrant = grantId ? grantId.toLowerCase() : null;
+  grantLoaded = true;
+  try {
+    if (operatorGrant) window.localStorage.setItem(GRANT_KEY, operatorGrant);
+    else window.localStorage.removeItem(GRANT_KEY);
+  } catch {
+    // Kept in memory for this session only.
+  }
 }
 
 /** PIN → the operator of this store tablet. On "ok" the module has written `device_operator_session` and a grant. */
@@ -86,8 +111,9 @@ export function setMemberPunchCode(memberId: string, code: string): Promise<PinA
 
 /** Punch for this tablet's operator (its latest PIN or QR log-in); `action` may be "auto". */
 export async function recordOperatorPunch(action: string): Promise<void> {
-  if (!operatorGrant) throw new Error("NO_OPERATOR_SESSION");
-  return conn().reducers.recordOperatorPunch({ organizationId: getActiveOrgId(), action, grantId: operatorGrant });
+  const grantId = currentOperatorGrant();
+  if (!grantId) throw new Error("NO_OPERATOR_SESSION");
+  return conn().reducers.recordOperatorPunch({ organizationId: getActiveOrgId(), action, grantId });
 }
 
 /** Punch for your own membership (the personal phone). */

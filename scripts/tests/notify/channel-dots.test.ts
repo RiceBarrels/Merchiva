@@ -29,7 +29,7 @@ test(
 );
 
 describe("channel page wiring", () => {
-  const page = read("components/channel/index.tsx");
+  const page = (read("components/channel/index.tsx") + read("components/channel/workspace.tsx"));
 
   test("a collapsed section's header carries its rows' dots", () => {
     expect(read("components/channel/sidebar.tsx")).toContain("show={!open && anyDot}");

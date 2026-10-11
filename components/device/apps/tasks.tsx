@@ -14,7 +14,7 @@ import { Camera, Check, CheckCircle2, Circle, ClipboardList, PartyPopper, Refres
 import { tables } from "@/lib/spacetimedb/generated";
 import { completeRoleTask, recordTaskCompletion } from "@/lib/spacetimedb/actions";
 import { useI18n } from "@/lib/i18n/context";
-import { DeviceDrawer } from "@/components/device/device-drawer";
+import { LiteSubPage } from "./lite-page";
 import { hapticLight } from "@/lib/haptics";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LiteButton, LiteChoice, LiteEmpty, LiteLoading, LiteRow, LiteScreen, LiteSection, LiteStat } from "./lite";
@@ -107,7 +107,7 @@ function byTime(a: LiteTask, b: LiteTask): number {
   return (a.time ?? "99:99").localeCompare(b.time ?? "99:99") || a.title.localeCompare(b.title);
 }
 
-export function TasksLite({ organizationId, member, isManager }: LiteAppProps) {
+export function TasksLite({ organizationId, member, isManager, surface }: LiteAppProps) {
   const { t, locale } = useI18n();
   const [who, setWho] = useState<Who>("me");
   const [confirm, setConfirm] = useState<LiteTask | null>(null);
@@ -118,6 +118,9 @@ export function TasksLite({ organizationId, member, isManager }: LiteAppProps) {
   const [photo, setPhoto] = useState<{ url: string; type: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Bumped whenever the confirm opens or is dropped, so an upload that lands after its page was
+  // swiped away never attaches its photo to the next task.
+  const confirmSeq = useRef(0);
 
   const [taskRows, tasksReady] = useTable(tables.roleTask);
   const [assignmentRows, assignmentsReady] = useTable(tables.roleTaskAssignment);
@@ -220,11 +223,13 @@ export function TasksLite({ organizationId, member, isManager }: LiteAppProps) {
   const ready = tasksReady && assignmentsReady && shiftsReady && rolesReady && membersReady;
   if (!ready) return <LiteLoading />;
 
-  const openConfirm = (task: LiteTask) => { setError(null); setPhoto(null); setConfirm(task); };
-  const closeConfirm = () => { if (busy || uploading) return; setConfirm(null); setPhoto(null); setError(null); };
+  const openConfirm = (task: LiteTask) => { confirmSeq.current++; setError(null); setPhoto(null); setConfirm(task); };
+  const dropConfirm = () => { confirmSeq.current++; setConfirm(null); setPhoto(null); setError(null); };
+  const closeConfirm = () => { if (!busy && !uploading) dropConfirm(); };
 
   const onPickPhoto = async (file: File | undefined) => {
     if (!file) return;
+    const seq = confirmSeq.current;
     setUploading(true);
     setError(null);
     try {
@@ -232,9 +237,11 @@ export function TasksLite({ organizationId, member, isManager }: LiteAppProps) {
       const first = res?.[0];
       const url = (first?.serverData as { url?: string } | undefined)?.url;
       if (!url) throw new Error("upload returned no url");
+      if (seq !== confirmSeq.current) return;
       setPhoto({ url, type: (first?.serverData as { type?: string } | undefined)?.type ?? file.type ?? "image" });
     } catch (err) {
       console.error("Evidence upload failed:", err);
+      if (seq !== confirmSeq.current) return;
       setError(t(appUploadErrorKeyOr(err, "device.lite.tasks.uploadFailed")));
     } finally {
       setUploading(false);
@@ -364,12 +371,13 @@ export function TasksLite({ organizationId, member, isManager }: LiteAppProps) {
         </LiteSection>
       )}
 
-      <DeviceDrawer
+      <LiteSubPage
+        surface={surface}
         open={confirm !== null}
-        onOpenChange={(o) => { if (!o) closeConfirm(); }}
+        onClose={closeConfirm}
+        onPageClose={dropConfirm}
         title={confirm ? confirm.title : ""}
         cancelLabel={t("device.lite.tasks.notYet")}
-        onCancel={closeConfirm}
       >
         {confirm && (
           <div className="flex flex-col gap-3 pb-1">
@@ -428,7 +436,7 @@ export function TasksLite({ organizationId, member, isManager }: LiteAppProps) {
             />
           </div>
         )}
-      </DeviceDrawer>
+      </LiteSubPage>
     </LiteScreen>
   );
 }

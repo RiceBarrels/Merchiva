@@ -8,12 +8,13 @@ import { notificationEmailMeta, useNotificationEmailSwitch } from "@/components/
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Switch } from "@/components/ui/switch";
-import { LanguageSwitcher } from "@/components/language-switcher";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import { useAuth } from "@/lib/auth/context";
-import { useT } from "@/lib/i18n/context";
+import { useI18n } from "@/lib/i18n/context";
+import { LOCALE_LABELS } from "@/lib/i18n/config";
 import { hapticLight } from "@/lib/haptics";
 import { clearAppMode } from "@/lib/app-mode";
+import { LanguagePage } from "./language-page";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -25,10 +26,11 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export function SettingsPanel({ name, email, orgName }: { name: string; email?: string | null; orgName: string }) {
-  const t = useT();
+  const { t, locale } = useI18n();
   const [theme, setTheme] = useThemeMode();
   const { signOut } = useAuth();
   const [licensesOpen, setLicensesOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
   const emailSwitch = useNotificationEmailSwitch();
 
   return (
@@ -37,9 +39,18 @@ export function SettingsPanel({ name, email, orgName }: { name: string; email?: 
         <p className="text-[14px] font-semibold">{name}</p>
         <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{email ?? orgName}</p>
       </div>
-      <Row label={t("personalDevice.settings.language")}>
-        <LanguageSwitcher variant="inline" />
-      </Row>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 border-b border-border px-4 py-3 text-start transition-colors active:bg-muted/50"
+        onClick={() => { hapticLight(); setLanguageOpen(true); }}
+      >
+        <span className="text-[13px] font-medium">{t("personalDevice.settings.language")}</span>
+        <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground">
+          <span className="truncate">{LOCALE_LABELS[locale]}</span>
+          <ChevronRight className="h-4 w-4 shrink-0 rtl:rotate-180" />
+        </span>
+      </button>
+      <LanguagePage open={languageOpen} onClose={() => setLanguageOpen(false)} />
       <Row label={t("personalDevice.settings.theme")}>
         <SegmentedControl<ThemeMode>
           value={theme}

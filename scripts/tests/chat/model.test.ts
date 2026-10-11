@@ -5,6 +5,7 @@
 import { describe, expect, test } from "bun:test";
 import { badgeCount, buildChatModel, searchChat, sidebarSections, type ChatRowsIn, type MessageIn } from "@/lib/chat/model";
 import { chatMentions, shouldNotifyChatMember } from "@/spacetimedb/src/chat/logic";
+import { isCompactFollowUp } from "@/components/channel/message-list";
 
 const ME = "aa";
 const ANN = "bb";
@@ -50,6 +51,36 @@ function rows(over: Partial<ChatRowsIn> = {}): ChatRowsIn {
 }
 
 describe("buildChatModel", () => {
+  test("a message a store tablet sent for its operator is marked, and never runs on from their own device's", () => {
+    const m = buildChatModel(rows({
+      messages: [
+        msg("p1", "g1", ANN, 10, "from my phone"),
+        { ...msg("s1", "g1", ANN, 20, "from the store"), fromStore: true },
+        { ...msg("s2", "g1", ANN, 30, "still the store"), fromStore: true },
+        msg("p2", "g1", ANN, 40, "phone again"),
+      ],
+    }));
+    const [p1, s1, s2, p2] = m.messagesOf("g1");
+    expect([p1.fromStore, s1.fromStore, s2.fromStore, p2.fromStore]).toEqual([false, true, true, false]);
+    expect(isCompactFollowUp(p1, s1)).toBe(false);
+    expect(isCompactFollowUp(s1, s2)).toBe(true);
+    expect(isCompactFollowUp(s2, p2)).toBe(false);
+  });
+
+  test("a walkie voice note keeps its raw transcript beside the AI summary, until it is deleted", () => {
+    const m = buildChatModel(rows({
+      messages: [
+        { ...msg("v", "g1", ANN, 10, "Restock cups"), voiceTranscript: "um we are out of cups again" },
+        { ...msg("w", "g1", ANN, 11, "Gone"), voiceTranscript: "never mind" },
+        msg("t", "g1", BOB, 12, "typed"),
+      ],
+      exts: [{ messageId: "w", threadParentId: "", editedAt: null, pinnedBy: "", pinnedAt: null, deletedAt: 20 }],
+    }));
+    expect(m.entryById.get("v")?.voiceTranscript).toBe("um we are out of cups again");
+    expect(m.entryById.get("w")?.voiceTranscript).toBeNull();
+    expect(m.entryById.get("t")?.voiceTranscript).toBeNull();
+  });
+
   test("only this org's conversations; a DM is named after the other person", () => {
     const m = buildChatModel(rows());
     expect(m.channels.map((c) => c.id).sort()).toEqual(["d1", "g1"]);

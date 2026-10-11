@@ -9,23 +9,32 @@ import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ClockCard, fmtDurationHMS, fmtHM, useNow, type OnShiftEntry, type PunchAction } from "@/components/device";
 import type { DeviceLoginIntent } from "@/lib/spacetimedb/actions";
-import { recordSelfPunch, setOwnPunchCode } from "@/lib/spacetimedb/actions/pin";
+import { recordOperatorPunch, recordSelfPunch, setOwnPunchCode } from "@/lib/spacetimedb/actions/pin";
 import { ownCodeNotice } from "@/lib/pin-attempt";
 import { fmt } from "@/lib/i18n/fmt";
 import { useT } from "@/lib/i18n/context";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
+import { LitePage } from "@/components/device/apps/lite-page";
 import { ScanPane } from "./scan-pane";
 
+/**
+ * The Punch in app. On the phone punching in and out goes through the store's QR (a scan page);
+ * on a store tablet (`store`) the operator its PIN / QR log-in resolved taps in, break and out
+ * directly (recordOperatorPunch), with no code to set and nothing to scan.
+ */
 export function PunchPanel({
   organizationId,
   myMemberId,
   myCode,
   shift,
+  store = false,
 }: {
   organizationId: string;
   myMemberId: string | null;
   myCode: string | null;
   shift: OnShiftEntry | null;
+  /** A store tablet punching for its logged-in operator. */
+  store?: boolean;
 }) {
   const t = useT();
   const now = useNow();
@@ -61,11 +70,13 @@ export function PunchPanel({
   const openScan = (intent: DeviceLoginIntent) => { hapticLight(); setScanIntent(intent); };
 
   const punch = async (action: PunchAction) => {
-    if (!myCode || busy) return;
+    if ((!store && !myCode) || busy) return;
     hapticLight();
     setBusy(action);
     try {
-      await recordSelfPunch(action);
+      // A tablet punches its operator (no QR); the phone punches its own member.
+      if (store) await recordOperatorPunch(action);
+      else await recordSelfPunch(action);
       hapticSuccess();
       const label = {
         in: t("personalDevice.punch.punchedIn"),
@@ -81,7 +92,7 @@ export function PunchPanel({
     }
   };
 
-  if (!myCode) {
+  if (!myCode && !store) {
     return (
       <div className="space-y-4 p-4">
         <div>
@@ -127,19 +138,53 @@ export function PunchPanel({
         footRight={<span className="font-mono tabular-nums">{fmtHM(now)}</span>}
       />
 
-      {scanIntent ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[13px] font-semibold">
-              {scanIntent === "login" ? t("personalDevice.scan.titleLogin")
-                : scanIntent === "punch-in" ? t("personalDevice.scan.titleIn")
-                : t("personalDevice.scan.titleOut")}
-            </span>
-            <button type="button" className="text-[12px] text-muted-foreground" onClick={() => setScanIntent(null)}>
-              {t("common.cancel")}
-            </button>
+      <div className="grid grid-cols-2 gap-2">
+        {!onShift && (
+          <Button className="col-span-2 h-12 gap-2" onClick={() => (store ? punch("in") : openScan("punch-in"))} disabled={busy !== null}>
+            <LogIn className="h-4 w-4" />{t("personalDevice.punch.punchIn")}
+          </Button>
+        )}
+        {onShift && !onBreak && (
+          <>
+            <Button variant="outline" className="h-12 gap-2" onClick={() => punch("break-start")} disabled={busy !== null}>
+              <Coffee className="h-4 w-4" />{t("personalDevice.punch.startBreak")}
+            </Button>
+            <Button variant="destructive" className="h-12 gap-2" onClick={() => (store ? punch("out") : openScan("punch-out"))} disabled={busy !== null}>
+              <LogOut className="h-4 w-4" />{t("personalDevice.punch.punchOut")}
+            </Button>
+          </>
+        )}
+        {onShift && onBreak && (
+          <Button className="col-span-2 h-12 gap-2" onClick={() => punch("break-end")} disabled={busy !== null}>
+            <Undo2 className="h-4 w-4" />{t("personalDevice.punch.endBreak")}
+          </Button>
+        )}
+      </div>
+
+      {/* Logging in on a store device by its QR is the phone's job. */}
+      {!store && (
+        <div className="border-t border-border pt-4">
+          <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("personalDevice.punch.scanSection")}
           </div>
-          <p className="text-[13px] text-muted-foreground leading-relaxed">{t("personalDevice.scan.holdUp")}</p>
+          <Button variant="outline" className="h-11 w-full gap-2" onClick={() => openScan("login")}>
+            <ScanLine className="h-4 w-4" />{t("personalDevice.punch.scanStoreQr")}
+          </Button>
+        </div>
+      )}
+
+      {/* Scanning is its own page over the app: Back (or a swipe) returns to the buttons. */}
+      <LitePage
+        open={scanIntent !== null}
+        onClose={() => setScanIntent(null)}
+        title={
+          scanIntent === "login" ? t("personalDevice.scan.titleLogin")
+          : scanIntent === "punch-out" ? t("personalDevice.scan.titleOut")
+          : t("personalDevice.scan.titleIn")
+        }
+      >
+        <p className="text-[13px] text-muted-foreground leading-relaxed">{t("personalDevice.scan.holdUp")}</p>
+        {scanIntent && (
           <ScanPane
             active
             organizationId={organizationId}
@@ -154,42 +199,8 @@ export function PunchPanel({
               );
             }}
           />
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-2">
-            {!onShift && (
-              <Button className="col-span-2 h-12 gap-2" onClick={() => openScan("punch-in")} disabled={busy !== null}>
-                <LogIn className="h-4 w-4" />{t("personalDevice.punch.punchIn")}
-              </Button>
-            )}
-            {onShift && !onBreak && (
-              <>
-                <Button variant="outline" className="h-12 gap-2" onClick={() => punch("break-start")} disabled={busy !== null}>
-                  <Coffee className="h-4 w-4" />{t("personalDevice.punch.startBreak")}
-                </Button>
-                <Button variant="destructive" className="h-12 gap-2" onClick={() => openScan("punch-out")} disabled={busy !== null}>
-                  <LogOut className="h-4 w-4" />{t("personalDevice.punch.punchOut")}
-                </Button>
-              </>
-            )}
-            {onShift && onBreak && (
-              <Button className="col-span-2 h-12 gap-2" onClick={() => punch("break-end")} disabled={busy !== null}>
-                <Undo2 className="h-4 w-4" />{t("personalDevice.punch.endBreak")}
-              </Button>
-            )}
-          </div>
-
-          <div className="border-t border-border pt-4">
-            <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("personalDevice.punch.scanSection")}
-            </div>
-            <Button variant="outline" className="h-11 w-full gap-2" onClick={() => openScan("login")}>
-              <ScanLine className="h-4 w-4" />{t("personalDevice.punch.scanStoreQr")}
-            </Button>
-          </div>
-        </>
-      )}
+        )}
+      </LitePage>
     </div>
   );
 }

@@ -11,9 +11,9 @@ import type { Permissions } from "@/lib/types";
 import { useT } from "@/lib/i18n/context";
 import { InstallButton, PluginIcon, SHOTS, Shot, SurfaceBadges, surfaceLabelKey, type InstallControl } from "./parts";
 
-/** personnel.team.permissionSection uses camelCase for the one snake_case section. */
+/** personnel.team.permissionSection uses camelCase for the snake_case sections. */
 function permissionLabelKey(section: keyof Permissions): string {
-  return `personnel.team.permissionSection.${section === "training_grading" ? "trainingGrading" : section}`;
+  return `personnel.team.permissionSection.${section.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`;
 }
 
 function Fact({ label, value }: { label: string; value: React.ReactNode }) {

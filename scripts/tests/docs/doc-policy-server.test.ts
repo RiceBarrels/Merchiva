@@ -180,16 +180,18 @@ describe("document writes keep document_reader_index current", () => {
   });
 });
 
-describe("inviteToOrg: only owners grant the Drive power", () => {
+describe("inviteToOrg: only owners grant the Drive power and the store device", () => {
   const mod = loadModule(["inviteToOrg"]);
-  const drive = '{"dashboard":{"view":true},"drive":{"view":true,"edit":true}}';
+  const drive = '{"dashboard":{"view":true},"drive":{"view":true,"edit":true},"store_device":{"view":true}}';
   const stored = (db: ReturnType<typeof createDriveWorld>["db"], email: string) =>
     JSON.parse(String(db.rows("orgInvitation").find((i) => i.email === email)?.permissions));
 
-  test("a manager's invitation is stored with drive off; everything else is kept", () => {
+  test("a manager's invitation is stored with drive and the store device off; everything else is kept", () => {
     const { db, orgA } = createDriveWorld();
     db.run(mod.inviteToOrg, orgA.manager, { organizationId: orgA.organizationId, email: "a@example.test", role: "staff", permissions: drive });
-    expect(stored(db, "a@example.test")).toEqual({ dashboard: { view: true }, drive: { view: false, edit: false } });
+    expect(stored(db, "a@example.test")).toEqual({
+      dashboard: { view: true }, drive: { view: false, edit: false }, store_device: { view: false },
+    });
   });
 
   test("an owner's (or the service identity's) invitation keeps it", () => {
@@ -199,6 +201,7 @@ describe("inviteToOrg: only owners grant the Drive power", () => {
     db.run(mod.inviteToOrg, SERVICE_IDENTITY, { organizationId: orgA.organizationId, email: "c@example.test", role: "staff", permissions: drive });
     expect(stored(db, "b@example.test").drive).toEqual({ view: true, edit: true });
     expect(stored(db, "c@example.test").drive).toEqual({ view: true, edit: true });
+    expect(stored(db, "b@example.test").store_device).toEqual({ view: true });
   });
 });
 

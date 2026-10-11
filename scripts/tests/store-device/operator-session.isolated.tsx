@@ -79,9 +79,10 @@ mock.module("@/lib/notifications/push-cleanup", () => ({
   },
 }));
 mock.module("@/lib/context/permissions", () => ({
-  usePermissions: () => ({ organizationId: "org-1", currentOrg: { name: "Test store" } }),
+  // The tablet's account may run a store device (lib/store-device-access.ts): a manager.
+  usePermissions: () => ({ organizationId: "org-1", currentOrg: { name: "Test store" }, role: "manager", permissions: {} }),
 }));
-mock.module("@/lib/haptics", () => ({ hapticSuccess: () => {} }));
+mock.module("@/lib/haptics", () => ({ hapticSuccess: () => {}, hapticLight: () => {} }));
 mock.module("@/lib/store-machine-mode", () => ({
   getOrCreateDeviceId: () => "device-1",
   getStoreMachineMode: () => false,
@@ -143,7 +144,6 @@ mock.module("@/components/store-device/roster-pages", () => ({
   useClosingTime: () => null,
 }));
 mock.module("@/components/store-device/logged-in-screen", () => ({ LoggedInScreen }));
-mock.module("@/components/store-device/punch-prompt", () => ({ PunchPrompt: () => null }));
 mock.module("sonner", () => ({ toast: Object.assign(() => {}, { success: () => {}, error: () => {} }) }));
 
 const { StoreDeviceScreen } = await import("@/components/store-device/store-device-screen");

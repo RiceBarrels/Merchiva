@@ -121,6 +121,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<string, Record<string, Record<stri
     training_grading: { view: false, edit: false },
     merchiva: { view: true },
     drive: { view: false, edit: false },
+    store_device: { view: false },
   },
   manager: {
     dashboard: { view: true },
@@ -136,6 +137,8 @@ export const ROLE_PERMISSION_DEFAULTS: Record<string, Record<string, Record<stri
     merchiva: { view: true },
     // A manager holds the Drive power by role, whatever is stored here.
     drive: { view: true, edit: true },
+    // And runs a store device by role.
+    store_device: { view: true },
   },
 };
 

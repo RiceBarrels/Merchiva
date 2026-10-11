@@ -45,6 +45,7 @@ import { useIsCapacitor, isCapacitorHiddenPath, CAPACITOR_HIDDEN_HREFS } from "@
 import { useIsNativeShell } from "@/lib/native-shell";
 import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/lib/context/permissions";
+import { canRunStoreDevice } from "@/lib/store-device-access";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { clearCache } from "@/lib/cache";
 import { createOrg } from "@/lib/spacetimedb/actions";
@@ -995,7 +996,10 @@ export function SwitchModeLink({ onClick }: { onClick?: () => void }) {
 export function BackToDeviceLink({ onClick }: { onClick?: () => void }) {
   const t = useT();
   const [appMode] = useAppMode();
+  const { role, permissions } = usePermissions();
   if (appMode !== "store" && appMode !== "personal") return null;
+  // A store device only for an account that may run one (lib/store-device-access.ts).
+  if (appMode === "store" && !canRunStoreDevice(role, permissions)) return null;
   const isStore = appMode === "store";
   const Icon = APP_MODE_ICONS[appMode];
   return (

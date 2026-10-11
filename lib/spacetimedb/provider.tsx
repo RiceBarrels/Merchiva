@@ -108,6 +108,12 @@ function orgSubscriptions(orgId: string): string[] {
 
   return [
     // ── Reference data: small, read constantly ──────────────────────────────
+    // Also in BOOTSTRAP_SUBSCRIPTIONS, unfiltered — but over that query the
+    // server only streams changes to the caller's own row (the self rule), not
+    // colleague rows reached through the org_membership_index join: a colleague's
+    // new rate, role or status, or a new member, showed only after a reload.
+    // Scoped to the org, the join rule's changes stream too.
+    `SELECT * FROM org_member WHERE ${org}`,
     `SELECT * FROM org_invitation WHERE ${org}`,
     `SELECT * FROM inventory_item WHERE ${org}`,
     `SELECT * FROM staff_member WHERE ${org}`,
@@ -493,6 +499,16 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
               .subscribe(chatSideSubscriptions());
           } catch (err) {
             console.warn("[SpacetimeDB] Chat side-table subscription failed:", err);
+          }
+          // Which messages a store tablet sent for its operator: on its own, so a module that
+          // predates chat_message_origin loses only the store badge. RLS narrows it like the side tables.
+          try {
+            conn
+              .subscriptionBuilder()
+              .onError(() => console.warn("[SpacetimeDB] chat_message_origin subscription failed — is the module published?"))
+              .subscribe(["SELECT * FROM chat_message_origin"]);
+          } catch (err) {
+            console.warn("[SpacetimeDB] chat_message_origin subscription failed:", err);
           }
         }
       })

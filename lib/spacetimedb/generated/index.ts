@@ -120,6 +120,7 @@ import DeleteFormResponseReducer from "./delete_form_response_reducer";
 import DeleteInventoryItemReducer from "./delete_inventory_item_reducer";
 import DeleteLocationReducer from "./delete_location_reducer";
 import DeleteMessageReducer from "./delete_message_reducer";
+import DeleteOperatorMessageReducer from "./delete_operator_message_reducer";
 import DeletePageReducer from "./delete_page_reducer";
 import DeletePerkReducer from "./delete_perk_reducer";
 import DeletePushSubscriptionReducer from "./delete_push_subscription_reducer";
@@ -143,6 +144,7 @@ import DismissNotificationReducer from "./dismiss_notification_reducer";
 import DuplicateDocumentReducer from "./duplicate_document_reducer";
 import EditChatMessageReducer from "./edit_chat_message_reducer";
 import EditDocumentCommentReducer from "./edit_document_comment_reducer";
+import EditOperatorChatMessageReducer from "./edit_operator_chat_message_reducer";
 import EmptyDriveTrashReducer from "./empty_drive_trash_reducer";
 import FinalizeAiJobReducer from "./finalize_ai_job_reducer";
 import GradeTrainingDayReducer from "./grade_training_day_reducer";
@@ -215,6 +217,8 @@ import SavePushSubscriptionReducer from "./save_push_subscription_reducer";
 import SaveSheetVersionReducer from "./save_sheet_version_reducer";
 import SendMerchivaMessageReducer from "./send_merchiva_message_reducer";
 import SendMessageReducer from "./send_message_reducer";
+import SendOperatorMessageReducer from "./send_operator_message_reducer";
+import SendOperatorThreadReplyReducer from "./send_operator_thread_reply_reducer";
 import SendStoreSosReducer from "./send_store_sos_reducer";
 import SendThreadReplyReducer from "./send_thread_reply_reducer";
 import ServiceAckDriveBlobGcReducer from "./service_ack_drive_blob_gc_reducer";
@@ -259,6 +263,7 @@ import SetMemberPunchInCodeReducer from "./set_member_punch_in_code_reducer";
 import SetMemberStatusReducer from "./set_member_status_reducer";
 import SetNotificationEmailReducer from "./set_notification_email_reducer";
 import SetNotificationLocaleReducer from "./set_notification_locale_reducer";
+import SetOperatorChatMessagePinnedReducer from "./set_operator_chat_message_pinned_reducer";
 import SetOwnPunchInCodeReducer from "./set_own_punch_in_code_reducer";
 import SetPunchInCodeReducer from "./set_punch_in_code_reducer";
 import SetScheduleIntegrationReducer from "./set_schedule_integration_reducer";
@@ -270,6 +275,7 @@ import SyncNotificationIdentityReducer from "./sync_notification_identity_reduce
 import ToggleChatReactionReducer from "./toggle_chat_reaction_reducer";
 import ToggleDocumentStarReducer from "./toggle_document_star_reducer";
 import ToggleDriveStarReducer from "./toggle_drive_star_reducer";
+import ToggleOperatorChatReactionReducer from "./toggle_operator_chat_reaction_reducer";
 import ToggleTodoReducer from "./toggle_todo_reducer";
 import TransferFormReducer from "./transfer_form_reducer";
 import TrashDocumentReducer from "./trash_document_reducer";
@@ -336,6 +342,7 @@ import ChatMemberStateRow from "./chat_member_state_table";
 import ChatMembershipIndexRow from "./chat_membership_index_table";
 import ChatMessageRow from "./chat_message_table";
 import ChatMessageExtRow from "./chat_message_ext_table";
+import ChatMessageOriginRow from "./chat_message_origin_table";
 import ChatReactionRow from "./chat_reaction_table";
 import CouponRow from "./coupon_table";
 import DailyBriefingRow from "./daily_briefing_table";
@@ -659,6 +666,20 @@ const tablesSchema = __schema({
       { name: 'chat_message_ext_message_id_key', constraint: 'unique', columns: ['messageId'] },
     ],
   }, ChatMessageExtRow),
+  chatMessageOrigin: __table({
+    name: 'chat_message_origin',
+    indexes: [
+      { accessor: 'byConversationId', name: 'chat_message_origin_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+      { accessor: 'messageId', name: 'chat_message_origin_message_id_idx_btree', algorithm: 'btree', columns: [
+        'messageId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_message_origin_message_id_key', constraint: 'unique', columns: ['messageId'] },
+    ],
+  }, ChatMessageOriginRow),
   chatReaction: __table({
     name: 'chat_reaction',
     indexes: [
@@ -2147,6 +2168,7 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_inventory_item", DeleteInventoryItemReducer),
   __reducerSchema("delete_location", DeleteLocationReducer),
   __reducerSchema("delete_message", DeleteMessageReducer),
+  __reducerSchema("delete_operator_message", DeleteOperatorMessageReducer),
   __reducerSchema("delete_page", DeletePageReducer),
   __reducerSchema("delete_perk", DeletePerkReducer),
   __reducerSchema("delete_push_subscription", DeletePushSubscriptionReducer),
@@ -2170,6 +2192,7 @@ const reducersSchema = __reducers(
   __reducerSchema("duplicate_document", DuplicateDocumentReducer),
   __reducerSchema("edit_chat_message", EditChatMessageReducer),
   __reducerSchema("edit_document_comment", EditDocumentCommentReducer),
+  __reducerSchema("edit_operator_chat_message", EditOperatorChatMessageReducer),
   __reducerSchema("empty_drive_trash", EmptyDriveTrashReducer),
   __reducerSchema("finalize_ai_job", FinalizeAiJobReducer),
   __reducerSchema("grade_training_day", GradeTrainingDayReducer),
@@ -2242,6 +2265,8 @@ const reducersSchema = __reducers(
   __reducerSchema("save_sheet_version", SaveSheetVersionReducer),
   __reducerSchema("send_merchiva_message", SendMerchivaMessageReducer),
   __reducerSchema("send_message", SendMessageReducer),
+  __reducerSchema("send_operator_message", SendOperatorMessageReducer),
+  __reducerSchema("send_operator_thread_reply", SendOperatorThreadReplyReducer),
   __reducerSchema("send_store_sos", SendStoreSosReducer),
   __reducerSchema("send_thread_reply", SendThreadReplyReducer),
   __reducerSchema("service_ack_drive_blob_gc", ServiceAckDriveBlobGcReducer),
@@ -2286,6 +2311,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_member_status", SetMemberStatusReducer),
   __reducerSchema("set_notification_email", SetNotificationEmailReducer),
   __reducerSchema("set_notification_locale", SetNotificationLocaleReducer),
+  __reducerSchema("set_operator_chat_message_pinned", SetOperatorChatMessagePinnedReducer),
   __reducerSchema("set_own_punch_in_code", SetOwnPunchInCodeReducer),
   __reducerSchema("set_punch_in_code", SetPunchInCodeReducer),
   __reducerSchema("set_schedule_integration", SetScheduleIntegrationReducer),
@@ -2297,6 +2323,7 @@ const reducersSchema = __reducers(
   __reducerSchema("toggle_chat_reaction", ToggleChatReactionReducer),
   __reducerSchema("toggle_document_star", ToggleDocumentStarReducer),
   __reducerSchema("toggle_drive_star", ToggleDriveStarReducer),
+  __reducerSchema("toggle_operator_chat_reaction", ToggleOperatorChatReactionReducer),
   __reducerSchema("toggle_todo", ToggleTodoReducer),
   __reducerSchema("transfer_form", TransferFormReducer),
   __reducerSchema("trash_document", TrashDocumentReducer),

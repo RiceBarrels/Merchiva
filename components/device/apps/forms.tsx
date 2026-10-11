@@ -14,7 +14,7 @@
 
 import { useMemo, useState } from "react";
 import { CheckCircle2, ClipboardCheck, ClipboardList, Inbox, MessageSquare, TriangleAlert, type LucideIcon } from "lucide-react";
-import { DeviceDrawer } from "@/components/device/device-drawer";
+import { LitePage } from "./lite-page";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { dateFromKey, dateKey } from "@/lib/date-key";
 import { buildResponseTable } from "@/lib/forms/export";
@@ -115,7 +115,8 @@ export function FormsLite({ surface, organizationId, member }: LiteAppProps) {
   }, [forms, now, assigned]);
   const formsById = useMemo(() => new Map(forms.map((f) => [f.form.id, f.form])), [forms]);
 
-  if (filling?.definition) {
+  // The tablet swaps the list for the form; the phone opens it as a page over the list (below).
+  if (filling?.definition && surface === "store") {
     return (
       <FormFill
         form={filling}
@@ -133,7 +134,26 @@ export function FormsLite({ surface, organizationId, member }: LiteAppProps) {
     return <LiteScreen><LiteEmpty icon={ClipboardList} title={t("forms.errors.not_published")} /></LiteScreen>;
   }
   const home = { fillable, completions, recent, assigned, memberId: member.id, today: dateKey(now), onOpen: setFilling };
-  return surface === "store" ? <StoreHome {...home} /> : <PersonalHome {...home} formsById={formsById} />;
+  if (surface === "store") return <StoreHome {...home} />;
+  return (
+    <>
+      <PersonalHome {...home} formsById={formsById} />
+      <LitePage open={!!filling?.definition} onClose={() => setFilling(null)} title={filling?.definition?.title || filling?.title || ""}>
+        {filling?.definition && (
+          <FormFill
+            key={filling.id}
+            form={filling}
+            definition={filling.definition}
+            surface={surface}
+            organizationId={organizationId}
+            member={member}
+            deviceAccountRole={signedIn.role}
+            onClose={() => setFilling(null)}
+          />
+        )}
+      </LitePage>
+    </>
+  );
 }
 
 interface HomeProps {
@@ -290,7 +310,7 @@ function PersonalHome({ fillable, recent, assigned, memberId, today, onOpen, for
         )}
       </LiteSection>
       <p className="text-[13px] text-muted-foreground">{t("forms.disclosure.respondentNote")}</p>
-      <SubmissionDrawer response={detail} form={detail ? (formsById.get(detail.formId) ?? null) : null} onClose={() => setDetail(null)} />
+      <SubmissionPage response={detail} form={detail ? (formsById.get(detail.formId) ?? null) : null} onClose={() => setDetail(null)} />
     </LiteScreen>
   );
 }
@@ -305,7 +325,7 @@ function ReviewBadge({ status }: { status: FormResponseView["reviewStatus"] }) {
 }
 
 /** One of my submissions, read-only: respondents never edit or delete what they sent (decision C8). */
-function SubmissionDrawer({ response, form, onClose }: { response: FormResponseView | null; form: FormView | null; onClose: () => void }) {
+function SubmissionPage({ response, form, onClose }: { response: FormResponseView | null; form: FormView | null; onClose: () => void }) {
   const t = useT();
   const formatDate = useDateFormat();
   const rows = useMemo(() => {
@@ -324,12 +344,7 @@ function SubmissionDrawer({ response, form, onClose }: { response: FormResponseV
   }, [response, form, t]);
 
   return (
-    <DeviceDrawer
-      open={response !== null}
-      onOpenChange={(open) => { if (!open) onClose(); }}
-      title={response?.formTitle ?? ""}
-      cancelLabel={t("common.close")}
-    >
+    <LitePage open={response !== null} onClose={onClose} title={response?.formTitle ?? ""}>
       {response && (
         <div className="space-y-3 pb-2">
           <div className="flex items-center justify-between gap-2 text-[13px] text-muted-foreground">
@@ -349,6 +364,6 @@ function SubmissionDrawer({ response, form, onClose }: { response: FormResponseV
           <p className="text-[13px] text-muted-foreground">{t("forms.disclosure.respondentNote")}</p>
         </div>
       )}
-    </DeviceDrawer>
+    </LitePage>
   );
 }

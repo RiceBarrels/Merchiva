@@ -44,7 +44,8 @@ import { SidebarWorkspaceSwitcher } from "./workspace-switcher";
 
 /*
  * Desktop sidebar (≥1024px), also the /manager phone drawer (variant "drawer",
- * components/browser-shell/mobile-app): touch-sized rows and no collapse control.
+ * components/browser-shell/mobile-app): touch-sized rows, no collapse control and no expandable
+ * sub-pages (on the phone a section's sub-pages are its page's bottom tab bar).
  * It replicates the legacy sidebar (components/sidebar.tsx SidebarContent): logo header,
  * combined store + account switcher, nav rows with expandable sub-pages, Settings pinned at
  * the bottom, the collapse control and the version line.
@@ -184,10 +185,10 @@ function SidebarSection({
   // Sub-pages are a desktop, expanded-sidebar affordance (legacy sidebar.tsx:970). While they are
   // off screen — icon rail, no sub-pages, or a section the user closed — the section row carries
   // the location itself, so the sidebar always has exactly one `aria-current="page"`.
-  const childrenVisible = !collapsed && expanded && section.children.length > 0;
+  const childrenVisible = !collapsed && !drawer && expanded && section.children.length > 0;
   const active = isSectionRowActive(section, activeUrl, activeSection, childrenVisible);
 
-  if (collapsed || section.children.length === 0) {
+  if (collapsed || drawer || section.children.length === 0) {
     return <SidebarRow href={section.href} title={title} icon={section.icon} active={active} collapsed={collapsed} drawer={drawer} />;
   }
 

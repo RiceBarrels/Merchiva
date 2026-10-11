@@ -31,15 +31,35 @@ describe("deliver", () => {
     expect(JSON.parse(String(row.params))).toEqual({ actor: "Ann", store: "Corner Bakery" });
   });
 
-  test("an email is due after 60 s; a push subscription in the org makes a push due after 20 s", () => {
+  test("an email is due after 60 s; a push subscription makes a push due after 20 s", () => {
     const w = world();
     const mail = send(w, w.staff);
     expect(delivery(w, mail)).toMatchObject({ email: true, push: false, dueAtMicros: createdAt(w, mail) + 60n * S });
-    subscribe(w, w.manager, "https://fcm.googleapis.com/x", "another-org");
-    expect(delivery(w, send(w, w.manager, { email: false }))?.push).toBe(false);
     subscribe(w, w.manager);
     const both = send(w, w.manager);
     expect(delivery(w, both)).toMatchObject({ email: true, push: true, dueAtMicros: createdAt(w, both) + 20n * S });
+  });
+
+  test("a browser saved under another store still gets this store's pushes: a subscription is the person's", () => {
+    const w = world();
+    const phone = subscribe(w, w.manager, "https://web.push.apple.com/phone", "another-org");
+    const id = send(w, w.manager, { email: false });
+    expect(delivery(w, id)?.push).toBe(true);
+    claim(w, createdAt(w, id) + 21n * S);
+    expect(JSON.parse(String(delivery(w, id)?.pushTargets)).map((s: { endpoint: string }) => s.endpoint)).toEqual([phone]);
+  });
+
+  test("push targets are the newest subscriptions first, so stale endpoints never crowd a live one out", () => {
+    const w = world();
+    const endpoints: string[] = [];
+    for (let i = 0; i < 14; i++) {
+      w.db.advance(S);
+      endpoints.push(subscribe(w, w.manager, `https://web.push.apple.com/${i}`, i % 2 ? w.org : "another-org"));
+    }
+    const id = send(w, w.manager, { email: false });
+    claim(w, createdAt(w, id) + 21n * S);
+    const targets = JSON.parse(String(delivery(w, id)?.pushTargets)).map((s: { endpoint: string }) => s.endpoint);
+    expect(targets).toEqual(endpoints.slice().reverse().slice(0, 10));
   });
 
   test("in-app only: no delivery row even with a push subscription", () => {
