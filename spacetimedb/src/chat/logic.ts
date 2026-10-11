@@ -1,4 +1,4 @@
-// Pure channel rules shared by ./reducers.ts and the client
+// Pure channel rules shared by ./reducers.ts, ./notify.ts and the client
 // (scripts/tests/chat/logic.test.ts loads this file directly). No SDK imports.
 
 /** Edited message text; the original send path has no cap, edits do. */
@@ -74,4 +74,37 @@ export function chatMentions(content: string, candidates: readonly MentionCandid
  */
 export function shouldNotifyChatMember(muted: boolean, mentionedByName: boolean): boolean {
   return !muted || mentionedByName;
+}
+
+/** What one recipient's channel message is about (spacetimedb/src/notify/logic.ts NOTIFY_TEMPLATES). */
+export type ChatDeliveryTemplate = 'chat.message' | 'chat.mention' | 'chat.follow';
+
+export interface ChatDeliveryFacts {
+  /** The recipient muted the conversation. */
+  muted: boolean;
+  /** The message names the recipient with `@Name`. */
+  named: boolean;
+  /** The message says `@everyone` AND its sender is an owner or manager (isChannelManagerRole). */
+  everyone: boolean;
+  /** The recipient specially follows the sender (chat_follow). */
+  follows: boolean;
+}
+
+/**
+ * How one member hears about a channel message. Everyone in the conversation
+ * gets the in-app alert unless they muted it; a mute gives way only to their
+ * name or to a person they follow — `@everyone` never breaks it (and is then
+ * ignored for them altogether). Email only for `@Name`, a manager's
+ * `@everyone`, or a followed sender; every other message stays in the app.
+ */
+export function chatDelivery(facts: ChatDeliveryFacts): { notify: boolean; email: boolean; template: ChatDeliveryTemplate } {
+  const notify = shouldNotifyChatMember(facts.muted, facts.named) || facts.follows;
+  const everyone = facts.everyone && !facts.muted;
+  const mention = facts.named || everyone;
+  if (!notify) return { notify: false, email: false, template: 'chat.message' };
+  return {
+    notify,
+    email: mention || facts.follows,
+    template: mention ? 'chat.mention' : facts.follows ? 'chat.follow' : 'chat.message',
+  };
 }

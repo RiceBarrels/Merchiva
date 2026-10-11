@@ -159,6 +159,8 @@ import ManagerSetPunchWindowReducer from "./manager_set_punch_window_reducer";
 import MarkAllNotificationsReadReducer from "./mark_all_notifications_read_reducer";
 import MarkChatReadReducer from "./mark_chat_read_reducer";
 import MarkNotificationReadReducer from "./mark_notification_read_reducer";
+import MarkNotificationsDeliveredReducer from "./mark_notifications_delivered_reducer";
+import MarkNotificationsReadReducer from "./mark_notifications_read_reducer";
 import MigrateMoneyV1Reducer from "./migrate_money_v_1_reducer";
 import MigrateOwnerPermissionsV1Reducer from "./migrate_owner_permissions_v_1_reducer";
 import MigratePunchCodeFlagsV1Reducer from "./migrate_punch_code_flags_v_1_reducer";
@@ -213,9 +215,11 @@ import SavePushSubscriptionReducer from "./save_push_subscription_reducer";
 import SaveSheetVersionReducer from "./save_sheet_version_reducer";
 import SendMerchivaMessageReducer from "./send_merchiva_message_reducer";
 import SendMessageReducer from "./send_message_reducer";
+import SendStoreSosReducer from "./send_store_sos_reducer";
 import SendThreadReplyReducer from "./send_thread_reply_reducer";
 import ServiceAckDriveBlobGcReducer from "./service_ack_drive_blob_gc_reducer";
 import ServiceBackfillAppFilesReducer from "./service_backfill_app_files_reducer";
+import ServiceClaimNotificationDeliveriesReducer from "./service_claim_notification_deliveries_reducer";
 import ServiceCommitDriveUploadReducer from "./service_commit_drive_upload_reducer";
 import ServiceCreateNotificationReducer from "./service_create_notification_reducer";
 import ServiceDiscardDriveBlobReducer from "./service_discard_drive_blob_reducer";
@@ -225,6 +229,7 @@ import ServiceEnsureDriveReaderReducer from "./service_ensure_drive_reader_reduc
 import ServiceFailDriveBlobGcReducer from "./service_fail_drive_blob_gc_reducer";
 import ServiceFailDriveUploadReducer from "./service_fail_drive_upload_reducer";
 import ServiceFinishDriveReconcileReducer from "./service_finish_drive_reconcile_reducer";
+import ServiceFinishNotificationDeliveriesReducer from "./service_finish_notification_deliveries_reducer";
 import ServiceLogSupplierMessageReducer from "./service_log_supplier_message_reducer";
 import ServiceRecomputeStorageReducer from "./service_recompute_storage_reducer";
 import ServiceRecordAiUsageReducer from "./service_record_ai_usage_reducer";
@@ -239,6 +244,7 @@ import SetAiUsageQuotaReducer from "./set_ai_usage_quota_reducer";
 import SetAssistantConfigReducer from "./set_assistant_config_reducer";
 import SetBetaFeaturesReducer from "./set_beta_features_reducer";
 import SetChannelTopicReducer from "./set_channel_topic_reducer";
+import SetChatFollowReducer from "./set_chat_follow_reducer";
 import SetChatMessagePinnedReducer from "./set_chat_message_pinned_reducer";
 import SetChatMutedReducer from "./set_chat_muted_reducer";
 import SetChatStarredReducer from "./set_chat_starred_reducer";
@@ -251,6 +257,8 @@ import SetFormStatusReducer from "./set_form_status_reducer";
 import SetMemberHourlyRateReducer from "./set_member_hourly_rate_reducer";
 import SetMemberPunchInCodeReducer from "./set_member_punch_in_code_reducer";
 import SetMemberStatusReducer from "./set_member_status_reducer";
+import SetNotificationEmailReducer from "./set_notification_email_reducer";
+import SetNotificationLocaleReducer from "./set_notification_locale_reducer";
 import SetOwnPunchInCodeReducer from "./set_own_punch_in_code_reducer";
 import SetPunchInCodeReducer from "./set_punch_in_code_reducer";
 import SetScheduleIntegrationReducer from "./set_schedule_integration_reducer";
@@ -258,6 +266,7 @@ import SetSupplierInboundPrefixReducer from "./set_supplier_inbound_prefix_reduc
 import SetUserAdminReducer from "./set_user_admin_reducer";
 import SkipRoleTaskReducer from "./skip_role_task_reducer";
 import SubmitFormResponseReducer from "./submit_form_response_reducer";
+import SyncNotificationIdentityReducer from "./sync_notification_identity_reducer";
 import ToggleChatReactionReducer from "./toggle_chat_reaction_reducer";
 import ToggleDocumentStarReducer from "./toggle_document_star_reducer";
 import ToggleDriveStarReducer from "./toggle_drive_star_reducer";
@@ -321,6 +330,7 @@ import BlogPostRow from "./blog_post_table";
 import BugReportRow from "./bug_report_table";
 import ChatChannelInfoRow from "./chat_channel_info_table";
 import ChatConversationRow from "./chat_conversation_table";
+import ChatFollowRow from "./chat_follow_table";
 import ChatMemberRow from "./chat_member_table";
 import ChatMemberStateRow from "./chat_member_state_table";
 import ChatMembershipIndexRow from "./chat_membership_index_table";
@@ -366,6 +376,8 @@ import InventoryTransactionRow from "./inventory_transaction_table";
 import LocationRow from "./location_table";
 import MemberPunchCodeRow from "./member_punch_code_table";
 import NotificationRow from "./notification_table";
+import NotificationDeliveryRow from "./notification_delivery_table";
+import NotificationPrefRow from "./notification_pref_table";
 import OrgInvitationRow from "./org_invitation_table";
 import OrgMemberRow from "./org_member_table";
 import OrgMembershipIndexRow from "./org_membership_index_table";
@@ -545,6 +557,26 @@ const tablesSchema = __schema({
       { name: 'chat_conversation_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ChatConversationRow),
+  chatFollow: __table({
+    name: 'chat_follow',
+    indexes: [
+      { accessor: 'id', name: 'chat_follow_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'chat_follow_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byTargetHex', name: 'chat_follow_target_hex_idx_btree', algorithm: 'btree', columns: [
+        'targetHex',
+      ] },
+      { accessor: 'byUserId', name: 'chat_follow_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_follow_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChatFollowRow),
   chatMember: __table({
     name: 'chat_member',
     indexes: [
@@ -1340,6 +1372,40 @@ const tablesSchema = __schema({
       { name: 'notification_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, NotificationRow),
+  notificationDelivery: __table({
+    name: 'notification_delivery',
+    indexes: [
+      { accessor: 'byDueAt', name: 'notification_delivery_due_at_micros_idx_btree', algorithm: 'btree', columns: [
+        'dueAtMicros',
+      ] },
+      { accessor: 'notificationId', name: 'notification_delivery_notification_id_idx_btree', algorithm: 'btree', columns: [
+        'notificationId',
+      ] },
+      { accessor: 'byRunId', name: 'notification_delivery_run_id_idx_btree', algorithm: 'btree', columns: [
+        'runId',
+      ] },
+      { accessor: 'byScope', name: 'notification_delivery_scope_idx_btree', algorithm: 'btree', columns: [
+        'scope',
+      ] },
+      { accessor: 'byTargetId', name: 'notification_delivery_target_id_idx_btree', algorithm: 'btree', columns: [
+        'targetId',
+      ] },
+    ],
+    constraints: [
+      { name: 'notification_delivery_notification_id_key', constraint: 'unique', columns: ['notificationId'] },
+    ],
+  }, NotificationDeliveryRow),
+  notificationPref: __table({
+    name: 'notification_pref',
+    indexes: [
+      { accessor: 'userId', name: 'notification_pref_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'notification_pref_user_id_key', constraint: 'unique', columns: ['userId'] },
+    ],
+  }, NotificationPrefRow),
   orgInvitation: __table({
     name: 'org_invitation',
     indexes: [
@@ -2120,6 +2186,8 @@ const reducersSchema = __reducers(
   __reducerSchema("mark_all_notifications_read", MarkAllNotificationsReadReducer),
   __reducerSchema("mark_chat_read", MarkChatReadReducer),
   __reducerSchema("mark_notification_read", MarkNotificationReadReducer),
+  __reducerSchema("mark_notifications_delivered", MarkNotificationsDeliveredReducer),
+  __reducerSchema("mark_notifications_read", MarkNotificationsReadReducer),
   __reducerSchema("migrate_money_v_1", MigrateMoneyV1Reducer),
   __reducerSchema("migrate_owner_permissions_v_1", MigrateOwnerPermissionsV1Reducer),
   __reducerSchema("migrate_punch_code_flags_v_1", MigratePunchCodeFlagsV1Reducer),
@@ -2174,9 +2242,11 @@ const reducersSchema = __reducers(
   __reducerSchema("save_sheet_version", SaveSheetVersionReducer),
   __reducerSchema("send_merchiva_message", SendMerchivaMessageReducer),
   __reducerSchema("send_message", SendMessageReducer),
+  __reducerSchema("send_store_sos", SendStoreSosReducer),
   __reducerSchema("send_thread_reply", SendThreadReplyReducer),
   __reducerSchema("service_ack_drive_blob_gc", ServiceAckDriveBlobGcReducer),
   __reducerSchema("service_backfill_app_files", ServiceBackfillAppFilesReducer),
+  __reducerSchema("service_claim_notification_deliveries", ServiceClaimNotificationDeliveriesReducer),
   __reducerSchema("service_commit_drive_upload", ServiceCommitDriveUploadReducer),
   __reducerSchema("service_create_notification", ServiceCreateNotificationReducer),
   __reducerSchema("service_discard_drive_blob", ServiceDiscardDriveBlobReducer),
@@ -2186,6 +2256,7 @@ const reducersSchema = __reducers(
   __reducerSchema("service_fail_drive_blob_gc", ServiceFailDriveBlobGcReducer),
   __reducerSchema("service_fail_drive_upload", ServiceFailDriveUploadReducer),
   __reducerSchema("service_finish_drive_reconcile", ServiceFinishDriveReconcileReducer),
+  __reducerSchema("service_finish_notification_deliveries", ServiceFinishNotificationDeliveriesReducer),
   __reducerSchema("service_log_supplier_message", ServiceLogSupplierMessageReducer),
   __reducerSchema("service_recompute_storage", ServiceRecomputeStorageReducer),
   __reducerSchema("service_record_ai_usage", ServiceRecordAiUsageReducer),
@@ -2200,6 +2271,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_assistant_config", SetAssistantConfigReducer),
   __reducerSchema("set_beta_features", SetBetaFeaturesReducer),
   __reducerSchema("set_channel_topic", SetChannelTopicReducer),
+  __reducerSchema("set_chat_follow", SetChatFollowReducer),
   __reducerSchema("set_chat_message_pinned", SetChatMessagePinnedReducer),
   __reducerSchema("set_chat_muted", SetChatMutedReducer),
   __reducerSchema("set_chat_starred", SetChatStarredReducer),
@@ -2212,6 +2284,8 @@ const reducersSchema = __reducers(
   __reducerSchema("set_member_hourly_rate", SetMemberHourlyRateReducer),
   __reducerSchema("set_member_punch_in_code", SetMemberPunchInCodeReducer),
   __reducerSchema("set_member_status", SetMemberStatusReducer),
+  __reducerSchema("set_notification_email", SetNotificationEmailReducer),
+  __reducerSchema("set_notification_locale", SetNotificationLocaleReducer),
   __reducerSchema("set_own_punch_in_code", SetOwnPunchInCodeReducer),
   __reducerSchema("set_punch_in_code", SetPunchInCodeReducer),
   __reducerSchema("set_schedule_integration", SetScheduleIntegrationReducer),
@@ -2219,6 +2293,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_user_admin", SetUserAdminReducer),
   __reducerSchema("skip_role_task", SkipRoleTaskReducer),
   __reducerSchema("submit_form_response", SubmitFormResponseReducer),
+  __reducerSchema("sync_notification_identity", SyncNotificationIdentityReducer),
   __reducerSchema("toggle_chat_reaction", ToggleChatReactionReducer),
   __reducerSchema("toggle_document_star", ToggleDocumentStarReducer),
   __reducerSchema("toggle_drive_star", ToggleDriveStarReducer),

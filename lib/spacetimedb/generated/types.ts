@@ -153,6 +153,15 @@ export const ChatConversation = __t.object("ChatConversation", {
 });
 export type ChatConversation = __Infer<typeof ChatConversation>;
 
+export const ChatFollow = __t.object("ChatFollow", {
+  id: __t.string(),
+  organizationId: __t.string(),
+  userId: __t.identity(),
+  targetHex: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type ChatFollow = __Infer<typeof ChatFollow>;
+
 export const ChatMember = __t.object("ChatMember", {
   id: __t.uuid(),
   conversationId: __t.string(),
@@ -203,6 +212,19 @@ export const ChatMessageExt = __t.object("ChatMessageExt", {
   deletedAt: __t.option(__t.timestamp()),
 });
 export type ChatMessageExt = __Infer<typeof ChatMessageExt>;
+
+export const ChatNoticeUnread = __t.object("ChatNoticeUnread", {
+  notificationId: __t.string(),
+  readerKey: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type ChatNoticeUnread = __Infer<typeof ChatNoticeUnread>;
+
+export const ChatPinNotice = __t.object("ChatPinNotice", {
+  messageId: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type ChatPinNotice = __Infer<typeof ChatPinNotice>;
 
 export const ChatReaction = __t.object("ChatReaction", {
   id: __t.uuid(),
@@ -861,6 +883,64 @@ export const Notification = __t.object("Notification", {
 });
 export type Notification = __Infer<typeof Notification>;
 
+export const NotificationDelivery = __t.object("NotificationDelivery", {
+  notificationId: __t.string(),
+  organizationId: __t.string(),
+  targetId: __t.identity(),
+  scope: __t.string(),
+  runId: __t.string(),
+  claimed: __t.string(),
+  dueAtMicros: __t.u64(),
+  template: __t.string(),
+  params: __t.string(),
+  sourceKind: __t.string(),
+  sourceId: __t.string(),
+  contextId: __t.string(),
+  title: __t.string(),
+  body: __t.string(),
+  link: __t.string(),
+  email: __t.bool(),
+  push: __t.bool(),
+  pushTargets: __t.string(),
+  subject: __t.string(),
+  issuer: __t.string(),
+  locale: __t.string(),
+  attempts: __t.u32(),
+  createdAt: __t.timestamp(),
+});
+export type NotificationDelivery = __Infer<typeof NotificationDelivery>;
+
+export const NotificationEmailState = __t.object("NotificationEmailState", {
+  targetId: __t.identity(),
+  lastEmailAtMicros: __t.u64(),
+  dayKey: __t.string(),
+  dayCount: __t.u32(),
+});
+export type NotificationEmailState = __Infer<typeof NotificationEmailState>;
+
+export const NotificationPref = __t.object("NotificationPref", {
+  userId: __t.identity(),
+  subject: __t.string(),
+  issuer: __t.string(),
+  emailEnabled: __t.bool(),
+  locale: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type NotificationPref = __Infer<typeof NotificationPref>;
+
+export const NotificationQuota = __t.object("NotificationQuota", {
+  id: __t.string(),
+  windowKey: __t.u64(),
+  count: __t.u32(),
+});
+export type NotificationQuota = __Infer<typeof NotificationQuota>;
+
+export const NotificationUrgent = __t.object("NotificationUrgent", {
+  notificationId: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type NotificationUrgent = __Infer<typeof NotificationUrgent>;
+
 export const OrgInvitation = __t.object("OrgInvitation", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -1377,6 +1457,14 @@ export const StoreDevice = __t.object("StoreDevice", {
   createdAt: __t.timestamp(),
 });
 export type StoreDevice = __Infer<typeof StoreDevice>;
+
+export const StoreSosState = __t.object("StoreSosState", {
+  organizationId: __t.string(),
+  lastAtMicros: __t.u64(),
+  dayKey: __t.string(),
+  dayCount: __t.u32(),
+});
+export type StoreSosState = __Infer<typeof StoreSosState>;
 
 export const Supplier = __t.object("Supplier", {
   id: __t.uuid(),

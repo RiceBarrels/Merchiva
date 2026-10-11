@@ -300,6 +300,10 @@ describe("submitFormResponse", () => {
     expect((notes[0].targetId as FakeIdentity).hex).toBe(orgA.manager.identity.hex);
     // The edit page reads `view`; the link must be the one formEditHref builds, or it opens on Build.
     expect(notes[0].link).toBe(formEditHref(formId, "responses"));
+    // Emailed too; the claim re-checks it against the response and the form (notifications spec §1.5).
+    const queued = db.rows("notificationDelivery").filter((d) => d.template === "form.response");
+    expect(queued).toEqual([expect.objectContaining({ email: true, sourceKind: "form", sourceId: responseId, contextId: formId })]);
+    expect(JSON.parse(String(queued[0].params))).toEqual({ actor: "Org A staff", form: "Opening", store: "Org A" });
   });
 
   test("a replay of the same id by the same sender is a no-op; by anyone else it is refused", () => {

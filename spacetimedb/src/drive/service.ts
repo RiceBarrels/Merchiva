@@ -83,8 +83,11 @@ function driveWholeNumber(value: unknown): bigint | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? BigInt(Math.floor(value)) : null;
 }
 
-/** ctx.sender may read drive_blob_gc and drive_usage (the service rules join drive_service_reader). */
-function ensureDriveServiceReader(ctx: DriveCtx): void {
+/**
+ * ctx.sender may read drive_blob_gc, drive_usage, form_public and notification_delivery (the
+ * service rules join drive_service_reader). Also called by the notifications claim (../notify/claim.ts).
+ */
+export function ensureDriveServiceReader(ctx: DriveCtx): void {
   const identityHex = ctx.sender.toHexString();
   const existing = ctx.db.driveServiceReader.identityHex.find(identityHex);
   if (!existing) {

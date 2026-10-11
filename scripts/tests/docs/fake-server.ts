@@ -21,6 +21,7 @@ import { createDocConnection } from "@/lib/docs/connection";
 import type { DocConnection, DocTransport } from "@/lib/docs/sync-types";
 import { spacetimeDocTransport } from "@/lib/docs/transport";
 import { clearConnection, getConnection, setConnection } from "@/lib/spacetimedb/client";
+import { TABLE_DEFS, type TableDef } from "./fake-tables";
 import { loadServerDeclarations } from "./server-source";
 
 export type Row = Readonly<Record<string, unknown>>;
@@ -64,55 +65,7 @@ class FakeSenderError extends Error {
 
 // ── Schema ───────────────────────────────────────────────────────────────────
 
-interface TableDef {
-  readonly accessor: string;
-  readonly sqlName: string;
-  readonly primaryKey: string;
-  readonly autoInc?: boolean;
-  /** index accessor → column */
-  readonly indexes: Readonly<Record<string, string>>;
-}
-
-/** Mirrors the table definitions in spacetimedb/src/index.ts. */
-const TABLE_DEFS: readonly TableDef[] = [
-  { accessor: "document", sqlName: "document", primaryKey: "id", indexes: { byOrganizationId: "organizationId" } },
-  { accessor: "documentUpdate", sqlName: "document_update", primaryKey: "id", autoInc: true, indexes: { byDocumentId: "documentId" } },
-  { accessor: "documentSnapshot", sqlName: "document_snapshot", primaryKey: "documentId", indexes: { byOrganizationId: "organizationId" } },
-  {
-    accessor: "documentPresence",
-    sqlName: "document_presence",
-    primaryKey: "id",
-    indexes: { byDocumentId: "documentId", byConnectionId: "connectionId" },
-  },
-  { accessor: "documentComment", sqlName: "document_comment", primaryKey: "id", indexes: { byDocumentId: "documentId", byThreadId: "threadId" } },
-  { accessor: "documentVersion", sqlName: "document_version", primaryKey: "id", indexes: { byDocumentId: "documentId" } },
-  { accessor: "documentStar", sqlName: "document_star", primaryKey: "id", indexes: { byDocumentId: "documentId", byOrganizationId: "organizationId" } },
-  { accessor: "documentAccess", sqlName: "document_access", primaryKey: "id", indexes: { byDocumentId: "documentId", byOrganizationId: "organizationId" } },
-  { accessor: "orgMember", sqlName: "org_member", primaryKey: "id", indexes: { byOrganizationId: "organizationId", byUserId: "userId" } },
-  { accessor: "notification", sqlName: "notification", primaryKey: "id", indexes: {} },
-  // spacetimedb/src/drive/tables.ts: docs reducers keep the reader index current; sheets touch the other two.
-  { accessor: "documentReaderIndex", sqlName: "document_reader_index", primaryKey: "id", indexes: { byDocumentId: "documentId", byUserId: "userId" } },
-  {
-    accessor: "documentEditLease",
-    sqlName: "document_edit_lease",
-    primaryKey: "documentId",
-    indexes: { byOrganizationId: "organizationId", byHolderConnectionId: "holderConnectionId", byRequestedByConnectionId: "requestedByConnectionId" },
-  },
-  {
-    accessor: "documentVersionState",
-    sqlName: "document_version_state",
-    primaryKey: "versionId",
-    indexes: { byDocumentId: "documentId", byOrganizationId: "organizationId" },
-  },
-  // A document's Drive type and folder (drive/document-file.ts): restoreDocument and setDocumentVisibility read it.
-  { accessor: "documentFile", sqlName: "document_file", primaryKey: "documentId", indexes: { byOrganizationId: "organizationId" } },
-  // Storage accounting (drive/storage.ts): new documents check the org's quota and keep a document_size row.
-  { accessor: "driveUsage", sqlName: "drive_usage", primaryKey: "organizationId", indexes: { byScope: "scope" } },
-  { accessor: "orgStorageUsage", sqlName: "org_storage_usage", primaryKey: "organizationId", indexes: {} },
-  { accessor: "documentSize", sqlName: "document_size", primaryKey: "documentId", indexes: { byOrganizationId: "organizationId" } },
-  // Allowed, not yet recorded app uploads count toward the same quota (orgStorageTotal).
-  { accessor: "appUploadHold", sqlName: "app_upload_hold", primaryKey: "id", autoInc: true, indexes: { byOrganizationId: "organizationId" } },
-];
+// Table definitions: ./fake-tables.ts.
 
 /** Reducers the fake server exposes, taken verbatim from the module. */
 export const FAKE_SERVER_REDUCERS = [
@@ -222,7 +175,14 @@ class ServerTable {
     this.handle = handle;
   }
 
+  private checkColumns(row: Record<string, unknown>): void {
+    const allowed = this.def.columns;
+    const unknown = allowed ? Object.keys(row).filter((column) => !allowed.includes(column)) : [];
+    if (unknown.length > 0) throw new Error(`${this.def.sqlName}: no column ${unknown.join(", ")} (frozen table)`);
+  }
+
   private insert(row: Record<string, unknown>): Row {
+    this.checkColumns(row);
     const pk = this.def.primaryKey;
     const next: Record<string, unknown> = { ...row };
     if (this.def.autoInc) {
@@ -239,6 +199,7 @@ class ServerTable {
   }
 
   private update(row: Record<string, unknown>): Row {
+    this.checkColumns(row);
     const key = keyOf(row[this.def.primaryKey]);
     if (!this.rows.has(key)) throw new Error(`${this.def.sqlName}: update of a missing row`);
     this.onWrite(this, key);

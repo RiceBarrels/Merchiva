@@ -8,15 +8,19 @@
 // Group membership is managed by owners and managers only (they create,
 // invite and remove); anyone may leave a group on their own.
 //
-// Runtime imports: only the pure ./logic; the SDK values arrive through ChatDeps.
+// Runtime imports: the pure ./logic and ../notify/logic, ./notify (channel
+// notifications) and ../notify/deliver; the SDK values arrive through ChatDeps.
 
 import type { InferSchema, ReducerCtx, SenderError as SenderErrorCtor, t as TypeBuilders } from 'spacetimedb/server';
 import type { Identity as IdentityCtor, Uuid } from 'spacetimedb';
 import type Schema from '../index';
 import {
-  CHAT_EDIT_MAX_LENGTH, CHAT_REACTIONS_PER_MESSAGE, CHAT_TOPIC_MAX_LENGTH, chatMemberStateId, chatMentions,
-  isChannelManagerRole, isValidReactionEmoji, shouldNotifyChatMember,
+  CHAT_EDIT_MAX_LENGTH, CHAT_REACTIONS_PER_MESSAGE, CHAT_TOPIC_MAX_LENGTH, chatMemberStateId,
+  isChannelManagerRole, isValidReactionEmoji,
 } from './logic';
+import { notifyChatMessage, notifyChatPin } from './notify';
+import { notifyReadConversation } from '../notify/deliver';
+import { notifyFollowId } from '../notify/logic';
 
 export type ChatSchema = typeof Schema;
 export type ChatCtx = ReducerCtx<InferSchema<ChatSchema>>;
@@ -89,7 +93,12 @@ function dropReactions(ctx: ChatCtx, messageId: string): void {
   for (const r of [...ctx.db.chatReaction.byMessageId.filter(messageId)]) ctx.db.chatReaction.delete(r);
 }
 
-function dropMembership(ctx: ChatCtx, conversationId: string, who: IdentityValue): void {
+/**
+ * `who` leaves the conversation, with their read state. Their unread
+ * notifications of it are read and owe nothing more: markChatRead takes a
+ * member, so nothing they can open would clear those dots afterwards.
+ */
+function dropMembership(ctx: ChatCtx, deps: ChatDeps, conversationId: string, who: IdentityValue): void {
   for (const m of [...ctx.db.chatMember.byUserId.filter(who)]) {
     if (m.conversationId !== conversationId) continue;
     const idx = ctx.db.chatMembershipIndex.chatMemberId.find(m.id.toString());
@@ -98,57 +107,7 @@ function dropMembership(ctx: ChatCtx, conversationId: string, who: IdentityValue
   }
   const state = ctx.db.chatMemberState.id.find(chatMemberStateId(conversationId, who.toHexString()));
   if (state) ctx.db.chatMemberState.delete(state);
-}
-
-/**
- * Notification rows for a new message. `recipients` defaults to every member
- * of the conversation; a thread reply passes its participants. A member who
- * muted the conversation gets a row only when named with `@Name`. Anyone named
- * with `@Name` is notified even when not a recipient (still only if a member).
- */
-export function notifyChatMessage(
-  ctx: ChatCtx,
-  conv: ConversationRow,
-  conversationId: string,
-  content: string,
-  hasAttachment: boolean,
-  recipients?: IdentityValue[],
-): void {
-  const senderHex = ctx.sender.toHexString();
-  const members = [...ctx.db.chatMember.byConversationId.filter(conversationId)];
-  const nameByHex = new Map<string, string>();
-  for (const m of ctx.db.orgMember.byOrganizationId.filter(conv.organizationId)) {
-    if (m.status === 'active') nameByHex.set(m.userId.toHexString(), m.displayName);
-  }
-  const senderName = nameByHex.get(senderHex) ?? 'New message';
-  const mentions = chatMentions(content, members.map((m) => {
-    const hex = m.userId.toHexString();
-    return { hex, name: nameByHex.get(hex) ?? '' };
-  }));
-  const wanted = recipients ? new Set(recipients.map((r) => r.toHexString())) : null;
-  const preview = content.length > 140 ? content.slice(0, 137) + '...' : content;
-  const body = hasAttachment && !content ? '[attachment]' : preview;
-  const done = new Set<string>();
-  for (const m of members) {
-    const hex = m.userId.toHexString();
-    if (hex === senderHex || done.has(hex)) continue;
-    const named = mentions.users.has(hex);
-    if (wanted && !wanted.has(hex) && !named) continue;
-    const state = ctx.db.chatMemberState.id.find(chatMemberStateId(conversationId, hex));
-    if (!shouldNotifyChatMember(state?.muted === true, named)) continue;
-    done.add(hex);
-    ctx.db.notification.insert({
-      id: ctx.newUuidV4(),
-      organizationId: conv.organizationId,
-      targetId: m.userId,
-      type: 'team',
-      title: senderName,
-      body,
-      link: `/manager/channel?c=${conversationId}`,
-      read: false,
-      createdAt: ctx.timestamp,
-    });
-  }
+  notifyReadConversation(ctx, deps, conversationId, who);
 }
 
 /**
@@ -202,6 +161,17 @@ export function rekeyChatIdentity(ctx: ChatCtx, from: IdentityValue, to: Identit
     for (const e of [...ctx.db.chatMessageExt.byConversationId.filter(conversationId)]) {
       if (e.pinnedBy === fromHex) ctx.db.chatMessageExt.messageId.update({ ...e, pinnedBy: toHex });
     }
+  }
+  // Follows, both ways (chat_follow ids carry both identities). A follow of oneself is dropped.
+  for (const f of [...ctx.db.chatFollow.byUserId.filter(from)]) {
+    ctx.db.chatFollow.id.delete(f.id);
+    const id = notifyFollowId(f.organizationId, toHex, f.targetHex);
+    if (f.targetHex !== toHex && ctx.db.chatFollow.id.find(id) == null) ctx.db.chatFollow.insert({ ...f, id, userId: to });
+  }
+  for (const f of [...ctx.db.chatFollow.byTargetHex.filter(fromHex)]) {
+    ctx.db.chatFollow.id.delete(f.id);
+    const id = notifyFollowId(f.organizationId, f.userId.toHexString(), toHex);
+    if (!f.userId.isEqual(to) && ctx.db.chatFollow.id.find(id) == null) ctx.db.chatFollow.insert({ ...f, id, targetHex: toHex });
   }
 }
 
@@ -274,7 +244,8 @@ export function defineChatReducers(spacetimedb: ChatSchema, deps: ChatDeps) {
   /**
    * Replies in a message's thread. Threads are one level deep: replying to a
    * reply lands in the same thread. Notifies the thread's participants (the
-   * parent's author and everyone who replied) and anyone named with `@Name`.
+   * parent's author and everyone who replied), anyone named with `@Name` and
+   * anyone following the sender.
    */
   const sendThreadReply = spacetimedb.reducer(
     {
@@ -293,34 +264,37 @@ export function defineChatReducers(spacetimedb: ChatSchema, deps: ChatDeps) {
       if (rootParent) root = requireMessage(ctx, conversationId, rootParent);
       const rootId = root.id.toString();
 
-      const id = ctx.newUuidV4();
-      ctx.db.chatMessage.insert({
-        id, conversationId, senderId: ctx.sender, content, createdAt: ctx.timestamp,
+      const message = ctx.db.chatMessage.insert({
+        id: ctx.newUuidV4(), conversationId, senderId: ctx.sender, content, createdAt: ctx.timestamp,
         replyToId: undefined, attachmentUrl, attachmentType, attachmentName,
         isMerchiva: undefined, voiceTranscript: undefined,
       });
-      putExt(ctx, { ...blankExt(id.toString(), conversationId), threadParentId: rootId });
+      putExt(ctx, { ...blankExt(message.id.toString(), conversationId), threadParentId: rootId });
 
       const participants: IdentityValue[] = [root.senderId];
       for (const reply of threadReplies(ctx, rootId)) {
         const m = messageInConversation(ctx, conversationId, reply.messageId);
         if (m) participants.push(m.senderId);
       }
-      notifyChatMessage(ctx, conv, conversationId, content, !!attachmentUrl, participants);
+      notifyChatMessage(ctx, conv, message, participants);
     }
   );
 
-  /** Pins or unpins a message. Any member may, as in most team chats. */
+  /**
+   * Pins or unpins a message. Any member may, as in most team chats. The
+   * first pin of a message tells the conversation (notifyChatPin), once ever.
+   */
   const setChatMessagePinned = spacetimedb.reducer(
     { conversationId: t.string(), messageId: t.string(), pinned: t.bool() },
     (ctx, { conversationId, messageId, pinned }) => {
-      requireMember(ctx, conversationId);
-      requireMessage(ctx, conversationId, messageId);
+      const conv = requireMember(ctx, conversationId);
+      const msg = requireMessage(ctx, conversationId, messageId);
       const ext = extOf(ctx, messageId) ?? blankExt(messageId, conversationId);
       if (ext.deletedAt != null) throw new SenderError('Message was deleted');
       putExt(ctx, pinned
         ? { ...ext, pinnedBy: ctx.sender.toHexString(), pinnedAt: ctx.timestamp }
         : { ...ext, pinnedBy: '', pinnedAt: undefined });
+      if (pinned && ext.pinnedBy === '') notifyChatPin(ctx, conv, msg);
     }
   );
 
@@ -361,12 +335,16 @@ export function defineChatReducers(spacetimedb: ChatSchema, deps: ChatDeps) {
     else ctx.db.chatMemberState.insert(row);
   };
 
-  /** Marks everything in the conversation up to now as read by ctx.sender. */
+  /**
+   * Marks everything in the conversation up to now as read by ctx.sender,
+   * its notifications included (their delivery rows go: no email, no push).
+   */
   const markChatRead = spacetimedb.reducer(
     { conversationId: t.string() },
     (ctx, { conversationId }) => {
       requireMember(ctx, conversationId);
       putState(ctx, conversationId, { lastReadAt: ctx.timestamp });
+      notifyReadConversation(ctx, deps, conversationId);
     }
   );
 
@@ -392,7 +370,7 @@ export function defineChatReducers(spacetimedb: ChatSchema, deps: ChatDeps) {
     (ctx, { conversationId }) => {
       const conv = requireMember(ctx, conversationId);
       if (conv.type !== 'group') throw new SenderError('You cannot leave a direct message');
-      dropMembership(ctx, conversationId, ctx.sender);
+      dropMembership(ctx, deps, conversationId, ctx.sender);
     }
   );
 
@@ -406,7 +384,7 @@ export function defineChatReducers(spacetimedb: ChatSchema, deps: ChatDeps) {
       const target = new Identity(userId);
       if (target.isEqual(ctx.sender)) throw new SenderError('Leave the channel instead');
       if (!isChatMember(ctx, conversationId, target)) throw new SenderError('Not a member of this channel');
-      dropMembership(ctx, conversationId, target);
+      dropMembership(ctx, deps, conversationId, target);
     }
   );
 

@@ -19,7 +19,7 @@ import type { DriveCtx, DriveSchema, MemberLike, MemberRow, TypeBuilders, Sender
 import { DRIVE_OPERATOR_SESSION_TTL_MICROS } from '../drive/logic';
 import { PIN_PATTERN } from './pin-limit';
 import {
-  clearPinBuckets, pinLockedUntilFor, recordPinMiss, writePinAttemptResult, type PinCaller, type PinNotify,
+  PIN_ALERT_LINK, clearPinBuckets, pinLockedUntilFor, recordPinMiss, writePinAttemptResult, type PinCaller, type PinNotify,
 } from './pin-guard';
 
 /** What the factory needs from index.ts. Injected, so this file never imports index.ts at runtime. */
@@ -299,11 +299,11 @@ export function definePinReducers(spacetimedb: DriveSchema, deps: PinDeps) {
       const keep = service || caller.role === 'owner' ? undefined : caller.id.toString();
       const cleared = clearPinBuckets(ctx, organizationId, keep);
       if (cleared === 0) return;
-      const name = pinCallerOf(caller).name || 'A manager';
-      deps.notifyManagers(
-        ctx, organizationId, 'security', 'PIN entry unlocked',
-        `${name} cleared the store's wrong-PIN counts and locks.`, '/manager/personnel',
-      );
+      const name = pinCallerOf(caller).name;
+      deps.notifyManagers(ctx, organizationId, {
+        type: 'security', title: 'PIN entry unlocked', body: `${name || 'A manager'} cleared the store's wrong-PIN counts and locks.`,
+        link: PIN_ALERT_LINK, template: 'security.pinUnlocked', params: { actor: name }, email: true, sourceKind: 'device',
+      });
     }
   );
 

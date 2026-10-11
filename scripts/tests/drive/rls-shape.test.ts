@@ -163,13 +163,14 @@ describe("Drive rules", () => {
     expect(rulesOn("drive_org_state")).toEqual([]);
   });
 
-  // form_public (the Forms public link) is the one approved extension of U14; scripts/tests/forms/rls-shape.test.ts.
-  test("the service identity reads only drive_blob_gc, drive_usage and form_public, through drive_service_reader", () => {
+  // Approved extensions of U14: form_public (the Forms public link, scripts/tests/forms/rls-shape.test.ts) and
+  // notification_delivery (the notifications cron, user-approved 2026-10-08, scripts/tests/notify/rls.test.ts).
+  test("the service identity reads only drive_blob_gc, drive_usage, form_public and notification_delivery, through drive_service_reader", () => {
     const viaServiceReader = Object.values(rls.rules)
       .filter((sql) => /\bJOIN drive_service_reader\b/.test(sql))
       .map(baseTable)
       .sort();
-    expect(viaServiceReader).toEqual(["drive_blob_gc", "drive_usage", "form_public"]);
+    expect(viaServiceReader).toEqual(["drive_blob_gc", "drive_usage", "form_public", "notification_delivery"]);
     for (const sql of Object.values(rls.rules)) expect(sql).not.toContain("service_identity");
   });
 });

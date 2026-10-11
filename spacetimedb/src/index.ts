@@ -17,8 +17,19 @@ import { Identity, Timestamp, Uuid } from 'spacetimedb';
 import { pagePresenceTable } from './presence/tables';
 import { definePagePresenceReducers } from './presence/reducers';
 import { chatChannelInfoTable, chatMemberStateTable, chatMessageExtTable, chatReactionTable } from './chat/tables';
-import { defineChatReducers, deleteChatMessageCascade, notifyChatMessage } from './chat/reducers';
+import { defineChatReducers, deleteChatMessageCascade } from './chat/reducers';
+import { notifyChatMessage, notifyMerchivaMessage } from './chat/notify';
 import { isChannelManagerRole } from './chat/logic';
+import {
+  chatFollowTable, chatPinNoticeTable, notificationDeliveryTable, notificationEmailStateTable, notificationPrefTable,
+  storeSosStateTable, chatNoticeUnreadTable, notificationQuotaTable, notificationUrgentTable,
+} from './notify/tables';
+import { defineNotifyReducers } from './notify/reducers';
+import { deliver, notifyStoreName } from './notify/deliver';
+import { notifyPreview, type NotifyTemplate } from './notify/logic';
+import {
+  notifyFromClient, notifyFromService, notifyManagersOf, notifyMembersOf, notifySupplierIssue, notifyTimeOffTemplate,
+} from './notify/producers';
 import {
   driveItemTable, driveOrgStateTable, driveAdminIndexTable, documentReaderIndexTable, driveUsageTable,
   driveStarTable, driveNoticeAckTable, driveServiceReaderTable, driveBlobGcTable, documentEditLeaseTable,
@@ -2567,6 +2578,14 @@ const spacetimedb = schema({
   formPublic: formPublicTable,
   formResponseReview: formResponseReviewTable,
   formPeriodMark: formPeriodMarkTable,
+  // Notifications (./notify/tables.ts): side tables, as `notification` / `push_subscription` are frozen for older clients.
+  notificationDelivery: notificationDeliveryTable,
+  notificationPref: notificationPrefTable,
+  chatFollow: chatFollowTable,
+  chatPinNotice: chatPinNoticeTable,
+  chatNoticeUnread: chatNoticeUnreadTable,
+  notificationEmailState: notificationEmailStateTable, storeSosState: storeSosStateTable,
+  notificationQuota: notificationQuotaTable, notificationUrgent: notificationUrgentTable,
 });
 
 export default spacetimedb;
@@ -2699,6 +2718,9 @@ const RLS_SELF_SCOPED: Array<[table: string, column: string]> = [
   ['pin_attempt_result', 'identity'],
   // Read position, mute and star of one member in one conversation.
   ['chat_member_state', 'userId'],
+  // A recipient's delivery state, email / locale preference and followed colleagues (./notify/tables.ts).
+  // notification_pref and chat_follow have no service rule: the cron reads neither (U14).
+  ['notification_delivery', 'targetId'], ['notification_pref', 'userId'], ['chat_follow', 'userId'],
   // device_login_request is self-scoped too, but through a join: see
   // rls_device_login_request_requester below.
 ];
@@ -2809,9 +2831,9 @@ const RLS_NO_CLIENT_ACCESS = [
  *                      and consumeDeviceLogin refuses anyone but the requester and the
  *                      service identity.
  *
- * Private (`public: false`) tables need no rule; they are unreadable by any
- * client: platform_admin_secret, user_secret, org_secret, migration_state,
- * drive_org_state.
+ * Private (`public: false`) tables need no rule; no client can read them: platform_admin_secret,
+ * user_secret, org_secret, migration_state, drive_org_state, chat_pin_notice, chat_notice_unread,
+ * notification_email_state, store_sos_state, notification_quota, notification_urgent.
  */
 const RLS_UNFILTERED = [
   'blog_post', 'service_identity', 'org_membership_index', 'chat_membership_index',
@@ -3025,6 +3047,14 @@ rlsRules.rls_form_response_review_admin = spacetimedb.clientVisibilityFilter.sql
 rlsRules.rls_form_public_service = spacetimedb.clientVisibilityFilter.sql(
   `SELECT p.* FROM form_public p ` +
   `JOIN drive_service_reader r ON p.scope = r.scope ` +
+  `WHERE r.userId = :sender`
+);
+// notification_delivery: also the service identity (the notifications cron reads
+// one claim's rows), the same way — extends U14 by one more table (user-approved
+// 2026-10-08). The /merchivaAdmin SQL console refuses queries that touch it.
+rlsRules.rls_notification_delivery_service = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT d.* FROM notification_delivery d ` +
+  `JOIN drive_service_reader r ON d.scope = r.scope ` +
   `WHERE r.userId = :sender`
 );
 
@@ -3484,10 +3514,10 @@ export const acceptInvitation = spacetimedb.reducer(
     ctx.db.orgInvitation.insert({ ...invite, acceptedAt: ctx.timestamp });
 
     const joinName = user.displayName ?? user.email;
-    notifyOrgMembers(ctx, invite.organizationId, 'team',
-      'New team member',
-      `${joinName} has joined the team`,
-      '/manager/personnel/team', ctx.sender);
+    notifyMembersOf(ctx, invite.organizationId, {
+      type: 'team', title: 'New team member', body: `${joinName} has joined the team`, link: '/manager/personnel/team',
+      template: 'team.joined', params: { actor: joinName }, email: true,
+    }, ctx.sender);
   }
 );
 
@@ -3645,7 +3675,7 @@ export const resolveDeviceOperator = spacetimedb.reducer(
     if (!member) {
       const existing = ctx.db.deviceOperatorSession.identity.find(ctx.sender);
       if (existing) ctx.db.deviceOperatorSession.delete(existing);
-      recordPinMiss(ctx, organizationId, pinCallerOf(caller), notifyManagers);
+      recordPinMiss(ctx, organizationId, pinCallerOf(caller), notifyManagersOf);
       return;
     }
     writeDeviceOperatorSession(ctx, organizationId, member);
@@ -3834,7 +3864,7 @@ export const recordPunch = spacetimedb.reducer(
     if (!PIN_PATTERN.test(code)) throw new SenderError('Invalid punch-in code');   // tests no code: not counted
     const target = activeMemberByPunchCode(ctx, organizationId, code);
     if (!target) {
-      recordPinMiss(ctx, organizationId, pinCallerOf(caller), notifyManagers);
+      recordPinMiss(ctx, organizationId, pinCallerOf(caller), notifyManagersOf);
       return;
     }
 
@@ -4492,10 +4522,12 @@ export const updateInventoryItem = spacetimedb.reducer(
     }
 
     if (wasAboveMin && args.currentStock <= args.minStock) {
-      notifyOrgMembers(ctx, args.organizationId, 'inventory_low',
-        `Low stock: ${args.name}`,
-        `${args.name} is at ${args.currentStock} ${item.unit} (min: ${args.minStock})`,
-        '/manager/inventory');
+      notifyMembersOf(ctx, args.organizationId, {
+        type: 'inventory_low', title: `Low stock: ${args.name}`, link: '/manager/inventory',
+        body: `${args.name} is at ${args.currentStock} ${item.unit} (min: ${args.minStock})`, template: 'inventory.low',
+        params: { item: args.name, quantity: String(args.currentStock), unit: item.unit, min: String(args.minStock) },
+        email: true, sourceKind: 'inventory', sourceId: args.itemId,
+      });
     }
   }
 );
@@ -5062,23 +5094,12 @@ export const createTimeOffRequest = spacetimedb.reducer(
       createdAt: ctx.timestamp,
     });
 
-    const memberName = (member as { displayName?: string }).displayName || 'A team member';
-    const managers = [...ctx.db.orgMember.byOrganizationId.filter(args.organizationId)]
-      .filter((m: { role: string; status: string }) => (m.role === 'owner' || m.role === 'manager') && m.status === 'active');
-    for (const mgr of managers) {
-      if ((mgr as { userId: { toString(): string } }).userId.toString() === ctx.sender.toString()) continue;
-      ctx.db.notification.insert({
-        id: ctx.newUuidV4(),
-        organizationId: args.organizationId,
-        targetId: (mgr as { userId: typeof ctx.sender }).userId,
-        type: 'time_off',
-        title: 'Time off request',
-        body: `${memberName} requested time off ${args.startDate} – ${args.endDate}`,
-        link: '/manager/personnel',
-        read: false,
-        createdAt: ctx.timestamp,
-      });
-    }
+    const memberName = (member as { displayName?: string }).displayName || '';
+    notifyManagersOf(ctx, args.organizationId, {
+      type: 'time_off', title: 'Time off request', link: '/manager/personnel',
+      body: `${memberName || 'A team member'} requested time off ${args.startDate} – ${args.endDate}`,
+      template: 'timeOff.requested', params: { actor: memberName, start: args.startDate, end: args.endDate }, email: true,
+    }, ctx.sender);
   }
 );
 
@@ -5104,16 +5125,10 @@ export const updateTimeOffStatus = spacetimedb.reducer(
       reviewedAt: ctx.timestamp,
     });
 
-    ctx.db.notification.insert({
-      id: ctx.newUuidV4(),
-      organizationId,
-      targetId: req.userId,
-      type: 'time_off',
-      title: `Time off ${status}`,
+    deliver(ctx, {
+      organizationId, target: req.userId, type: 'time_off', title: `Time off ${status}`, link: '/manager/personnel',
       body: `Your time off request (${req.startDate} – ${req.endDate}) has been ${status}`,
-      link: '/manager/personnel',
-      read: false,
-      createdAt: ctx.timestamp,
+      template: notifyTimeOffTemplate(status), params: { start: req.startDate, end: req.endDate }, email: true,
     });
   }
 );
@@ -5159,29 +5174,23 @@ export const createShiftTrade = spacetimedb.reducer(
       acceptedById: undefined,
     });
 
-    const requester = [...ctx.db.orgMember.byOrganizationId.filter(args.organizationId)]
-      .find((m: { id: { toString(): string } }) => m.id.toString() === args.requesterId);
-    const requesterName = requester ? (requester as { displayName: string }).displayName : 'A team member';
-
+    // The requester is the caller (checked above).
+    const requesterName = (caller as { displayName?: string }).displayName || '';
+    const shiftNotice = {
+      type: 'shift_trade', title: `Shift ${args.type} request`, link: '/manager/personnel', email: true,
+      params: { actor: requesterName || notifyStoreName(ctx, args.organizationId) },
+    };
     if (args.broadcastToAll) {
-      notifyOrgMembers(ctx, args.organizationId, 'shift_trade',
-        `Shift ${args.type} request`,
-        `${requesterName} is looking for someone to ${args.type === 'cover' ? 'cover' : 'trade'} their shift`,
-        '/manager/personnel', ctx.sender);
+      notifyMembersOf(ctx, args.organizationId, {
+        ...shiftNotice, template: 'shift.open',
+        body: `${requesterName || 'A team member'} is looking for someone to ${args.type === 'cover' ? 'cover' : 'trade'} their shift`,
+      }, ctx.sender);
     } else if (args.targetId) {
-      const target = [...ctx.db.orgMember.byOrganizationId.filter(args.organizationId)]
-        .find((m: { id: { toString(): string } }) => m.id.toString() === args.targetId);
-      if (target) {
-        ctx.db.notification.insert({
-          id: ctx.newUuidV4(),
-          organizationId: args.organizationId,
-          targetId: (target as { userId: { toString(): string } }).userId as unknown as typeof ctx.sender,
-          type: 'shift_trade',
-          title: `Shift ${args.type} request`,
-          body: `${requesterName} wants to ${args.type === 'cover' ? 'have you cover' : 'trade'} a shift with you`,
-          link: '/manager/personnel',
-          read: false,
-          createdAt: ctx.timestamp,
+      const target = findById(ctx.db.orgMember, args.targetId);
+      if (target && target.organizationId === args.organizationId) {
+        deliver(ctx, {
+          ...shiftNotice, organizationId: args.organizationId, target: target.userId, template: 'shift.requested',
+          body: `${requesterName || 'A team member'} wants to ${args.type === 'cover' ? 'have you cover' : 'trade'} a shift with you`,
         });
       }
     }
@@ -5385,7 +5394,7 @@ export const sendMessage = spacetimedb.reducer(
       .some(m => m.conversationId === conversationId);
     if (!isMember) unauthorized('Not a conversation member');
 
-    ctx.db.chatMessage.insert({
+    const message = ctx.db.chatMessage.insert({
       id: ctx.newUuidV4(),
       conversationId,
       senderId: ctx.sender,
@@ -5406,11 +5415,9 @@ export const sendMessage = spacetimedb.reducer(
       ctx.db.chatConversation.insert({ ...conv, updatedAt: ctx.timestamp });
     }
 
-    // Fan out notification rows for every other member of the conversation
-    // (skipping those who muted it, unless named with @Name — ./chat/reducers.ts).
-    // The client (web push) and Tauri bridge both subscribe to this table and
-    // surface OS-level alerts when a row arrives for the local identity.
-    if (conv) notifyChatMessage(ctx, conv, conversationId, content, !!attachmentUrl);
+    // Notify the other members of the conversation; who is told, and who by
+    // email, is chatDelivery (./chat/notify.ts, ./chat/logic.ts).
+    if (conv) notifyChatMessage(ctx, conv, message);
   }
 );
 
@@ -5458,7 +5465,7 @@ export const sendMerchivaMessage = spacetimedb.reducer(
       return;
     }
 
-    ctx.db.chatMessage.insert({
+    const message = ctx.db.chatMessage.insert({
       id: ctx.newUuidV4(),
       conversationId,
       senderId: ctx.sender,
@@ -5475,23 +5482,8 @@ export const sendMerchivaMessage = spacetimedb.reducer(
     ctx.db.chatConversation.delete(conv);
     ctx.db.chatConversation.insert({ ...conv, updatedAt: ctx.timestamp });
 
-    // Notify every member except whoever triggered the reply.
-    const preview = content.length > 140 ? content.slice(0, 137) + '...' : content;
-    const members = [...ctx.db.chatMember.byConversationId.filter(conversationId)];
-    for (const m of members) {
-      if (m.userId.toString() === ctx.sender.toString()) continue;
-      ctx.db.notification.insert({
-        id: ctx.newUuidV4(),
-        organizationId: conv.organizationId,
-        targetId: m.userId,
-        type: 'team',
-        title: 'Mr. Merchiva',
-        body: preview,
-        link: '/manager/channel',
-        read: false,
-        createdAt: ctx.timestamp,
-      });
-    }
+    // Notify every member except whoever triggered the reply (never by email).
+    notifyMerchivaMessage(ctx, conv, message);
   }
 );
 
@@ -6466,7 +6458,7 @@ export const createNotification = spacetimedb.reducer(
     link: t.option(t.string()),
   },
   (ctx, { organizationId, targetIdentity, type, title, body, link }) => {
-    findActiveMember(ctx, organizationId);
+    const sender = findActiveMember(ctx, organizationId);
     // The target has to belong to the org the caller was authorized for.
     // `notification` is RLS self-scoped, so an unvalidated identity delivered
     // the row straight to anyone the caller named — including a user in a
@@ -6475,50 +6467,12 @@ export const createNotification = spacetimedb.reducer(
     const targetIsMember = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
       .some(m => m.status === 'active' && m.userId.toString() === targetIdentity.toString());
     if (!targetIsMember) unauthorized('Target is not a member of this organization');
-    ctx.db.notification.insert({
-      id: ctx.newUuidV4(),
-      organizationId,
-      targetId: targetIdentity,
-      type,
-      title,
-      body,
-      link: link ?? undefined,
-      read: false,
-      createdAt: ctx.timestamp,
-    });
+    // Never emailed; only an older tablet's SOS ('emergency') pushes (./notify/producers.ts).
+    notifyFromClient(ctx, { organizationId, targetIdentity, type, title, body, link }, (sender as { displayName?: string }).displayName ?? '');
   }
 );
 
-export const markNotificationRead = spacetimedb.reducer(
-  { notificationId: t.string() },
-  (ctx, { notificationId }) => {
-    const notif = [...ctx.db.notification.byTargetId.filter(ctx.sender)]
-      .find(n => n.id.toString() === notificationId);
-    if (!notif) throw new SenderError('Notification not found');
-    ctx.db.notification.id.update({ ...notif, read: true });
-  }
-);
-
-export const markAllNotificationsRead = spacetimedb.reducer(
-  { organizationId: t.string() },
-  (ctx, { organizationId }) => {
-    const unread = [...ctx.db.notification.byTargetId.filter(ctx.sender)]
-      .filter(n => n.organizationId === organizationId && !n.read);
-    for (const notif of unread) {
-      ctx.db.notification.id.update({ ...notif, read: true });
-    }
-  }
-);
-
-export const dismissNotification = spacetimedb.reducer(
-  { notificationId: t.string() },
-  (ctx, { notificationId }) => {
-    const notif = [...ctx.db.notification.byTargetId.filter(ctx.sender)]
-      .find(n => n.id.toString() === notificationId);
-    if (!notif) throw new SenderError('Notification not found');
-    ctx.db.notification.delete(notif);
-  }
-);
+// markNotificationRead, markAllNotificationsRead, dismissNotification: ./notify/reducers.ts.
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // WASTE LOG REDUCERS
@@ -6592,10 +6546,12 @@ export const addWasteLog = spacetimedb.reducer(
         });
 
         if (wasAboveMin && newStock <= item.minStock) {
-          notifyOrgMembers(ctx, args.organizationId, 'inventory_low',
-            `Low stock: ${item.name}`,
-            `${item.name} dropped to ${newStock} ${item.unit} after waste disposal`,
-            '/manager/inventory');
+          notifyMembersOf(ctx, args.organizationId, {
+            type: 'inventory_low', title: `Low stock: ${item.name}`, link: '/manager/inventory',
+            body: `${item.name} dropped to ${newStock} ${item.unit} after waste disposal`, template: 'inventory.waste',
+            params: { item: item.name, quantity: String(newStock), unit: item.unit }, email: true,
+            sourceKind: 'inventory', sourceId: args.itemId,
+          });
         }
       }
     }
@@ -6847,27 +6803,8 @@ export const updatePurchaseOrderStatus = spacetimedb.reducer(
   }
 );
 
-// Notify only the org's active owners/managers (vs. notifyOrgMembers which hits
-// everyone). Used to escalate supplier-ordering problems to people who can act.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function notifyManagers(ctx: any, organizationId: string, type: string, title: string, body: string, link?: string) {
-  const managers = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
-    .filter((m: { status: string; role: string }) =>
-      m.status === 'active' && (m.role === 'owner' || m.role === 'manager'));
-  for (const m of managers) {
-    ctx.db.notification.insert({
-      id: ctx.newUuidV4(),
-      organizationId,
-      targetId: m.userId,
-      type,
-      title,
-      body,
-      link: link ?? undefined,
-      read: false,
-      createdAt: ctx.timestamp,
-    });
-  }
-}
+// Supplier-ordering problems go to the org's active owners/managers only
+// (notifyManagersOf / notifySupplierIssue, ./notify/producers.ts).
 
 // Mr. Merchiva orders inventory from a supplier. Creates the purchase order and
 // logs the outbound message in one atomic step. The actual email is sent by the
@@ -6925,14 +6862,11 @@ export const recordSupplierOrder = spacetimedb.reducer(
     });
 
     if (!args.emailed) {
-      notifyManagers(
-        ctx,
-        args.organizationId,
-        'order',
-        'Purchase order needs your attention',
-        `Mr. Merchiva couldn't email ${args.supplierName} — the order was saved as a draft. Add a supplier email or send it manually.`,
-        '/manager/suppliers',
-      );
+      notifyManagersOf(ctx, args.organizationId, {
+        type: 'order', title: 'Purchase order needs your attention', link: '/manager/suppliers',
+        body: `Mr. Merchiva couldn't email ${args.supplierName} — the order was saved as a draft. Add a supplier email or send it manually.`,
+        template: 'supplier.order', params: { supplier: args.supplierName }, email: true,
+      });
     }
   }
 );
@@ -6968,16 +6902,7 @@ export const logSupplierMessage = spacetimedb.reducer(
       status: args.status,
       createdAt: ctx.timestamp,
     });
-    if (args.escalate) {
-      notifyManagers(
-        ctx,
-        args.organizationId,
-        'order',
-        `Supplier issue: ${args.supplierName}`,
-        args.body.length > 160 ? args.body.slice(0, 159) + '…' : args.body,
-        '/manager/suppliers',
-      );
-    }
+    if (args.escalate) notifySupplierIssue(ctx, args.organizationId, args.supplierName, args.body);
   }
 );
 
@@ -7012,16 +6937,7 @@ export const serviceLogSupplierMessage = spacetimedb.reducer(
       status: args.status,
       createdAt: ctx.timestamp,
     });
-    if (args.escalate) {
-      notifyManagers(
-        ctx,
-        args.organizationId,
-        'order',
-        `Supplier issue: ${args.supplierName}`,
-        args.body.length > 160 ? args.body.slice(0, 159) + '…' : args.body,
-        '/manager/suppliers',
-      );
-    }
+    if (args.escalate) notifySupplierIssue(ctx, args.organizationId, args.supplierName, args.body);
   }
 );
 
@@ -7363,26 +7279,6 @@ function findItemInOrg<T extends { id: { toString(): string } }>(
     .find(r => r.id.toString() === itemId);
   if (!item) throw new SenderError('Record not found');
   return item;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function notifyOrgMembers(ctx: any, organizationId: string, type: string, title: string, body: string, link?: string, excludeIdentity?: { toString(): string }) {
-  const members = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
-    .filter((m: { status: string }) => m.status === 'active');
-  for (const m of members) {
-    if (excludeIdentity && m.userId.toString() === excludeIdentity.toString()) continue;
-    ctx.db.notification.insert({
-      id: ctx.newUuidV4(),
-      organizationId,
-      targetId: m.userId,
-      type,
-      title,
-      body,
-      link: link ?? undefined,
-      read: false,
-      createdAt: ctx.timestamp,
-    });
-  }
 }
 
 /** Look up the calling user's active org membership, throwing if not found. */
@@ -8282,62 +8178,7 @@ export const recordTaskCompletion = spacetimedb.reducer(
   }
 );
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PUSH SUBSCRIPTION REDUCERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// Upsert the calling identity's subscription for a given endpoint. The endpoint
-// is the unique identifier the browser hands us — if it changes (different
-// device/browser), we insert a new row; if it matches, we update the keys.
-export const savePushSubscription = spacetimedb.reducer(
-  {
-    organizationId: t.string(),
-    endpoint: t.string(),
-    p256dh: t.string(),
-    auth: t.string(),
-    userAgent: t.option(t.string()),
-  },
-  (ctx, { organizationId, endpoint, p256dh, auth, userAgent }) => {
-    findActiveMember(ctx, organizationId);
-
-    const existing = [...ctx.db.pushSubscription.byTargetId.filter(ctx.sender)]
-      .find((row) => row.endpoint === endpoint && row.organizationId === organizationId);
-
-    if (existing) {
-      ctx.db.pushSubscription.delete(existing);
-    }
-
-    ctx.db.pushSubscription.insert({
-      id: ctx.newUuidV4(),
-      organizationId,
-      targetId: ctx.sender,
-      endpoint,
-      p256dh,
-      auth,
-      userAgent,
-      createdAt: ctx.timestamp,
-    });
-  }
-);
-
-// Remove a subscription by endpoint. Used when the user disables notifications,
-// or when the server reports a 404/410 indicating the subscription has expired.
-export const deletePushSubscription = spacetimedb.reducer(
-  {
-    organizationId: t.string(),
-    endpoint: t.string(),
-  },
-  (ctx, { organizationId, endpoint }) => {
-    findActiveMember(ctx, organizationId);
-
-    const existing = [...ctx.db.pushSubscription.byTargetId.filter(ctx.sender)]
-      .find((row) => row.endpoint === endpoint && row.organizationId === organizationId);
-
-    if (existing) {
-      ctx.db.pushSubscription.delete(existing);
-    }
-  }
-);
+// Push subscription reducers (savePushSubscription, deletePushSubscription): ./notify/reducers.ts.
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADMIN REDUCERS
@@ -8586,17 +8427,7 @@ export const serviceCreateNotification = spacetimedb.reducer(
   },
   (ctx, { organizationId, targetIdentity, type, title, body, link }) => {
     if (!isServiceCaller(ctx)) unauthorized('Service identity required');
-    ctx.db.notification.insert({
-      id: ctx.newUuidV4(),
-      organizationId,
-      targetId: targetIdentity,
-      type,
-      title,
-      body,
-      link: link ?? undefined,
-      read: false,
-      createdAt: ctx.timestamp,
-    });
+    notifyFromService(ctx, { organizationId, targetIdentity, type, title, body, link });
   }
 );
 
@@ -9161,30 +8992,29 @@ function untitledDocName(kind: 'doc' | 'sheet' | 'slides'): string {
 
 /**
  * Notify each distinct active member in `memberIds` (never the actor) who can
- * at least view the doc. Same row shape as notifyManagers; English copy like
- * the rest of the module's notifications.
+ * at least view the doc, by email too. English row copy like the rest of the
+ * module's notifications; `about` is the template, and for a comment its
+ * thread and id (the comment's text is the preview).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function notifyDocMembers(ctx: any, doc: any, actorMemberId: string, memberIds: readonly string[], title: string, body: string, threadId?: string, type = 'doc_comment'): void {
+function notifyDocMembers(ctx: any, doc: any, actorMemberId: string, memberIds: readonly string[], title: string, body: string, about: { template: NotifyTemplate; threadId?: string; commentId?: string }): void {
   const wanted = new Set(memberIds.filter((id) => id && id !== actorMemberId));
   if (wanted.size === 0) return;
+  const { template, threadId, commentId } = about;
   const kind = docFileTypeOf(ctx, doc.id);
   const docTitle: string = doc.title || untitledDocName(kind);
-  for (const m of [...ctx.db.orgMember.byOrganizationId.filter(doc.organizationId)]) {
+  const members = [...ctx.db.orgMember.byOrganizationId.filter(doc.organizationId)];
+  const actor: string = members.find((m) => m.id.toString() === actorMemberId)?.displayName || notifyStoreName(ctx, doc.organizationId);
+  const params: Record<string, string> = commentId ? { actor, doc: docTitle, preview: notifyPreview(body, false) } : { actor, doc: docTitle };
+  for (const m of members) {
     const memberId: string = m.id.toString();
     if (m.status !== 'active' || !wanted.has(memberId)) continue;
     wanted.delete(memberId);
     if (DOC_ROLE_RANK[docRoleFor(ctx, doc, m)] < DOC_ROLE_RANK.viewer) continue;
-    ctx.db.notification.insert({
-      id: ctx.newUuidV4(),
-      organizationId: doc.organizationId,
-      targetId: m.userId,
-      type,
-      title,
-      body: clampChars(`${docTitle}: ${body}`, DOC_NOTIFY_BODY_MAX),
-      link: docLink(doc.id, threadId, kind),
-      read: false,
-      createdAt: ctx.timestamp,
+    deliver(ctx, {
+      organizationId: doc.organizationId, target: m.userId, type: commentId ? 'doc_comment' : 'doc_share', title,
+      body: clampChars(`${docTitle}: ${body}`, DOC_NOTIFY_BODY_MAX), link: docLink(doc.id, threadId, kind), template, params,
+      email: true, sourceKind: commentId ? 'doc_comment' : 'doc', sourceId: commentId ?? doc.id, contextId: doc.id,
     });
   }
 }
@@ -9406,7 +9236,7 @@ export const grantDocumentAccess = spacetimedb.reducer(
       const kind = docFileTypeOf(ctx, doc.id);
       const sharedTitle = kind === 'sheet' ? 'Spreadsheet shared with you'
         : kind === 'slides' ? 'Presentation shared with you' : 'Document shared with you';
-      notifyDocMembers(ctx, doc, memberId, [targetId], sharedTitle, `You can now ${verb} it`, undefined, 'doc_share');
+      notifyDocMembers(ctx, doc, memberId, [targetId], sharedTitle, `You can now ${verb} it`, { template: 'doc.shared' });
     }
     refreshDocReaders(ctx, doc);
     pruneDocPresence(ctx, doc);
@@ -9831,7 +9661,7 @@ export const addDocumentComment = spacetimedb.reducer(
     const quotedText = args.quotedText ? clampChars(args.quotedText.trim(), DOC_QUOTE_MAX) : '';
     const anchor = cleanCommentAnchor(args.anchor);
     const mentionIds = parseMentionIds(ctx, doc.organizationId, args.mentions);
-    ctx.db.documentComment.insert({
+    const comment = ctx.db.documentComment.insert({
       id: ctx.newUuidV4(),
       documentId: doc.id,
       organizationId: doc.organizationId,
@@ -9849,7 +9679,9 @@ export const addDocumentComment = spacetimedb.reducer(
       editedAt: undefined,
       anchor,
     });
-    notifyDocMembers(ctx, doc, memberId, [doc.ownerMemberId, ...mentionIds], 'New comment', body, threadId);
+    notifyDocMembers(ctx, doc, memberId, [doc.ownerMemberId, ...mentionIds], 'New comment', body, {
+      template: 'doc.comment', threadId, commentId: comment.id.toString(),
+    });
   }
 );
 
@@ -9864,7 +9696,7 @@ export const replyDocumentComment = spacetimedb.reducer(
     if (!root) throw docError('not_found', 'Thread not found');
     const body = cleanCommentBody(args.body);
     const mentionIds = parseMentionIds(ctx, doc.organizationId, args.mentions);
-    ctx.db.documentComment.insert({
+    const reply = ctx.db.documentComment.insert({
       id: ctx.newUuidV4(),
       documentId: doc.id,
       organizationId: doc.organizationId,
@@ -9886,7 +9718,9 @@ export const replyDocumentComment = spacetimedb.reducer(
       ctx.db.documentComment.id.update({ ...root, status: 'open', resolvedAt: undefined, resolvedByMemberId: undefined });
     }
     const participants = thread.map((c) => c.authorMemberId);
-    notifyDocMembers(ctx, doc, memberId, [...participants, ...mentionIds], 'New reply', body, threadId);
+    notifyDocMembers(ctx, doc, memberId, [...participants, ...mentionIds], 'New reply', body, {
+      template: 'doc.reply', threadId, commentId: reply.id.toString(),
+    });
   }
 );
 
@@ -10007,12 +9841,23 @@ export const {
   markChatRead, setChatMuted, setChatStarred, leaveConversation, removeConversationMember,
 } = defineChatReducers(spacetimedb, { t, SenderError, Identity, findById });
 
+// NOTIFICATION REDUCERS (./notify/reducers.ts): read state, push subscriptions, email / locale
+// preference, follows, the store SOS, and the notifications cron's claim / finish.
+export const {
+  markNotificationRead, markAllNotificationsRead, dismissNotification, markNotificationsRead,
+  markNotificationsDelivered, savePushSubscription, deletePushSubscription, syncNotificationIdentity,
+  setNotificationEmail, setNotificationLocale, setChatFollow, sendStoreSos, serviceClaimNotificationDeliveries,
+  serviceFinishNotificationDeliveries,
+} = defineNotifyReducers(spacetimedb, {
+  t, SenderError, Identity, findById, findActiveMember, docRoleFor, isServiceCaller, u64Range: driveDeps.u64Range,
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // PUNCH-PIN REDUCERS (./device/pin-reducers.ts): limited PIN checks answered in
 // pin_attempt_result, and punches that never re-send a PIN.
 // ═══════════════════════════════════════════════════════════════════════════════
 const pinDeps: PinDeps = {
-  t, SenderError, findActiveMember, isServiceCaller, writeDeviceOperatorSession, applyPunch, notifyManagers,
+  t, SenderError, findActiveMember, isServiceCaller, writeDeviceOperatorSession, applyPunch, notifyManagers: notifyManagersOf,
 };
 export const {
   resolveDeviceOperatorAttempt, verifyManagerPinAttempt, recordOperatorPunch, recordSelfPunch, setOwnPunchInCode,

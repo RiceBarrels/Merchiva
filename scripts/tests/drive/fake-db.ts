@@ -126,6 +126,20 @@ export function frozenColumns(table: string): readonly string[] {
   return columns.map(([name]) => name);
 }
 
+/** The notification side tables deliver() and the notification reducers write (spacetimedb/src/notify/tables.ts). */
+export const NOTIFY_FAKE_TABLES: readonly FakeTableDef[] = [
+  { accessor: "notificationDelivery", primaryKey: "notificationId", indexes: {
+    byTargetId: "targetId", byScope: "scope", byRunId: "runId", byDueAt: "dueAtMicros" } },
+  { accessor: "notificationPref", primaryKey: "userId", indexes: {} },
+  { accessor: "chatFollow", primaryKey: "id", indexes: { byOrganizationId: "organizationId", byUserId: "userId", byTargetHex: "targetHex" } },
+  { accessor: "chatPinNotice", primaryKey: "messageId", indexes: {} },
+  { accessor: "chatNoticeUnread", primaryKey: "notificationId", indexes: { byReaderKey: "readerKey" } },
+  { accessor: "notificationEmailState", primaryKey: "targetId", indexes: {} },
+  { accessor: "storeSosState", primaryKey: "organizationId", indexes: {} },
+  { accessor: "notificationQuota", primaryKey: "id", indexes: {} },
+  { accessor: "notificationUrgent", primaryKey: "notificationId", indexes: {} },
+];
+
 /** The tables Drive, the access indexes and the Docs helpers touch (index.ts + drive/tables.ts definitions). */
 export const DRIVE_FAKE_TABLES: readonly FakeTableDef[] = [
   { accessor: "user", primaryKey: "identity", indexes: { byEmail: "email" } },
@@ -149,7 +163,7 @@ export const DRIVE_FAKE_TABLES: readonly FakeTableDef[] = [
   { accessor: "deviceOperatorSession", primaryKey: "identity", indexes: { byOrganizationId: "organizationId" } },
   { accessor: "serviceIdentity", primaryKey: "identity", indexes: {} },
   { accessor: "migrationState", primaryKey: "name", indexes: {} },
-  { accessor: "notification", primaryKey: "id", indexes: { byOrganizationId: "organizationId", byTargetId: "targetId" } },
+  { accessor: "notification", primaryKey: "id", indexes: { byOrganizationId: "organizationId", byTargetId: "targetId" }, columns: frozenColumns("notification") },
   { accessor: "document", primaryKey: "id", indexes: { byOrganizationId: "organizationId" }, columns: frozenColumns("document") },
   { accessor: "documentUpdate", primaryKey: "id", autoInc: true, indexes: { byDocumentId: "documentId", byOrganizationId: "organizationId" } },
   { accessor: "documentSnapshot", primaryKey: "documentId", indexes: { byOrganizationId: "organizationId" } },
@@ -200,6 +214,7 @@ export const DRIVE_FAKE_TABLES: readonly FakeTableDef[] = [
   { accessor: "formPublic", primaryKey: "token", indexes: { byScope: "scope", byFormId: "formId" } },
   { accessor: "formResponseReview", primaryKey: "responseId", indexes: { byFormId: "formId", byAdminScope: "adminScope" } },
   { accessor: "formPeriodMark", primaryKey: "id", indexes: { byFormId: "formId" } },
+  ...NOTIFY_FAKE_TABLES,
 ];
 
 /** Index / primary-key comparison key: bigints, identities (by hex) and everything else by string form. */

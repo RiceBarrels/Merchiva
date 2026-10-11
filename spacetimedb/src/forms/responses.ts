@@ -12,6 +12,7 @@
 import type { DriveSchema } from '../drive/types';
 import { isOrgAdminRole } from '../drive/logic';
 import { assertOrgStorageRoom } from '../drive/storage';
+import { deliver } from '../notify/deliver';
 import {
   FORM_MAX_ORG_ANSWER_BYTES, FORM_MAX_ORG_PUBLIC_ANSWER_BYTES, FORM_MAX_REVIEW_NOTE_LENGTH,
   FORM_RESPONSE_ROW_OVERHEAD_BYTES, REVIEW_STATUSES, answerFileItemIds, formIssueError, formPeriodForDateKey,
@@ -103,16 +104,18 @@ function checkFiles(
   return { ids, bytes };
 }
 
-/** Tell the form owner (when they asked to be told, still build forms, and did not answer themselves). */
-function notifyFormOwner(ctx: FormCtx, deps: FormDeps, form: FormRow, respondentMemberId: string, who: string): void {
-  if (!form.notifyOwner || form.ownerMemberId === respondentMemberId) return;
+/** Tell the form owner (when they asked to be told, still build forms, and did not answer themselves), by email too. */
+function notifyFormOwner(ctx: FormCtx, deps: FormDeps, form: FormRow, r: NewResponse): void {
+  if (!form.notifyOwner || form.ownerMemberId === r.respondentMemberId) return;
   for (const m of ctx.db.orgMember.byOrganizationId.filter(form.organizationId)) {
     if (m.id.toString() !== form.ownerMemberId) continue;
     if (m.status !== 'active' || !isFormBuilder(m)) return;
-    ctx.db.notification.insert({
-      id: ctx.newUuidV4(), organizationId: form.organizationId, targetId: m.userId, type: 'form_response',
-      title: 'New form response', body: deps.clampChars(who ? `${form.title}: ${who}` : form.title, NOTIFY_BODY_MAX),
-      link: `/manager/forms/edit?id=${form.id}&view=responses`, read: false, createdAt: ctx.timestamp,
+    const who = r.respondentName;
+    deliver(ctx, {
+      organizationId: form.organizationId, target: m.userId, type: 'form_response', title: 'New form response',
+      body: deps.clampChars(who ? `${form.title}: ${who}` : form.title, NOTIFY_BODY_MAX),
+      link: `/manager/forms/edit?id=${form.id}&view=responses`, template: 'form.response',
+      params: { actor: who, form: form.title }, email: true, sourceKind: 'form', sourceId: r.responseId, contextId: form.id,
     });
     return;
   }
@@ -146,7 +149,7 @@ function recordResponse(
     } : {}),
   });
   addFormStorage(ctx, form.organizationId, bytes);
-  notifyFormOwner(ctx, deps, form, r.respondentMemberId, r.respondentName);
+  notifyFormOwner(ctx, deps, form, r);
 }
 
 /** form_completion / form_period_mark key: the response's period, or its day when the form repeats without limit. */

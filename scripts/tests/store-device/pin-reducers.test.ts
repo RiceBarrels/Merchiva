@@ -114,6 +114,24 @@ describe("resolveDeviceOperatorAttempt", () => {
     expect(alerts()).toHaveLength(2);
   });
 
+  test("PIN alerts open the team page and are emailed to the owners and managers (security templates)", () => {
+    const w = world();
+    for (let i = 0; i < PIN_FREE_FAILURES; i++) guess(w, w.tablet, wrong(i));
+    const locked = w.db.rows("notification").filter((n) => n.title === "PIN entry locked on a device");
+    expect(locked.map((n) => n.link)).toEqual(["/manager/personnel/team", "/manager/personnel/team"]);
+    const queued = w.db.rows("notificationDelivery").filter((d) => d.template === "security.pinLocked");
+    expect(queued.map((d) => (d.targetId as FakeIdentity).hex).sort()).toEqual([w.owner.identity.hex, w.manager.identity.hex].sort());
+    for (const d of queued) {
+      expect(d).toMatchObject({ email: true, sourceKind: "device", link: "/manager/personnel/team" });
+      const params = JSON.parse(String(d.params)) as Record<string, string>;
+      expect(params.actor).toBe("Front tablet");
+      expect(String(locked[0].body)).toContain(`${params.count} wrong PINs`);
+    }
+    w.db.run(R.clearPinLockouts, w.manager, { organizationId: w.org });
+    const unlocked = w.db.rows("notificationDelivery").filter((d) => d.template === "security.pinUnlocked");
+    expect(unlocked.map((d) => JSON.parse(String(d.params)).actor)).toEqual(["Max", "Max"]);
+  });
+
   test("the store-wide cap pauses PIN entry for every identity", () => {
     const w = world();
     const guessers = Array.from({ length: 13 }, (_, i) => w.db.addMember({ organizationId: w.org, displayName: `g${i}` }));
@@ -121,6 +139,7 @@ describe("resolveDeviceOperatorAttempt", () => {
     for (const g of guessers) for (let i = 0; i < FREE && n < PIN_ORG_LOCK_FAILURES; i++, n++) guess(w, g, `80${String(n).padStart(2, "0")}`);
     guess(w, w.staff, "3333");
     expect(result(w, w.staff)?.outcome).toBe("locked");
+    expect(w.db.rows("notificationDelivery").filter((d) => d.template === "security.manyWrongPins")).toHaveLength(2);
     w.db.advance(61n * MIN);
     guess(w, w.staff, "3333");
     expect(result(w, w.staff)?.outcome).toBe("ok");

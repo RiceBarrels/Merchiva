@@ -8,6 +8,7 @@
 // Runtime imports: ./pin-limit only, so Bun tests and the server-source harness load it.
 
 import type { DriveCtx } from '../drive/types';
+import type { NotifyNotice } from '../notify/producers';
 import {
   EMPTY_PIN_BUCKET, PIN_ORG_NOTIFY_FAILURES, afterOrgPinFailure, afterPinFailure, pinBucketKey, pinBucketStale,
   pinLockedUntil, pinNotifyDue, pinOrgBucketKey, type PinBucket,
@@ -16,8 +17,11 @@ import {
 export type PinAttemptKind = 'operator' | 'manager_pin' | 'set_code';
 export type PinAttemptOutcome = 'ok' | 'wrong' | 'locked' | 'in_use';
 
-/** notifyManagers of ../index.ts: one notification per active owner / manager. */
-export type PinNotify = (ctx: DriveCtx, organizationId: string, type: string, title: string, body: string, link?: string) => void;
+/** notifyManagersOf of ../notify/producers.ts: one notification per active owner / manager. */
+export type PinNotify = (ctx: DriveCtx, organizationId: string, notice: NotifyNotice) => void;
+
+/** Where a PIN alert opens: the team page, where a manager resets PINs and unlocks PIN entry. */
+export const PIN_ALERT_LINK = '/manager/personnel/team';
 
 /** Who is guessing: the caller's org_member id (the bucket key) and the name managers see. */
 export interface PinCaller {
@@ -72,24 +76,26 @@ export function recordPinMiss(ctx: DriveCtx, organizationId: string, who: PinCal
   let caller = afterPinFailure(readPinBucket(ctx, callerKey), now);
   if (caller.lockedUntilMicros > now && caller.notifiedAt !== caller.windowStartMicros) {
     caller = { ...caller, notifiedAt: caller.windowStartMicros };
-    notify(
-      ctx, organizationId, 'security', 'PIN entry locked on a device',
-      `${callerName || 'A device'} entered ${caller.failures} wrong PINs today, so PIN entry there is paused. ` +
+    notify(ctx, organizationId, {
+      type: 'security', title: 'PIN entry locked on a device',
+      body: `${callerName || 'A device'} entered ${caller.failures} wrong PINs today, so PIN entry there is paused. ` +
         'If nobody at the store was mistyping, someone may be guessing colleagues’ PINs.',
-      '/manager/personnel',
-    );
+      link: PIN_ALERT_LINK, template: 'security.pinLocked', params: { actor: callerName, count: String(caller.failures) },
+      email: true, sourceKind: 'device',
+    });
   }
   writePinBucket(ctx, callerKey, organizationId, caller);
 
   let org = afterOrgPinFailure(readPinBucket(ctx, orgKey), now);
   if (pinNotifyDue(org, PIN_ORG_NOTIFY_FAILURES)) {
     org = { ...org, notifiedAt: org.windowStartMicros };
-    notify(
-      ctx, organizationId, 'security', 'Many wrong PINs at your store',
-      `${org.failures} wrong PINs were entered at your store today. ` +
+    notify(ctx, organizationId, {
+      type: 'security', title: 'Many wrong PINs at your store',
+      body: `${org.failures} wrong PINs were entered at your store today. ` +
         'If this keeps up, PIN entry pauses for everyone for an hour; QR log-in keeps working.',
-      '/manager/personnel',
-    );
+      link: PIN_ALERT_LINK, template: 'security.manyWrongPins', params: { count: String(org.failures) },
+      email: true, sourceKind: 'device',
+    });
   }
   writePinBucket(ctx, orgKey, organizationId, org);
   return pinLockedUntil(caller, org, now);
